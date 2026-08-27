@@ -3,10 +3,10 @@ name: Deploy backend
 on:
   push:
     branches: [main]
-    paths: ["backend/**"]
+    paths: ["backend/**", ".github/workflows/deploy-backend.yml"]
   pull_request:
     types: [opened, synchronize, reopened]
-    paths: ["backend/**"]
+    paths: ["backend/**", ".github/workflows/deploy-backend.yml"]
 
 jobs:
   deploy:
