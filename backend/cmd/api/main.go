@@ -9,18 +9,16 @@ import (
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/danielgtaylor/huma/v2/adapters/humachi"
 	"github.com/go-chi/chi/v5"
-	"github.com/spf13/viper"
+	appconfig "github.com/moomaideng/eventory/pkg/config"
 )
 
 func main() {
 	// 1. Load Configuration
-	viper.AutomaticEnv()
-	viper.SetConfigFile(".env")
-	if err := viper.ReadInConfig(); err != nil {
-		log.Printf("No .env file found, relying on system environment variables")
+	appConfig, err := appconfig.Load()
+	if err != nil {
+		log.Fatalf("failed to load configuration: %v", err)
 	}
-	viper.SetDefault("PORT", "8080")
-	port := viper.GetString("PORT")
+	port := appConfig.Port
 
 	// 2. Initialize Database (To be implemented in pkg/database)
 	// db := database.ConnectPostgres(viper.GetString("DB_DSN"))
