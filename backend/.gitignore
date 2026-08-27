@@ -1,0 +1,19 @@
+# Test binary, built with `go test -c`
+*.test
+
+# Output of the go coverage tool, specifically when used with LiteIDE
+*.out
+
+# Environment Variables
+.env*
+!.env.example
+
+# Air live-reload temporary files
+tmp/
+bin/
+
+# IDE and Editor directories
+.vscode/
+
+# OS specific files
+.DS_Store
