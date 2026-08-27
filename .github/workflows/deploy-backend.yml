@@ -1,0 +1,61 @@
+name: Deploy backend
+
+on:
+  push:
+    branches: [main]
+    paths: ["backend/**"]
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths: ["backend/**"]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      ORACLE_HOST: ${{ secrets.ORACLE_HOST }}
+      ORACLE_USER: ${{ secrets.ORACLE_USER }}
+      ORACLE_KEY: ${{ secrets.ORACLE_SSH_PRIVATE_KEY }}
+      ORACLE_KNOWN_HOSTS: ${{ secrets.ORACLE_KNOWN_HOSTS }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v6
+        with:
+          go-version: "1.26.5"
+      - name: Test and build
+        working-directory: backend
+        run: |
+          make test
+          GOOS=linux GOARCH=arm64 make build
+      - name: Set deployment target
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "APP_DIR=/home/moomaideng/apps/eventory-backend-pr-${{ github.event.pull_request.number }}" >> "$GITHUB_ENV"
+            echo "APP_PORT=$((10000 + ${{ github.event.pull_request.number }}))" >> "$GITHUB_ENV"
+          else
+            echo "APP_DIR=/home/moomaideng/apps/eventory-backend" >> "$GITHUB_ENV"
+            echo "APP_PORT=8080" >> "$GITHUB_ENV"
+          fi
+      - name: Deploy
+        run: |
+          mkdir -p "$RUNNER_TEMP/ssh"
+          printf '%s\n' "$ORACLE_KEY" > "$RUNNER_TEMP/ssh/key"
+          printf '%s\n' "$ORACLE_KNOWN_HOSTS" > "$RUNNER_TEMP/ssh/known_hosts"
+          chmod 600 "$RUNNER_TEMP/ssh/key"
+          ssh_opts="-i $RUNNER_TEMP/ssh/key -o UserKnownHostsFile=$RUNNER_TEMP/ssh/known_hosts -o StrictHostKeyChecking=yes"
+
+          ssh $ssh_opts "$ORACLE_USER@$ORACLE_HOST" "mkdir -p '$APP_DIR'"
+          scp $ssh_opts backend/bin/api "$ORACLE_USER@$ORACLE_HOST:$APP_DIR/api.next"
+          ssh $ssh_opts "$ORACLE_USER@$ORACLE_HOST" "APP_DIR='$APP_DIR' APP_PORT='$APP_PORT' bash -s" <<'REMOTE'
+          set -e
+          test -f "$APP_DIR/.env" || printf 'PORT=8080\n' > "$APP_DIR/.env"
+          if [ -f "$APP_DIR/api.pid" ] && kill -0 "$(cat "$APP_DIR/api.pid")" 2>/dev/null; then
+            kill "$(cat "$APP_DIR/api.pid")"
+          fi
+          mv "$APP_DIR/api.next" "$APP_DIR/api"
+          chmod +x "$APP_DIR/api"
+          cd "$APP_DIR"
+          PORT="$APP_PORT" nohup ./api > api.log 2>&1 &
+          echo $! > api.pid
+          sleep 2
+          curl --fail --silent "http://127.0.0.1:$APP_PORT/health" >/dev/null
+          REMOTE
