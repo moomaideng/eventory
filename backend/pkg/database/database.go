@@ -8,7 +8,7 @@ import (
 	"gorm.io/gorm"
 )
 
-func Open(dsn string) (*gorm.DB, error) {
+func ConnectPostgres(dsn string) (*gorm.DB, error) {
 	if strings.TrimSpace(dsn) == "" {
 		return nil, errors.New("DB_DSN is required")
 	}

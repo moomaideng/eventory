@@ -15,7 +15,7 @@ func main() {
 		log.Fatalf("failed to load configuration: %v", err)
 	}
 
-	db, err := database.Open(config.DBDSN)
+	db, err := database.ConnectPostgres(config.DBDSN)
 	if err != nil {
 		log.Fatalf("failed to connect to database: %v", err)
 	}
