@@ -1,4 +1,4 @@
-.PHONY: dev run migrate seed test build clean tidy
+.PHONY: dev run migrate reset seed test build clean tidy
 
 # Main Application Commands
 dev:
@@ -9,6 +9,9 @@ run:
 
 migrate:
 	go run cmd/migrate/main.go
+
+reset:
+	go run cmd/migrate/main.go -reset
 
 seed:
 	go run cmd/seed/main.go

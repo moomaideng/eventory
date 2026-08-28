@@ -66,6 +66,7 @@ Execute GORM auto-migrations to build the database schema based on your current 
 
 ```bash
 make migrate
+# or make reset (if db schema need reset)
 ```
 
 4. **Seed the Database:**
