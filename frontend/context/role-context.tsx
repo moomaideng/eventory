@@ -1,0 +1,213 @@
+'use client';
+
+import React, { createContext, useContext, useEffect, useState } from 'react';
+import { createClient } from '@/lib/client';
+
+export type UserRole = 'competitor' | 'organizer' | 'sponsor';
+
+export interface UserProfile {
+  id: string;
+  email: string;
+  displayName: string;
+  avatarUrl?: string;
+}
+
+export interface OrganizerProfile {
+  id: string;
+  name: string;
+  bio?: string;
+  logoUrl?: string;
+}
+
+export interface SponsorProfile {
+  id: string;
+  companyName: string;
+  websiteUrl?: string;
+  logoUrl?: string;
+}
+
+interface RoleContextType {
+  user: UserProfile | null;
+  activeRole: UserRole;
+  activeProfileName: string;
+  organizerProfile: OrganizerProfile | null;
+  sponsorProfile: SponsorProfile | null;
+  isLoading: boolean;
+  setRole: (role: UserRole) => void;
+  loginWithGoogle: () => Promise<void>;
+  loginAsDev: (role?: UserRole) => void;
+  logout: () => Promise<void>;
+  createOrUpdateOrganizerProfile: (name: string, bio?: string) => void;
+  createOrUpdateSponsorProfile: (
+    companyName: string,
+    websiteUrl?: string
+  ) => void;
+}
+
+const RoleContext = createContext<RoleContextType | undefined>(undefined);
+
+// Mock data for local development mode
+const MOCK_USER: UserProfile = {
+  id: 'dev-user-001',
+  email: 'dev@eventory.gg',
+  displayName: 'MooMai (Dev)',
+  avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=MooMai',
+};
+
+const DEFAULT_ORGANIZER: OrganizerProfile = {
+  id: 'org-1',
+  name: 'Chula Esports Club',
+  bio: 'Official university esports club hosting regional tournaments.',
+};
+
+const DEFAULT_SPONSOR: SponsorProfile = {
+  id: 'sp-1',
+  companyName: 'Red Bull Gaming',
+  websiteUrl: 'https://redbull.com',
+};
+
+export function RoleProvider({ children }: { children: React.ReactNode }) {
+  const [user, setUser] = useState<UserProfile | null>(null);
+  const [activeRole, setActiveRole] = useState<UserRole>('competitor');
+  const [organizerProfile, setOrganizerProfile] =
+    useState<OrganizerProfile | null>(DEFAULT_ORGANIZER);
+  const [sponsorProfile, setSponsorProfile] = useState<SponsorProfile | null>(
+    DEFAULT_SPONSOR
+  );
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Check Supabase session on client load
+  useEffect(() => {
+    async function checkAuth() {
+      try {
+        const supabase = createClient();
+        const { data } = await supabase.auth.getUser();
+        if (data.user) {
+          setUser({
+            id: data.user.id,
+            email: data.user.email || '',
+            displayName:
+              data.user.user_metadata?.full_name ||
+              data.user.email?.split('@')[0] ||
+              'User',
+            avatarUrl: data.user.user_metadata?.avatar_url,
+          });
+        }
+      } catch {
+        // Fallback gracefully when Supabase is unconfigured or in offline dev mode
+        console.log('Supabase unconfigured or offline dev mode');
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    checkAuth();
+  }, []);
+
+  // Compute the display label for the currently active profile
+  const getActiveProfileName = (): string => {
+    if (activeRole === 'competitor') {
+      return user?.displayName || 'Competitor';
+    }
+    if (activeRole === 'organizer') {
+      return organizerProfile?.name || 'Organizer (Unset)';
+    }
+    if (activeRole === 'sponsor') {
+      return sponsorProfile?.companyName || 'Sponsor (Unset)';
+    }
+    return '';
+  };
+
+  // Switch active contextual role
+  const setRole = (role: UserRole) => {
+    setActiveRole(role);
+  };
+
+  // Trigger Supabase Google OAuth sign-in
+  const loginWithGoogle = async () => {
+    try {
+      const supabase = createClient();
+      await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/api/auth/callback`,
+        },
+      });
+    } catch (error) {
+      console.error('Google login error:', error);
+    }
+  };
+
+  // Instant mock sign-in for zero-friction local development
+  const loginAsDev = (role: UserRole = 'competitor') => {
+    setUser(MOCK_USER);
+    setActiveRole(role);
+    setOrganizerProfile(DEFAULT_ORGANIZER);
+    setSponsorProfile(DEFAULT_SPONSOR);
+  };
+
+  // Sign out user and reset context state
+  const logout = async () => {
+    try {
+      const supabase = createClient();
+      await supabase.auth.signOut();
+    } catch {
+      // Ignore cleanup error
+    }
+    setUser(null);
+    setActiveRole('competitor');
+  };
+
+  // Create or update the single organizer profile for this user
+  const createOrUpdateOrganizerProfile = (name: string, bio?: string) => {
+    const updated: OrganizerProfile = {
+      id: organizerProfile?.id || `org-${Date.now()}`,
+      name,
+      bio,
+    };
+    setOrganizerProfile(updated);
+    setActiveRole('organizer');
+  };
+
+  // Create or update the single sponsor profile for this user
+  const createOrUpdateSponsorProfile = (
+    companyName: string,
+    websiteUrl?: string
+  ) => {
+    const updated: SponsorProfile = {
+      id: sponsorProfile?.id || `sp-${Date.now()}`,
+      companyName,
+      websiteUrl,
+    };
+    setSponsorProfile(updated);
+    setActiveRole('sponsor');
+  };
+
+  return (
+    <RoleContext.Provider
+      value={{
+        user,
+        activeRole,
+        activeProfileName: getActiveProfileName(),
+        organizerProfile,
+        sponsorProfile,
+        isLoading,
+        setRole,
+        loginWithGoogle,
+        loginAsDev,
+        logout,
+        createOrUpdateOrganizerProfile,
+        createOrUpdateSponsorProfile,
+      }}
+    >
+      {children}
+    </RoleContext.Provider>
+  );
+}
+
+export function useRole() {
+  const context = useContext(RoleContext);
+  if (!context) {
+    throw new Error('useRole must be used within a RoleProvider');
+  }
+  return context;
+}
