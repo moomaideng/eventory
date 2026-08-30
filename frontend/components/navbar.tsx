@@ -40,7 +40,7 @@ const NAV_LINKS: Record<UserRole, { label: string; href: string }[]> = {
   ],
   organizer: [
     { label: "My Tournaments", href: "/organizer" },
-    { label: "Host Tournament", href: "/organizer/tournaments/new" },
+    { label: "+ Host Tournament", href: "/organizer/tournaments/new" },
   ],
   sponsor: [
     { label: "Sponsor Dashboard", href: "/sponsor" },
@@ -56,7 +56,7 @@ export function Navbar() {
   return (
     <header className="bg-background/95 sticky top-0 z-50 w-full border-b backdrop-blur">
       <div className="container mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-8">
-        {/* Left: Brand Logo & Dynamic Navigation */}
+        {/* Left: Brand Logo & Navigation */}
         <div className="flex items-center gap-8">
           <Link href="/" className="flex items-center gap-2">
             <div className="bg-primary text-primary-foreground flex size-9 items-center justify-center rounded-lg font-black">
@@ -67,7 +67,7 @@ export function Navbar() {
             </span>
           </Link>
 
-          {/* Dynamic Navigation Links (Changes with Active Role) */}
+          {/* Dynamic Navigation Links */}
           <nav className="hidden items-center gap-6 md:flex">
             {NAV_LINKS[activeRole].map((link) => {
               const isActive = pathname === link.href;

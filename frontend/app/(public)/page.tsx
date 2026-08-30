@@ -9,9 +9,9 @@ import { ArrowRight, Trophy, Gamepad2 } from "lucide-react";
 export default function HomePage() {
   return (
     <div className="flex flex-1 flex-col items-center justify-center px-4 py-20 sm:px-8">
-      <div className="flex w-full max-w-3xl flex-col gap-8 text-center">
+      <div className="w-full max-w-3xl space-y-8 text-center">
         {/* Clean Hero Title & Description */}
-        <div className="flex flex-col gap-4">
+        <div className="space-y-4">
           <h1 className="text-foreground text-4xl font-extrabold tracking-tight sm:text-6xl">
             Host, Compete, and Sponsor Tournaments.
           </h1>
