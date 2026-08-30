@@ -1,0 +1,45 @@
+# Next.js & Build Outputs
+.next/
+out/
+build/
+dist/
+coverage/
+
+# Dependencies & Lockfiles
+node_modules/
+package-lock.json
+pnpm-lock.yaml
+yarn.lock
+bun.lockb
+bun.lock
+
+# Documentation & Text Files (ป้องกันไม่ให้ Prettier มาจัดข้อความ/ตัดคำมั่ว)
+*.md
+*.mdx
+*.txt
+LICENSE
+
+# Environment & Sensitive Files
+.env*
+!.env.example
+
+# Public Assets & Media
+public/
+*.svg
+*.png
+*.jpg
+*.jpeg
+*.webp
+*.ico
+*.pdf
+
+# Configuration / Schemas / Data Files
+*.prisma
+tsconfig.json
+tsconfig.*.json
+.eslintrc*
+eslint.config.*
+
+# (Optional) shadcn UI components ดั้งเดิม
+# ถ้าไม่อยากให้ Prettier ไปแตะไฟล์ components ที่โหลดมาจาก shadcn CLI ให้เอา comment ออก
+# components/ui/
