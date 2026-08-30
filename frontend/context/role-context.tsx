@@ -37,6 +37,7 @@ interface RoleContextType {
   loginWithGoogle: () => Promise<void>;
   loginAsDev: (role?: UserRole) => void;
   logout: () => Promise<void>;
+  updateUserProfile: (displayName: string, avatarUrl?: string) => void;
   createOrUpdateOrganizerProfile: (name: string, bio?: string) => void;
   createOrUpdateSponsorProfile: (
     companyName: string,
@@ -145,6 +146,24 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
     setSponsorProfile(DEFAULT_SPONSOR);
   };
 
+  // Update primary user profile details
+  const updateUserProfile = (displayName: string, avatarUrl?: string) => {
+    if (!user) {
+      setUser({
+        id: `user-${Date.now()}`,
+        email: "user@eventory.gg",
+        displayName,
+        avatarUrl,
+      });
+    } else {
+      setUser((prev) =>
+        prev
+          ? { ...prev, displayName, avatarUrl: avatarUrl || prev.avatarUrl }
+          : null
+      );
+    }
+  };
+
   // Sign out user and reset context state
   const logout = async () => {
     try {
@@ -195,6 +214,7 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
         loginWithGoogle,
         loginAsDev,
         logout,
+        updateUserProfile,
         createOrUpdateOrganizerProfile,
         createOrUpdateSponsorProfile,
       }}
