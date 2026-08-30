@@ -2,13 +2,13 @@ package seeds
 
 import "gorm.io/gorm"
 
-type Task struct {
+type Seeds struct {
 	Name string
 	Run  func(db *gorm.DB) error
 }
 
-func All() []Task {
-	return []Task{
+func All() []Seeds {
+	return []Seeds{
 		{
 			Name: "Accounts",
 			Run:  SeedAccounts,

@@ -3,7 +3,8 @@ package models
 func All() []any {
 	return []any{
 		&Account{},
-		&Profile{},
+		&OrganizerProfile{},
+		&SponsorProfile{},
 		// ... TODO: implement other models
 	}
 }

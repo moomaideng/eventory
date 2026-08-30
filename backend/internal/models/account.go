@@ -8,13 +8,6 @@ import (
 	"gorm.io/gorm"
 )
 
-type ProfileType string
-
-const (
-	ProfileTypeOrganizer ProfileType = "ORGANIZER"
-	ProfileTypeSponsor   ProfileType = "SPONSOR"
-)
-
 type Account struct {
 	ID        uuid.UUID `gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
 	Email     string    `gorm:"type:varchar(255);not null;uniqueIndex"`
@@ -23,7 +16,9 @@ type Account struct {
 	CreatedAt time.Time
 	UpdatedAt time.Time
 
-	Profiles []Profile `gorm:"foreignKey:AccountID;constraint:OnDelete:CASCADE;"`
+	// * -> optional/nullable
+	OrganizerProfile *OrganizerProfile `gorm:"foreignKey:AccountID;constraint:OnDelete:CASCADE;"`
+	SponsorProfile   *SponsorProfile   `gorm:"foreignKey:AccountID;constraint:OnDelete:CASCADE;"`
 }
 
 func (account *Account) BeforeSave(_ *gorm.DB) error {
@@ -32,12 +27,20 @@ func (account *Account) BeforeSave(_ *gorm.DB) error {
 	return nil
 }
 
-type Profile struct {
-	ID          uuid.UUID   `gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
-	AccountID   uuid.UUID   `gorm:"type:uuid;not null;uniqueIndex:idx_account_type"`
-	Type        ProfileType `gorm:"type:varchar(16);not null;check:type IN ('ORGANIZER', 'SPONSOR');uniqueIndex:idx_account_type"`
-	DisplayName string      `gorm:"type:varchar(150);not null"`
-	ContactInfo string      `gorm:"type:text"`
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
+type OrganizerProfile struct {
+	ID             uuid.UUID `gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
+	AccountID      uuid.UUID `gorm:"type:uuid;not null;uniqueIndex"`
+	OrganizerName  string    `gorm:"type:varchar(150);not null"`
+	OrganizerEmail string    `gorm:"type:varchar(255)"`
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
+}
+
+type SponsorProfile struct {
+	ID           uuid.UUID `gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
+	AccountID    uuid.UUID `gorm:"type:uuid;not null;uniqueIndex"`
+	SponsorName  string    `gorm:"type:varchar(150);not null"`
+	SponsorEmail string    `gorm:"type:varchar(255)"`
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
 }
