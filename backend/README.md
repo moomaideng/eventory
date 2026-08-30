@@ -47,27 +47,41 @@ Before running the server, ensure the following dependencies are installed on yo
 * **Make:** For executing automation commands.
 * **Air:** For automatic server reloading during development. Install via `go install github.com/cosmtrek/air@latest`.
 
-## Getting Started
-
-Follow these steps to initialize the backend service.
-
 1. **Configure Environment Variables:**
 Duplicate the example environment file.
+
 ```bash
 cp .env.example .env
 ```
 
 2. **Initialize Infrastructure:**
 Start the PostgreSQL database in the background.
+
 ```bash
-docker-compose up -d
+docker compose up -d
 ```
 
-3. **Start the Application:**
-Run the server using Air to enable live reloading upon file saves.
+3. **Run Database Migrations:**
+Execute GORM auto-migrations to build the database schema based on your current models.
+
 ```bash
-air
-# or make run
+make migrate
+# or make reset (if db schema need reset)
+```
+
+4. **Seed the Database:**
+Populate the newly migrated tables with mock data (Accounts, Profiles, Roles) for local development.
+
+```bash
+make seed
+```
+
+5. **Start the Application:**
+Run the server using Air to enable live reloading upon file saves.
+
+```bash
+make dev
+# or make run (if air is not installed)
 ```
 
 The API will start at `http://localhost:8080`. Interactive documentation (OpenAPI 3.1) is automatically generated and accessible at `http://localhost:8080/docs`.

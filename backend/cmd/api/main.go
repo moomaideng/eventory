@@ -9,24 +9,24 @@ import (
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/danielgtaylor/huma/v2/adapters/humachi"
 	"github.com/go-chi/chi/v5"
-	"github.com/spf13/viper"
+	appconfig "github.com/moomaideng/eventory/pkg/config"
+	"github.com/moomaideng/eventory/pkg/database"
 )
 
 func main() {
 	// 1. Load Configuration
-	viper.AutomaticEnv()
-	viper.SetConfigFile(".env")
-	if err := viper.ReadInConfig(); err != nil {
-		log.Printf("No .env file found, relying on system environment variables")
+	appConfig, err := appconfig.Load()
+	if err != nil {
+		log.Fatalf("failed to load configuration: %v", err)
 	}
-	viper.SetDefault("PORT", "8080")
-	port := viper.GetString("PORT")
+	port := appConfig.Port
 
-	// 2. Initialize Database (To be implemented in pkg/database)
-	// db := database.ConnectPostgres(viper.GetString("DB_DSN"))
-
-	// Execute GORM AutoMigrate for your models here
-	// db.AutoMigrate(&models.Account{}, &models.Profile{})
+	// 2. Initialize Database
+	db, err := database.ConnectPostgres(appConfig.DBDSN)
+	if err != nil {
+		log.Fatalf("failed to connect to database: %v", err)
+	}
+	log.Println("Database connection established successfully.")
 
 	// 3. Initialize Router & API Framework
 	router := chi.NewMux()
@@ -43,6 +43,10 @@ func main() {
 		Summary:     "Health Check",
 		Description: "Returns a 204 No Content status if the server is running.",
 	}, func(ctx context.Context, input *struct{}) (*struct{}, error) {
+		sqlDB, _ := db.DB()
+		if err := sqlDB.Ping(); err != nil {
+			return nil, huma.Error500InternalServerError("Database unreachable", err)
+		}
 		return nil, nil // Nil response translates to HTTP 204
 	})
 
