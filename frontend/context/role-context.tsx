@@ -89,14 +89,11 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
 
       if (session?.access_token) {
         // Query Go Backend Account API directly with openapi-fetch
-        const { data: account } = await apiClient.GET(
-          "/api/v1/accounts/me",
-          {
-            headers: {
-              Authorization: `Bearer ${session.access_token}`,
-            },
-          }
-        );
+        const { data: account } = await apiClient.GET("/api/v1/accounts/me", {
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+          },
+        });
 
         if (account) {
           setUser({
@@ -133,14 +130,11 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
     } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (session?.access_token) {
         try {
-          const { data: account } = await apiClient.GET(
-            "/api/v1/accounts/me",
-            {
-              headers: {
-                Authorization: `Bearer ${session.access_token}`,
-              },
-            }
-          );
+          const { data: account } = await apiClient.GET("/api/v1/accounts/me", {
+            headers: {
+              Authorization: `Bearer ${session.access_token}`,
+            },
+          });
 
           if (account) {
             setUser({

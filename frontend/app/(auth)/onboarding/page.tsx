@@ -49,21 +49,19 @@ export default function OnboardingPage() {
       const token = session?.access_token || "dev-token";
 
       // 2. Call Go Backend Onboarding API directly via openapi-fetch
-      const { data, error } = await apiClient.POST(
-        "/api/v1/accounts/onboard",
-        {
-          body: {
-            username,
-          },
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+      const { data, error } = await apiClient.POST("/api/v1/accounts/onboard", {
+        body: {
+          username,
+        },
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
 
       if (error) {
         setErrorMsg(
-          error.detail || "Failed to create account. Please try another username."
+          error.detail ||
+            "Failed to create account. Please try another username."
         );
         setIsSubmitting(false);
         return;
@@ -111,7 +109,7 @@ export default function OnboardingPage() {
         <form action={handleSubmit}>
           <CardContent className="flex flex-col gap-4">
             {errorMsg && (
-              <div className="bg-destructive/10 text-destructive rounded-lg border border-destructive/20 p-3 text-xs">
+              <div className="bg-destructive/10 text-destructive border-destructive/20 rounded-lg border p-3 text-xs">
                 {errorMsg}
               </div>
             )}

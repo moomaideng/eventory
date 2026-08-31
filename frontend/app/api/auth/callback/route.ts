@@ -13,7 +13,10 @@ export async function GET(request: Request) {
 
       if (!error && data?.session) {
         if (process.env.NODE_ENV === "development") {
-          console.log("[Auth Callback] User Authenticated:", data.session.user.email);
+          console.log(
+            "[Auth Callback] User Authenticated:",
+            data.session.user.email
+          );
         }
 
         // Check if account already exists in Eventory PostgreSQL DB
