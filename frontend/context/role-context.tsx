@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { createClient } from "@/lib/client";
+import { apiClient } from "@/lib/api/client";
 
 export type UserRole = "competitor" | "organizer" | "sponsor";
 
@@ -43,6 +44,7 @@ interface RoleContextType {
     companyName: string,
     websiteUrl?: string
   ) => void;
+  refreshUser: () => Promise<void>;
 }
 
 const RoleContext = createContext<RoleContextType | undefined>(undefined);
@@ -77,31 +79,86 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
   );
   const [isLoading, setIsLoading] = useState(true);
 
-  // Check Supabase session on client load
-  useEffect(() => {
-    async function checkAuth() {
-      try {
-        const supabase = createClient();
-        const { data } = await supabase.auth.getUser();
-        if (data.user) {
+  // Sync user state with Supabase session and Go Backend via openapi-fetch
+  const refreshUser = async () => {
+    try {
+      const supabase = createClient();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (session?.access_token) {
+        // Query Go Backend Account API directly with openapi-fetch
+        const { data: account } = await apiClient.GET("/api/v1/accounts/me", {
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+          },
+        });
+
+        if (account) {
           setUser({
-            id: data.user.id,
-            email: data.user.email || "",
-            displayName:
-              data.user.user_metadata?.full_name ||
-              data.user.email?.split("@")[0] ||
-              "User",
-            avatarUrl: data.user.user_metadata?.avatar_url,
+            id: account.id,
+            email: account.email,
+            displayName: account.username,
+            avatarUrl: session.user?.user_metadata?.avatar_url,
           });
+        } else {
+          // Account does not exist in DB yet (needs onboarding)
+          setUser(null);
         }
-      } catch {
-        // Fallback gracefully when Supabase is unconfigured or in offline dev mode
-        console.log("Supabase unconfigured or offline dev mode");
-      } finally {
-        setIsLoading(false);
+      } else {
+        setUser(null);
       }
+    } catch (err) {
+      if (process.env.NODE_ENV === "development") {
+        console.log("Auth session check notice:", err);
+      }
+    } finally {
+      setIsLoading(false);
     }
-    checkAuth();
+  };
+
+  useEffect(() => {
+    const supabase = createClient();
+
+    // 1. Initial auth sync
+    refreshUser();
+
+    // 2. Real-time auth state listener (Sign in, Sign out, Token Refresh)
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (session?.access_token) {
+        try {
+          const { data: account } = await apiClient.GET("/api/v1/accounts/me", {
+            headers: {
+              Authorization: `Bearer ${session.access_token}`,
+            },
+          });
+
+          if (account) {
+            setUser({
+              id: account.id,
+              email: account.email,
+              displayName: account.username,
+              avatarUrl: session.user?.user_metadata?.avatar_url,
+            });
+          } else {
+            setUser(null);
+          }
+        } catch {
+          setUser(null);
+        }
+      } else if (event === "SIGNED_OUT") {
+        setUser(null);
+        setActiveRole("competitor");
+      }
+      setIsLoading(false);
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
   // Compute the display label for the currently active profile
@@ -217,6 +274,7 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
         updateUserProfile,
         createOrUpdateOrganizerProfile,
         createOrUpdateSponsorProfile,
+        refreshUser,
       }}
     >
       {children}

@@ -16,13 +16,13 @@ flowchart TD
     end
 
     subgraph AuthStorage[" Auth & Storage (Supabase) "]
-        SupaAuth["Supabase Auth (Google OAuth & SSR Cookies)"]
+        SupaAuth["Supabase Auth (Google OAuth & JWKS)"]
         SupaStorage["Supabase Storage (Banners & Media Assets)"]
     end
 
     subgraph Backend[" Backend (Go Huma v2 REST API) "]
         GoApi["Go Huma REST API (Chi Router)"]
-        OpenAPISpec["OpenAPI 3.1 Spec (/docs/openapi.json)"]
+        OpenAPISpec["OpenAPI 3.1 Spec (/openapi.json)"]
         GormLayer["GORM / Data Access Layer"]
     end
 
@@ -36,11 +36,11 @@ flowchart TD
 
     ApiClient -.->|HTTP REST Requests| GoApi
     GoApi -->|Auto-generates| OpenAPISpec
-    OpenAPISpec -.->|openapi-typescript sync| ApiClient
+    OpenAPISpec -.->|npm run openapi:generate| ApiClient
 
     GoApi --> GormLayer
     GormLayer --> Postgres
-    GoApi -.->|Validates JWT| SupaAuth
+    GoApi -.->|Cryptographic JWKS Verification| SupaAuth
 ```
 
 ---
@@ -51,9 +51,9 @@ flowchart TD
 | :--- | :--- | :--- |
 | **Frontend** | **Next.js 15+ (App Router)** | React 19, TypeScript, Tailwind CSS v4, **shadcn/ui** (Base UI style), Lucide Icons |
 | **Backend** | **Go 1.22+ & Huma v2** | High-performance Go REST API framework with automated OpenAPI 3.1 generation |
-| **Router & ORM** | **Chi Router & GORM** | Lightweight HTTP routing and PostgreSQL ORM with automatic schema migrations |
+| **Router & ORM** | **Chi Router & GORM** | Lightweight HTTP routing, Chi middlewares, and PostgreSQL ORM with automatic schema migrations |
 | **Database** | **PostgreSQL** | Relational database provisioned locally via Docker Compose |
-| **Authentication** | **Supabase Auth** | Cookie-based SSR sessions with Google OAuth integration |
+| **Authentication** | **Supabase Auth** | Cookie-based SSR sessions, Google OAuth, and asymmetric JWKS verification |
 | **File Storage** | **Supabase Storage** | Object storage for banners, organizer logos, and tournament assets |
 | **API Contract** | **`openapi-fetch`** | 100% type-safe client generated directly from Go Huma OpenAPI 3.1 schema |
 
@@ -66,13 +66,13 @@ eventory/
 ├── frontend/                     # Next.js 15 Frontend Application
 │   ├── app/                      # App Router routes and page layouts
 │   ├── components/               # UI Primitives (shadcn/ui) & Layout components
-│   ├── context/                  # App State & Role Context (with Dev Quick Login)
-│   ├── lib/                      # Supabase SSR clients and utility helpers
+│   ├── context/                  # App State & Role Context (Supabase session + Go API sync)
+│   ├── lib/                      # openapi-fetch client, Supabase SSR helpers, utilities
 │   └── .agents/skills/shadcn/    # shadcn/ui Guidelines & Best Practice Rules
 │
 ├── backend/                      # Go Huma v2 API Service
-│   ├── cmd/api/main.go           # Application entry point & Huma router wiring
-│   ├── internal/                 # Handlers, middlewares, models, repositories, usecases
+│   ├── cmd/api/main.go           # Application entry point, Chi router, and Huma wiring
+│   ├── internal/                 # Handlers, middlewares (JWKS), models, repositories, usecases
 │   ├── pkg/                      # Database & configuration packages
 │   ├── docker-compose.yml        # Local PostgreSQL container provisioning
 │   └── Makefile                  # Automation commands (dev, migrate, reset, seed)
@@ -104,6 +104,7 @@ go run cmd/api/main.go
 ```
 - API server runs at: `http://localhost:8080`
 - Interactive OpenAPI 3.1 documentation URL: `http://localhost:8080/docs`
+- Raw OpenAPI 3.1 Schema: `http://localhost:8080/openapi.json`
 
 ---
 
@@ -114,7 +115,10 @@ cd frontend
 # 1. Install dependencies
 npm install
 
-# 2. Start Next.js development server
+# 2. Sync OpenAPI TypeScript definitions (when backend is running)
+npm run openapi:generate
+
+# 3. Start Next.js development server
 npm run dev
 ```
 - Frontend application runs at: `http://localhost:3000`
@@ -132,7 +136,7 @@ This is a suggested, pragmatic workflow example designed to keep frontend and ba
 flowchart LR
     Step1["1. Frontend UI<br/>(shadcn/ui + Mock State)"]
     --> Step2["2. Backend API<br/>(GORM Models + Go Huma API)"]
-    --> Step3["3. Contract Sync<br/>(openapi-typescript)"]
+    --> Step3["3. Contract Sync<br/>(npm run openapi:generate)"]
     --> Step4["4. Git Rebase & PR<br/>(Squash & Merge)"]
 ```
 
@@ -141,7 +145,7 @@ flowchart LR
 - **Prototyping with Mock State:** Use mock data and mock states (e.g. `loginAsDev` in `RoleContext`) to construct and iterate on complete UI flows before backend endpoints are fully ready.
 
 ### Step 2: Backend API Development & Database Management
-- **OpenAPI 3.1 with Huma:** Implement GORM models and use cases in `backend/internal/` and register routes using `huma.Register(...)`. Go Huma automatically generates OpenAPI 3.1 schemas and interactive documentation at the URL `http://localhost:8080/docs` (and the raw JSON schema at `http://localhost:8080/docs/openapi.json`).
+- **OpenAPI 3.1 with Huma:** Implement GORM models and use cases in `backend/internal/` and register routes using `huma.Register(...)` with Huma groups. Go Huma automatically generates OpenAPI 3.1 schemas and interactive documentation at `http://localhost:8080/docs` (and raw schema at `http://localhost:8080/openapi.json`).
 - **Database & Model Alignment:** During early development, keep the database schema strictly aligned with Go struct models by utilizing GORM auto-migrations or resetting the database when models change:
   ```bash
   # In backend directory
@@ -151,7 +155,7 @@ flowchart LR
 - Continuously update seed scripts so all team members can test with clean, realistic test records.
 
 ### Step 3: API Contract Sync & Integration
-- Once backend endpoints are live, sync the OpenAPI schema to the frontend by running `openapi-typescript` against `http://localhost:8080/docs/openapi.json`.
+- Once backend endpoints are live, sync the OpenAPI schema to the frontend by running `npm run openapi:generate` in the `frontend` folder.
 - This generates TypeScript types (`schema.d.ts`), giving the frontend end-to-end type safety (autocomplete for request bodies, path/query parameters, and response payloads) via `openapi-fetch` without manual type definitions.
 
 ### Step 4: Recommended Git Workflow & Pull Requests

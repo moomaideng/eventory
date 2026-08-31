@@ -1,13 +1,14 @@
-# Eventory backend
+# Eventory Backend
 
-This directory contains the Go backend service. It is built utilizing a structured architecture to separate core business logic from frameworks, external APIs, and database implementations.
+This directory contains the Go backend service. It is built utilizing a structured Ports & Adapters architecture to separate core business logic from frameworks, external APIs, and database implementations.
 
 ## Technology Stack
 
-*   **Language:** Go 1.26.5
+*   **Language:** Go 1.22+
 *   **API Framework:** Huma v2 (Automated OpenAPI 3.1 documentation)
-*   **Router:** go-chi/chi
+*   **Router & Middleware:** Chi Router with Logger, Recoverer, and CORS handler
 *   **Database & ORM:** PostgreSQL with GORM
+*   **Authentication:** Supabase Auth verification via JWKS (ES256 / RS256)
 *   **Configuration:** Viper
 *   **Live Reload:** Air
 
@@ -18,16 +19,16 @@ This directory contains the Go backend service. It is built utilizing a structur
 ├── backend/
 │   ├── cmd/
 │   │   └── api/
-│   │       └── main.go         # Application entry point (starts server & auto-migrates DB)
+│   │       └── main.go         # Application entry point, Chi router, and Huma wiring
 │   ├── internal/               # Private application code
-│   │   ├── handlers/           # Huma HTTP handlers and DTOs
-│   │   ├── middlewares/        # HTTP middlewares (JWT authentication, logging)
-│   │   ├── models/             # Domain and Database models combined (GORM tags)
+│   │   ├── handlers/           # Huma HTTP handlers and DTOs (/me, /onboard, /{id})
+│   │   ├── middlewares/        # HTTP middlewares (Supabase JWKS Auth, Dev guard)
+│   │   ├── models/             # Domain and Database models (GORM tags)
 │   │   ├── repositories/       # Data access layer (GORM queries)
-│   │   ├── server/             # Server wiring, Chi router, and Huma initialization
-│   │   └── usecases/           # Core business logic
+│   │   ├── seeds/              # Seed scripts for development mock records
+│   │   ├── services/           # External service adapters
+│   │   └── usecases/           # Core business logic and unit tests
 │   ├── pkg/                    # Public/Shared utilities
-│   │   ├── baserepo/           # Generic repository helpers
 │   │   ├── config/             # Viper configuration loading
 │   │   └── database/           # PostgreSQL connection initialization
 │   ├── .air.toml               # Air configuration for live reloading
@@ -45,43 +46,40 @@ Before running the server, ensure the following dependencies are installed on yo
 * **Go:** Version 1.22 or higher.
 * **Docker & Docker Compose:** For running the local PostgreSQL instance.
 * **Make:** For executing automation commands.
-* **Air:** For automatic server reloading during development. Install via `go install github.com/air-verse/air@latest`, and make sure Go bin directory is in your PATH: `export PATH="$PATH:$(go env GOPATH)/bin"`.
+* **Air (Optional):** For automatic server reloading during development (`go install github.com/air-verse/air@latest`).
+
+## Getting Started
 
 1. **Configure Environment Variables:**
-Duplicate the example environment file.
-
-```bash
-cp .env.example .env
-```
+   Duplicate the example environment file.
+   ```bash
+   cp .env.example .env
+   ```
 
 2. **Initialize Infrastructure:**
-Start the PostgreSQL database in the background.
-
-```bash
-docker compose up -d
-```
+   Start the PostgreSQL database in the background.
+   ```bash
+   docker compose up -d
+   ```
 
 3. **Run Database Migrations:**
-Execute GORM auto-migrations to build the database schema based on your current models.
-
-```bash
-make migrate
-# or make reset (if db schema need reset)
-```
+   Execute GORM auto-migrations to build the database schema based on your current models.
+   ```bash
+   make migrate
+   # or make reset (if db schema needs a clean reset)
+   ```
 
 4. **Seed the Database:**
-Populate the newly migrated tables with mock data (Accounts, Profiles, Roles) for local development.
-
-```bash
-make seed
-```
+   Populate the database with mock records for local development.
+   ```bash
+   make seed
+   ```
 
 5. **Start the Application:**
-Run the server using Air to enable live reloading upon file saves.
+   Run the server using Air to enable live reloading upon file saves:
+   ```bash
+   make dev
+   # or make run (if air is not installed)
+   ```
 
-```bash
-make dev
-# or make run (if air is not installed)
-```
-
-The API will start at `http://localhost:8080`. Interactive documentation (OpenAPI 3.1) is automatically generated and accessible at `http://localhost:8080/docs`.
+The API will start at `http://localhost:8080`. Interactive documentation (OpenAPI 3.1) is automatically generated and accessible at `http://localhost:8080/docs` (with raw schema at `http://localhost:8080/openapi.json`).

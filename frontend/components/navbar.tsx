@@ -50,8 +50,15 @@ const NAV_LINKS: Record<UserRole, { label: string; href: string }[]> = {
 
 export function Navbar() {
   const pathname = usePathname();
-  const { user, activeRole, activeProfileName, setRole, loginAsDev, logout } =
-    useRole();
+  const {
+    user,
+    activeRole,
+    activeProfileName,
+    isLoading,
+    setRole,
+    loginAsDev,
+    logout,
+  } = useRole();
 
   return (
     <header className="bg-background/95 sticky top-0 z-50 w-full border-b backdrop-blur">
@@ -91,7 +98,10 @@ export function Navbar() {
 
         {/* Right: Role Switcher & Auth Actions */}
         <div className="flex items-center gap-3">
-          {user ? (
+          {isLoading ? (
+            /* Skeleton Loading State during Hydration (Zero Layout Shift) */
+            <div className="bg-muted/60 h-9 w-28 animate-pulse rounded-full" />
+          ) : user ? (
             /* Role Switcher Dropdown */
             <DropdownMenu>
               <DropdownMenuTrigger

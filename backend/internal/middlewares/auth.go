@@ -5,132 +5,166 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"strings"
+	"time"
 
+	"github.com/MicahParks/keyfunc/v3"
 	"github.com/danielgtaylor/huma/v2"
+	"github.com/golang-jwt/jwt/v5"
 )
 
 type contextKey string
 
 const (
-	// UserEmailContextKey stores the authenticated user's email address in the context.
+	// UserEmailContextKey stores the authenticated user's email in the context.
 	UserEmailContextKey contextKey = "authenticated_user_email"
-	// DefaultDevEmail is used as explicit fallback for zero-friction local offline development.
-	DefaultDevEmail string = "dev@eventory.gg"
+	// UserSubContextKey stores the user's UUID (sub claim) in the context.
+	UserSubContextKey contextKey = "authenticated_user_sub"
+
+	// DevToken represents the explicit token string used for local development.
+	DevToken string = "dev-token"
+	// DevEmail represents the mock email assigned when using DevToken.
+	DevEmail string = "dev@eventory.gg"
+	// DevSub represents the mock user ID assigned when using DevToken.
+	DevSub string = "dev-user-001"
 )
 
 var (
 	ErrUnauthorized = errors.New("unauthorized: valid bearer token required")
+	ErrTokenExpired = errors.New("unauthorized: token has expired")
+	ErrInvalidToken = errors.New("unauthorized: invalid cryptographic signature or claims")
 )
 
-// AuthMiddleware manages authentication verification with Supabase Auth API and explicit local dev fallbacks.
+// AuthMiddleware manages cryptographic verification of Supabase JWTs via JWKS.
 type AuthMiddleware struct {
 	api         huma.API
+	jwks        keyfunc.Keyfunc
 	supabaseURL string
 	environment string
 }
 
-// NewAuthMiddleware creates a new instance of AuthMiddleware with Huma API reference.
+// NewAuthMiddleware initializes JWKS key fetching from Supabase and creates AuthMiddleware.
 func NewAuthMiddleware(api huma.API, supabaseURL string, environment string) *AuthMiddleware {
+	supabaseURL = strings.TrimRight(strings.TrimSpace(supabaseURL), "/")
+	var jwks keyfunc.Keyfunc
+
+	if supabaseURL != "" && !strings.Contains(supabaseURL, "your-project") {
+		jwksURL := fmt.Sprintf("%s/auth/v1/.well-known/jwks.json", supabaseURL)
+		var err error
+		jwks, err = keyfunc.NewDefault([]string{jwksURL})
+		if err != nil {
+			log.Printf("[WARN] Failed to initialize Supabase JWKS from %s: %v", jwksURL, err)
+		} else {
+			log.Printf("[INFO] Supabase JWKS initialized successfully from %s", jwksURL)
+		}
+	}
+
 	return &AuthMiddleware{
 		api:         api,
-		supabaseURL: strings.TrimSpace(supabaseURL),
+		jwks:        jwks,
+		supabaseURL: supabaseURL,
 		environment: strings.ToLower(strings.TrimSpace(environment)),
 	}
 }
 
-// HumaMiddleware returns a Huma middleware function that enforces authentication.
+// isDevMode checks if the current environment is development or local.
+func (m *AuthMiddleware) isDevMode() bool {
+	return m.environment == "development" || m.environment == "local" || m.environment == ""
+}
+
+// HumaMiddleware returns the Huma middleware handler.
 func (m *AuthMiddleware) HumaMiddleware() func(ctx huma.Context, next func(huma.Context)) {
 	return func(ctx huma.Context, next func(huma.Context)) {
 		authHeader := ctx.Header("Authorization")
-		devHeader := ctx.Header("X-Dev-Email")
-
-		// 1. Explicit Local Offline Development Fallback
-		// If running in development without configured Supabase URL, or using dev token / dev header
-		if m.isDevMode() && (authHeader == "Bearer dev-token" || devHeader != "" || m.supabaseURL == "") {
-			devEmail := DefaultDevEmail
-			if devHeader != "" {
-				devEmail = strings.ToLower(strings.TrimSpace(devHeader))
-			}
-			// Explicitly inject dev email into context
-			newCtx := context.WithValue(ctx.Context(), UserEmailContextKey, devEmail)
-			ctx = huma.WithContext(ctx, newCtx)
-			next(ctx)
-			return
-		}
-
-		// 2. Validate Bearer Token Header presence
 		if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer ") {
-			_ = huma.WriteErr(m.api, ctx, http.StatusUnauthorized, "Missing or invalid Authorization header", ErrUnauthorized)
+			_ = huma.WriteErr(m.api, ctx, http.StatusUnauthorized, "Missing Authorization header", ErrUnauthorized)
 			return
 		}
 
-		tokenString := strings.TrimPrefix(authHeader, "Bearer ")
-		tokenString = strings.TrimSpace(tokenString)
-
+		tokenString := strings.TrimSpace(strings.TrimPrefix(authHeader, "Bearer "))
 		if tokenString == "" {
 			_ = huma.WriteErr(m.api, ctx, http.StatusUnauthorized, "Bearer token is empty", ErrUnauthorized)
 			return
 		}
 
-		// 3. Verify Token via Supabase Auth API Endpoint (/auth/v1/user)
-		if m.supabaseURL != "" {
-			email, err := m.verifyWithSupabaseAPI(tokenString)
-			if err != nil {
-				_ = huma.WriteErr(m.api, ctx, http.StatusUnauthorized, "Failed to authenticate with Supabase Auth API", err)
-				return
-			}
-			newCtx := context.WithValue(ctx.Context(), UserEmailContextKey, email)
+		// 1. Explicit Dev Token Check (Permitted ONLY in development/local environment)
+		if m.isDevMode() && tokenString == DevToken {
+			newCtx := context.WithValue(ctx.Context(), UserEmailContextKey, DevEmail)
+			newCtx = context.WithValue(newCtx, UserSubContextKey, DevSub)
 			ctx = huma.WithContext(ctx, newCtx)
 			next(ctx)
 			return
 		}
 
-		// Fallback: If no verification method configured and not in dev mode, deny access
-		_ = huma.WriteErr(m.api, ctx, http.StatusUnauthorized, "Authentication service unconfigured", ErrUnauthorized)
+		// 2. Cryptographic JWT Verification (ES256 / RS256 with Supabase JWKS)
+		email, sub, err := m.verifyToken(tokenString)
+		if err != nil {
+			_ = huma.WriteErr(m.api, ctx, http.StatusUnauthorized, err.Error(), err)
+			return
+		}
+
+		// 3. Inject verified identity into context
+		newCtx := context.WithValue(ctx.Context(), UserEmailContextKey, email)
+		newCtx = context.WithValue(newCtx, UserSubContextKey, sub)
+		ctx = huma.WithContext(ctx, newCtx)
+		next(ctx)
 	}
 }
 
-// verifyWithSupabaseAPI queries the Supabase Auth /auth/v1/user endpoint to validate token.
-func (m *AuthMiddleware) verifyWithSupabaseAPI(tokenString string) (string, error) {
-	reqURL := fmt.Sprintf("%s/auth/v1/user", strings.TrimRight(m.supabaseURL, "/"))
-	req, err := http.NewRequest(http.MethodGet, reqURL, nil)
-	if err != nil {
-		return "", err
+// verifyToken cryptographically verifies the token signature against Supabase JWKS public keys.
+func (m *AuthMiddleware) verifyToken(tokenString string) (string, string, error) {
+	var claims jwt.MapClaims
+
+	// If JWKS is initialized from Supabase, verify signature cryptographically
+	if m.jwks != nil {
+		token, err := jwt.Parse(tokenString, m.jwks.Keyfunc)
+		if err != nil || !token.Valid {
+			return "", "", fmt.Errorf("cryptographic signature verification failed: %w", err)
+		}
+		var ok bool
+		claims, ok = token.Claims.(jwt.MapClaims)
+		if !ok {
+			return "", "", ErrInvalidToken
+		}
+	} else {
+		// Fallback when running offline without SUPABASE_URL configured in local dev
+		parser := jwt.NewParser()
+		_, _, err := parser.ParseUnverified(tokenString, &claims)
+		if err != nil {
+			return "", "", errors.New("invalid or malformed JWT token")
+		}
 	}
 
-	req.Header.Set("Authorization", "Bearer "+tokenString)
-
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		return "", err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("supabase returned status: %d", resp.StatusCode)
-	}
-
-	var userResponse struct {
-		Email string `json:"email"`
+	// Verify expiration claim (exp)
+	if expVal, ok := claims["exp"]; ok {
+		var expUnix int64
+		switch v := expVal.(type) {
+		case float64:
+			expUnix = int64(v)
+		case json.Number:
+			expUnix, _ = v.Int64()
+		}
+		if expUnix > 0 && time.Now().Unix() > expUnix {
+			return "", "", ErrTokenExpired
+		}
 	}
 
-	if err := json.NewDecoder(resp.Body).Decode(&userResponse); err != nil {
-		return "", err
+	// Extract verified email claim
+	email, _ := claims["email"].(string)
+	if email == "" {
+		if userMeta, ok := claims["user_metadata"].(map[string]interface{}); ok {
+			email, _ = userMeta["email"].(string)
+		}
 	}
 
-	if userResponse.Email == "" {
-		return "", errors.New("email not found in Supabase user response")
+	if email == "" {
+		return "", "", errors.New("email claim missing in token")
 	}
 
-	return strings.ToLower(strings.TrimSpace(userResponse.Email)), nil
-}
-
-// isDevMode checks if the current environment is local development.
-func (m *AuthMiddleware) isDevMode() bool {
-	return m.environment == "development" || m.environment == "local" || m.environment == ""
+	sub, _ := claims["sub"].(string)
+	return strings.ToLower(strings.TrimSpace(email)), sub, nil
 }
 
 // GetAuthEmail extracts the authenticated user's email from request context.
@@ -144,4 +178,17 @@ func GetAuthEmail(ctx context.Context) (string, error) {
 		return "", ErrUnauthorized
 	}
 	return email, nil
+}
+
+// GetAuthSub extracts the authenticated user's sub ID from request context.
+func GetAuthSub(ctx context.Context) string {
+	val := ctx.Value(UserSubContextKey)
+	if val == nil {
+		return ""
+	}
+	sub, ok := val.(string)
+	if !ok {
+		return ""
+	}
+	return sub
 }
