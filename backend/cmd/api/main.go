@@ -9,6 +9,10 @@ import (
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/danielgtaylor/huma/v2/adapters/humachi"
 	"github.com/go-chi/chi/v5"
+	"github.com/moomaideng/eventory/internal/handlers"
+	"github.com/moomaideng/eventory/internal/middlewares"
+	"github.com/moomaideng/eventory/internal/repositories"
+	"github.com/moomaideng/eventory/internal/usecases"
 	appconfig "github.com/moomaideng/eventory/pkg/config"
 	"github.com/moomaideng/eventory/pkg/database"
 )
@@ -31,11 +35,27 @@ func main() {
 	// 3. Initialize Router & API Framework
 	router := chi.NewMux()
 
-	// Create the Huma API instance
-	config := huma.DefaultConfig("Project API", "1.0.0")
+	// Create the Huma API instance with Bearer JWT security scheme definition
+	config := huma.DefaultConfig("Eventory API", "1.0.0")
+	config.Components.SecuritySchemes = map[string]*huma.SecurityScheme{
+		"bearer": {
+			Type:         "http",
+			Scheme:       "bearer",
+			BearerFormat: "JWT",
+			Description:  "Supabase Auth JWT Token (or 'Bearer dev-token' in local offline development)",
+		},
+	}
 	api := humachi.New(router, config)
 
-	// 4. Register Healthcheck Endpoint
+	// 4. Attach Global Auth Middleware with Dev Fallback
+	authMiddleware := middlewares.NewAuthMiddleware(
+		api,
+		appConfig.SupabaseURL,
+		appConfig.Environment,
+	)
+	api.UseMiddleware(authMiddleware.HumaMiddleware())
+
+	// 5. Register Healthcheck Endpoint
 	huma.Register(api, huma.Operation{
 		OperationID: "health-check",
 		Method:      http.MethodGet,
@@ -50,12 +70,12 @@ func main() {
 		return nil, nil // Nil response translates to HTTP 204
 	})
 
-	// 5. Wire Handlers & Use Cases (To be implemented)
-	// accountRepo := repositories.NewAccountRepository(db)
-	// accountUseCase := usecases.NewAccountUseCase(accountRepo)
-	// handlers.RegisterAccountRoutes(api, accountUseCase)
+	// 6. Wire Handlers & Use Cases
+	accountRepo := repositories.NewAccountRepository(db)
+	accountUseCase := usecases.NewAccountUseCase(accountRepo)
+	handlers.RegisterAccountRoutes(api, accountUseCase)
 
-	// 6. Start Server
+	// 7. Start Server
 	fmt.Printf("Server starting on port %s...\n", port)
 	fmt.Printf("API Documentation available at http://localhost:%s/docs\n", port)
 

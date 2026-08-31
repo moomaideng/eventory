@@ -5,6 +5,7 @@ go 1.26.5
 require (
 	github.com/danielgtaylor/huma/v2 v2.39.1
 	github.com/go-chi/chi/v5 v5.3.2
+	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/google/uuid v1.6.0
 	github.com/spf13/viper v1.21.0
 	gorm.io/driver/postgres v1.6.2
