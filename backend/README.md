@@ -45,7 +45,7 @@ Before running the server, ensure the following dependencies are installed on yo
 * **Go:** Version 1.22 or higher.
 * **Docker & Docker Compose:** For running the local PostgreSQL instance.
 * **Make:** For executing automation commands.
-* **Air:** For automatic server reloading during development. Install via `go install github.com/cosmtrek/air@latest`.
+* **Air:** For automatic server reloading during development. Install via `go install github.com/air-verse/air@latest`, and make sure Go bin directory is in your PATH: `export PATH="$PATH:$(go env GOPATH)/bin"`.
 
 1. **Configure Environment Variables:**
 Duplicate the example environment file.
