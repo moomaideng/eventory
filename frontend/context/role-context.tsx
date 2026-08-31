@@ -1,6 +1,13 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  useCallback,
+  useMemo,
+} from "react";
 import { createClient } from "@/lib/client";
 import { apiClient } from "@/lib/api/client";
 
@@ -69,6 +76,21 @@ const DEFAULT_SPONSOR: SponsorProfile = {
   websiteUrl: "https://redbull.com",
 };
 
+// Pure function at module scope: triggers Supabase Google OAuth sign-in
+async function loginWithGoogle() {
+  try {
+    const supabase = createClient();
+    await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: `${window.location.origin}/api/auth/callback`,
+      },
+    });
+  } catch (error) {
+    console.error("Google login error:", error);
+  }
+}
+
 export function RoleProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [activeRole, setActiveRole] = useState<UserRole>("competitor");
@@ -79,8 +101,8 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
   );
   const [isLoading, setIsLoading] = useState(true);
 
-  // Sync user state with Supabase session and Go Backend via openapi-fetch
-  const refreshUser = async () => {
+  // Sync user state on-demand with Supabase session and Go Backend via openapi-fetch
+  const refreshUser = useCallback(async () => {
     try {
       const supabase = createClient();
       const {
@@ -116,15 +138,12 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     const supabase = createClient();
 
-    // 1. Initial auth sync
-    refreshUser();
-
-    // 2. Real-time auth state listener (Sign in, Sign out, Token Refresh)
+    // Real-time auth state listener automatically fires with the initial session and handles all auth state changes
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
@@ -162,7 +181,7 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   // Compute the display label for the currently active profile
-  const getActiveProfileName = (): string => {
+  const activeProfileName = useMemo((): string => {
     if (activeRole === "competitor") {
       return user?.displayName || "Competitor";
     }
@@ -173,56 +192,46 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
       return sponsorProfile?.companyName || "Sponsor (Unset)";
     }
     return "";
-  };
+  }, [
+    activeRole,
+    user?.displayName,
+    organizerProfile?.name,
+    sponsorProfile?.companyName,
+  ]);
 
   // Switch active contextual role
-  const setRole = (role: UserRole) => {
+  const setRole = useCallback((role: UserRole) => {
     setActiveRole(role);
-  };
-
-  // Trigger Supabase Google OAuth sign-in
-  const loginWithGoogle = async () => {
-    try {
-      const supabase = createClient();
-      await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: {
-          redirectTo: `${window.location.origin}/api/auth/callback`,
-        },
-      });
-    } catch (error) {
-      console.error("Google login error:", error);
-    }
-  };
+  }, []);
 
   // Instant mock sign-in for zero-friction local development
-  const loginAsDev = (role: UserRole = "competitor") => {
+  const loginAsDev = useCallback((role: UserRole = "competitor") => {
     setUser(MOCK_USER);
     setActiveRole(role);
     setOrganizerProfile(DEFAULT_ORGANIZER);
     setSponsorProfile(DEFAULT_SPONSOR);
-  };
+  }, []);
 
   // Update primary user profile details
-  const updateUserProfile = (displayName: string, avatarUrl?: string) => {
-    if (!user) {
-      setUser({
-        id: `user-${Date.now()}`,
-        email: "user@eventory.gg",
-        displayName,
-        avatarUrl,
+  const updateUserProfile = useCallback(
+    (displayName: string, avatarUrl?: string) => {
+      setUser((prev) => {
+        if (!prev) {
+          return {
+            id: `user-${Date.now()}`,
+            email: "user@eventory.gg",
+            displayName,
+            avatarUrl,
+          };
+        }
+        return { ...prev, displayName, avatarUrl: avatarUrl || prev.avatarUrl };
       });
-    } else {
-      setUser((prev) =>
-        prev
-          ? { ...prev, displayName, avatarUrl: avatarUrl || prev.avatarUrl }
-          : null
-      );
-    }
-  };
+    },
+    []
+  );
 
   // Sign out user and reset context state
-  const logout = async () => {
+  const logout = useCallback(async () => {
     try {
       const supabase = createClient();
       await supabase.auth.signOut();
@@ -231,55 +240,69 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
     }
     setUser(null);
     setActiveRole("competitor");
-  };
+  }, []);
 
   // Create or update the single organizer profile for this user
-  const createOrUpdateOrganizerProfile = (name: string, bio?: string) => {
-    const updated: OrganizerProfile = {
-      id: organizerProfile?.id || `org-${Date.now()}`,
-      name,
-      bio,
-    };
-    setOrganizerProfile(updated);
-    setActiveRole("organizer");
-  };
+  const createOrUpdateOrganizerProfile = useCallback(
+    (name: string, bio?: string) => {
+      setOrganizerProfile((prev) => ({
+        id: prev?.id || `org-${Date.now()}`,
+        name,
+        bio,
+      }));
+      setActiveRole("organizer");
+    },
+    []
+  );
 
   // Create or update the single sponsor profile for this user
-  const createOrUpdateSponsorProfile = (
-    companyName: string,
-    websiteUrl?: string
-  ) => {
-    const updated: SponsorProfile = {
-      id: sponsorProfile?.id || `sp-${Date.now()}`,
-      companyName,
-      websiteUrl,
-    };
-    setSponsorProfile(updated);
-    setActiveRole("sponsor");
-  };
-
-  return (
-    <RoleContext.Provider
-      value={{
-        user,
-        activeRole,
-        activeProfileName: getActiveProfileName(),
-        organizerProfile,
-        sponsorProfile,
-        isLoading,
-        setRole,
-        loginWithGoogle,
-        loginAsDev,
-        logout,
-        updateUserProfile,
-        createOrUpdateOrganizerProfile,
-        createOrUpdateSponsorProfile,
-        refreshUser,
-      }}
-    >
-      {children}
-    </RoleContext.Provider>
+  const createOrUpdateSponsorProfile = useCallback(
+    (companyName: string, websiteUrl?: string) => {
+      setSponsorProfile((prev) => ({
+        id: prev?.id || `sp-${Date.now()}`,
+        companyName,
+        websiteUrl,
+      }));
+      setActiveRole("sponsor");
+    },
+    []
   );
+
+  const value = useMemo<RoleContextType>(
+    () => ({
+      user,
+      activeRole,
+      activeProfileName,
+      organizerProfile,
+      sponsorProfile,
+      isLoading,
+      setRole,
+      loginWithGoogle,
+      loginAsDev,
+      logout,
+      updateUserProfile,
+      createOrUpdateOrganizerProfile,
+      createOrUpdateSponsorProfile,
+      refreshUser,
+    }),
+    [
+      user,
+      activeRole,
+      activeProfileName,
+      organizerProfile,
+      sponsorProfile,
+      isLoading,
+      setRole,
+      loginAsDev,
+      logout,
+      updateUserProfile,
+      createOrUpdateOrganizerProfile,
+      createOrUpdateSponsorProfile,
+      refreshUser,
+    ]
+  );
+
+  return <RoleContext.Provider value={value}>{children}</RoleContext.Provider>;
 }
 
 export function useRole() {
