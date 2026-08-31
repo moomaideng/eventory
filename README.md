@@ -6,11 +6,11 @@
 
 ## System Architecture
 
-Eventory connects a **Next.js 15 Frontend** and a **Go Huma v2 Backend** using a contract-first OpenAPI workflow:
+Eventory connects a **Next.js 16 Frontend** and a **Go Huma v2 Backend** using a contract-first OpenAPI workflow:
 
 ```mermaid
 flowchart TD
-    subgraph Frontend[" Frontend (Next.js 15 App Router) "]
+    subgraph Frontend[" Frontend (Next.js 16 App Router) "]
         UI["Web UI (Tailwind CSS v4 + shadcn/ui)"]
         ApiClient["Type-safe Client (openapi-fetch)"]
     end
@@ -49,7 +49,7 @@ flowchart TD
 
 | Layer | Technology | Description |
 | :--- | :--- | :--- |
-| **Frontend** | **Next.js 15+ (App Router)** | React 19, TypeScript, Tailwind CSS v4, **shadcn/ui** (Base UI style), Lucide Icons |
+| **Frontend** | **Next.js 16 (App Router)** | React 19, TypeScript, Tailwind CSS v4, **shadcn/ui** (Base UI style), Lucide Icons |
 | **Backend** | **Go 1.22+ & Huma v2** | High-performance Go REST API framework with automated OpenAPI 3.1 generation |
 | **Router & ORM** | **Chi Router & GORM** | Lightweight HTTP routing, Chi middlewares, and PostgreSQL ORM with automatic schema migrations |
 | **Database** | **PostgreSQL** | Relational database provisioned locally via Docker Compose |
@@ -63,12 +63,13 @@ flowchart TD
 
 ```text
 eventory/
-├── frontend/                     # Next.js 15 Frontend Application
+├── frontend/                     # Next.js 16 Frontend Application
+│   ├── proxy.ts                  # Next.js 16 Proxy (JWT Verification & session refresh)
 │   ├── app/                      # App Router routes and page layouts
 │   ├── components/               # UI Primitives (shadcn/ui) & Layout components
 │   ├── context/                  # App State & Role Context (Supabase session + Go API sync)
 │   ├── lib/                      # openapi-fetch client, Supabase SSR helpers, utilities
-│   └── .agents/skills/shadcn/    # shadcn/ui Guidelines & Best Practice Rules
+│   └── .agents/skills/           # shadcn & supabase Best Practice Rules
 │
 ├── backend/                      # Go Huma v2 API Service
 │   ├── cmd/api/main.go           # Application entry point, Chi router, and Huma wiring

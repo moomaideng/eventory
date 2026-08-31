@@ -6,7 +6,7 @@ Frontend client for **Eventory**, a competition and tournament management platfo
 
 ## Tech Stack
 
-- **Framework:** Next.js 15+ (App Router, React 19, TypeScript)
+- **Framework:** Next.js 16 (App Router, React 19, TypeScript)
 - **UI & Design System:** Tailwind CSS v4 + **shadcn/ui** (Base UI style) + Lucide Icons
 - **API Client:** `openapi-fetch` and `openapi-typescript` (Contract-first type safety synced with Go Huma)
 - **Authentication & Storage:** Supabase Auth (`@supabase/ssr`) with Google OAuth & Supabase Storage
@@ -30,11 +30,18 @@ We use Next.js **Route Groups** (`(public)` and `(auth)`) to isolate layouts and
 
 ```text
 frontend/
+├── proxy.ts                          # Next.js 16 Proxy (Asymmetric JWT verification & session refresh)
+│
 ├── app/
 │   ├── (auth)/                       # Auth Flow (Minimal Header with Logo only)
 │   │   ├── layout.tsx                # Auth layout
-│   │   ├── login/page.tsx            # Clean Google Sign-In card
-│   │   └── onboarding/page.tsx       # Display Name configuration
+│   │   ├── login/
+│   │   │   ├── page.tsx              # Server Component (Auth redirect check)
+│   │   │   └── login-form.tsx        # Clean Google Sign-In card with loading state
+│   │   └── onboarding/
+│   │       ├── page.tsx              # Server Component (Auth redirect check)
+│   │       ├── actions.ts            # Server Action (Direct Go backend onboarding)
+│   │       └── onboarding-form.tsx   # React 19 Native Form Action Component
 │   │
 │   ├── (public)/                     # Public & App Views (Full Navbar with Role Switcher)
 │   │   ├── layout.tsx                # Public layout with Navbar
@@ -66,10 +73,12 @@ frontend/
 │   │   └── client.ts                 # openapi-fetch client instance
 │   ├── client.ts                     # Supabase Browser Client helper
 │   ├── server.ts                     # Supabase Server Component helper
-│   ├── middleware.ts                 # Supabase Session Middleware helper
+│   ├── middleware.ts                 # Supabase Session Proxy helper (getClaims & dev fallback)
 │   └── utils.ts                      # Tailwind class merge helper (`cn`)
 │
-└── .agents/skills/shadcn/            # shadcn/ui Best Practices & Rules
+└── .agents/skills/
+    ├── shadcn/                       # shadcn/ui Best Practices & Rules
+    └── supabase/                     # Supabase Auth, SSR, & Database Rules
 ```
 
 ---
