@@ -3,8 +3,10 @@ module github.com/moomaideng/eventory
 go 1.26.5
 
 require (
+	github.com/MicahParks/keyfunc/v3 v3.8.1
 	github.com/danielgtaylor/huma/v2 v2.39.1
 	github.com/go-chi/chi/v5 v5.3.2
+	github.com/go-chi/cors v1.2.2
 	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/google/uuid v1.6.0
 	github.com/spf13/viper v1.21.0
@@ -14,7 +16,6 @@ require (
 
 require (
 	github.com/MicahParks/jwkset v0.11.1 // indirect
-	github.com/MicahParks/keyfunc/v3 v3.8.1 // indirect
 	github.com/fsnotify/fsnotify v1.9.0 // indirect
 	github.com/go-viper/mapstructure/v2 v2.4.0 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect

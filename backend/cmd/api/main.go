@@ -9,6 +9,8 @@ import (
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/danielgtaylor/huma/v2/adapters/humachi"
 	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
+	"github.com/go-chi/cors"
 	"github.com/moomaideng/eventory/internal/handlers"
 	"github.com/moomaideng/eventory/internal/middlewares"
 	"github.com/moomaideng/eventory/internal/repositories"
@@ -32,10 +34,29 @@ func main() {
 	}
 	log.Println("Database connection established successfully.")
 
-	// 3. Initialize Router & API Framework
+	// 3. Initialize Router & Standard Chi Middlewares
 	router := chi.NewMux()
+	router.Use(middleware.Logger)
+	router.Use(middleware.Recoverer)
 
-	// Create the Huma API instance with Bearer JWT security scheme definition
+	// Configure CORS using standard go-chi/cors
+	router.Use(cors.Handler(cors.Options{
+		AllowedOrigins: []string{"http://localhost:3000", "http://127.0.0.1:3000"},
+		AllowedMethods: []string{
+			http.MethodHead,
+			http.MethodGet,
+			http.MethodPost,
+			http.MethodPut,
+			http.MethodPatch,
+			http.MethodDelete,
+			http.MethodOptions,
+		},
+		AllowedHeaders:   []string{"*"},
+		AllowCredentials: true,
+		MaxAge:           300,
+	}))
+
+	// 4. Create Huma API instance with Bearer JWT security scheme definition
 	config := huma.DefaultConfig("Eventory API", "1.0.0")
 	config.Components.SecuritySchemes = map[string]*huma.SecurityScheme{
 		"bearer": {
@@ -47,11 +68,7 @@ func main() {
 	}
 	api := humachi.New(router, config)
 
-	// 4. Attach Global Auth Middleware with Official Supabase JWKS Verification & Environment Guard
-	authMiddleware := middlewares.NewAuthMiddleware(api, appConfig.SupabaseURL, appConfig.Environment)
-	api.UseMiddleware(authMiddleware.HumaMiddleware())
-
-	// 5. Register Healthcheck Endpoint
+	// 5. Register Public Healthcheck Endpoint (Outside Auth Group)
 	huma.Register(api, huma.Operation{
 		OperationID: "health-check",
 		Method:      http.MethodGet,
@@ -63,15 +80,24 @@ func main() {
 		if err := sqlDB.Ping(); err != nil {
 			return nil, huma.Error500InternalServerError("Database unreachable", err)
 		}
-		return nil, nil // Nil response translates to HTTP 204
+		return nil, nil
 	})
 
-	// 6. Wire Handlers & Use Cases
+	// 6. Create Repositories & Use Cases
 	accountRepo := repositories.NewAccountRepository(db)
 	accountUseCase := usecases.NewAccountUseCase(accountRepo)
-	handlers.RegisterAccountRoutes(api, accountUseCase)
 
-	// 7. Start Server
+	// 7. Initialize Auth Middleware & Scoped Route Groups
+	authMiddleware := middlewares.NewAuthMiddleware(api, appConfig.SupabaseURL, appConfig.Environment)
+
+	// Create /api/v1/accounts Group with Auth Middleware
+	accountGroup := huma.NewGroup(api, "/api/v1/accounts")
+	accountGroup.UseMiddleware(authMiddleware.HumaMiddleware())
+
+	// Register Account Handlers onto the scoped group
+	handlers.RegisterAccountRoutes(accountGroup, accountUseCase)
+
+	// 8. Start Server
 	fmt.Printf("Server starting on port %s (env: %s)...\n", port, appConfig.Environment)
 	fmt.Printf("API Documentation available at http://localhost:%s/docs\n", port)
 

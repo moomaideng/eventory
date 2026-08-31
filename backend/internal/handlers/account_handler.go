@@ -57,13 +57,13 @@ func toAccountResponse(acc *models.Account) AccountResponse {
 	}
 }
 
-// RegisterAccountRoutes registers all account-related HTTP endpoints with Go Huma API.
+// RegisterAccountRoutes registers all account-related HTTP endpoints under the account group.
 func RegisterAccountRoutes(api huma.API, accountUseCase *usecases.AccountUseCase) {
 	// 1. GET /api/v1/accounts/me (Get Authenticated User's Account)
 	huma.Register(api, huma.Operation{
 		OperationID: "get-my-account",
 		Method:      http.MethodGet,
-		Path:        "/api/v1/accounts/me",
+		Path:        "/me",
 		Summary:     "Get Current User Account",
 		Description: "Retrieves the account of the authenticated user via Bearer JWT. Returns 404 if user has not completed onboarding.",
 		Tags:        []string{"Accounts"},
@@ -89,7 +89,7 @@ func RegisterAccountRoutes(api huma.API, accountUseCase *usecases.AccountUseCase
 	huma.Register(api, huma.Operation{
 		OperationID: "onboard-account",
 		Method:      http.MethodPost,
-		Path:        "/api/v1/accounts/onboard",
+		Path:        "/onboard",
 		Summary:     "Onboard New Account",
 		Description: "Creates a new user account with chosen username. The email is securely extracted from the authenticated JWT token.",
 		Tags:        []string{"Accounts"},
@@ -118,7 +118,7 @@ func RegisterAccountRoutes(api huma.API, accountUseCase *usecases.AccountUseCase
 	huma.Register(api, huma.Operation{
 		OperationID: "update-my-username",
 		Method:      http.MethodPatch,
-		Path:        "/api/v1/accounts/me",
+		Path:        "/me",
 		Summary:     "Update Current User Username",
 		Description: "Updates the display username of the authenticated user.",
 		Tags:        []string{"Accounts"},
@@ -152,7 +152,7 @@ func RegisterAccountRoutes(api huma.API, accountUseCase *usecases.AccountUseCase
 	huma.Register(api, huma.Operation{
 		OperationID: "get-account-by-id",
 		Method:      http.MethodGet,
-		Path:        "/api/v1/accounts/{id}",
+		Path:        "/{id}",
 		Summary:     "Get Account by ID",
 		Description: "Retrieves public account details for a given internal user UUID.",
 		Tags:        []string{"Accounts"},
