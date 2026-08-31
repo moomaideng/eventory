@@ -23,7 +23,7 @@ type Account struct {
 
 func (account *Account) BeforeSave(_ *gorm.DB) error {
 	account.Email = strings.ToLower(strings.TrimSpace(account.Email))
-	account.Username = strings.ToLower(strings.TrimSpace(account.Username))
+	account.Username = strings.TrimSpace(account.Username)
 	return nil
 }
 
