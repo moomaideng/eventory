@@ -13,6 +13,8 @@ require (
 )
 
 require (
+	github.com/MicahParks/jwkset v0.11.1 // indirect
+	github.com/MicahParks/keyfunc/v3 v3.8.1 // indirect
 	github.com/fsnotify/fsnotify v1.9.0 // indirect
 	github.com/go-viper/mapstructure/v2 v2.4.0 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
@@ -32,4 +34,5 @@ require (
 	golang.org/x/sync v0.22.0 // indirect
 	golang.org/x/sys v0.47.0 // indirect
 	golang.org/x/text v0.40.0 // indirect
+	golang.org/x/time v0.15.0 // indirect
 )

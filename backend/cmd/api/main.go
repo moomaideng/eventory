@@ -42,17 +42,13 @@ func main() {
 			Type:         "http",
 			Scheme:       "bearer",
 			BearerFormat: "JWT",
-			Description:  "Supabase Auth JWT Token (or 'Bearer dev-token' in local offline development)",
+			Description:  "Supabase Auth JWT Token (or 'Bearer dev-token' for local offline development)",
 		},
 	}
 	api := humachi.New(router, config)
 
-	// 4. Attach Global Auth Middleware with Dev Fallback
-	authMiddleware := middlewares.NewAuthMiddleware(
-		api,
-		appConfig.SupabaseURL,
-		appConfig.Environment,
-	)
+	// 4. Attach Global Auth Middleware with Official Supabase JWKS Verification & Environment Guard
+	authMiddleware := middlewares.NewAuthMiddleware(api, appConfig.SupabaseURL, appConfig.Environment)
 	api.UseMiddleware(authMiddleware.HumaMiddleware())
 
 	// 5. Register Healthcheck Endpoint
@@ -76,7 +72,7 @@ func main() {
 	handlers.RegisterAccountRoutes(api, accountUseCase)
 
 	// 7. Start Server
-	fmt.Printf("Server starting on port %s...\n", port)
+	fmt.Printf("Server starting on port %s (env: %s)...\n", port, appConfig.Environment)
 	fmt.Printf("API Documentation available at http://localhost:%s/docs\n", port)
 
 	if err := http.ListenAndServe(":"+port, router); err != nil {

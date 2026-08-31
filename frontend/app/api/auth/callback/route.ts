@@ -8,14 +8,18 @@ export async function GET(request: Request) {
   if (code) {
     try {
       const supabase = await createClient();
-      const { error } = await supabase.auth.exchangeCodeForSession(code);
+      const { data, error } = await supabase.auth.exchangeCodeForSession(code);
 
-      if (!error) {
-        // Successfully exchanged code for session, redirect to Onboarding
+      if (!error && data?.session) {
+        if (process.env.NODE_ENV === "development") {
+          console.log("[Auth Callback] User Authenticated:", data.session.user.email);
+        }
+
+        // Successfully authenticated with Supabase, proceed to onboarding
         return NextResponse.redirect(`${origin}/onboarding`);
       }
     } catch (err) {
-      console.error("Auth exchange error:", err);
+      console.error("[Auth Callback] Auth exchange error:", err);
     }
   }
 
