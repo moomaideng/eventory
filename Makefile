@@ -1,4 +1,4 @@
-.PHONY: dev down db backend frontend migrate reset seed test build
+.PHONY: dev down db backend frontend frontend-deps migrate reset seed test build
 
 # Cross-platform aliases. Docker Compose reads the root .env directly.
 dev:
@@ -15,6 +15,11 @@ backend:
 
 frontend:
 	docker compose up --build frontend
+
+frontend-deps:
+	docker compose stop frontend
+	docker compose run --rm --no-deps frontend npm ci
+	docker compose start frontend
 
 migrate:
 	docker compose run --rm migrate

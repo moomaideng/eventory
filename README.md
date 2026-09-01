@@ -138,11 +138,11 @@ npm --prefix frontend ci
 go -C backend mod download
 ```
 
-When adding a frontend package, install it on the host to update `package.json`, `package-lock.json`, and the host `node_modules`, then synchronize the Docker development volume:
+When adding a frontend package, install it on the host to update `package.json`, `package-lock.json`, and the host `node_modules`. Then run `make frontend-deps` while the local stack is running. It safely stops the frontend, synchronizes Docker's dependency volume, and starts the frontend again:
 
 ```bash
 npm --prefix frontend install <package>
-docker compose run --rm --no-deps frontend npm ci
+make frontend-deps
 ```
 
 When adding a backend module, update `go.mod` and `go.sum` from the host:
@@ -166,6 +166,9 @@ make seed
 # Start a service and its required dependencies
 make backend
 make frontend
+
+# Refresh Docker dependencies after changing frontend packages
+make frontend-deps
 
 # Stop the stack
 make down
