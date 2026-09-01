@@ -4,7 +4,7 @@ param(
 )
 
 if (-not (Test-Path -LiteralPath $EnvFile)) {
-  throw "Missing $EnvFile. Copy .env.example to .env first."
+  throw "Missing ${EnvFile}. Copy .env.example to .env first."
 }
 
 Get-Content -LiteralPath $EnvFile | ForEach-Object {
@@ -16,12 +16,19 @@ Get-Content -LiteralPath $EnvFile | ForEach-Object {
 
   $parts = $line -split "=", 2
   if ($parts.Count -ne 2 -or -not $parts[0].Trim()) {
-    throw "Invalid environment variable in $EnvFile: $line"
+    throw "Invalid environment variable in ${EnvFile}: $line"
   }
 
-  [Environment]::SetEnvironmentVariable(
-    $parts[0].Trim(),
-    $parts[1].Trim(),
-    "Process"
-  )
+  $key = $parts[0].Trim()
+  $value = $parts[1].Trim()
+
+  # Strip surrounding quotes if present (e.g. KEY="value" or KEY='value')
+  if (($value.StartsWith('"') -and $value.EndsWith('"')) -or ($value.StartsWith("'") -and $value.EndsWith("'"))) {
+    if ($value.Length -ge 2) {
+      $value = $value.Substring(1, $value.Length - 2)
+    }
+  }
+
+  Set-Item "env:$key" $value
+  [Environment]::SetEnvironmentVariable($key, $value, "Process")
 }

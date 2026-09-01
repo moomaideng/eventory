@@ -1,7 +1,7 @@
 param(
   [string]$EnvFile = ".env",
   [Parameter(Mandatory = $true, ValueFromRemainingArguments = $true)]
-  [string[]]$GoArgs
+  [string[]]$CommandArgs
 )
 
 . "$PSScriptRoot/Import-EventoryEnv.ps1" -EnvFile $EnvFile
@@ -15,8 +15,18 @@ $env:ENVIRONMENT = "development"
 
 Push-Location "$PSScriptRoot/../backend"
 try {
-  & go @GoArgs
-  exit $LASTEXITCODE
+  if ($CommandArgs[0] -eq "air") {
+    $remaining = if ($CommandArgs.Length -gt 1) { $CommandArgs[1..($CommandArgs.Length - 1)] } else { @() }
+    & air @remaining
+  } elseif ($CommandArgs[0] -eq "go") {
+    $remaining = if ($CommandArgs.Length -gt 1) { $CommandArgs[1..($CommandArgs.Length - 1)] } else { @() }
+    & go @remaining
+  } else {
+    & go @CommandArgs
+  }
+  if ($LASTEXITCODE -ne $null) {
+    exit $LASTEXITCODE
+  }
 } finally {
   Pop-Location
 }

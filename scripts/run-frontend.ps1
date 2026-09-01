@@ -15,8 +15,15 @@ $env:INTERNAL_API_URL = $apiUrl
 
 Push-Location "$PSScriptRoot/../frontend"
 try {
-  & npm run @NpmArgs
-  exit $LASTEXITCODE
+  if ($NpmArgs[0] -eq "npm") {
+    $remaining = if ($NpmArgs.Length -gt 1) { $NpmArgs[1..($NpmArgs.Length - 1)] } else { @() }
+    & npm @remaining
+  } else {
+    & npm run @NpmArgs
+  }
+  if ($LASTEXITCODE -ne $null) {
+    exit $LASTEXITCODE
+  }
 } finally {
   Pop-Location
 }
