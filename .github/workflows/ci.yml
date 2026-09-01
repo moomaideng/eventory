@@ -17,7 +17,7 @@ jobs:
   verify:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - uses: actions/setup-go@v6
         with:
@@ -27,10 +27,10 @@ jobs:
       - name: Test and build backend
         working-directory: backend
         run: |
-          make test
-          make build
+          go test -v ./...
+          go build -o bin/api ./cmd/api
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: 24
           cache: npm
@@ -57,7 +57,7 @@ jobs:
     needs: verify
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - uses: docker/setup-qemu-action@v3
 
@@ -103,3 +103,90 @@ jobs:
           tags: |
             ghcr.io/moomaideng/eventory-frontend:latest
             ghcr.io/moomaideng/eventory-frontend:${{ github.sha }}
+
+  deploy:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: publish
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Check deployment configuration
+        env:
+          ORACLE_HOST: ${{ secrets.ORACLE_HOST }}
+          ORACLE_USER: ${{ secrets.ORACLE_USER }}
+          ORACLE_SSH_KEY: ${{ secrets.ORACLE_SSH_KEY }}
+          ORACLE_KNOWN_HOSTS: ${{ secrets.ORACLE_KNOWN_HOSTS }}
+          PROD_DB_DSN: ${{ secrets.PROD_DB_DSN }}
+        run: |
+          test -n "$ORACLE_HOST" || (echo "::error::Missing ORACLE_HOST" && exit 1)
+          test -n "$ORACLE_USER" || (echo "::error::Missing ORACLE_USER" && exit 1)
+          test -n "$ORACLE_SSH_KEY" || (echo "::error::Missing ORACLE_SSH_KEY" && exit 1)
+          test -n "$ORACLE_KNOWN_HOSTS" || (echo "::error::Missing ORACLE_KNOWN_HOSTS" && exit 1)
+          test -n "$PROD_DB_DSN" || (echo "::error::Missing PROD_DB_DSN" && exit 1)
+
+      - name: Configure SSH
+        env:
+          ORACLE_SSH_KEY: ${{ secrets.ORACLE_SSH_KEY }}
+          ORACLE_KNOWN_HOSTS: ${{ secrets.ORACLE_KNOWN_HOSTS }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$ORACLE_SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "$ORACLE_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+
+      - name: Copy production Compose configuration
+        env:
+          ORACLE_HOST: ${{ secrets.ORACLE_HOST }}
+          ORACLE_USER: ${{ secrets.ORACLE_USER }}
+        run: |
+          ssh "$ORACLE_USER@$ORACLE_HOST" 'sudo install -d -m 0755 -o "$USER" -g "$(id -gn)" /opt/eventory'
+          scp docker-compose.production.yml "$ORACLE_USER@$ORACLE_HOST:/opt/eventory/docker-compose.yml"
+
+      - name: Write production runtime environment
+        env:
+          IMAGE_TAG: ${{ github.sha }}
+          PROD_DB_DSN: ${{ secrets.PROD_DB_DSN }}
+          PROD_SUPABASE_URL: ${{ secrets.PROD_SUPABASE_URL }}
+          ORACLE_HOST: ${{ secrets.ORACLE_HOST }}
+          ORACLE_USER: ${{ secrets.ORACLE_USER }}
+        run: |
+          {
+            printf 'IMAGE_TAG=%s\n' "$IMAGE_TAG"
+            printf 'DB_DSN=%s\n' "$PROD_DB_DSN"
+            printf 'SUPABASE_URL=%s\n' "$PROD_SUPABASE_URL"
+            printf 'CORS_ALLOWED_ORIGINS=http://%s:3000\n' "$ORACLE_HOST"
+            printf 'BACKEND_PORT=8080\n'
+            printf 'FRONTEND_PORT=3000\n'
+          } | ssh "$ORACLE_USER@$ORACLE_HOST" 'umask 077; cat > /opt/eventory/.env'
+
+      - name: Log Oracle in to GitHub Container Registry
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GHCR_USER: ${{ github.actor }}
+          ORACLE_HOST: ${{ secrets.ORACLE_HOST }}
+          ORACLE_USER: ${{ secrets.ORACLE_USER }}
+        run: |
+          printf '%s' "$GHCR_TOKEN" | ssh "$ORACLE_USER@$ORACLE_HOST" "sudo docker login ghcr.io --username '$GHCR_USER' --password-stdin"
+
+      - name: Pull and run production images
+        env:
+          ORACLE_HOST: ${{ secrets.ORACLE_HOST }}
+          ORACLE_USER: ${{ secrets.ORACLE_USER }}
+        run: |
+          ssh "$ORACLE_USER@$ORACLE_HOST" '
+            set -eu
+            cd /opt/eventory
+            sudo docker compose --env-file .env -f docker-compose.yml pull
+            sudo docker compose --env-file .env -f docker-compose.yml run --rm migrate
+            sudo docker compose --env-file .env -f docker-compose.yml up -d --remove-orphans backend frontend
+          '
+
+      - name: Verify deployment
+        env:
+          PROD_API_URL: ${{ secrets.PROD_API_URL }}
+          ORACLE_HOST: ${{ secrets.ORACLE_HOST }}
+        run: |
+          curl --fail --silent --show-error --retry 12 --retry-all-errors --retry-delay 5 "$PROD_API_URL/health"
+          curl --fail --silent --show-error --retry 12 --retry-all-errors --retry-delay 5 "http://$ORACLE_HOST:3000/" > /dev/null
