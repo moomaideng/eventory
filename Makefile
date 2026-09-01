@@ -1,7 +1,51 @@
-SHELL := /bin/sh
 ENV_FILE ?= .env
 
 .PHONY: dev down db backend backend-dev frontend migrate reset seed test build require-env
+
+ifeq ($(OS),Windows_NT)
+
+require-env:
+	@powershell.exe -NoProfile -Command "if (-not (Test-Path -LiteralPath '$(ENV_FILE)')) { Write-Error 'Missing $(ENV_FILE). Copy .env.example to .env first.'; exit 1 }"
+
+# Windows uses PowerShell wrappers so the same root .env works without a POSIX shell.
+dev: require-env
+	docker compose up --build
+
+down:
+	docker compose down
+
+db: require-env
+	docker compose up -d postgres
+
+backend: require-env
+	@powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/run-backend.ps1 -EnvFile "$(ENV_FILE)" run ./cmd/api
+
+backend-dev: require-env
+	@powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/run-backend.ps1 -EnvFile "$(ENV_FILE)" air
+
+migrate: require-env
+	@powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/run-backend.ps1 -EnvFile "$(ENV_FILE)" run ./cmd/migrate
+
+reset: require-env
+	@powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/run-backend.ps1 -EnvFile "$(ENV_FILE)" run ./cmd/migrate -reset
+
+seed: require-env
+	@powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/run-backend.ps1 -EnvFile "$(ENV_FILE)" run ./cmd/seed
+
+frontend: require-env
+	@powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/run-frontend.ps1 -EnvFile "$(ENV_FILE)" dev
+
+build: require-env
+	go -C backend build -o bin/api ./cmd/api
+	@powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/run-frontend.ps1 -EnvFile "$(ENV_FILE)" build
+
+test:
+	go -C backend test -v ./...
+	npm --prefix frontend run lint
+
+else
+
+SHELL := /bin/sh
 
 require-env:
 	@test -f "$(ENV_FILE)" || { \
@@ -10,7 +54,10 @@ require-env:
 	}
 
 define run_backend
-	@set -a; . "./$(ENV_FILE)"; set +a; \
+	@env_file=$$(mktemp); \
+	trap 'rm -f "$$env_file"' EXIT; \
+	tr -d '\r' < "./$(ENV_FILE)" > "$$env_file"; \
+	set -a; . "$$env_file"; set +a; \
 	export DB_DSN="host=localhost user=$$POSTGRES_USER password=$$POSTGRES_PASSWORD dbname=$$POSTGRES_DB port=$${POSTGRES_PORT:-5432} sslmode=disable"; \
 	export PORT="$${BACKEND_PORT:-8080}"; \
 	export ENVIRONMENT=development; \
@@ -18,7 +65,10 @@ define run_backend
 endef
 
 define run_frontend
-	@set -a; . "./$(ENV_FILE)"; set +a; \
+	@env_file=$$(mktemp); \
+	trap 'rm -f "$$env_file"' EXIT; \
+	tr -d '\r' < "./$(ENV_FILE)" > "$$env_file"; \
+	set -a; . "$$env_file"; set +a; \
 	export NEXT_PUBLIC_SUPABASE_URL="$$SUPABASE_URL"; \
 	export NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY="$$SUPABASE_PUBLISHABLE_KEY"; \
 	export NEXT_PUBLIC_API_URL="$${API_URL:-http://localhost:8080}"; \
@@ -64,3 +114,5 @@ test:
 build: require-env
 	cd backend && go build -o bin/api ./cmd/api
 	$(call run_frontend,npm run build)
+
+endif
