@@ -6,6 +6,8 @@ import { OnboardingForm } from "./onboarding-form";
 export default async function OnboardingPage() {
   let shouldRedirectToHome = false;
   let shouldRedirectToLogin = false;
+  let userEmail = "";
+  let userAvatarUrl = "";
 
   try {
     const supabase = await createClient();
@@ -16,6 +18,9 @@ export default async function OnboardingPage() {
     if (!session?.access_token) {
       shouldRedirectToLogin = true;
     } else {
+      userEmail = session.user?.email || "";
+      userAvatarUrl = session.user?.user_metadata?.avatar_url || "";
+
       try {
         const { data: account } = await apiClient.GET("/api/v1/accounts/me", {
           headers: {
@@ -27,11 +32,11 @@ export default async function OnboardingPage() {
           shouldRedirectToHome = true;
         }
       } catch {
-        // Backend not reachable or error -> allow showing onboarding form
+        // Backend not reachable or account not found -> proceed with onboarding
       }
     }
   } catch {
-    // Supabase client creation error (e.g. missing env in test/local)
+    // Supabase client creation error (e.g. missing env in dev)
   }
 
   if (shouldRedirectToHome) {
@@ -42,5 +47,5 @@ export default async function OnboardingPage() {
     redirect("/login");
   }
 
-  return <OnboardingForm />;
+  return <OnboardingForm email={userEmail} avatarUrl={userAvatarUrl} />;
 }

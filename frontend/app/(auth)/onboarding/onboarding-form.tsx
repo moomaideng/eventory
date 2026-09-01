@@ -6,6 +6,7 @@ import { useRole } from "@/context/role-context";
 import { onboardUser } from "./actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Card,
   CardContent,
@@ -14,11 +15,16 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { ArrowRight, Loader2 } from "lucide-react";
+import { ArrowRight, Loader2, LogOut } from "lucide-react";
 
-export function OnboardingForm() {
+interface OnboardingFormProps {
+  email?: string;
+  avatarUrl?: string;
+}
+
+export function OnboardingForm({ email, avatarUrl }: OnboardingFormProps) {
   const router = useRouter();
-  const { refreshUser } = useRole();
+  const { refreshUser, logout } = useRole();
   const [displayName, setDisplayName] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -50,6 +56,16 @@ export function OnboardingForm() {
     }
   };
 
+  const handleSignOut = async () => {
+    setIsSubmitting(true);
+    try {
+      await logout();
+      router.push("/");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return (
     <div className="flex flex-1 items-center justify-center px-4 py-16 sm:px-8">
       <Card className="w-full max-w-sm shadow-sm">
@@ -68,6 +84,28 @@ export function OnboardingForm() {
 
         <form action={handleSubmit}>
           <CardContent className="flex flex-col gap-4">
+            {/* Authenticated Google Account Badge */}
+            {email && (
+              <div className="bg-muted/50 border-border/60 flex items-center justify-between gap-3 rounded-lg border p-2.5 text-left text-xs">
+                <div className="flex items-center gap-2.5 overflow-hidden">
+                  <Avatar className="size-6 shrink-0">
+                    <AvatarImage src={avatarUrl} alt={email} />
+                    <AvatarFallback className="text-[10px] uppercase">
+                      {email.slice(0, 2)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex flex-col truncate">
+                    <span className="text-muted-foreground text-[10px]">
+                      Signed in with Google
+                    </span>
+                    <span className="text-foreground truncate font-medium">
+                      {email}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {errorMsg && (
               <div className="bg-destructive/10 text-destructive border-destructive/20 rounded-lg border p-3 text-xs">
                 {errorMsg}
@@ -96,7 +134,7 @@ export function OnboardingForm() {
             </div>
           </CardContent>
 
-          <CardFooter className="pt-2">
+          <CardFooter className="flex flex-col gap-2 pt-2">
             <Button
               type="submit"
               size="lg"
@@ -114,6 +152,18 @@ export function OnboardingForm() {
                   <ArrowRight className="size-4" />
                 </>
               )}
+            </Button>
+
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={handleSignOut}
+              disabled={isSubmitting}
+              className="text-muted-foreground hover:text-foreground flex items-center gap-1.5 text-xs"
+            >
+              <LogOut className="size-3.5" />
+              <span>Sign out / Use a different account</span>
             </Button>
           </CardFooter>
         </form>
