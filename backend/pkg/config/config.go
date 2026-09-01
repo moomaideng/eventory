@@ -3,6 +3,7 @@ package config
 import (
 	"errors"
 	"fmt"
+	"os"
 
 	"github.com/spf13/viper"
 )
@@ -23,11 +24,8 @@ func Load() (Config, error) {
 	viper.SetDefault("SUPABASE_URL", "")
 	viper.AutomaticEnv()
 
-	if err := viper.ReadInConfig(); err != nil {
-		var configFileNotFound viper.ConfigFileNotFoundError
-		if !errors.As(err, &configFileNotFound) {
-			return Config{}, fmt.Errorf("read .env: %w", err)
-		}
+	if err := viper.ReadInConfig(); err != nil && !errors.Is(err, os.ErrNotExist) {
+		return Config{}, fmt.Errorf("read .env: %w", err)
 	}
 
 	return Config{
