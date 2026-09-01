@@ -63,6 +63,10 @@ flowchart TD
 
 ```text
 eventory/
+├── .env.example                  # Template for the single local environment file
+├── Makefile                      # Root development commands
+├── docker-compose.yml            # Complete local stack
+├── docker-compose.production.yml # GHCR images used on Oracle
 ├── frontend/                     # Next.js 16 Frontend Application
 │   ├── proxy.ts                  # Next.js 16 Proxy (JWT Verification & session refresh)
 │   ├── app/                      # App Router routes and page layouts
@@ -75,8 +79,7 @@ eventory/
 │   ├── cmd/api/main.go           # Application entry point, Chi router, and Huma wiring
 │   ├── internal/                 # Handlers, middlewares (JWKS), models, repositories, usecases
 │   ├── pkg/                      # Database & configuration packages
-│   ├── docker-compose.yml        # Local PostgreSQL container provisioning
-│   └── Makefile                  # Automation commands (dev, migrate, reset, seed)
+│   └── Dockerfile                # Backend and migration binaries
 │
 └── .github/                      # Pull Request Template & GitHub Workflows
 ```
@@ -86,43 +89,65 @@ eventory/
 ## Local Development Setup
 
 ### 1. Prerequisites
-- **Node.js:** Version 20 or higher (`npm`)
-- **Go:** Version 1.22 or higher
+- **Node.js:** Version 24 or higher (`npm`)
+- **Go:** Version 1.26 or higher
 - **Docker & Docker Compose:** For running local PostgreSQL
+- **Make:** For root development commands
 
 ---
 
-### 2. Backend Setup
+### 2. Configure the local environment
+
 ```bash
-cd backend
-
-# 1. Start local PostgreSQL
-docker-compose up -d
-
-# 2. Run backend API server
-go run cmd/api/main.go
-# Or using Air for live reload: make dev
+cp .env.example .env
 ```
-- API server runs at: `http://localhost:8080`
-- Interactive OpenAPI 3.1 documentation URL: `http://localhost:8080/docs`
-- Raw OpenAPI 3.1 Schema: `http://localhost:8080/openapi.json`
 
----
+The ignored root `.env` is the only local configuration file used by the supported development commands.
 
-### 3. Frontend Setup
+### 3. Run the complete stack
+
 ```bash
-cd frontend
-
-# 1. Install dependencies
-npm install
-
-# 2. Sync OpenAPI TypeScript definitions (when backend is running)
-npm run openapi:generate
-
-# 3. Start Next.js development server
-npm run dev
+make dev
+# Equivalent to: docker compose up --build
 ```
-- Frontend application runs at: `http://localhost:3000`
+
+- Frontend: `http://localhost:3000`
+- Backend: `http://localhost:8080`
+- API documentation: `http://localhost:8080/docs`
+
+### 4. Run services separately
+
+```bash
+# Terminal 1: PostgreSQL
+make db
+
+# Run once after starting a new database
+make migrate
+
+# Terminal 2: Go backend on the host
+make backend
+# Or, with Air installed: make backend-dev
+
+# Terminal 3: Next.js frontend on the host
+make frontend
+```
+
+The Makefile loads root `.env`, constructs a host-compatible database connection for Go, and maps the neutral Supabase/API names to Next.js variables. In Compose, browser requests use `API_URL` while Next.js server actions reach the backend through Docker's internal `http://backend:8080` address.
+
+### 5. CI/CD
+
+Pull requests run tests, lint, and builds only. A merge to `main` builds ARM64 backend and frontend images, publishes commit-tagged images to GHCR, then deploys that exact commit to Oracle using `docker-compose.production.yml`. Production uses Supabase PostgreSQL and never starts the local PostgreSQL service.
+
+Required GitHub Secrets:
+
+- `PROD_SUPABASE_URL`
+- `PROD_SUPABASE_PUBLISHABLE_KEY`
+- `PROD_API_URL`
+- `PROD_DB_DSN`
+- `ORACLE_HOST`
+- `ORACLE_USER`
+- `ORACLE_SSH_KEY`
+- `ORACLE_KNOWN_HOSTS`
 
 > **Note on Frontend Dev Mode:**
 > Frontend UI components can be developed and previewed immediately without backend or Supabase credentials. Simply use **"Dev Quick Login"** on the Navbar to simulate authenticated states.
@@ -149,7 +174,7 @@ flowchart LR
 - **OpenAPI 3.1 with Huma:** Implement GORM models and use cases in `backend/internal/` and register routes using `huma.Register(...)` with Huma groups. Go Huma automatically generates OpenAPI 3.1 schemas and interactive documentation at `http://localhost:8080/docs` (and raw schema at `http://localhost:8080/openapi.json`).
 - **Database & Model Alignment:** During early development, keep the database schema strictly aligned with Go struct models by utilizing GORM auto-migrations or resetting the database when models change:
   ```bash
-  # In backend directory
+  # From the repository root
   make reset    # Resets the DB schema
   make seed     # Populates consistent seed data for development
   ```

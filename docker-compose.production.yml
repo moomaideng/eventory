@@ -1,0 +1,33 @@
+name: eventory-production
+
+services:
+  migrate:
+    image: ghcr.io/moomaideng/eventory-backend:${IMAGE_TAG:?IMAGE_TAG is required}
+    command: ["./migrate"]
+    environment:
+      ENVIRONMENT: production
+      DB_DSN: ${DB_DSN:?DB_DSN is required}
+    restart: "no"
+
+  backend:
+    image: ghcr.io/moomaideng/eventory-backend:${IMAGE_TAG:?IMAGE_TAG is required}
+    environment:
+      ENVIRONMENT: production
+      PORT: "8080"
+      DB_DSN: ${DB_DSN:?DB_DSN is required}
+      SUPABASE_URL: ${SUPABASE_URL:?SUPABASE_URL is required}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:?CORS_ALLOWED_ORIGINS is required}
+    ports:
+      - "${BACKEND_PORT:-8080}:8080"
+    restart: unless-stopped
+
+  frontend:
+    image: ghcr.io/moomaideng/eventory-frontend:${IMAGE_TAG:?IMAGE_TAG is required}
+    environment:
+      INTERNAL_API_URL: http://backend:8080
+    ports:
+      - "${FRONTEND_PORT:-3000}:3000"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped

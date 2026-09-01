@@ -41,7 +41,7 @@ func main() {
 
 	// Configure CORS using standard go-chi/cors
 	router.Use(cors.Handler(cors.Options{
-		AllowedOrigins: []string{"http://localhost:3000", "http://127.0.0.1:3000"},
+		AllowedOrigins: appConfig.CORSOrigins,
 		AllowedMethods: []string{
 			http.MethodHead,
 			http.MethodGet,

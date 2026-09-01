@@ -111,18 +111,20 @@ npx shadcn@latest add <component-name>
 
 ## Getting Started
 
+Frontend development is orchestrated from the repository root so it shares one local environment file with the backend and Docker Compose.
+
 ### 1. Install Dependencies
 ```bash
-npm install
+cd frontend && npm install && cd ..
 ```
 
 ### 2. Configure Environment Variables
-Create a `.env.local` file in the `frontend` folder (or copy `.env.example`):
-```env
-NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
-NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your-publishable-key
-NEXT_PUBLIC_API_URL=http://localhost:8080
+Create the single ignored environment file at the repository root:
+```bash
+cp .env.example .env
 ```
+
+The root Makefile maps `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, and `API_URL` to the `NEXT_PUBLIC_*` names Next.js requires. In Docker, server actions use the private `INTERNAL_API_URL=http://backend:8080`, while browser code continues using the public API URL.
 
 > **Note on Local Dev Mode:**
 > You can develop and test UI features immediately without setting up Supabase keys. Click **"Dev Quick Login"** on the Navbar to simulate logged-in states and test role switching between Competitor, Organizer, and Sponsor modes.
@@ -130,12 +132,12 @@ NEXT_PUBLIC_API_URL=http://localhost:8080
 ### 3. Sync OpenAPI Types from Backend
 When the Go backend is running, sync the latest TypeScript types by running:
 ```bash
-npm run openapi:generate
+cd frontend && npm run openapi:generate && cd ..
 ```
 
 ### 4. Run Development Server
 ```bash
-npm run dev
+make frontend
 ```
 
 Open [http://localhost:3000](http://localhost:3000) in your browser.

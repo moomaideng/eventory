@@ -4,7 +4,7 @@ This directory contains the Go backend service. It is built utilizing a structur
 
 ## Technology Stack
 
-*   **Language:** Go 1.22+
+*   **Language:** Go 1.26+
 *   **API Framework:** Huma v2 (Automated OpenAPI 3.1 documentation)
 *   **Router & Middleware:** Chi Router with Logger, Recoverer, and CORS handler
 *   **Database & ORM:** PostgreSQL with GORM
@@ -32,10 +32,7 @@ This directory contains the Go backend service. It is built utilizing a structur
 │   │   ├── config/             # Viper configuration loading
 │   │   └── database/           # PostgreSQL connection initialization
 │   ├── .air.toml               # Air configuration for live reloading
-│   ├── .env.example            # Environment variables template
-│   ├── docker-compose.yaml     # Local database provisioning
 │   ├── Dockerfile              # Container build for production
-│   ├── Makefile                # Development automation commands
 │   └── README.md               # Backend-specific documentation
 ```
 
@@ -43,23 +40,25 @@ This directory contains the Go backend service. It is built utilizing a structur
 
 Before running the server, ensure the following dependencies are installed on your local machine:
 
-* **Go:** Version 1.22 or higher.
+* **Go:** Version 1.26 or higher.
 * **Docker & Docker Compose:** For running the local PostgreSQL instance.
 * **Make:** For executing automation commands.
 * **Air (Optional):** For automatic server reloading during development (`go install github.com/air-verse/air@latest`).
 
 ## Getting Started
 
-1. **Configure Environment Variables:**
-   Duplicate the example environment file.
+Backend development is orchestrated from the repository root so it shares the same local environment as the frontend and Docker Compose.
+
+1. **Configure the root environment:**
    ```bash
+   cd ..
    cp .env.example .env
    ```
 
 2. **Initialize Infrastructure:**
    Start the PostgreSQL database in the background.
    ```bash
-   docker compose up -d
+   make db
    ```
 
 3. **Run Database Migrations:**
@@ -78,8 +77,10 @@ Before running the server, ensure the following dependencies are installed on yo
 5. **Start the Application:**
    Run the server using Air to enable live reloading upon file saves:
    ```bash
-   make dev
-   # or make run (if air is not installed)
+   make backend-dev
+   # or make backend (if air is not installed)
    ```
 
 The API will start at `http://localhost:8080`. Interactive documentation (OpenAPI 3.1) is automatically generated and accessible at `http://localhost:8080/docs` (with raw schema at `http://localhost:8080/openapi.json`).
+
+The backend reads process environment variables only. Root Make commands construct a `localhost` database DSN for host development, while Docker Compose supplies a `postgres` service hostname inside containers.
