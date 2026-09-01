@@ -43,7 +43,7 @@ Before running the server, ensure the following dependencies are installed on yo
 * **Go:** Version 1.26 or higher.
 * **Docker & Docker Compose:** For running the local PostgreSQL instance.
 * **Make:** For executing automation commands.
-* **Air (Optional):** For automatic server reloading during development (`go install github.com/air-verse/air@latest`).
+* **Air (Optional on the host):** The Docker development image already includes Air for automatic server reloading.
 
 ## Getting Started
 
@@ -75,12 +75,11 @@ Backend development is orchestrated from the repository root so it shares the sa
    ```
 
 5. **Start the Application:**
-   Run the server using Air to enable live reloading upon file saves:
+   Run the backend and its dependencies in Docker. Air automatically rebuilds and restarts the API when Go source files change:
    ```bash
-   make backend-dev
-   # or make backend (if air is not installed)
+   make backend
    ```
 
 The API will start at `http://localhost:8080`. Interactive documentation (OpenAPI 3.1) is automatically generated and accessible at `http://localhost:8080/docs` (with raw schema at `http://localhost:8080/openapi.json`).
 
-The backend reads process environment variables only. Root Make commands construct a `localhost` database DSN for host development, while Docker Compose supplies a `postgres` service hostname inside containers.
+The backend reads `DB_DSN` directly. Local Compose receives the Docker-local DSN from the root `.env`; production receives the Supabase DSN from GitHub Actions secrets.

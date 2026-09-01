@@ -47,9 +47,9 @@ jobs:
       - name: Build frontend
         working-directory: frontend
         env:
-          NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
-          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: placeholder
-          NEXT_PUBLIC_API_URL: http://localhost:8080
+          SUPABASE_URL: https://placeholder.supabase.co
+          SUPABASE_PUBLISHABLE_KEY: placeholder
+          API_URL: http://localhost:8080
         run: npm run build
 
   publish:
@@ -97,9 +97,9 @@ jobs:
           platforms: linux/arm64
           push: true
           build-args: |
-            NEXT_PUBLIC_SUPABASE_URL=${{ secrets.PROD_SUPABASE_URL }}
-            NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=${{ secrets.PROD_SUPABASE_PUBLISHABLE_KEY }}
-            NEXT_PUBLIC_API_URL=${{ secrets.PROD_API_URL }}
+            SUPABASE_URL=${{ secrets.PROD_SUPABASE_URL }}
+            SUPABASE_PUBLISHABLE_KEY=${{ secrets.PROD_SUPABASE_PUBLISHABLE_KEY }}
+            API_URL=${{ secrets.PROD_API_URL }}
           tags: |
             ghcr.io/moomaideng/eventory-frontend:latest
             ghcr.io/moomaideng/eventory-frontend:${{ github.sha }}
@@ -118,12 +118,14 @@ jobs:
           ORACLE_SSH_KEY: ${{ secrets.ORACLE_SSH_KEY }}
           ORACLE_KNOWN_HOSTS: ${{ secrets.ORACLE_KNOWN_HOSTS }}
           PROD_DB_DSN: ${{ secrets.PROD_DB_DSN }}
+          PROD_API_URL: ${{ secrets.PROD_API_URL }}
         run: |
           test -n "$ORACLE_HOST" || (echo "::error::Missing ORACLE_HOST" && exit 1)
           test -n "$ORACLE_USER" || (echo "::error::Missing ORACLE_USER" && exit 1)
           test -n "$ORACLE_SSH_KEY" || (echo "::error::Missing ORACLE_SSH_KEY" && exit 1)
           test -n "$ORACLE_KNOWN_HOSTS" || (echo "::error::Missing ORACLE_KNOWN_HOSTS" && exit 1)
           test -n "$PROD_DB_DSN" || (echo "::error::Missing PROD_DB_DSN" && exit 1)
+          test -n "$PROD_API_URL" || (echo "::error::Missing PROD_API_URL" && exit 1)
 
       - name: Configure SSH
         env:
@@ -149,6 +151,7 @@ jobs:
           IMAGE_TAG: ${{ github.sha }}
           PROD_DB_DSN: ${{ secrets.PROD_DB_DSN }}
           PROD_SUPABASE_URL: ${{ secrets.PROD_SUPABASE_URL }}
+          PROD_API_URL: ${{ secrets.PROD_API_URL }}
           ORACLE_HOST: ${{ secrets.ORACLE_HOST }}
           ORACLE_USER: ${{ secrets.ORACLE_USER }}
         run: |
@@ -156,7 +159,7 @@ jobs:
             printf 'IMAGE_TAG=%s\n' "$IMAGE_TAG"
             printf 'DB_DSN=%s\n' "$PROD_DB_DSN"
             printf 'SUPABASE_URL=%s\n' "$PROD_SUPABASE_URL"
-            printf 'CORS_ALLOWED_ORIGINS=http://%s:3000\n' "$ORACLE_HOST"
+            printf 'CORS_ALLOWED_ORIGINS=%s\n' "$PROD_API_URL"
             printf 'BACKEND_PORT=8080\n'
             printf 'FRONTEND_PORT=3000\n'
           } | ssh "$ORACLE_USER@$ORACLE_HOST" 'umask 077; cat > /opt/eventory/.env'

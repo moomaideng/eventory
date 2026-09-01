@@ -113,10 +113,9 @@ npx shadcn@latest add <component-name>
 
 Frontend development is orchestrated from the repository root so it shares one local environment file with the backend and Docker Compose.
 
-### 1. Install Dependencies
-```bash
-cd frontend && npm install && cd ..
-```
+### 1. Prerequisite
+
+Install Docker Desktop. Node.js is only required for running frontend tooling directly on the host.
 
 ### 2. Configure Environment Variables
 Create the single ignored environment file at the repository root:
@@ -124,7 +123,7 @@ Create the single ignored environment file at the repository root:
 cp .env.example .env
 ```
 
-The root Makefile maps `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, and `API_URL` to the `NEXT_PUBLIC_*` names Next.js requires. In Docker, server actions use the private `INTERNAL_API_URL=http://backend:8080`, while browser code continues using the public API URL.
+The frontend receives `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, and `API_URL` directly. `next.config.ts` explicitly exposes these public values to browser code. In Docker, server actions use the private `INTERNAL_API_URL=http://backend:8080` while browser code uses `API_URL`.
 
 > **Note on Local Dev Mode:**
 > You can develop and test UI features immediately without setting up Supabase keys. Click **"Dev Quick Login"** on the Navbar to simulate logged-in states and test role switching between Competitor, Organizer, and Sponsor modes.
@@ -139,5 +138,8 @@ cd frontend && npm run openapi:generate && cd ..
 ```bash
 make frontend
 ```
+
+This delegates to Docker Compose and starts the frontend plus its required backend and database dependencies.
+Next.js runs in development mode, so saved frontend source changes use Hot Module Reloading automatically.
 
 Open [http://localhost:3000](http://localhost:3000) in your browser.
