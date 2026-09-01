@@ -91,7 +91,7 @@ eventory/
 ### 1. Prerequisites
 - **Docker Desktop / Docker Compose:** Runs the complete local stack on Windows, macOS, and Linux.
 - **GNU Make** is optional; it only provides short aliases for Docker Compose.
-- **Node.js 24+** and **Go 1.26+** are needed only for host-side linting and tests.
+- **Node.js 24+** and **Go 1.26+** are needed only for host-side IDE tooling, linting, and tests.
 
 ---
 
@@ -117,13 +117,43 @@ docker compose up --build
 
 `make dev` runs the same command if GNU Make is installed.
 
-Frontend and backend source changes reload automatically. Restart Compose after changing `.env`. After changing frontend dependencies, refresh its development volume with `docker compose run --rm --no-deps frontend npm ci`.
+Frontend and backend source changes reload automatically. Restart Compose after changing `.env`.
 
 - Frontend: `http://localhost:3000`
 - Backend: `http://localhost:8080`
 - API documentation: `http://localhost:8080/docs`
 
-### 4. Useful commands
+### 4. Local dependencies and IDE support
+
+> [!TIP]
+> Docker runs the application without host-installed dependencies. However, installing them locally is recommended when VS Code, Cursor, or another IDE runs on the host or in WSL, so IntelliSense, autocomplete, linting, and Go tooling can resolve the project correctly.
+
+Initial setup for editor support:
+
+```bash
+# Frontend TypeScript and ESLint dependencies
+npm --prefix frontend ci
+
+# Backend modules for gopls and other Go tools
+go -C backend mod download
+```
+
+When adding a frontend package, install it on the host to update `package.json`, `package-lock.json`, and the host `node_modules`, then synchronize the Docker development volume:
+
+```bash
+npm --prefix frontend install <package>
+docker compose run --rm --no-deps frontend npm ci
+```
+
+When adding a backend module, update `go.mod` and `go.sum` from the host:
+
+```bash
+go -C backend get <module>
+```
+
+The backend source is mounted into Docker immediately. When the related Go source is saved, Air rebuilds and restarts the API.
+
+### 5. Useful commands
 
 ```bash
 # Start only PostgreSQL
@@ -143,7 +173,7 @@ make down
 
 The Makefile does not parse or transform `.env`; every runtime command delegates to Docker Compose. The backend reads `DB_DSN` directly. Next.js exposes the explicitly public `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, and `API_URL` values through `next.config.ts`. Server actions use Docker's internal `http://backend:8080` address.
 
-### 5. CI/CD
+### 6. CI/CD
 
 Pull requests run tests, lint, and builds only. A merge to `main` builds ARM64 backend and frontend images, publishes commit-tagged images to GHCR, then deploys that exact commit to Oracle using `docker-compose.production.yml`. Production uses Supabase PostgreSQL and never starts the local PostgreSQL service.
 

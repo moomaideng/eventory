@@ -23,7 +23,7 @@ reset:
 	docker compose run --rm migrate ./migrate -reset
 
 seed:
-	docker compose run --rm backend ./seed
+	docker compose run --rm migrate ./seed
 
 test:
 	go -C backend test -v ./...
