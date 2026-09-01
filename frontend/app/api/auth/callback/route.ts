@@ -2,8 +2,24 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/server";
 import { apiClient } from "@/lib/api/client";
 
+function getPublicOrigin(request: Request) {
+  const forwardedHost = request.headers.get("x-forwarded-host");
+  const host = forwardedHost || request.headers.get("host");
+  const forwardedProtocol = request.headers
+    .get("x-forwarded-proto")
+    ?.split(",")[0];
+
+  if (host) {
+    const protocol = forwardedProtocol || new URL(request.url).protocol.slice(0, -1);
+    return `${protocol}://${host}`;
+  }
+
+  return new URL(request.url).origin;
+}
+
 export async function GET(request: Request) {
-  const { searchParams, origin } = new URL(request.url);
+  const { searchParams } = new URL(request.url);
+  const origin = getPublicOrigin(request);
   const code = searchParams.get("code");
 
   if (code) {

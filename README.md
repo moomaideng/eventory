@@ -89,10 +89,9 @@ eventory/
 ## Local Development Setup
 
 ### 1. Prerequisites
-- **Node.js:** Version 24 or higher (`npm`)
-- **Go:** Version 1.26 or higher
-- **Docker & Docker Compose:** For running local PostgreSQL
-- **Make:** For root development commands
+- **Docker Desktop / Docker Compose:** Runs the complete local stack on Windows, macOS, and Linux.
+- **Node.js 24+** and **Go 1.26+** are needed only when running the frontend or backend directly on the host.
+- **GNU Make** is optional. The root Makefile supports PowerShell on Windows and a POSIX shell on macOS, Linux, and WSL.
 
 ---
 
@@ -102,14 +101,21 @@ eventory/
 cp .env.example .env
 ```
 
+On Windows PowerShell:
+
+```powershell
+Copy-Item .env.example .env
+```
+
 The ignored root `.env` is the only local configuration file used by the supported development commands.
 
 ### 3. Run the complete stack
 
 ```bash
-make dev
-# Equivalent to: docker compose up --build
+docker compose up --build
 ```
+
+`make dev` runs the same command if GNU Make is installed.
 
 - Frontend: `http://localhost:3000`
 - Backend: `http://localhost:8080`
@@ -132,7 +138,9 @@ make backend
 make frontend
 ```
 
-The Makefile loads root `.env`, constructs a host-compatible database connection for Go, and maps the neutral Supabase/API names to Next.js variables. In Compose, browser requests use `API_URL` while Next.js server actions reach the backend through Docker's internal `http://backend:8080` address.
+The Makefile loads root `.env`, constructs a host-compatible database connection for Go, and maps the neutral Supabase/API names to Next.js variables. It uses PowerShell on Windows, so `.env` files with Windows line endings work. In Compose, browser requests use `API_URL` while Next.js server actions reach the backend through Docker's internal `http://backend:8080` address.
+
+> **Windows:** Docker Compose is the recommended full-stack command. To use `make frontend`, `make backend`, or other direct-host commands, install GNU Make (for example, `choco install make` or `scoop install make`), along with the required Node.js or Go toolchain.
 
 ### 5. CI/CD
 
