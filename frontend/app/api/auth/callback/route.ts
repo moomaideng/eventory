@@ -10,7 +10,8 @@ function getPublicOrigin(request: Request) {
     ?.split(",")[0];
 
   if (host) {
-    const protocol = forwardedProtocol || new URL(request.url).protocol.slice(0, -1);
+    const protocol =
+      forwardedProtocol || new URL(request.url).protocol.slice(0, -1);
     return `${protocol}://${host}`;
   }
 
