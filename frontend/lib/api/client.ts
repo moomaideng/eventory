@@ -6,8 +6,8 @@ import type { paths } from "@/lib/api/schema";
  */
 const apiBaseUrl =
   typeof window === "undefined"
-    ? process.env.INTERNAL_API_URL || process.env.NEXT_PUBLIC_API_URL
-    : process.env.NEXT_PUBLIC_API_URL;
+    ? process.env.INTERNAL_API_URL || process.env.API_URL
+    : process.env.API_URL;
 
 export const apiClient = createClient<paths>({
   baseUrl: apiBaseUrl || "http://localhost:8080",

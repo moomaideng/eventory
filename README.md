@@ -90,8 +90,8 @@ eventory/
 
 ### 1. Prerequisites
 - **Docker Desktop / Docker Compose:** Runs the complete local stack on Windows, macOS, and Linux.
-- **Node.js 24+** and **Go 1.26+** are needed only when running the frontend or backend directly on the host.
-- **GNU Make** is optional. The root Makefile supports PowerShell on Windows and a POSIX shell on macOS, Linux, and WSL.
+- **GNU Make** is optional; it only provides short aliases for Docker Compose.
+- **Node.js 24+** and **Go 1.26+** are needed only for host-side linting and tests.
 
 ---
 
@@ -107,7 +107,7 @@ On Windows PowerShell:
 Copy-Item .env.example .env
 ```
 
-The ignored root `.env` is the only local configuration file used by the supported development commands.
+The ignored root `.env` is the only local configuration file. Its `DB_DSN` points to the local Compose service named `postgres`; production supplies a Supabase `DB_DSN` instead.
 
 ### 3. Run the complete stack
 
@@ -117,30 +117,31 @@ docker compose up --build
 
 `make dev` runs the same command if GNU Make is installed.
 
+Frontend and backend source changes reload automatically. Restart Compose after changing `.env`. After changing frontend dependencies, refresh its development volume with `docker compose run --rm --no-deps frontend npm ci`.
+
 - Frontend: `http://localhost:3000`
 - Backend: `http://localhost:8080`
 - API documentation: `http://localhost:8080/docs`
 
-### 4. Run services separately
+### 4. Useful commands
 
 ```bash
-# Terminal 1: PostgreSQL
+# Start only PostgreSQL
 make db
 
-# Run once after starting a new database
+# Run migrations or seed data in containers
 make migrate
+make seed
 
-# Terminal 2: Go backend on the host
+# Start a service and its required dependencies
 make backend
-# Or, with Air installed: make backend-dev
-
-# Terminal 3: Next.js frontend on the host
 make frontend
+
+# Stop the stack
+make down
 ```
 
-The Makefile loads root `.env`, constructs a host-compatible database connection for Go, and maps the neutral Supabase/API names to Next.js variables. It uses PowerShell on Windows, so `.env` files with Windows line endings work. In Compose, browser requests use `API_URL` while Next.js server actions reach the backend through Docker's internal `http://backend:8080` address.
-
-> **Windows:** Docker Compose is the recommended full-stack command. To use `make frontend`, `make backend`, or other direct-host commands, install GNU Make (for example, `choco install make` or `scoop install make`), along with the required Node.js or Go toolchain.
+The Makefile does not parse or transform `.env`; every runtime command delegates to Docker Compose. The backend reads `DB_DSN` directly. Next.js exposes the explicitly public `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, and `API_URL` values through `next.config.ts`. Server actions use Docker's internal `http://backend:8080` address.
 
 ### 5. CI/CD
 
