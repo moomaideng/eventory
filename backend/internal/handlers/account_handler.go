@@ -99,13 +99,14 @@ func RegisterAccountRoutes(api huma.API, accountUseCase *usecases.AccountUseCase
 
 	// 2. POST /api/v1/accounts/onboard (Create Account from Onboarding)
 	huma.Register(api, huma.Operation{
-		OperationID: "onboard-account",
-		Method:      http.MethodPost,
-		Path:        "/onboard",
-		Summary:     "Onboard New Account",
-		Description: "Creates a new user account with chosen username. The email is securely extracted from the authenticated JWT token.",
-		Tags:        []string{"Accounts"},
-		Security:    []map[string][]string{{"bearer": {}}},
+		OperationID:   "onboard-account",
+		Method:        http.MethodPost,
+		Path:          "/onboard",
+		Summary:       "Onboard New Account",
+		Description:   "Creates a new user account with chosen username. The email is securely extracted from the authenticated JWT token.",
+		DefaultStatus: http.StatusCreated,
+		Tags:          []string{"Accounts"},
+		Security:      []map[string][]string{{"bearer": {}}},
 	}, func(ctx context.Context, input *OnboardAccountInput) (*OnboardAccountOutput, error) {
 		email, err := middlewares.GetAuthEmail(ctx)
 		if err != nil {
