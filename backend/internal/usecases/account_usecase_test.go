@@ -36,6 +36,15 @@ func (m *mockAccountRepository) FindByEmail(ctx context.Context, email string) (
 	return nil, nil
 }
 
+func (m *mockAccountRepository) FindByUsername(ctx context.Context, username string) (*models.Account, error) {
+	for _, acc := range m.accounts {
+		if acc.Username == username {
+			return acc, nil
+		}
+	}
+	return nil, nil
+}
+
 func (m *mockAccountRepository) Create(ctx context.Context, account *models.Account) error {
 	m.accounts[account.ID] = account
 	return nil
@@ -140,5 +149,69 @@ func TestUpdateUsername_Success(t *testing.T) {
 
 	if updated.Username != "NewShadowNinja" {
 		t.Errorf("expected updated username 'NewShadowNinja', got %v", updated.Username)
+	}
+}
+
+func TestOnboardAccount_UsernameAlreadyExists(t *testing.T) {
+	mockRepo := newMockAccountRepository()
+	useCase := usecases.NewAccountUseCase(mockRepo)
+
+	mockRepo.accounts[uuid.New()] = &models.Account{
+		ID:       uuid.New(),
+		Email:    "existing@eventory.gg",
+		Username: "TakenUsername",
+		Status:   "ACTIVE",
+	}
+
+	_, err := useCase.OnboardAccount(context.Background(), "newplayer@eventory.gg", "TakenUsername")
+	if err != usecases.ErrUsernameAlreadyExists {
+		t.Errorf("expected ErrUsernameAlreadyExists, got: %v", err)
+	}
+}
+
+func TestUpdateUsername_UsernameAlreadyExists(t *testing.T) {
+	mockRepo := newMockAccountRepository()
+	useCase := usecases.NewAccountUseCase(mockRepo)
+
+	user1ID := uuid.New()
+	user2ID := uuid.New()
+
+	mockRepo.accounts[user1ID] = &models.Account{
+		ID:       user1ID,
+		Email:    "player1@eventory.gg",
+		Username: "PlayerOne",
+		Status:   "ACTIVE",
+	}
+	mockRepo.accounts[user2ID] = &models.Account{
+		ID:       user2ID,
+		Email:    "player2@eventory.gg",
+		Username: "PlayerTwo",
+		Status:   "ACTIVE",
+	}
+
+	_, err := useCase.UpdateUsername(context.Background(), user1ID, "PlayerTwo")
+	if err != usecases.ErrUsernameAlreadyExists {
+		t.Errorf("expected ErrUsernameAlreadyExists, got: %v", err)
+	}
+}
+
+func TestUpdateUsername_SameUsernameSuccess(t *testing.T) {
+	mockRepo := newMockAccountRepository()
+	useCase := usecases.NewAccountUseCase(mockRepo)
+
+	userID := uuid.New()
+	mockRepo.accounts[userID] = &models.Account{
+		ID:       userID,
+		Email:    "player1@eventory.gg",
+		Username: "PlayerOne",
+		Status:   "ACTIVE",
+	}
+
+	updated, err := useCase.UpdateUsername(context.Background(), userID, "PlayerOne")
+	if err != nil {
+		t.Fatalf("expected no error, got: %v", err)
+	}
+	if updated.Username != "PlayerOne" {
+		t.Errorf("expected username 'PlayerOne', got %v", updated.Username)
 	}
 }

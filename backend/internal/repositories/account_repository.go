@@ -13,6 +13,7 @@ import (
 type AccountRepository interface {
 	FindByID(ctx context.Context, id uuid.UUID) (*models.Account, error)
 	FindByEmail(ctx context.Context, email string) (*models.Account, error)
+	FindByUsername(ctx context.Context, username string) (*models.Account, error)
 	Create(ctx context.Context, account *models.Account) error
 	Update(ctx context.Context, account *models.Account) error
 }
@@ -44,6 +45,19 @@ func (r *accountRepositoryImpl) FindByID(ctx context.Context, id uuid.UUID) (*mo
 func (r *accountRepositoryImpl) FindByEmail(ctx context.Context, email string) (*models.Account, error) {
 	var account models.Account
 	err := r.db.WithContext(ctx).First(&account, "email = ?", email).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &account, nil
+}
+
+// FindByUsername retrieves an account by its unique display username.
+func (r *accountRepositoryImpl) FindByUsername(ctx context.Context, username string) (*models.Account, error) {
+	var account models.Account
+	err := r.db.WithContext(ctx).First(&account, "username = ?", username).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
