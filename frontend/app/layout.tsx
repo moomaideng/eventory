@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { cn } from "@/lib/utils";
+import { QueryProvider } from "@/components/providers/query-provider";
 import { RoleProvider } from "@/context/role-context";
 
 const inter = Inter({
@@ -26,7 +27,9 @@ export default function RootLayout({
       className={cn("h-full font-sans antialiased", inter.variable)}
     >
       <body className="bg-background text-foreground flex min-h-full flex-col">
-        <RoleProvider>{children}</RoleProvider>
+        <QueryProvider>
+          <RoleProvider>{children}</RoleProvider>
+        </QueryProvider>
       </body>
     </html>
   );

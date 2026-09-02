@@ -9,7 +9,9 @@ import React, {
   useMemo,
 } from "react";
 import { createClient } from "@/lib/client";
-import { apiClient } from "@/lib/api/client";
+import { $api } from "@/lib/api/client";
+import type { components } from "@/lib/api/schema";
+import { useQueryClient } from "@tanstack/react-query";
 
 export type UserRole = "competitor" | "organizer" | "sponsor";
 
@@ -92,93 +94,114 @@ async function loginWithGoogle() {
 }
 
 export function RoleProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<UserProfile | null>(null);
+  const queryClient = useQueryClient();
+
+  const [devUser, setDevUser] = useState<UserProfile | null>(null);
+  const [session, setSession] = useState<{
+    accessToken?: string;
+    avatarUrl?: string;
+  } | null>(null);
+  const [isAuthLoading, setIsAuthLoading] = useState(true);
+
   const [activeRole, setActiveRole] = useState<UserRole>("competitor");
   const [organizerProfile, setOrganizerProfile] =
     useState<OrganizerProfile | null>(DEFAULT_ORGANIZER);
   const [sponsorProfile, setSponsorProfile] = useState<SponsorProfile | null>(
     DEFAULT_SPONSOR
   );
-  const [isLoading, setIsLoading] = useState(true);
 
-  // Sync user state on-demand with Supabase session and Go Backend via openapi-fetch
-  const refreshUser = useCallback(async () => {
-    try {
-      const supabase = createClient();
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-
-      if (session?.access_token) {
-        // Query Go Backend Account API directly with openapi-fetch
-        const { data: account } = await apiClient.GET("/api/v1/accounts/me", {
-          headers: {
-            Authorization: `Bearer ${session.access_token}`,
-          },
-        });
-
-        if (account) {
-          setUser({
-            id: account.id,
-            email: account.email,
-            displayName: account.username,
-            avatarUrl: session.user?.user_metadata?.avatar_url,
-          });
-        } else {
-          // Account does not exist in DB yet (needs onboarding)
-          setUser(null);
-        }
-      } else {
-        setUser(null);
-      }
-    } catch (err) {
-      if (process.env.NODE_ENV === "development") {
-        console.log("Auth session check notice:", err);
-      }
-    } finally {
-      setIsLoading(false);
+  // TanStack Query integration via openapi-react-query client ($api)
+  const {
+    data: account,
+    isLoading: isAccountLoading,
+    refetch: refetchAccount,
+  } = $api.useQuery(
+    "get",
+    "/api/v1/accounts/me",
+    {
+      headers: {
+        Authorization: session?.accessToken
+          ? `Bearer ${session.accessToken}`
+          : "",
+      },
+    },
+    {
+      enabled: Boolean(session?.accessToken) && !devUser,
+      retry: false,
+      staleTime: 60 * 1000,
     }
-  }, []);
+  );
+
+  // Derived user profile from query data or dev user state
+  const user = useMemo<UserProfile | null>(() => {
+    if (devUser) {
+      return devUser;
+    }
+    if (!session?.accessToken || !account) {
+      return null;
+    }
+    return {
+      id: account.id,
+      email: account.email,
+      displayName: account.username,
+      avatarUrl: session.avatarUrl,
+    };
+  }, [devUser, session, account]);
+
+  const isLoading =
+    isAuthLoading ||
+    (Boolean(session?.accessToken) && !devUser && isAccountLoading);
+
+  // Query cache invalidation and refetch on demand / onboarding completion
+  const refreshUser = useCallback(async () => {
+    await queryClient.invalidateQueries({
+      queryKey: ["get", "/api/v1/accounts/me"],
+    });
+    await refetchAccount();
+  }, [queryClient, refetchAccount]);
 
   useEffect(() => {
     const supabase = createClient();
 
-    // Real-time auth state listener automatically fires with the initial session and handles all auth state changes
+    // Initial session check
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.access_token) {
+        setSession({
+          accessToken: session.access_token,
+          avatarUrl: session.user?.user_metadata?.avatar_url,
+        });
+      } else {
+        setSession(null);
+      }
+      setIsAuthLoading(false);
+    });
+
+    // Real-time auth state listener
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
+    } = supabase.auth.onAuthStateChange((event, session) => {
       if (session?.access_token) {
-        try {
-          const { data: account } = await apiClient.GET("/api/v1/accounts/me", {
-            headers: {
-              Authorization: `Bearer ${session.access_token}`,
-            },
-          });
-
-          if (account) {
-            setUser({
-              id: account.id,
-              email: account.email,
-              displayName: account.username,
-              avatarUrl: session.user?.user_metadata?.avatar_url,
-            });
-          } else {
-            setUser(null);
-          }
-        } catch {
-          setUser(null);
-        }
+        setSession({
+          accessToken: session.access_token,
+          avatarUrl: session.user?.user_metadata?.avatar_url,
+        });
       } else if (event === "SIGNED_OUT") {
-        setUser(null);
+        setSession(null);
+        setDevUser(null);
         setActiveRole("competitor");
+        queryClient.removeQueries({
+          queryKey: ["get", "/api/v1/accounts/me"],
+        });
+      } else {
+        setSession(null);
       }
-      setIsLoading(false);
+      setIsAuthLoading(false);
     });
 
     return () => {
       subscription.unsubscribe();
     };
-  }, []);
+  }, [queryClient]);
 
   // Compute the display label for the currently active profile
   const activeProfileName = useMemo((): string => {
@@ -206,31 +229,39 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
 
   // Instant mock sign-in for zero-friction local development
   const loginAsDev = useCallback((role: UserRole = "competitor") => {
-    setUser(MOCK_USER);
+    setDevUser(MOCK_USER);
     setActiveRole(role);
     setOrganizerProfile(DEFAULT_ORGANIZER);
     setSponsorProfile(DEFAULT_SPONSOR);
   }, []);
 
-  // Update primary user profile details
+  // Update primary user profile details with query cache update & invalidation
   const updateUserProfile = useCallback(
     (displayName: string, avatarUrl?: string) => {
-      setUser((prev) => {
-        if (!prev) {
-          return {
-            id: `user-${Date.now()}`,
-            email: "user@eventory.gg",
-            displayName,
-            avatarUrl,
-          };
+      if (devUser) {
+        setDevUser((prev) =>
+          prev
+            ? { ...prev, displayName, avatarUrl: avatarUrl || prev.avatarUrl }
+            : null
+        );
+        return;
+      }
+
+      queryClient.setQueriesData<components["schemas"]["AccountResponse"]>(
+        { queryKey: ["get", "/api/v1/accounts/me"] },
+        (old) => {
+          if (!old) return old;
+          return { ...old, username: displayName };
         }
-        return { ...prev, displayName, avatarUrl: avatarUrl || prev.avatarUrl };
+      );
+      queryClient.invalidateQueries({
+        queryKey: ["get", "/api/v1/accounts/me"],
       });
     },
-    []
+    [devUser, queryClient]
   );
 
-  // Sign out user and reset context state
+  // Sign out user and reset context & query state
   const logout = useCallback(async () => {
     try {
       const supabase = createClient();
@@ -238,9 +269,13 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
     } catch {
       // Ignore cleanup error
     }
-    setUser(null);
+    setDevUser(null);
+    setSession(null);
+    queryClient.removeQueries({
+      queryKey: ["get", "/api/v1/accounts/me"],
+    });
     setActiveRole("competitor");
-  }, []);
+  }, [queryClient]);
 
   // Create or update the single organizer profile for this user
   const createOrUpdateOrganizerProfile = useCallback(
