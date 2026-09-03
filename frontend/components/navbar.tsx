@@ -17,6 +17,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
+import { ThemeToggle } from "@/components/theme-toggle";
 import {
   Gamepad2,
   Trophy,
@@ -99,6 +100,7 @@ export function Navbar() {
 
         {/* Right: Role Switcher & Auth Actions */}
         <div className="flex items-center gap-3">
+          <ThemeToggle />
           {isLoading ? (
             /* Skeleton Loading State during Hydration (Zero Layout Shift) */
             <Skeleton className="h-9 w-28 rounded-full" />
