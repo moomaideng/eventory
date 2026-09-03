@@ -15,7 +15,10 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { ArrowRight, Loader2, LogOut } from "lucide-react";
+import { FieldGroup, Field, FieldLabel } from "@/components/ui/field";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Spinner } from "@/components/ui/spinner";
+import { ArrowRight, LogOut } from "lucide-react";
 
 interface OnboardingFormProps {
   email?: string;
@@ -107,31 +110,29 @@ export function OnboardingForm({ email, avatarUrl }: OnboardingFormProps) {
             )}
 
             {errorMsg && (
-              <div className="bg-destructive/10 text-destructive border-destructive/20 rounded-lg border p-3 text-xs">
-                {errorMsg}
-              </div>
+              <Alert variant="destructive">
+                <AlertDescription>{errorMsg}</AlertDescription>
+              </Alert>
             )}
 
-            <div className="flex flex-col gap-2 text-left">
-              <label
-                htmlFor="displayName"
-                className="text-foreground text-xs font-medium"
-              >
-                Display Name
-              </label>
-              <Input
-                id="displayName"
-                name="displayName"
-                type="text"
-                placeholder="e.g. MooMai, ShadowNinja"
-                value={displayName}
-                onChange={(e) => setDisplayName(e.target.value)}
-                required
-                autoFocus
-                disabled={isSubmitting}
-                maxLength={32}
-              />
-            </div>
+            <FieldGroup>
+              <Field data-invalid={Boolean(errorMsg)}>
+                <FieldLabel htmlFor="displayName">Display Name</FieldLabel>
+                <Input
+                  id="displayName"
+                  name="displayName"
+                  type="text"
+                  placeholder="e.g. MooMai, ShadowNinja"
+                  value={displayName}
+                  onChange={(e) => setDisplayName(e.target.value)}
+                  required
+                  autoFocus
+                  disabled={isSubmitting}
+                  maxLength={32}
+                  aria-invalid={Boolean(errorMsg)}
+                />
+              </Field>
+            </FieldGroup>
           </CardContent>
 
           <CardFooter className="flex flex-col gap-2 pt-2">
@@ -139,17 +140,17 @@ export function OnboardingForm({ email, avatarUrl }: OnboardingFormProps) {
               type="submit"
               size="lg"
               disabled={!displayName.trim() || isSubmitting}
-              className="flex w-full cursor-pointer items-center justify-center gap-2"
+              className="w-full"
             >
               {isSubmitting ? (
                 <>
-                  <Loader2 className="size-4 animate-spin" />
+                  <Spinner data-icon="inline-start" />
                   <span>Setting up account...</span>
                 </>
               ) : (
                 <>
                   <span>Get Started</span>
-                  <ArrowRight className="size-4" />
+                  <ArrowRight data-icon="inline-end" />
                 </>
               )}
             </Button>
@@ -160,9 +161,9 @@ export function OnboardingForm({ email, avatarUrl }: OnboardingFormProps) {
               size="sm"
               onClick={handleSignOut}
               disabled={isSubmitting}
-              className="text-muted-foreground hover:text-foreground flex items-center gap-1.5 text-xs"
+              className="text-muted-foreground hover:text-foreground text-xs"
             >
-              <LogOut className="size-3.5" />
+              <LogOut data-icon="inline-start" />
               <span>Sign out / Use a different account</span>
             </Button>
           </CardFooter>

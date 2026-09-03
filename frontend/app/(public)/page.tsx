@@ -1,7 +1,6 @@
 import React from "react";
 import Link from "next/link";
-import { buttonVariants } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 import { ArrowRight, Trophy, Gamepad2 } from "lucide-react";
 
 export default function HomePage() {
@@ -22,28 +21,27 @@ export default function HomePage() {
 
         {/* Clean Primary Actions */}
         <div className="flex flex-col items-center justify-center gap-3 pt-2 sm:flex-row">
-          <Link
-            href="/tournaments"
-            className={cn(
-              buttonVariants({ size: "lg" }),
-              "flex w-full cursor-pointer items-center gap-2 shadow-xs sm:w-auto"
-            )}
+          <Button
+            size="lg"
+            render={<Link href="/tournaments" />}
+            nativeButton={false}
+            className="w-full sm:w-auto"
           >
-            <Gamepad2 className="size-4" />
-            <span>Explore Tournaments</span>
-            <ArrowRight className="ml-1 size-4" />
-          </Link>
+            <Gamepad2 data-icon="inline-start" />
+            Explore Tournaments
+            <ArrowRight data-icon="inline-end" />
+          </Button>
 
-          <Link
-            href="/organizer/tournaments/new"
-            className={cn(
-              buttonVariants({ variant: "outline", size: "lg" }),
-              "flex w-full cursor-pointer items-center gap-2 sm:w-auto"
-            )}
+          <Button
+            variant="outline"
+            size="lg"
+            render={<Link href="/organizer/tournaments/new" />}
+            nativeButton={false}
+            className="w-full sm:w-auto"
           >
-            <Trophy className="size-4" />
-            <span>Host a Tournament</span>
-          </Link>
+            <Trophy data-icon="inline-start" />
+            Host a Tournament
+          </Button>
         </div>
       </div>
     </div>
