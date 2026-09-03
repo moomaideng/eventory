@@ -55,7 +55,7 @@ flowchart TD
 | **Database** | **PostgreSQL** | Relational database provisioned locally via Docker Compose |
 | **Authentication** | **Supabase Auth** | Cookie-based SSR sessions, Google OAuth, and asymmetric JWKS verification |
 | **File Storage** | **Supabase Storage** | Object storage for banners, organizer logos, and tournament assets |
-| **API Contract** | **`openapi-fetch`** | 100% type-safe client generated directly from Go Huma OpenAPI 3.1 schema |
+| **API & State** | **`openapi-fetch` & TanStack Query** | 100% type-safe client and server-state caching synced with Go Huma OpenAPI 3.1 schema |
 
 ---
 
@@ -69,10 +69,10 @@ eventory/
 ├── docker-compose.production.yml # GHCR images used on Oracle
 ├── frontend/                     # Next.js 16 Frontend Application
 │   ├── proxy.ts                  # Next.js 16 Proxy (JWT Verification & session refresh)
-│   ├── app/                      # App Router routes and page layouts
-│   ├── components/               # UI Primitives (shadcn/ui) & Layout components
-│   ├── context/                  # App State & Role Context (Supabase session + Go API sync)
-│   ├── lib/                      # openapi-fetch client, Supabase SSR helpers, utilities
+│   ├── app/                      # App Router routes, boundaries (error, not-found, loading), layouts
+│   ├── components/               # UI Primitives (shadcn/ui Base UI) & Layout components
+│   ├── context/                  # App State & Role Context (TanStack Query + Supabase sync)
+│   ├── lib/                      # openapi-fetch client, Supabase SSR helpers, proxy-session
 │   └── .agents/skills/           # shadcn & supabase Best Practice Rules
 │
 ├── backend/                      # Go Huma v2 API Service
@@ -196,42 +196,57 @@ Required GitHub Secrets:
 
 ---
 
-## Recommended Full-Stack Development Flow (Example)
+## Recommended Full-Stack Development Flow
 
-This is a suggested, pragmatic workflow example designed to keep frontend and backend development moving rapidly without blocking each other:
+This workflow is designed to keep frontend and backend development moving rapidly with contract-first type safety, design system consistency, and cryptographic security:
 
 ```mermaid
 flowchart LR
-    Step1["1. Frontend UI<br/>(shadcn/ui + Mock State)"]
-    --> Step2["2. Backend API<br/>(GORM Models + Go Huma API)"]
+    Step1["1. UI Prototyping<br/>(shadcn skill + Mock)"]
+    --> Step2["2. Backend API<br/>(Go Huma + GORM)"]
     --> Step3["3. Contract Sync<br/>(npm run openapi:generate)"]
-    --> Step4["4. Git Rebase & PR<br/>(Squash & Merge)"]
+    --> Step4["4. State & Auth Sync<br/>(TanStack Query + supabase skill)"]
+    --> Step5["5. Verify & Merge<br/>(Lint, Test, Squash)"]
 ```
 
-### Step 1: Frontend UI Development & Prototyping
-- **UI Guidelines:** Build pages using shadcn/ui components (`components/ui/`). For both developers and AI assistants, refer to the **shadcn skill** in `frontend/.agents/skills/shadcn/` for component composition rules (Base UI `render` pattern, `flex` + `gap-*`, semantic color tokens).
-- **Prototyping with Mock State:** Use mock data and mock states (e.g. `loginAsDev` in `RoleContext`) to construct and iterate on complete UI flows before backend endpoints are fully ready.
+### Step 1: Frontend UI Prototyping (shadcn skill + Mock State)
+- Build pages using Base UI primitives in `components/ui/`. Refer directly to `frontend/.agents/skills/shadcn/` and `frontend/AGENTS.md` for Base UI composition (`render` prop, `data-icon` button rules, `<FieldGroup>` forms, and semantic styling tokens).
+- Use mock state (`loginAsDev` in `context/role-context.tsx`) to rapidly prototype interactive role-switching flows without waiting for backend or auth services.
 
-### Step 2: Backend API Development & Database Management
-- **OpenAPI 3.1 with Huma:** Implement GORM models and use cases in `backend/internal/` and register routes using `huma.Register(...)` with Huma groups. Go Huma automatically generates OpenAPI 3.1 schemas and interactive documentation at `http://localhost:8080/docs` (and raw schema at `http://localhost:8080/openapi.json`).
-- **Database & Model Alignment:** During early development, keep the database schema strictly aligned with Go struct models by utilizing GORM auto-migrations or resetting the database when models change:
+### Step 2: Backend API Development (Go Huma v2 & GORM)
+- Implement repository interfaces, GORM models, and use cases in `backend/internal/`.
+- Register endpoints via `huma.Register(...)` with named request/response structs, producing standard HTTP statuses (e.g. `201 Created` for resource creation, RFC 9457 `409 Conflict` for collisions).
+- Validate with unit tests: `go test -v ./...` in `backend`.
+
+### Step 3: API Contract Sync & TanStack Query Integration
+- Once backend endpoints are live, run in `frontend/`:
   ```bash
-  # From the repository root
-  make reset    # Resets the DB schema
-  make seed     # Populates consistent seed data for development
+  npm run openapi:generate
   ```
-- Continuously update seed scripts so all team members can test with clean, realistic test records.
+- This updates `frontend/lib/api/schema.d.ts` with end-to-end type safety.
+- Connect the frontend to backend endpoints using the `$api` openapi-react-query client:
+  ```tsx
+  import { $api } from "@/lib/api/client";
 
-### Step 3: API Contract Sync & Integration
-- Once backend endpoints are live, sync the OpenAPI schema to the frontend by running `npm run openapi:generate` in the `frontend` folder.
-- This generates TypeScript types (`schema.d.ts`), giving the frontend end-to-end type safety (autocomplete for request bodies, path/query parameters, and response payloads) via `openapi-fetch` without manual type definitions.
+  const { data, isLoading } = $api.useQuery("get", "/api/v1/tournaments");
+  ```
+- Invalidate and refetch cached queries when mutations or server actions succeed using `queryClient.invalidateQueries(...)`.
 
-### Step 4: Recommended Git Workflow & Pull Requests
-- **Branch Naming (Suggestions):** Prefix branch names to give quick context, e.g. `feat/<feature-name>`, `fix/<bug-name>`, `chore/<task-name>`.
-- **Rebase before Merging:** Keeping your feature branch rebased onto the latest `main` before merging keeps the Git commit graph linear and clean:
-  1. `git fetch origin`
-  2. `git rebase origin/main`
-  3. *(If conflicts occur, resolve them and run `git rebase --continue`)*
-  4. `git push origin <your-branch> --force-with-lease`
-- **Pull Request Template:** A template is provided in `.github/PULL_REQUEST_TEMPLATE.md` as an optional example/guide you can follow to summarize changes and self-check code.
-- **Squash and Merge:** We recommend using **Squash and Merge** when merging into `main` to combine work-in-progress commits into a single clean, readable commit on the main history graph.
+### Step 4: Verification & Git Workflow
+- **Frontend Quality Gate:**
+  ```bash
+  cd frontend
+  npm run lint       # ESLint check
+  npx tsc --noEmit   # Strict TypeScript typecheck
+  npm run format     # Optional: Prettier format for cleanliness (not required if diff is clean)
+  ```
+- **Backend Quality Gate:**
+  ```bash
+  cd backend
+  go test -v ./...   # Unit tests
+  go build ./cmd/api # Binary compilation check
+  ```
+- **Rebase & PR:**
+  - Prefix commit messages using Conventional Commits (`feat:`, `fix:`, `refactor:`, `chore:`).
+  - Rebase onto the latest `origin/main` before opening or updating pull requests.
+  - Merge into `main` using **Squash and Merge** to maintain a linear Git history graph.

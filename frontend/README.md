@@ -8,9 +8,9 @@ Frontend client for **Eventory**, a competition and tournament management platfo
 
 - **Framework:** Next.js 16 (App Router, React 19, TypeScript)
 - **UI & Design System:** Tailwind CSS v4 + **shadcn/ui** (Base UI style) + Lucide Icons
-- **API Client:** `openapi-fetch` and `openapi-typescript` (Contract-first type safety synced with Go Huma)
+- **API & Server State:** `openapi-fetch` + `@tanstack/react-query` / `openapi-react-query` (Contract-first type safety synced with Go Huma)
 - **Authentication & Storage:** Supabase Auth (`@supabase/ssr`) with Google OAuth & Supabase Storage
-- **State & Context:** React Context (`RoleProvider` with contextual role switching & Dev Mock state)
+- **State & Context:** React Context (`RoleProvider` with contextual role switching & Dev Mock state) + TanStack Query cache
 
 ---
 
@@ -26,7 +26,7 @@ Eventory implements a **Single Primary Account** architecture allowing a user to
 
 ## Project & Routing Structure
 
-We use Next.js **Route Groups** (`(public)` and `(auth)`) to isolate layouts and keep headers clean:
+We use Next.js **Route Groups** (`(public)` and `(auth)`) alongside App Router boundaries:
 
 ```text
 frontend/
@@ -35,44 +35,54 @@ frontend/
 ├── app/
 │   ├── (auth)/                       # Auth Flow (Minimal Header with Logo only)
 │   │   ├── layout.tsx                # Auth layout
+│   │   ├── loading.tsx               # Instant card skeleton loading boundary
 │   │   ├── login/
-│   │   │   ├── page.tsx              # Server Component (Auth redirect check)
-│   │   │   └── login-form.tsx        # Clean Google Sign-In card with loading state
+│   │   │   ├── page.tsx              # Server Component (Verified Auth redirect check)
+│   │   │   └── login-form.tsx        # Clean Google Sign-In card with Spinner
 │   │   └── onboarding/
-│   │       ├── page.tsx              # Server Component (Auth redirect check)
+│   │       ├── page.tsx              # Server Component (Verified Auth redirect check)
 │   │       ├── actions.ts            # Server Action (Direct Go backend onboarding)
-│   │       └── onboarding-form.tsx   # React 19 Native Form Action Component
+│   │       └── onboarding-form.tsx   # React 19 Native useActionState Component
 │   │
 │   ├── (public)/                     # Public & App Views (Full Navbar with Role Switcher)
 │   │   ├── layout.tsx                # Public layout with Navbar
+│   │   ├── loading.tsx               # Instant public skeleton loading boundary
 │   │   └── page.tsx                  # Minimal Landing Hero & CTA buttons (Server Component)
 │   │
 │   ├── api/
 │   │   └── auth/callback/route.ts    # Supabase OAuth PKCE code exchange Route Handler
 │   │
-│   ├── layout.tsx                    # Root HTML layout (Fonts, globals.css, RoleProvider)
+│   ├── error.tsx                     # Global App Router Error Boundary
+│   ├── not-found.tsx                 # Branded 404 Not Found Page
+│   ├── layout.tsx                    # Root HTML layout (Fonts, globals.css, QueryProvider, RoleProvider)
 │   └── globals.css                   # Tailwind CSS v4 & theme variables
 │
 ├── components/
 │   ├── navbar.tsx                    # Header with Base UI DropdownMenu Role Switcher & Dynamic Nav Links
-│   └── ui/                           # Pure shadcn/ui primitives
+│   ├── providers/
+│   │   └── query-provider.tsx        # TanStack QueryClient Provider wrapper
+│   └── ui/                           # Pure shadcn/ui Base UI primitives
+│       ├── alert.tsx
 │       ├── avatar.tsx
-│       ├── badge.tsx
 │       ├── button.tsx
 │       ├── card.tsx
 │       ├── dropdown-menu.tsx
+│       ├── field.tsx
 │       ├── input.tsx
-│       └── separator.tsx
+│       ├── label.tsx
+│       ├── separator.tsx
+│       ├── skeleton.tsx
+│       └── spinner.tsx
 │
 ├── context/
-│   └── role-context.tsx              # Role & Auth Context (Supabase session + Go Backend sync)
+│   └── role-context.tsx              # Role & Auth Context (TanStack Query + Supabase session + Go API sync)
 │
 ├── lib/
 │   ├── api/                          # Type-safe OpenAPI Client
 │   │   ├── schema.d.ts               # Auto-generated types from Go Huma OpenAPI 3.1
-│   │   └── client.ts                 # openapi-fetch client instance
+│   │   └── client.ts                 # openapi-fetch & openapi-react-query client instances
 │   ├── client.ts                     # Supabase Browser Client helper
-│   ├── server.ts                     # Supabase Server Component helper
+│   ├── server.ts                     # Supabase Server Component helper (getUser & cookies)
 │   ├── proxy-session.ts              # Supabase Session Proxy helper (getClaims & dev fallback)
 │   └── utils.ts                      # Tailwind class merge helper (`cn`)
 │
@@ -83,29 +93,18 @@ frontend/
 
 ---
 
-## UI Guidelines & shadcn Skill Rules (`.agents/skills/shadcn/`)
+## Developer & Agent Skills (`.agents/skills/`)
 
-All developers working on the frontend must follow the standards and rules defined in `.agents/skills/shadcn/`:
+Before authoring or refactoring frontend code, consult the embedded skills in `.agents/skills/` and the rules in [`AGENTS.md`](AGENTS.md):
 
-### 1. Base UI Composition (`base-vs-radix.md` & `composition.md`)
-- **Triggers use `render`:** In Base UI, use `render={<Button ... />}` (do not use Radix's `asChild`).
-- **Group Component Scope:** All `DropdownMenuItem` and `DropdownMenuLabel` elements **MUST** be placed inside `<DropdownMenuGroup>`.
-- **Card Structure:** Use full composition: `Card` → `CardHeader` (`CardTitle`, `CardDescription`) → `CardContent` → `CardFooter`.
-- **Avatars:** Always include `<AvatarFallback>` inside `<Avatar>`.
-- **Separators:** Use `<Separator />` instead of `<hr>` or custom border `<div>`s.
-
-### 2. Spacing & Tailwind Rules (`styling.md`)
-- **No `space-x-*` or `space-y-*`:** Always use `flex` with `gap-*` (e.g. `flex flex-col gap-4` or `flex gap-2`).
-- **Equal Dimensions:** Use `size-*` instead of `w-* h-*` when dimensions are equal (e.g. `size-9`, `size-4`).
-- **Semantic Color Tokens:** Always use semantic tokens (`bg-primary`, `text-muted-foreground`, `border-border`, `bg-card`) — never hardcode raw hex values or raw colors like `bg-blue-500`.
-- **Conditional Classes:** Use `cn()` from `@/lib/utils` for conditional or merged class names.
-- **No manual `z-index` on Overlays:** Dialog, Sheet, DropdownMenu, and Popovers manage their own stacking.
-
-### 3. Adding New UI Components
-To install new shadcn primitives, run:
-```bash
-npx shadcn@latest add <component-name>
-```
+- **`shadcn` (`.agents/skills/shadcn/`):** Contains official guidelines for Base UI (`base-vega`) composition, `render` prop usage, `data-icon` attributes, `<FieldGroup>` forms, `<Skeleton>` loaders, and semantic styling tokens.
+  ```bash
+  npx shadcn@latest add <component>   # Install new Base UI primitive
+  npx shadcn@latest docs <component>  # View component usage and API
+  ```
+- **`supabase` (`.agents/skills/supabase/`):** Contains Supabase SSR rules, cryptographic `getUser()` server validation, and session proxying.
+- **`AGENTS.md` ([`AGENTS.md`](AGENTS.md)):** Mandatory instructions for AI assistants pointing to local docs (`node_modules/next/dist/docs/`) and skills.
+- **Code Quality:** Run `npm run lint` to lint and `npm run format` for Prettier formatting (optional for code cleanliness).
 
 ---
 
