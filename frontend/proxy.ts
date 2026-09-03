@@ -1,5 +1,5 @@
 import { type NextRequest } from "next/server";
-import { updateSession } from "@/lib/middleware";
+import { updateSession } from "@/lib/proxy-session";
 
 /**
  * Next.js 16 Proxy Convention

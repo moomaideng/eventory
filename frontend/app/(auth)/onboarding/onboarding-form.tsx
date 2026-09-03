@@ -1,9 +1,9 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useActionState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useRole } from "@/context/role-context";
-import { onboardUser } from "./actions";
+import { onboardUserAction, type OnboardResult } from "./actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -29,44 +29,37 @@ export function OnboardingForm({ email, avatarUrl }: OnboardingFormProps) {
   const router = useRouter();
   const { refreshUser, logout } = useRole();
   const [displayName, setDisplayName] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [isSigningOut, startSignOutTransition] = useTransition();
 
-  // React 19 Native Form Action
-  const handleSubmit = async () => {
-    const username = displayName.trim();
-    if (!username) return;
-
-    setIsSubmitting(true);
-    setErrorMsg(null);
-
+  // React 19 Native useActionState
+  const [state, formAction, isSubmitting] = useActionState<
+    OnboardResult | null,
+    FormData
+  >(async (prevState, formData) => {
     try {
-      const result = await onboardUser(username);
-
-      if (result.error) {
-        setErrorMsg(result.error);
-        return;
-      }
-
+      const result = await onboardUserAction(prevState, formData);
       if (result.success) {
         await refreshUser();
         router.push("/");
       }
+      return result;
     } catch {
-      setErrorMsg("An unexpected error occurred. Please try again.");
-    } finally {
-      setIsSubmitting(false);
+      return { error: "An unexpected error occurred. Please try again." };
     }
-  };
+  }, null);
 
-  const handleSignOut = async () => {
-    setIsSubmitting(true);
-    try {
-      await logout();
-      router.push("/");
-    } finally {
-      setIsSubmitting(false);
-    }
+  const isBusy = isSubmitting || isSigningOut;
+  const errorMsg = state?.error;
+
+  const handleSignOut = () => {
+    startSignOutTransition(async () => {
+      try {
+        await logout();
+        router.push("/");
+      } catch {
+        // Ignore logout error
+      }
+    });
   };
 
   return (
@@ -85,7 +78,7 @@ export function OnboardingForm({ email, avatarUrl }: OnboardingFormProps) {
           </CardDescription>
         </CardHeader>
 
-        <form action={handleSubmit}>
+        <form action={formAction}>
           <CardContent className="flex flex-col gap-4">
             {/* Authenticated Google Account Badge */}
             {email && (
@@ -127,7 +120,7 @@ export function OnboardingForm({ email, avatarUrl }: OnboardingFormProps) {
                   onChange={(e) => setDisplayName(e.target.value)}
                   required
                   autoFocus
-                  disabled={isSubmitting}
+                  disabled={isBusy}
                   maxLength={32}
                   aria-invalid={Boolean(errorMsg)}
                 />
@@ -139,7 +132,7 @@ export function OnboardingForm({ email, avatarUrl }: OnboardingFormProps) {
             <Button
               type="submit"
               size="lg"
-              disabled={!displayName.trim() || isSubmitting}
+              disabled={!displayName.trim() || isBusy}
               className="w-full"
             >
               {isSubmitting ? (
@@ -160,7 +153,7 @@ export function OnboardingForm({ email, avatarUrl }: OnboardingFormProps) {
               variant="ghost"
               size="sm"
               onClick={handleSignOut}
-              disabled={isSubmitting}
+              disabled={isBusy}
               className="text-muted-foreground hover:text-foreground text-xs"
             >
               <LogOut data-icon="inline-start" />

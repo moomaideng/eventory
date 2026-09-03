@@ -73,7 +73,7 @@ frontend/
 │   │   └── client.ts                 # openapi-fetch client instance
 │   ├── client.ts                     # Supabase Browser Client helper
 │   ├── server.ts                     # Supabase Server Component helper
-│   ├── middleware.ts                 # Supabase Session Proxy helper (getClaims & dev fallback)
+│   ├── proxy-session.ts              # Supabase Session Proxy helper (getClaims & dev fallback)
 │   └── utils.ts                      # Tailwind class merge helper (`cn`)
 │
 └── .agents/skills/

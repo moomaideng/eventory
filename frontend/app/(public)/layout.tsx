@@ -14,24 +14,30 @@ export default async function PublicLayout({
   try {
     const supabase = await createClient();
     const {
-      data: { session },
-    } = await supabase.auth.getSession();
+      data: { user },
+    } = await supabase.auth.getUser();
 
-    if (session?.access_token) {
-      try {
-        const { data: account } = await apiClient.GET("/api/v1/accounts/me", {
-          headers: {
-            Authorization: `Bearer ${session.access_token}`,
-          },
-        });
+    if (user) {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
 
-        // Strict Mode: If user is authenticated with Supabase but has not created an account in DB yet, enforce onboarding
-        if (!account) {
+      if (session?.access_token) {
+        try {
+          const { data: account } = await apiClient.GET("/api/v1/accounts/me", {
+            headers: {
+              Authorization: `Bearer ${session.access_token}`,
+            },
+          });
+
+          // Strict Mode: If user is authenticated with Supabase but has not created an account in DB yet, enforce onboarding
+          if (!account) {
+            shouldRedirectToOnboarding = true;
+          }
+        } catch {
+          // If backend is unreachable or account is 404, enforce onboarding
           shouldRedirectToOnboarding = true;
         }
-      } catch {
-        // If backend is unreachable or account is 404, enforce onboarding
-        shouldRedirectToOnboarding = true;
       }
     }
   } catch {

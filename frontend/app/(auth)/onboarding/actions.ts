@@ -17,6 +17,15 @@ export async function onboardUser(username: string): Promise<OnboardResult> {
   try {
     const supabase = await createClient();
     const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+
+    if (!user || userError) {
+      return { error: "Authentication session expired. Please log in again." };
+    }
+
+    const {
       data: { session },
     } = await supabase.auth.getSession();
 
@@ -47,4 +56,12 @@ export async function onboardUser(username: string): Promise<OnboardResult> {
     console.error("Onboarding server action error:", err);
     return { error: "Unable to connect to server. Please try again." };
   }
+}
+
+export async function onboardUserAction(
+  _prevState: OnboardResult | null,
+  formData: FormData
+): Promise<OnboardResult> {
+  const displayName = (formData.get("displayName") as string) || "";
+  return await onboardUser(displayName);
 }

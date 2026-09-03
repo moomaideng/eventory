@@ -12,27 +12,33 @@ export default async function OnboardingPage() {
   try {
     const supabase = await createClient();
     const {
-      data: { session },
-    } = await supabase.auth.getSession();
+      data: { user },
+    } = await supabase.auth.getUser();
 
-    if (!session?.access_token) {
+    if (!user) {
       shouldRedirectToLogin = true;
     } else {
-      userEmail = session.user?.email || "";
-      userAvatarUrl = session.user?.user_metadata?.avatar_url || "";
+      userEmail = user.email || "";
+      userAvatarUrl = user.user_metadata?.avatar_url || "";
 
-      try {
-        const { data: account } = await apiClient.GET("/api/v1/accounts/me", {
-          headers: {
-            Authorization: `Bearer ${session.access_token}`,
-          },
-        });
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
 
-        if (account) {
-          shouldRedirectToHome = true;
+      if (session?.access_token) {
+        try {
+          const { data: account } = await apiClient.GET("/api/v1/accounts/me", {
+            headers: {
+              Authorization: `Bearer ${session.access_token}`,
+            },
+          });
+
+          if (account) {
+            shouldRedirectToHome = true;
+          }
+        } catch {
+          // Backend not reachable or account not found -> proceed with onboarding
         }
-      } catch {
-        // Backend not reachable or account not found -> proceed with onboarding
       }
     }
   } catch {

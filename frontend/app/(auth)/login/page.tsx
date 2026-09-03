@@ -10,24 +10,30 @@ export default async function LoginPage() {
   try {
     const supabase = await createClient();
     const {
-      data: { session },
-    } = await supabase.auth.getSession();
+      data: { user },
+    } = await supabase.auth.getUser();
 
-    if (session?.access_token) {
-      try {
-        const { data: account } = await apiClient.GET("/api/v1/accounts/me", {
-          headers: {
-            Authorization: `Bearer ${session.access_token}`,
-          },
-        });
+    if (user) {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
 
-        if (account) {
-          shouldRedirectToHome = true;
-        } else {
-          shouldRedirectToOnboarding = true;
+      if (session?.access_token) {
+        try {
+          const { data: account } = await apiClient.GET("/api/v1/accounts/me", {
+            headers: {
+              Authorization: `Bearer ${session.access_token}`,
+            },
+          });
+
+          if (account) {
+            shouldRedirectToHome = true;
+          } else {
+            shouldRedirectToOnboarding = true;
+          }
+        } catch {
+          // Backend not reachable or error -> allow showing login form
         }
-      } catch {
-        // Backend not reachable or error -> allow showing login form
       }
     }
   } catch {
