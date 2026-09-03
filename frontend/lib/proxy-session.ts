@@ -39,7 +39,7 @@ export async function updateSession(request: NextRequest) {
     await supabase.auth.getClaims();
   } catch (err) {
     if (process.env.NODE_ENV === "development") {
-      console.warn("[Proxy / Middleware] Session refresh notice:", err);
+      console.warn("[Proxy] Session refresh notice:", err);
     }
   }
 

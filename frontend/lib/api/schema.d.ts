@@ -160,21 +160,21 @@ export interface components {
        */
       type: string;
     };
-    OnboardAccountInputBody: {
+    OnboardAccountRequest: {
       /**
        * Format: uri
        * @description A URL to the JSON Schema for this object.
-       * @example https://example.com/schemas/OnboardAccountInputBody.json
+       * @example https://example.com/schemas/OnboardAccountRequest.json
        */
       readonly $schema?: string;
       /** @description Chosen display username */
       username: string;
     };
-    UpdateUsernameInputBody: {
+    UpdateUsernameRequest: {
       /**
        * Format: uri
        * @description A URL to the JSON Schema for this object.
-       * @example https://example.com/schemas/UpdateUsernameInputBody.json
+       * @example https://example.com/schemas/UpdateUsernameRequest.json
        */
       readonly $schema?: string;
       /** @description New display username */
@@ -227,7 +227,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        "application/json": components["schemas"]["UpdateUsernameInputBody"];
+        "application/json": components["schemas"]["UpdateUsernameRequest"];
       };
     };
     responses: {
@@ -260,12 +260,12 @@ export interface operations {
     };
     requestBody: {
       content: {
-        "application/json": components["schemas"]["OnboardAccountInputBody"];
+        "application/json": components["schemas"]["OnboardAccountRequest"];
       };
     };
     responses: {
-      /** @description OK */
-      200: {
+      /** @description Created */
+      201: {
         headers: {
           [name: string]: unknown;
         };

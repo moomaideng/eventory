@@ -1,9 +1,9 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useActionState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useRole } from "@/context/role-context";
-import { onboardUser } from "./actions";
+import { onboardUserAction, type OnboardResult } from "./actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -15,7 +15,10 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { ArrowRight, Loader2, LogOut } from "lucide-react";
+import { FieldGroup, Field, FieldLabel } from "@/components/ui/field";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Spinner } from "@/components/ui/spinner";
+import { ArrowRight, LogOut } from "lucide-react";
 
 interface OnboardingFormProps {
   email?: string;
@@ -26,44 +29,37 @@ export function OnboardingForm({ email, avatarUrl }: OnboardingFormProps) {
   const router = useRouter();
   const { refreshUser, logout } = useRole();
   const [displayName, setDisplayName] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [isSigningOut, startSignOutTransition] = useTransition();
 
-  // React 19 Native Form Action
-  const handleSubmit = async () => {
-    const username = displayName.trim();
-    if (!username) return;
-
-    setIsSubmitting(true);
-    setErrorMsg(null);
-
+  // React 19 Native useActionState
+  const [state, formAction, isSubmitting] = useActionState<
+    OnboardResult | null,
+    FormData
+  >(async (prevState, formData) => {
     try {
-      const result = await onboardUser(username);
-
-      if (result.error) {
-        setErrorMsg(result.error);
-        return;
-      }
-
+      const result = await onboardUserAction(prevState, formData);
       if (result.success) {
         await refreshUser();
         router.push("/");
       }
+      return result;
     } catch {
-      setErrorMsg("An unexpected error occurred. Please try again.");
-    } finally {
-      setIsSubmitting(false);
+      return { error: "An unexpected error occurred. Please try again." };
     }
-  };
+  }, null);
 
-  const handleSignOut = async () => {
-    setIsSubmitting(true);
-    try {
-      await logout();
-      router.push("/");
-    } finally {
-      setIsSubmitting(false);
-    }
+  const isBusy = isSubmitting || isSigningOut;
+  const errorMsg = state?.error;
+
+  const handleSignOut = () => {
+    startSignOutTransition(async () => {
+      try {
+        await logout();
+        router.push("/");
+      } catch {
+        // Ignore logout error
+      }
+    });
   };
 
   return (
@@ -82,7 +78,7 @@ export function OnboardingForm({ email, avatarUrl }: OnboardingFormProps) {
           </CardDescription>
         </CardHeader>
 
-        <form action={handleSubmit}>
+        <form action={formAction}>
           <CardContent className="flex flex-col gap-4">
             {/* Authenticated Google Account Badge */}
             {email && (
@@ -107,49 +103,47 @@ export function OnboardingForm({ email, avatarUrl }: OnboardingFormProps) {
             )}
 
             {errorMsg && (
-              <div className="bg-destructive/10 text-destructive border-destructive/20 rounded-lg border p-3 text-xs">
-                {errorMsg}
-              </div>
+              <Alert variant="destructive">
+                <AlertDescription>{errorMsg}</AlertDescription>
+              </Alert>
             )}
 
-            <div className="flex flex-col gap-2 text-left">
-              <label
-                htmlFor="displayName"
-                className="text-foreground text-xs font-medium"
-              >
-                Display Name
-              </label>
-              <Input
-                id="displayName"
-                name="displayName"
-                type="text"
-                placeholder="e.g. MooMai, ShadowNinja"
-                value={displayName}
-                onChange={(e) => setDisplayName(e.target.value)}
-                required
-                autoFocus
-                disabled={isSubmitting}
-                maxLength={32}
-              />
-            </div>
+            <FieldGroup>
+              <Field data-invalid={Boolean(errorMsg)}>
+                <FieldLabel htmlFor="displayName">Display Name</FieldLabel>
+                <Input
+                  id="displayName"
+                  name="displayName"
+                  type="text"
+                  placeholder="e.g. MooMai, ShadowNinja"
+                  value={displayName}
+                  onChange={(e) => setDisplayName(e.target.value)}
+                  required
+                  autoFocus
+                  disabled={isBusy}
+                  maxLength={32}
+                  aria-invalid={Boolean(errorMsg)}
+                />
+              </Field>
+            </FieldGroup>
           </CardContent>
 
           <CardFooter className="flex flex-col gap-2 pt-2">
             <Button
               type="submit"
               size="lg"
-              disabled={!displayName.trim() || isSubmitting}
-              className="flex w-full cursor-pointer items-center justify-center gap-2"
+              disabled={!displayName.trim() || isBusy}
+              className="w-full"
             >
               {isSubmitting ? (
                 <>
-                  <Loader2 className="size-4 animate-spin" />
+                  <Spinner data-icon="inline-start" />
                   <span>Setting up account...</span>
                 </>
               ) : (
                 <>
                   <span>Get Started</span>
-                  <ArrowRight className="size-4" />
+                  <ArrowRight data-icon="inline-end" />
                 </>
               )}
             </Button>
@@ -159,10 +153,10 @@ export function OnboardingForm({ email, avatarUrl }: OnboardingFormProps) {
               variant="ghost"
               size="sm"
               onClick={handleSignOut}
-              disabled={isSubmitting}
-              className="text-muted-foreground hover:text-foreground flex items-center gap-1.5 text-xs"
+              disabled={isBusy}
+              className="text-muted-foreground hover:text-foreground text-xs"
             >
-              <LogOut className="size-3.5" />
+              <LogOut data-icon="inline-start" />
               <span>Sign out / Use a different account</span>
             </Button>
           </CardFooter>

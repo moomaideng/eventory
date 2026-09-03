@@ -4,7 +4,8 @@ import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useRole, UserRole } from "@/context/role-context";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -100,7 +101,7 @@ export function Navbar() {
         <div className="flex items-center gap-3">
           {isLoading ? (
             /* Skeleton Loading State during Hydration (Zero Layout Shift) */
-            <div className="bg-muted/60 h-9 w-28 animate-pulse rounded-full" />
+            <Skeleton className="h-9 w-28 rounded-full" />
           ) : user ? (
             /* Role Switcher Dropdown */
             <DropdownMenu>
@@ -126,7 +127,7 @@ export function Navbar() {
                     {activeRole} Mode
                   </span>
                 </div>
-                <ChevronDown className="text-muted-foreground size-3.5" />
+                <ChevronDown className="text-muted-foreground" />
               </DropdownMenuTrigger>
 
               <DropdownMenuContent align="end" className="w-64 p-1">
@@ -137,17 +138,15 @@ export function Navbar() {
                     <DropdownMenuItem
                       key={id}
                       onClick={() => setRole(id)}
-                      className="flex cursor-pointer items-center justify-between py-2"
+                      className="flex items-center justify-between py-2"
                     >
                       <div className="flex items-center gap-2.5">
-                        <Icon className="text-primary size-4" />
+                        <Icon className="text-primary" />
                         <span className="text-sm font-medium">
                           {label} Mode
                         </span>
                       </div>
-                      {activeRole === id && (
-                        <Check className="text-primary size-4" />
-                      )}
+                      {activeRole === id && <Check className="text-primary" />}
                     </DropdownMenuItem>
                   ))}
                 </DropdownMenuGroup>
@@ -158,9 +157,9 @@ export function Navbar() {
                   <DropdownMenuItem
                     onClick={logout}
                     variant="destructive"
-                    className="flex cursor-pointer items-center gap-2"
+                    className="flex items-center gap-2"
                   >
-                    <LogOut className="size-4" />
+                    <LogOut />
                     <span>Sign Out</span>
                   </DropdownMenuItem>
                 </DropdownMenuGroup>
@@ -173,22 +172,21 @@ export function Navbar() {
                 variant="outline"
                 size="sm"
                 onClick={() => loginAsDev("competitor")}
-                className="text-primary border-primary/30 hidden items-center gap-1.5 text-xs sm:flex"
+                className="text-primary border-primary/30 hidden text-xs sm:inline-flex"
               >
-                <Sparkles className="size-3.5" />
+                <Sparkles data-icon="inline-start" />
                 Dev Quick Login
               </Button>
 
-              <Link
-                href="/login"
-                className={cn(
-                  buttonVariants({ size: "sm" }),
-                  "flex items-center gap-1.5 text-xs"
-                )}
+              <Button
+                size="sm"
+                render={<Link href="/login" />}
+                nativeButton={false}
+                className="text-xs"
               >
-                <LogIn className="size-3.5" />
+                <LogIn data-icon="inline-start" />
                 Sign In
-              </Link>
+              </Button>
             </div>
           )}
         </div>

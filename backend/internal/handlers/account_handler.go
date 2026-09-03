@@ -27,24 +27,36 @@ type AccountOutput struct {
 	Body AccountResponse
 }
 
+// OnboardAccountOutput represents the HTTP response for successful account onboarding (201 Created).
+type OnboardAccountOutput struct {
+	Status int `default:"201"`
+	Body   AccountResponse
+}
+
 // GetAccountByIDInput represents path parameters for retrieving an account by ID.
 type GetAccountByIDInput struct {
 	ID uuid.UUID `path:"id" doc:"Account UUID"`
 }
 
+// OnboardAccountRequest defines the request body for onboarding an account.
+type OnboardAccountRequest struct {
+	Username string `json:"username" doc:"Chosen display username" required:"true" minLength:"1" maxLength:"32"`
+}
+
+// UpdateUsernameRequest defines the request body for updating username.
+type UpdateUsernameRequest struct {
+	Username string `json:"username" doc:"New display username" required:"true" minLength:"1" maxLength:"32"`
+}
+
 // OnboardAccountInput represents request payload for creating an account on first onboarding.
 // Email is securely retrieved from the verified Auth JWT Token, NOT from request body.
 type OnboardAccountInput struct {
-	Body struct {
-		Username string `json:"username" doc:"Chosen display username" required:"true" minLength:"1" maxLength:"32"`
-	}
+	Body OnboardAccountRequest
 }
 
 // UpdateUsernameInput represents request payload for updating username.
 type UpdateUsernameInput struct {
-	Body struct {
-		Username string `json:"username" doc:"New display username" required:"true" minLength:"1" maxLength:"32"`
-	}
+	Body UpdateUsernameRequest
 }
 
 func toAccountResponse(acc *models.Account) AccountResponse {
@@ -87,14 +99,15 @@ func RegisterAccountRoutes(api huma.API, accountUseCase *usecases.AccountUseCase
 
 	// 2. POST /api/v1/accounts/onboard (Create Account from Onboarding)
 	huma.Register(api, huma.Operation{
-		OperationID: "onboard-account",
-		Method:      http.MethodPost,
-		Path:        "/onboard",
-		Summary:     "Onboard New Account",
-		Description: "Creates a new user account with chosen username. The email is securely extracted from the authenticated JWT token.",
-		Tags:        []string{"Accounts"},
-		Security:    []map[string][]string{{"bearer": {}}},
-	}, func(ctx context.Context, input *OnboardAccountInput) (*AccountOutput, error) {
+		OperationID:   "onboard-account",
+		Method:        http.MethodPost,
+		Path:          "/onboard",
+		Summary:       "Onboard New Account",
+		Description:   "Creates a new user account with chosen username. The email is securely extracted from the authenticated JWT token.",
+		DefaultStatus: http.StatusCreated,
+		Tags:          []string{"Accounts"},
+		Security:      []map[string][]string{{"bearer": {}}},
+	}, func(ctx context.Context, input *OnboardAccountInput) (*OnboardAccountOutput, error) {
 		email, err := middlewares.GetAuthEmail(ctx)
 		if err != nil {
 			return nil, huma.Error401Unauthorized("Authentication required", err)
@@ -105,13 +118,19 @@ func RegisterAccountRoutes(api huma.API, accountUseCase *usecases.AccountUseCase
 			if errors.Is(err, usecases.ErrAccountAlreadyExists) {
 				return nil, huma.Error409Conflict("Account already exists for this authenticated email", err)
 			}
+			if errors.Is(err, usecases.ErrUsernameAlreadyExists) {
+				return nil, huma.Error409Conflict("Username is already taken. Please choose another one.", err)
+			}
 			if errors.Is(err, usecases.ErrInvalidUsername) {
 				return nil, huma.Error400BadRequest("Invalid username provided", err)
 			}
 			return nil, huma.Error500InternalServerError("Failed to create account", err)
 		}
 
-		return &AccountOutput{Body: toAccountResponse(acc)}, nil
+		return &OnboardAccountOutput{
+			Status: http.StatusCreated,
+			Body:   toAccountResponse(acc),
+		}, nil
 	})
 
 	// 3. PATCH /api/v1/accounts/me (Update Current User's Username)
@@ -139,6 +158,9 @@ func RegisterAccountRoutes(api huma.API, accountUseCase *usecases.AccountUseCase
 
 		updated, err := accountUseCase.UpdateUsername(ctx, acc.ID, input.Body.Username)
 		if err != nil {
+			if errors.Is(err, usecases.ErrUsernameAlreadyExists) {
+				return nil, huma.Error409Conflict("Username is already taken. Please choose another one.", err)
+			}
 			if errors.Is(err, usecases.ErrInvalidUsername) {
 				return nil, huma.Error400BadRequest("Invalid username provided", err)
 			}
