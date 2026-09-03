@@ -5,6 +5,7 @@ func All() []any {
 		&Account{},
 		&OrganizerProfile{},
 		&SponsorProfile{},
-		// ... TODO: implement other models
+		&Tournament{},
+		// TODO??????
 	}
 }
