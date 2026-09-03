@@ -13,6 +13,9 @@ func All() []Seeds {
 			Name: "Accounts",
 			Run:  SeedAccounts,
 		},
-		// ... TODO: implement other tasks
+		{
+			Name: "Tournaments",
+			Run:  SeedTournaments,
+		},
 	}
 }

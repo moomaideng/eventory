@@ -68,6 +68,26 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/tournaments": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Browse and filter tournaments
+     * @description Returns published tournaments matching schedule, budget, status, and text filters.
+     */
+    get: operations["search-tournaments"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/health": {
     parameters: {
       query?: never;
@@ -169,6 +189,46 @@ export interface components {
       readonly $schema?: string;
       /** @description Chosen display username */
       username: string;
+    };
+    TournamentListBody: {
+      /**
+       * Format: uri
+       * @description A URL to the JSON Schema for this object.
+       * @example https://example.com/schemas/TournamentListBody.json
+       */
+      readonly $schema?: string;
+      items: components["schemas"]["TournamentResponse"][] | null;
+      /** Format: int64 */
+      page: number;
+      /** Format: int64 */
+      pageSize: number;
+      /** Format: int64 */
+      total: number;
+    };
+    TournamentResponse: {
+      /** Format: int64 */
+      capacity: number;
+      currency: string;
+      description: string;
+      /** Format: date-time */
+      endAt: string;
+      /**
+       * Format: int64
+       * @description Entry fee in whole currency units
+       */
+      entryFee: number;
+      game: string;
+      id: string;
+      location: string;
+      name: string;
+      organizerName: string;
+      /** Format: int64 */
+      registeredCount: number;
+      /** Format: date-time */
+      registrationDeadline: string;
+      /** Format: date-time */
+      startAt: string;
+      status: string;
     };
     UpdateUsernameRequest: {
       /**
@@ -303,6 +363,51 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["AccountResponse"];
+        };
+      };
+      /** @description Error */
+      default: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["ErrorModel"];
+        };
+      };
+    };
+  };
+  "search-tournaments": {
+    parameters: {
+      query?: {
+        /** @description Case-insensitive name, game, or description search */
+        q?: string;
+        /** @description Earliest tournament start date (YYYY-MM-DD) */
+        startFrom?: string;
+        /** @description Latest tournament start date (YYYY-MM-DD) */
+        startTo?: string;
+        /** @description Minimum entry fee; omit to disable */
+        minEntryFee?: number;
+        /** @description Maximum entry fee; omit to disable */
+        maxEntryFee?: number;
+        status?:
+          "REGISTRATION_OPEN" | "REGISTRATION_CLOSED" | "ONGOING" | "COMPLETED";
+        sort?: "start_asc" | "start_desc" | "fee_asc" | "fee_desc";
+        page?: number;
+        pageSize?: number;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["TournamentListBody"];
         };
       };
       /** @description Error */

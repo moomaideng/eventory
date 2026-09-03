@@ -86,6 +86,8 @@ func main() {
 	// 6. Create Repositories & Use Cases
 	accountRepo := repositories.NewAccountRepository(db)
 	accountUseCase := usecases.NewAccountUseCase(accountRepo)
+	tournamentRepo := repositories.NewTournamentRepository(db)
+	tournamentUseCase := usecases.NewTournamentUseCase(tournamentRepo)
 
 	// 7. Initialize Auth Middleware & Scoped Route Groups
 	authMiddleware := middlewares.NewAuthMiddleware(api, appConfig.SupabaseURL, appConfig.Environment)
@@ -96,6 +98,9 @@ func main() {
 
 	// Register Account Handlers onto the scoped group
 	handlers.RegisterAccountRoutes(accountGroup, accountUseCase)
+
+	// Tournament discovery is public; joining and management will use authenticated routes.
+	handlers.RegisterTournamentRoutes(api, tournamentUseCase)
 
 	// 8. Start Server
 	fmt.Printf("Server starting on port %s (env: %s)...\n", port, appConfig.Environment)
