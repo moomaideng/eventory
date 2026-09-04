@@ -110,19 +110,19 @@ Before authoring or refactoring frontend code, consult the embedded skills in `.
 
 ## Getting Started
 
-Frontend development is orchestrated from the repository root so it shares one local environment file with the backend and Docker Compose.
+The frontend owns its environment file, which Next.js loads natively and Docker Compose injects into the development container.
 
 ### 1. Prerequisite
 
-Install Docker Desktop. Node.js is only required for running frontend tooling directly on the host.
+Install Node.js 24+. Docker Desktop is used for the local PostgreSQL dependency and for the optional complete containerized stack.
 
 ### 2. Configure Environment Variables
-Create the single ignored environment file at the repository root:
+Create the ignored frontend environment file:
 ```bash
-cp .env.example .env
+cp .env.example .env.local
 ```
 
-The frontend receives `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, and `API_URL` directly. `next.config.ts` explicitly exposes these public values to browser code. In Docker, server actions use the private `INTERNAL_API_URL=http://backend:8080` while browser code uses `API_URL`.
+The browser receives `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, and `NEXT_PUBLIC_API_URL`. In Docker, server-side requests use the private `INTERNAL_API_URL=http://backend:8080`, while browser code uses `NEXT_PUBLIC_API_URL`.
 
 > **Note on Local Dev Mode:**
 > You can develop and test UI features immediately without setting up Supabase keys. Click **"Dev Quick Login"** on the Navbar to simulate logged-in states and test role switching between Competitor, Organizer, and Sponsor modes.
@@ -134,11 +134,12 @@ cd frontend && npm run openapi:generate && cd ..
 ```
 
 ### 4. Run Development Server
+From the repository root:
+
 ```bash
-make frontend
+make dev
 ```
 
-This delegates to Docker Compose and starts the frontend plus its required backend and database dependencies.
-Next.js runs in development mode, so saved frontend source changes use Hot Module Reloading automatically.
+This starts PostgreSQL in Docker and runs Next.js and the Go API on the host. For frontend-only native development, use `make frontend-native`. For the complete Docker stack, use `make dev-docker`.
 
 Open [http://localhost:3000](http://localhost:3000) in your browser.

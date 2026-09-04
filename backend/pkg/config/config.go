@@ -1,6 +1,9 @@
 package config
 
 import (
+	"errors"
+	"fmt"
+	"os"
 	"strings"
 
 	"github.com/spf13/viper"
@@ -15,20 +18,38 @@ type Config struct {
 	CORSOrigins []string
 }
 
-// Load reads configuration values from the process environment.
+// Load reads optional local defaults from .env and lets process environment
+// variables override them. Production and containers should inject environment
+// variables instead of copying an .env file into the image.
 func Load() (Config, error) {
-	viper.SetDefault("PORT", "8080")
-	viper.SetDefault("ENVIRONMENT", "development")
-	viper.SetDefault("SUPABASE_URL", "")
-	viper.SetDefault("CORS_ALLOWED_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000")
-	viper.AutomaticEnv()
+	return load(".env")
+}
+
+func load(configFile string) (Config, error) {
+	v := viper.New()
+	v.SetDefault("PORT", "8080")
+	v.SetDefault("ENVIRONMENT", "development")
+	v.SetDefault("SUPABASE_URL", "")
+	v.SetDefault("CORS_ALLOWED_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000")
+
+	v.SetConfigFile(configFile)
+	v.SetConfigType("dotenv")
+	if err := v.ReadInConfig(); err != nil {
+		var configNotFound viper.ConfigFileNotFoundError
+		if !errors.As(err, &configNotFound) && !os.IsNotExist(err) {
+			return Config{}, fmt.Errorf("read config file %q: %w", configFile, err)
+		}
+	}
+
+	// Environment variables have higher precedence than values from .env.
+	v.AutomaticEnv()
 
 	return Config{
-		Port:        viper.GetString("PORT"),
-		DBDSN:       viper.GetString("DB_DSN"),
-		SupabaseURL: viper.GetString("SUPABASE_URL"),
-		Environment: viper.GetString("ENVIRONMENT"),
-		CORSOrigins: splitCommaSeparated(viper.GetString("CORS_ALLOWED_ORIGINS")),
+		Port:        v.GetString("PORT"),
+		DBDSN:       v.GetString("DB_DSN"),
+		SupabaseURL: v.GetString("SUPABASE_URL"),
+		Environment: v.GetString("ENVIRONMENT"),
+		CORSOrigins: splitCommaSeparated(v.GetString("CORS_ALLOWED_ORIGINS")),
 	}, nil
 }
 

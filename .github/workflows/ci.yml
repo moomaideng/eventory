@@ -47,9 +47,9 @@ jobs:
       - name: Build frontend
         working-directory: frontend
         env:
-          SUPABASE_URL: https://placeholder.supabase.co
-          SUPABASE_PUBLISHABLE_KEY: placeholder
-          API_URL: http://localhost:8080
+          NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
+          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: placeholder
+          NEXT_PUBLIC_API_URL: http://localhost:8080
         run: npm run build
 
   publish:
@@ -95,9 +95,9 @@ jobs:
           platforms: linux/arm64
           push: true
           build-args: |
-            SUPABASE_URL=${{ secrets.PROD_SUPABASE_URL }}
-            SUPABASE_PUBLISHABLE_KEY=${{ secrets.PROD_SUPABASE_PUBLISHABLE_KEY }}
-            API_URL=${{ secrets.PROD_API_URL }}
+            NEXT_PUBLIC_SUPABASE_URL=${{ secrets.PROD_SUPABASE_URL }}
+            NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=${{ secrets.PROD_SUPABASE_PUBLISHABLE_KEY }}
+            NEXT_PUBLIC_API_URL=${{ secrets.PROD_API_URL }}
           tags: |
             ghcr.io/moomaideng/eventory-frontend:latest
             ghcr.io/moomaideng/eventory-frontend:${{ github.sha }}

@@ -42,17 +42,17 @@ Before running the server, ensure the following dependencies are installed on yo
 
 * **Go:** Version 1.26 or higher.
 * **Docker & Docker Compose:** For running the local PostgreSQL instance.
-* **Make:** For executing automation commands.
-* **Air (Optional on the host):** The Docker development image already includes Air for automatic server reloading.
+* **Make:** Optional convenience commands from the repository root.
+* **Air:** Required for native backend live reload and installed by `make install`. The Docker development image also includes it.
 
 ## Getting Started
 
-Backend development is orchestrated from the repository root so it shares the same local environment as the frontend and Docker Compose.
+Backend development is orchestrated from the repository root. The backend owns its environment file, which is used by both native Go commands and Docker Compose.
 
-1. **Configure the root environment:**
+1. **Configure the backend environment:**
    ```bash
    cd ..
-   cp .env.example .env
+   cp backend/.env.example backend/.env
    ```
 
 2. **Initialize Infrastructure:**
@@ -75,11 +75,13 @@ Backend development is orchestrated from the repository root so it shares the sa
    ```
 
 5. **Start the Application:**
-   Run the backend and its dependencies in Docker. Air automatically rebuilds and restarts the API when Go source files change:
+   Run the normal hybrid development workflow (native backend and frontend with PostgreSQL in Docker):
    ```bash
-   make backend
+   make dev
    ```
+
+   To run only the backend natively after PostgreSQL is ready, use `make backend-native`. To run it in Docker, use `make backend`.
 
 The API will start at `http://localhost:8080`. Interactive documentation (OpenAPI 3.1) is automatically generated and accessible at `http://localhost:8080/docs` (with raw schema at `http://localhost:8080/openapi.json`).
 
-The backend reads `DB_DSN` directly. Local Compose receives the Docker-local DSN from the root `.env`; production receives the Supabase DSN from GitHub Actions secrets.
+Viper reads `backend/.env` when running locally, while actual process environment variables take precedence. Native commands use the file's `localhost` `DB_DSN`; Compose overrides it with the Docker-local `postgres` hostname. Production continues receiving its Supabase `DB_DSN` from the deployment environment.
