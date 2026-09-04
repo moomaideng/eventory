@@ -140,6 +140,6 @@ From the repository root:
 make dev
 ```
 
-This starts PostgreSQL in Docker and runs Next.js and the Go API on the host. For frontend-only native development, use `make frontend-native`. For the complete Docker stack, use `make dev-docker`.
+This starts PostgreSQL in Docker and runs Next.js and the Go API on the host. For frontend-only native development, use `make frontend`. For the complete Docker stack, use `make dev-docker`.
 
 Open [http://localhost:3000](http://localhost:3000) in your browser.

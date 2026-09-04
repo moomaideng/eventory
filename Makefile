@@ -1,4 +1,4 @@
-.PHONY: install dev dev-windows dev-docker down db backend frontend backend-native frontend-native frontend-deps migrate reset seed test build
+.PHONY: install dev dev-windows dev-docker down db backend frontend backend-native frontend-native backend-docker frontend-docker frontend-deps migrate reset seed test build
 
 # Compose uses each application's local environment file. Later files only
 # affect Compose interpolation; each service also declares its own env_file.
@@ -35,16 +35,20 @@ db:
 	$(COMPOSE) up -d --wait postgres
 
 backend:
-	$(COMPOSE) up --build backend
-
-frontend:
-	$(COMPOSE) up --build frontend
-
-backend-native:
 	cd backend && air -c .air.toml
 
-frontend-native:
+frontend:
 	npm --prefix frontend run dev
+
+backend-native: backend
+
+frontend-native: frontend
+
+backend-docker:
+	$(COMPOSE) up --build backend
+
+frontend-docker:
+	$(COMPOSE) up --build frontend
 
 frontend-deps:
 	$(COMPOSE) stop frontend

@@ -191,9 +191,13 @@ make dev-docker
 make migrate
 make seed
 
-# Start a service and its required dependencies
+# Start one application natively
 make backend
 make frontend
+
+# Start one application through Docker
+make backend-docker
+make frontend-docker
 
 # Refresh Docker dependencies after changing frontend packages
 make frontend-deps

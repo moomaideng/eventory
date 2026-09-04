@@ -80,7 +80,7 @@ Backend development is orchestrated from the repository root. The backend owns i
    make dev
    ```
 
-   To run only the backend natively after PostgreSQL is ready, use `make backend-native`. To run it in Docker, use `make backend`.
+   To run only the backend natively after PostgreSQL is ready, use `make backend`. To run it in Docker, use `make backend-docker`.
 
 The API will start at `http://localhost:8080`. Interactive documentation (OpenAPI 3.1) is automatically generated and accessible at `http://localhost:8080/docs` (with raw schema at `http://localhost:8080/openapi.json`).
 
