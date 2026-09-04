@@ -74,6 +74,8 @@ Backend development is orchestrated from the repository root. The backend owns i
    make seed
    ```
 
+   This runs the current Go seed code natively using `backend/.env`. Use `make seed-docker` when you explicitly want the Docker version.
+
 5. **Start the Application:**
    Run the normal hybrid development workflow (native backend and frontend with PostgreSQL in Docker):
    ```bash

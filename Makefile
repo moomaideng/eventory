@@ -1,4 +1,4 @@
-.PHONY: install dev dev-windows dev-docker down db backend frontend backend-native frontend-native backend-docker frontend-docker frontend-deps migrate reset seed test build
+.PHONY: install dev dev-windows dev-docker down db backend frontend backend-native frontend-native backend-docker frontend-docker frontend-deps migrate reset seed migrate-docker reset-docker seed-docker test build
 
 # Compose uses each application's local environment file. Later files only
 # affect Compose interpolation; each service also declares its own env_file.
@@ -56,13 +56,22 @@ frontend-deps:
 	$(COMPOSE) start frontend
 
 migrate:
-	$(COMPOSE) run --rm migrate
+	go -C backend run ./cmd/migrate
 
 reset:
-	$(COMPOSE) run --rm migrate ./migrate -reset
+	go -C backend run ./cmd/migrate -reset
 
 seed:
-	$(COMPOSE) run --rm migrate ./seed
+	go -C backend run ./cmd/seed
+
+migrate-docker:
+	$(COMPOSE) run --rm --build migrate
+
+reset-docker:
+	$(COMPOSE) run --rm --build migrate ./migrate -reset
+
+seed-docker:
+	$(COMPOSE) run --rm --build migrate ./seed
 
 test:
 	go -C backend test -v ./...

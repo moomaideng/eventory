@@ -187,9 +187,13 @@ make dev
 # Start the complete stack in Docker
 make dev-docker
 
-# Run migrations or seed data in containers
+# Run migrations or seed data natively
 make migrate
 make seed
+
+# Run migrations or seed data through a freshly built Docker image
+make migrate-docker
+make seed-docker
 
 # Start one application natively
 make backend
