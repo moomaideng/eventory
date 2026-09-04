@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "typecheck": "tsc --noEmit",
     "format": "prettier --write .",
     "openapi:generate": "openapi-typescript http://localhost:8080/openapi.json -o ./lib/api/schema.d.ts"
   },

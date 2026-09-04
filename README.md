@@ -50,7 +50,7 @@ flowchart TD
 | Layer | Technology | Description |
 | :--- | :--- | :--- |
 | **Frontend** | **Next.js 16 (App Router)** | React 19, TypeScript, Tailwind CSS v4, **shadcn/ui** (Base UI style), Lucide Icons |
-| **Backend** | **Go 1.22+ & Huma v2** | High-performance Go REST API framework with automated OpenAPI 3.1 generation |
+| **Backend** | **Go 1.26+ & Huma v2** | High-performance Go REST API framework with automated OpenAPI 3.1 generation |
 | **Router & ORM** | **Chi Router & GORM** | Lightweight HTTP routing, Chi middlewares, and PostgreSQL ORM with automatic schema migrations |
 | **Database** | **PostgreSQL** | Relational database provisioned locally via Docker Compose |
 | **Authentication** | **Supabase Auth** | Cookie-based SSR sessions, Google OAuth, and asymmetric JWKS verification |
@@ -63,11 +63,11 @@ flowchart TD
 
 ```text
 eventory/
-├── .env.example                  # Template for the single local environment file
 ├── Makefile                      # Root development commands
 ├── docker-compose.yml            # Complete local stack
 ├── docker-compose.production.yml # GHCR images used on Oracle
 ├── frontend/                     # Next.js 16 Frontend Application
+│   ├── .env.example              # Frontend environment template
 │   ├── proxy.ts                  # Next.js 16 Proxy (JWT Verification & session refresh)
 │   ├── app/                      # App Router routes, boundaries (error, not-found, loading), layouts
 │   ├── components/               # UI Primitives (shadcn/ui Base UI) & Layout components
@@ -76,6 +76,7 @@ eventory/
 │   └── .agents/skills/           # shadcn & supabase Best Practice Rules
 │
 ├── backend/                      # Go Huma v2 API Service
+│   ├── .env.example              # Backend and local PostgreSQL template
 │   ├── cmd/api/main.go           # Application entry point, Chi router, and Huma wiring
 │   ├── internal/                 # Handlers, middlewares (JWKS), models, repositories, usecases
 │   ├── pkg/                      # Database & configuration packages
@@ -89,61 +90,48 @@ eventory/
 ## Local Development Setup
 
 ### 1. Prerequisites
-- **Docker Desktop / Docker Compose:** Runs the complete local stack on Windows, macOS, and Linux.
-- **GNU Make** is optional; it only provides short aliases for Docker Compose.
-- **Node.js 24+** and **Go 1.26+** are needed only for host-side IDE tooling, linting, and tests.
+
+- **Docker Desktop / Docker Compose:** Runs local PostgreSQL or the optional complete containerized stack.
+- **Node.js 24+** and **Go 1.26+:** Run the frontend and backend directly on the host for reliable hot reload.
+- **GNU Make:** Optional on every platform. Native Windows users without Make can run the PowerShell script directly.
+
+Docker, Node.js, Go, and Make are system tools and must already be installed.
 
 ---
 
 ### 2. Configure the local environment
 
+Each application owns its local environment file:
+
 ```bash
-cp .env.example .env
+cp backend/.env.example backend/.env
+cp frontend/.env.example frontend/.env.local
 ```
 
 On Windows PowerShell:
 
 ```powershell
-Copy-Item .env.example .env
+Copy-Item backend/.env.example backend/.env
+Copy-Item frontend/.env.example frontend/.env.local
 ```
 
-The ignored root `.env` is the only local configuration file. Its `DB_DSN` points to the local Compose service named `postgres`; production supplies a Supabase `DB_DSN` instead.
+`backend/.env` uses `localhost` because native Go connects through PostgreSQL's published port. Compose injects the same file but overrides `DB_DSN` with Docker's `postgres` hostname. Next.js loads `frontend/.env.local` automatically, and Compose also injects it into the frontend container.
 
-### 3. Run the complete stack
+### 3. Install local dependencies
 
 ```bash
-docker compose up --build
+make install
 ```
 
-`make dev` runs the same command if GNU Make is installed.
+This runs `npm ci`, downloads the backend Go modules, and installs Air `v1.67.3`.
 
-Frontend and backend source changes reload automatically. Restart Compose after changing `.env`.
-
-- Frontend: `http://localhost:3000`
-- Backend: `http://localhost:8080`
-- API documentation: `http://localhost:8080/docs`
-
-### 4. Local dependencies and IDE support
-
-> [!TIP]
-> Docker runs the application without host-installed dependencies. However, installing them locally is recommended when VS Code, Cursor, or another IDE runs on the host or in WSL, so IntelliSense, autocomplete, linting, and Go tooling can resolve the project correctly.
-
-Initial setup for editor support:
-
-```bash
-# Frontend TypeScript and ESLint dependencies
-npm --prefix frontend ci
-
-# Backend modules for gopls and other Go tools
-go -C backend mod download
-```
-
-When adding a frontend package, install it on the host to update `package.json`, `package-lock.json`, and the host `node_modules`. Then run `make frontend-deps` while the local stack is running. It safely stops the frontend, synchronizes Docker's dependency volume, and starts the frontend again:
+When adding a frontend package, install it on the host to update both the manifest and lockfile:
 
 ```bash
 npm --prefix frontend install <package>
-make frontend-deps
 ```
+
+If you later use the complete Docker stack, synchronize its dependency volume with `make frontend-deps`.
 
 When adding a backend module, update `go.mod` and `go.sum` from the host:
 
@@ -151,7 +139,41 @@ When adding a backend module, update `go.mod` and `go.sum` from the host:
 go -C backend get <module>
 ```
 
-The backend source is mounted into Docker immediately. When the related Go source is saved, Air rebuilds and restarts the API.
+### 4. Run the development stack
+
+The default workflow runs PostgreSQL in Docker and both applications on the host. It stops any existing Docker frontend/backend containers first so they cannot occupy the same ports, while leaving PostgreSQL running. This gives Next.js and Air direct access to the host filesystem for reliable hot reload.
+
+With GNU Make on Linux, WSL, or Windows:
+
+```bash
+make dev
+```
+
+Make selects Bash or PowerShell from the operating system. Native Windows users without Make can run the script directly:
+
+```powershell
+.\scripts\dev.ps1
+```
+
+For the complete containerized stack instead:
+
+```bash
+make dev-docker
+```
+
+Without Make, the equivalent Docker command works in Bash and PowerShell:
+
+```bash
+docker compose --env-file backend/.env --env-file frontend/.env.local up --build
+```
+
+Restart the affected process after changing an environment file.
+
+- Frontend: `http://localhost:3000`
+- Backend: `http://localhost:8080`
+- API documentation: `http://localhost:8080/docs`
+
+Air rebuilds the native backend when Go files change. Next.js handles frontend Fast Refresh and CSS updates directly on the host.
 
 ### 5. Useful commands
 
@@ -159,13 +181,27 @@ The backend source is mounted into Docker immediately. When the related Go sourc
 # Start only PostgreSQL
 make db
 
-# Run migrations or seed data in containers
+# Start both applications natively
+make dev
+
+# Start the complete stack in Docker
+make dev-docker
+
+# Run migrations or seed data natively
 make migrate
 make seed
 
-# Start a service and its required dependencies
+# Run migrations or seed data through a freshly built Docker image
+make migrate-docker
+make seed-docker
+
+# Start one application natively
 make backend
 make frontend
+
+# Start one application through Docker
+make backend-docker
+make frontend-docker
 
 # Refresh Docker dependencies after changing frontend packages
 make frontend-deps
@@ -174,7 +210,7 @@ make frontend-deps
 make down
 ```
 
-The Makefile does not parse or transform `.env`; every runtime command delegates to Docker Compose. The backend reads `DB_DSN` directly. Next.js exposes the explicitly public `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, and `API_URL` values through `next.config.ts`. Server actions use Docker's internal `http://backend:8080` address.
+No development script parses or exports `.env` values. Viper reads `backend/.env` for native commands, Next.js reads `frontend/.env.local`, and Compose injects both files for containers. Browser-visible frontend settings use the `NEXT_PUBLIC_` prefix. In Docker, server-side frontend requests use the private `http://backend:8080` address while browser requests continue using `NEXT_PUBLIC_API_URL`.
 
 ### 6. CI/CD
 

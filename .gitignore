@@ -1,2 +1,3 @@
+# Ignore any legacy root environment file. Local configuration lives under
+# frontend/ and backend/; each directory tracks only its .env.example.
 /.env*
-!/.env.example

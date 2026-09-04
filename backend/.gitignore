@@ -6,8 +6,10 @@
 
 # Environment Variables
 .env*
+!.env.example
 
 # Air live-reload temporary files
+.air-tmp/
 tmp/
 bin/
 

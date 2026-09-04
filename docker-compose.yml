@@ -3,10 +3,12 @@ name: eventory
 services:
   postgres:
     image: postgres:18-alpine
+    env_file:
+      - ./backend/.env
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:?Set POSTGRES_USER in .env}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
-      POSTGRES_DB: ${POSTGRES_DB:?Set POSTGRES_DB in .env}
+      POSTGRES_USER: ${POSTGRES_USER:?Set POSTGRES_USER in backend/.env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in backend/.env}
+      POSTGRES_DB: ${POSTGRES_DB:?Set POSTGRES_DB in backend/.env}
     ports:
       - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
     volumes:
@@ -21,8 +23,10 @@ services:
     build:
       context: ./backend
     command: ["./migrate"]
+    env_file:
+      - ./backend/.env
     environment:
-      DB_DSN: ${DB_DSN:?Set DB_DSN in .env}
+      DB_DSN: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?sslmode=disable
     depends_on:
       postgres:
         condition: service_healthy
@@ -33,12 +37,24 @@ services:
     build:
       context: ./backend
       target: development
+    command:
+      - air
+      - -c
+      - .air.toml
+      - --tmp_dir
+      - tmp
+      - --build.cmd
+      - go build -o ./tmp/main ./cmd/api
+      - --build.bin
+      - ./tmp/main
+      - --build.entrypoint
+      - ./tmp/main
+    env_file:
+      - ./backend/.env
     environment:
       ENVIRONMENT: development
       PORT: "8080"
-      DB_DSN: ${DB_DSN:?Set DB_DSN in .env}
-      SUPABASE_URL: ${SUPABASE_URL:?Set SUPABASE_URL in .env}
-      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000}
+      DB_DSN: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?sslmode=disable
     ports:
       - "${BACKEND_PORT:-8080}:8080"
     volumes:
@@ -58,10 +74,9 @@ services:
     build:
       context: ./frontend
       target: development
+    env_file:
+      - ./frontend/.env.local
     environment:
-      SUPABASE_URL: ${SUPABASE_URL:?Set SUPABASE_URL in .env}
-      SUPABASE_PUBLISHABLE_KEY: ${SUPABASE_PUBLISHABLE_KEY:?Set SUPABASE_PUBLISHABLE_KEY in .env}
-      API_URL: ${API_URL:-http://localhost:8080}
       INTERNAL_API_URL: http://backend:8080
     ports:
       - "${FRONTEND_PORT:-3000}:3000"
