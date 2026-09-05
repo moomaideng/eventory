@@ -53,6 +53,35 @@ type SearchTournamentsOutput struct {
 	Body TournamentListBody
 }
 
+type TournamentTeamResponse struct {
+	ID          uuid.UUID `json:"id"`
+	Name        string    `json:"name"`
+	MemberCount int       `json:"memberCount"`
+}
+
+type TournamentFundingResponse struct {
+	GoalAmount      int64   `json:"goalAmount" doc:"Funding goal in whole currency units"`
+	RaisedAmount    int64   `json:"raisedAmount" doc:"Amount raised in whole currency units"`
+	RemainingAmount int64   `json:"remainingAmount" doc:"Amount remaining to reach the goal"`
+	SupporterCount  int     `json:"supporterCount"`
+	Percentage      float64 `json:"percentage" doc:"Percentage of the funding goal raised"`
+	Currency        string  `json:"currency"`
+}
+
+type TournamentDetailsBody struct {
+	Tournament TournamentResponse        `json:"tournament"`
+	Teams      []TournamentTeamResponse  `json:"teams"`
+	Funding    TournamentFundingResponse `json:"funding"`
+}
+
+type GetTournamentDetailsInput struct {
+	TournamentID uuid.UUID `path:"tournamentId" doc:"Tournament ID"`
+}
+
+type GetTournamentDetailsOutput struct {
+	Body TournamentDetailsBody
+}
+
 func RegisterTournamentRoutes(api huma.API, tournamentUseCase *usecases.TournamentUseCase) {
 	huma.Register(api, huma.Operation{
 		OperationID: "search-tournaments",
@@ -80,6 +109,43 @@ func RegisterTournamentRoutes(api huma.API, tournamentUseCase *usecases.Tourname
 		}
 		return &SearchTournamentsOutput{Body: TournamentListBody{
 			Items: items, Total: result.Total, Page: result.Page, PageSize: result.PageSize,
+		}}, nil
+	})
+
+	huma.Register(api, huma.Operation{
+		OperationID: "get-tournament-details",
+		Method:      http.MethodGet,
+		Path:        "/api/v1/tournaments/{tournamentId}",
+		Summary:     "View tournament details",
+		Description: "Returns a published tournament with its registered teams and funding progress.",
+		Tags:        []string{"Tournaments"},
+	}, func(ctx context.Context, input *GetTournamentDetailsInput) (*GetTournamentDetailsOutput, error) {
+		result, err := tournamentUseCase.GetDetails(ctx, input.TournamentID)
+		if err != nil {
+			if errors.Is(err, usecases.ErrTournamentNotFound) {
+				return nil, huma.Error404NotFound("Tournament not found")
+			}
+			return nil, huma.Error500InternalServerError("Failed to load tournament", err)
+		}
+
+		teams := make([]TournamentTeamResponse, 0, len(result.Tournament.Teams))
+		for _, team := range result.Tournament.Teams {
+			teams = append(teams, TournamentTeamResponse{
+				ID: team.ID, Name: team.Name, MemberCount: team.MemberCount,
+			})
+		}
+
+		return &GetTournamentDetailsOutput{Body: TournamentDetailsBody{
+			Tournament: toTournamentResponse(result.Tournament),
+			Teams:      teams,
+			Funding: TournamentFundingResponse{
+				GoalAmount:      result.Funding.GoalAmount,
+				RaisedAmount:    result.Funding.RaisedAmount,
+				RemainingAmount: result.Funding.RemainingAmount,
+				SupporterCount:  result.Funding.SupporterCount,
+				Percentage:      result.Funding.Percentage,
+				Currency:        result.Tournament.Currency,
+			},
 		}}, nil
 	})
 }

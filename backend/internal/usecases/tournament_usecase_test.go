@@ -5,16 +5,26 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/moomaideng/eventory/internal/models"
 	"github.com/moomaideng/eventory/internal/repositories"
 	"github.com/moomaideng/eventory/internal/usecases"
 )
 
 type mockTournamentRepository struct {
-	filters repositories.TournamentFilters
-	items   []models.Tournament
-	total   int64
-	err     error
+	filters    repositories.TournamentFilters
+	items      []models.Tournament
+	total      int64
+	err        error
+	details    *models.Tournament
+	detailsErr error
+}
+
+func (m *mockTournamentRepository) GetPublishedByID(
+	_ context.Context,
+	_ uuid.UUID,
+) (*models.Tournament, error) {
+	return m.details, m.detailsErr
 }
 
 func (m *mockTournamentRepository) Search(
@@ -72,6 +82,33 @@ func TestSearchTournaments_RejectsInvalidRanges(t *testing.T) {
 				t.Fatalf("expected invalid filters error, got %v", err)
 			}
 		})
+	}
+}
+
+func TestGetTournamentDetails_CalculatesFundingStats(t *testing.T) {
+	tournamentID := uuid.New()
+	repo := &mockTournamentRepository{details: &models.Tournament{
+		ID: tournamentID,
+		Funding: &models.TournamentFunding{
+			GoalAmount: 10000, RaisedAmount: 6250, SupporterCount: 14,
+		},
+	}}
+
+	result, err := usecases.NewTournamentUseCase(repo).GetDetails(context.Background(), tournamentID)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if result.Funding.Percentage != 62.5 || result.Funding.RemainingAmount != 3750 {
+		t.Fatalf("unexpected funding stats: %+v", result.Funding)
+	}
+}
+
+func TestGetTournamentDetails_MapsNotFound(t *testing.T) {
+	repo := &mockTournamentRepository{detailsErr: repositories.ErrTournamentNotFound}
+
+	_, err := usecases.NewTournamentUseCase(repo).GetDetails(context.Background(), uuid.New())
+	if !errors.Is(err, usecases.ErrTournamentNotFound) {
+		t.Fatalf("expected tournament not found, got %v", err)
 	}
 }
 

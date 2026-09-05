@@ -2,13 +2,17 @@ package repositories
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/moomaideng/eventory/internal/models"
 	"gorm.io/gorm"
 )
+
+var ErrTournamentNotFound = errors.New("tournament not found")
 
 type TournamentFilters struct {
 	Query       string
@@ -24,6 +28,7 @@ type TournamentFilters struct {
 
 type TournamentRepository interface {
 	Search(ctx context.Context, filters TournamentFilters) ([]models.Tournament, int64, error)
+	GetPublishedByID(ctx context.Context, id uuid.UUID) (*models.Tournament, error)
 }
 
 type tournamentRepositoryImpl struct {
@@ -93,6 +98,29 @@ func (r *tournamentRepositoryImpl) Search(
 	}
 
 	return tournaments, total, nil
+}
+
+func (r *tournamentRepositoryImpl) GetPublishedByID(
+	ctx context.Context,
+	id uuid.UUID,
+) (*models.Tournament, error) {
+	var tournament models.Tournament
+	err := r.db.WithContext(ctx).
+		Where("id = ? AND published = ?", id, true).
+		Preload("Organizer").
+		Preload("Teams", func(db *gorm.DB) *gorm.DB {
+			return db.Order("name ASC")
+		}).
+		Preload("Funding").
+		First(&tournament).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, ErrTournamentNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	return &tournament, nil
 }
 
 func escapeLikePattern(value string) string {
