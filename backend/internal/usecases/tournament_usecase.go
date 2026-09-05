@@ -6,11 +6,13 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/moomaideng/eventory/internal/models"
 	"github.com/moomaideng/eventory/internal/repositories"
 )
 
 var ErrInvalidTournamentFilters = errors.New("invalid tournament filters")
+var ErrTournamentNotFound = errors.New("tournament not found")
 
 var catalogLocation = time.FixedZone("Asia/Bangkok", 7*60*60)
 
@@ -31,6 +33,19 @@ type TournamentSearchResult struct {
 	Total    int64
 	Page     int
 	PageSize int
+}
+
+type TournamentFundingStats struct {
+	GoalAmount      int64
+	RaisedAmount    int64
+	RemainingAmount int64
+	SupporterCount  int
+	Percentage      float64
+}
+
+type TournamentDetailsResult struct {
+	Tournament models.Tournament
+	Funding    TournamentFundingStats
 }
 
 type TournamentUseCase struct {
@@ -115,6 +130,33 @@ func (u *TournamentUseCase) Search(
 	return &TournamentSearchResult{
 		Items: items, Total: total, Page: page, PageSize: pageSize,
 	}, nil
+}
+
+func (u *TournamentUseCase) GetDetails(
+	ctx context.Context,
+	id uuid.UUID,
+) (*TournamentDetailsResult, error) {
+	tournament, err := u.tournamentRepo.GetPublishedByID(ctx, id)
+	if errors.Is(err, repositories.ErrTournamentNotFound) {
+		return nil, ErrTournamentNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	stats := TournamentFundingStats{}
+	if tournament.Funding != nil {
+		stats.GoalAmount = tournament.Funding.GoalAmount
+		stats.RaisedAmount = tournament.Funding.RaisedAmount
+		stats.SupporterCount = tournament.Funding.SupporterCount
+	}
+	// handle negative & remain case
+	stats.RemainingAmount = max(stats.GoalAmount-stats.RaisedAmount, 0)
+	if stats.GoalAmount > 0 {
+		stats.Percentage = float64(stats.RaisedAmount) / float64(stats.GoalAmount) * 100
+	}
+
+	return &TournamentDetailsResult{Tournament: *tournament, Funding: stats}, nil
 }
 
 func parseCatalogDate(value string, endOfDay bool) (*time.Time, error) {
