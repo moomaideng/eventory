@@ -57,7 +57,6 @@ type TournamentTeamResponse struct {
 	ID          uuid.UUID `json:"id"`
 	Name        string    `json:"name"`
 	MemberCount int       `json:"memberCount"`
-	Seed        int       `json:"seed"`
 }
 
 type TournamentFundingResponse struct {
@@ -132,7 +131,7 @@ func RegisterTournamentRoutes(api huma.API, tournamentUseCase *usecases.Tourname
 		teams := make([]TournamentTeamResponse, 0, len(result.Tournament.Teams))
 		for _, team := range result.Tournament.Teams {
 			teams = append(teams, TournamentTeamResponse{
-				ID: team.ID, Name: team.Name, MemberCount: team.MemberCount, Seed: team.Seed,
+				ID: team.ID, Name: team.Name, MemberCount: team.MemberCount,
 			})
 		}
 

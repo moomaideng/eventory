@@ -291,8 +291,6 @@ export interface components {
       /** Format: int64 */
       memberCount: number;
       name: string;
-      /** Format: int64 */
-      seed: number;
     };
     UpdateUsernameRequest: {
       /**

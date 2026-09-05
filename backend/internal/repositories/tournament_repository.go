@@ -109,7 +109,7 @@ func (r *tournamentRepositoryImpl) GetPublishedByID(
 		Where("id = ? AND published = ?", id, true).
 		Preload("Organizer").
 		Preload("Teams", func(db *gorm.DB) *gorm.DB {
-			return db.Order("seed ASC, name ASC")
+			return db.Order("name ASC")
 		}).
 		Preload("Funding").
 		First(&tournament).Error

@@ -43,7 +43,6 @@ type TournamentTeam struct {
 	TournamentID uuid.UUID `gorm:"type:uuid;not null;index;uniqueIndex:idx_tournament_team_name"`
 	Name         string    `gorm:"type:varchar(120);not null;uniqueIndex:idx_tournament_team_name"`
 	MemberCount  int       `gorm:"not null;default:1"`
-	Seed         int       `gorm:"not null;default:0"`
 	CreatedAt    time.Time
 	UpdatedAt    time.Time
 }
