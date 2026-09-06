@@ -20,14 +20,19 @@ type TournamentFilters struct {
 	StartTo     *time.Time
 	MinEntryFee *int64
 	MaxEntryFee *int64
-	Status      string
+	Status      models.TournamentStatus
 	Sort        string
 	Page        int
 	PageSize    int
 }
 
+type TournamentSearchItem struct {
+	Tournament      models.Tournament
+	RegisteredCount int64
+}
+
 type TournamentRepository interface {
-	Search(ctx context.Context, filters TournamentFilters) ([]models.Tournament, int64, error)
+	Search(ctx context.Context, filters TournamentFilters) ([]TournamentSearchItem, int64, error)
 	GetPublishedByID(ctx context.Context, id uuid.UUID) (*models.Tournament, error)
 }
 
@@ -43,7 +48,7 @@ func NewTournamentRepository(db *gorm.DB) TournamentRepository {
 func (r *tournamentRepositoryImpl) Search(
 	ctx context.Context,
 	filters TournamentFilters,
-) ([]models.Tournament, int64, error) {
+) ([]TournamentSearchItem, int64, error) {
 	query := r.db.WithContext(ctx).
 		Model(&models.Tournament{}).
 		Where("published = ?", true)
@@ -97,7 +102,40 @@ func (r *tournamentRepositoryImpl) Search(
 		return nil, 0, err
 	}
 
-	return tournaments, total, nil
+	items := make([]TournamentSearchItem, len(tournaments))
+	if len(tournaments) == 0 {
+		return items, total, nil
+	}
+
+	tournamentIDs := make([]uuid.UUID, len(tournaments))
+	for index, tournament := range tournaments {
+		tournamentIDs[index] = tournament.ID
+		items[index].Tournament = tournament
+	}
+
+	type tournamentTeamCount struct {
+		TournamentID uuid.UUID
+		Count        int64
+	}
+	var counts []tournamentTeamCount
+	if err := r.db.WithContext(ctx).
+		Model(&models.TournamentTeam{}).
+		Select("tournament_id, COUNT(*) AS count").
+		Where("tournament_id IN ? AND status = ?", tournamentIDs, models.TournamentTeamStatusAccepted).
+		Group("tournament_id").
+		Scan(&counts).Error; err != nil {
+		return nil, 0, err
+	}
+
+	countsByTournamentID := make(map[uuid.UUID]int64, len(counts))
+	for _, count := range counts {
+		countsByTournamentID[count.TournamentID] = count.Count
+	}
+	for index := range items {
+		items[index].RegisteredCount = countsByTournamentID[items[index].Tournament.ID]
+	}
+
+	return items, total, nil
 }
 
 func (r *tournamentRepositoryImpl) GetPublishedByID(
@@ -109,8 +147,9 @@ func (r *tournamentRepositoryImpl) GetPublishedByID(
 		Where("id = ? AND published = ?", id, true).
 		Preload("Organizer").
 		Preload("Teams", func(db *gorm.DB) *gorm.DB {
-			return db.Order("name ASC")
+			return db.Where("status = ?", models.TournamentTeamStatusAccepted).Order("name ASC")
 		}).
+		Preload("Teams.Members").
 		Preload("Funding").
 		First(&tournament).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {

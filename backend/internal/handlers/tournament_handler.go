@@ -104,8 +104,8 @@ func RegisterTournamentRoutes(api huma.API, tournamentUseCase *usecases.Tourname
 		}
 
 		items := make([]TournamentResponse, 0, len(result.Items))
-		for _, tournament := range result.Items {
-			items = append(items, toTournamentResponse(tournament))
+		for _, item := range result.Items {
+			items = append(items, toTournamentResponse(item.Tournament, item.RegisteredCount))
 		}
 		return &SearchTournamentsOutput{Body: TournamentListBody{
 			Items: items, Total: result.Total, Page: result.Page, PageSize: result.PageSize,
@@ -131,12 +131,12 @@ func RegisterTournamentRoutes(api huma.API, tournamentUseCase *usecases.Tourname
 		teams := make([]TournamentTeamResponse, 0, len(result.Tournament.Teams))
 		for _, team := range result.Tournament.Teams {
 			teams = append(teams, TournamentTeamResponse{
-				ID: team.ID, Name: team.Name, MemberCount: team.MemberCount,
+				ID: team.ID, Name: team.Name, MemberCount: len(team.Members),
 			})
 		}
 
 		return &GetTournamentDetailsOutput{Body: TournamentDetailsBody{
-			Tournament: toTournamentResponse(result.Tournament),
+			Tournament: toTournamentResponse(result.Tournament, result.RegisteredCount),
 			Teams:      teams,
 			Funding: TournamentFundingResponse{
 				GoalAmount:      result.Funding.GoalAmount,
@@ -158,15 +158,15 @@ func optionalFee(value int64) *int64 {
 }
 
 // response
-func toTournamentResponse(tournament models.Tournament) TournamentResponse {
+func toTournamentResponse(tournament models.Tournament, registeredCount int) TournamentResponse {
 	return TournamentResponse{
 		ID: tournament.ID, Name: tournament.Name, Description: tournament.Description,
 		Game: tournament.Game, Location: tournament.Location,
 		OrganizerName: tournament.Organizer.OrganizerName,
-		StartAt:       tournament.StartAt, EndAt: tournament.EndAt,
+		StartAt:       tournament.StartsAt, EndAt: tournament.EndsAt,
 		RegistrationDeadline: tournament.RegistrationDeadline,
 		EntryFee:             tournament.EntryFee, Currency: tournament.Currency,
-		Capacity: tournament.Capacity, RegisteredCount: tournament.RegisteredCount,
-		Status: tournament.Status,
+		Capacity: tournament.Capacity, RegisteredCount: registeredCount,
+		Status: string(tournament.Status),
 	}
 }

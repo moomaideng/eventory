@@ -6,11 +6,29 @@ import (
 	"github.com/google/uuid"
 )
 
+type TournamentStatus string
+
 const (
-	TournamentStatusRegistrationOpen   = "REGISTRATION_OPEN"
-	TournamentStatusRegistrationClosed = "REGISTRATION_CLOSED"
-	TournamentStatusOngoing            = "ONGOING"
-	TournamentStatusCompleted          = "COMPLETED"
+	TournamentStatusRegistrationOpen   TournamentStatus = "REGISTRATION_OPEN"
+	TournamentStatusRegistrationClosed TournamentStatus = "REGISTRATION_CLOSED"
+	TournamentStatusOngoing            TournamentStatus = "ONGOING"
+	TournamentStatusCompleted          TournamentStatus = "COMPLETED"
+)
+
+type TournamentTeamStatus string
+
+const (
+	TournamentTeamStatusForming  TournamentTeamStatus = "FORMING"
+	TournamentTeamStatusLocked   TournamentTeamStatus = "LOCKED"
+	TournamentTeamStatusAccepted TournamentTeamStatus = "ACCEPTED"
+	TournamentTeamStatusRejected TournamentTeamStatus = "REJECTED"
+)
+
+type TournamentTeamMemberRole string
+
+const (
+	TournamentTeamMemberRoleCaptain TournamentTeamMemberRole = "CAPTAIN"
+	TournamentTeamMemberRoleMember  TournamentTeamMemberRole = "MEMBER"
 )
 
 // Add any fields you want if you think this is not enough
@@ -22,14 +40,13 @@ type Tournament struct {
 	Description          string             `gorm:"type:text;not null"`
 	Game                 string             `gorm:"type:varchar(80);not null"`
 	Location             string             `gorm:"type:varchar(160);not null"`
-	StartAt              time.Time          `gorm:"not null;index:idx_tournaments_public_start,priority:3"`
-	EndAt                time.Time          `gorm:"not null"`
+	StartsAt             time.Time          `gorm:"column:start_at;not null;index:idx_tournaments_public_start,priority:3"`
+	EndsAt               time.Time          `gorm:"column:end_at;not null"`
 	RegistrationDeadline time.Time          `gorm:"not null"`
 	EntryFee             int64              `gorm:"not null;default:0;index"`
 	Currency             string             `gorm:"type:char(3);not null;default:'THB'"`
 	Capacity             int                `gorm:"not null"`
-	RegisteredCount      int                `gorm:"not null;default:0"`
-	Status               string             `gorm:"type:varchar(32);not null;index:idx_tournaments_public_start,priority:2"`
+	Status               TournamentStatus   `gorm:"type:varchar(32);not null;index:idx_tournaments_public_start,priority:2"`
 	Published            bool               `gorm:"not null;default:false;index:idx_tournaments_public_start,priority:1"`
 	Teams                []TournamentTeam   `gorm:"foreignKey:TournamentID;constraint:OnDelete:CASCADE;"`
 	Funding              *TournamentFunding `gorm:"foreignKey:TournamentID;constraint:OnDelete:CASCADE;"`
@@ -39,12 +56,22 @@ type Tournament struct {
 
 // Add team & funding (Hoof pls review)
 type TournamentTeam struct {
-	ID           uuid.UUID `gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
-	TournamentID uuid.UUID `gorm:"type:uuid;not null;index;uniqueIndex:idx_tournament_team_name"`
-	Name         string    `gorm:"type:varchar(120);not null;uniqueIndex:idx_tournament_team_name"`
-	MemberCount  int       `gorm:"not null;default:1"`
+	ID           uuid.UUID              `gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
+	TournamentID uuid.UUID              `gorm:"type:uuid;not null;index;uniqueIndex:idx_tournament_team_name;index:idx_tournament_teams_status,priority:1"`
+	Name         string                 `gorm:"type:varchar(120);not null;uniqueIndex:idx_tournament_team_name"`
+	InviteCode   string                 `gorm:"type:varchar(32);uniqueIndex"`
+	Status       TournamentTeamStatus   `gorm:"type:varchar(16);not null;default:'FORMING';index:idx_tournament_teams_status,priority:2"`
+	Members      []TournamentTeamMember `gorm:"foreignKey:TournamentTeamID;constraint:OnDelete:CASCADE;"`
 	CreatedAt    time.Time
-	UpdatedAt    time.Time
+	LockedAt     *time.Time
+}
+
+type TournamentTeamMember struct {
+	ID               uuid.UUID                `gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
+	TournamentTeamID uuid.UUID                `gorm:"type:uuid;not null;index;uniqueIndex:idx_tournament_team_member"`
+	AccountID        uuid.UUID                `gorm:"type:uuid;not null;index;uniqueIndex:idx_tournament_team_member"`
+	Role             TournamentTeamMemberRole `gorm:"type:varchar(16);not null"`
+	Account          Account                  `gorm:"foreignKey:AccountID;constraint:OnDelete:CASCADE;"`
 }
 
 type TournamentFunding struct {

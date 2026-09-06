@@ -29,10 +29,15 @@ type SearchTournamentsInput struct {
 }
 
 type TournamentSearchResult struct {
-	Items    []models.Tournament
+	Items    []TournamentSearchItem
 	Total    int64
 	Page     int
 	PageSize int
+}
+
+type TournamentSearchItem struct {
+	Tournament      models.Tournament
+	RegisteredCount int
 }
 
 type TournamentFundingStats struct {
@@ -44,8 +49,9 @@ type TournamentFundingStats struct {
 }
 
 type TournamentDetailsResult struct {
-	Tournament models.Tournament
-	Funding    TournamentFundingStats
+	Tournament      models.Tournament
+	RegisteredCount int
+	Funding         TournamentFundingStats
 }
 
 type TournamentUseCase struct {
@@ -83,8 +89,8 @@ func (u *TournamentUseCase) Search(
 		return nil, ErrInvalidTournamentFilters
 	}
 
-	status := strings.ToUpper(strings.TrimSpace(input.Status))
-	validStatuses := map[string]bool{
+	status := models.TournamentStatus(strings.ToUpper(strings.TrimSpace(input.Status)))
+	validStatuses := map[models.TournamentStatus]bool{
 		"":                                      true,
 		models.TournamentStatusRegistrationOpen: true,
 		models.TournamentStatusRegistrationClosed: true,
@@ -118,13 +124,19 @@ func (u *TournamentUseCase) Search(
 		return nil, ErrInvalidTournamentFilters
 	}
 
-	items, total, err := u.tournamentRepo.Search(ctx, repositories.TournamentFilters{
+	repositoryItems, total, err := u.tournamentRepo.Search(ctx, repositories.TournamentFilters{
 		Query: query, StartFrom: startFrom, StartTo: startTo,
 		MinEntryFee: input.MinEntryFee, MaxEntryFee: input.MaxEntryFee,
 		Status: status, Sort: sort, Page: page, PageSize: pageSize,
 	})
 	if err != nil {
 		return nil, err
+	}
+	items := make([]TournamentSearchItem, len(repositoryItems))
+	for index, item := range repositoryItems {
+		items[index] = TournamentSearchItem{
+			Tournament: item.Tournament, RegisteredCount: int(item.RegisteredCount),
+		}
 	}
 
 	return &TournamentSearchResult{
@@ -143,6 +155,13 @@ func (u *TournamentUseCase) GetDetails(
 	if err != nil {
 		return nil, err
 	}
+	acceptedTeams := make([]models.TournamentTeam, 0, len(tournament.Teams))
+	for _, team := range tournament.Teams {
+		if team.Status == models.TournamentTeamStatusAccepted {
+			acceptedTeams = append(acceptedTeams, team)
+		}
+	}
+	tournament.Teams = acceptedTeams
 
 	stats := TournamentFundingStats{}
 	if tournament.Funding != nil {
@@ -156,7 +175,9 @@ func (u *TournamentUseCase) GetDetails(
 		stats.Percentage = float64(stats.RaisedAmount) / float64(stats.GoalAmount) * 100
 	}
 
-	return &TournamentDetailsResult{Tournament: *tournament, Funding: stats}, nil
+	return &TournamentDetailsResult{
+		Tournament: *tournament, RegisteredCount: len(acceptedTeams), Funding: stats,
+	}, nil
 }
 
 func parseCatalogDate(value string, endOfDay bool) (*time.Time, error) {
