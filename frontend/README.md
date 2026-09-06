@@ -108,16 +108,19 @@ Before authoring or refactoring frontend code, consult the embedded skills in `.
 
 ---
 
-## Getting Started
+## Getting Started (Native Development)
 
-The frontend owns its environment file, which Next.js loads natively and Docker Compose injects into the development container.
+You can run the Next.js frontend entirely natively from within this `frontend/` directory using standard `npm` commands.
 
 ### 1. Prerequisite
 
-Install Node.js 24+. Docker Desktop is used for the local PostgreSQL dependency and for the optional complete containerized stack.
+* **Node.js:** Version 24 or higher.
+* **Backend Service (Optional for UI prototyping):** Running at `http://localhost:8080` when syncing contracts or testing integrated API flows.
 
 ### 2. Configure Environment Variables
-Create the ignored frontend environment file:
+
+Create your local environment file inside this directory (or duplicate it manually):
+
 ```bash
 cp .env.example .env.local
 ```
@@ -125,21 +128,52 @@ cp .env.example .env.local
 The browser receives `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, and `NEXT_PUBLIC_API_URL`. In Docker, server-side requests use the private `INTERNAL_API_URL=http://backend:8080`, while browser code uses `NEXT_PUBLIC_API_URL`.
 
 > **Note on Local Dev Mode:**
-> You can develop and test UI features immediately without setting up Supabase keys. Click **"Dev Quick Login"** on the Navbar to simulate logged-in states and test role switching between Competitor, Organizer, and Sponsor modes.
+> You can develop and test UI features immediately without setting up Supabase keys or running the backend. Click **"Dev Quick Login"** on the Navbar to simulate authenticated states and test role switching between Competitor, Organizer, and Sponsor modes.
 
-### 3. Sync OpenAPI Types from Backend
-When the Go backend is running, sync the latest TypeScript types by running:
+### 3. Install Dependencies
+
 ```bash
-cd frontend && npm run openapi:generate && cd ..
+npm install
+# or for clean/strict lockfile installation:
+npm ci
 ```
 
 ### 4. Run Development Server
-From the repository root:
+
+Start the Next.js development server:
 
 ```bash
-make dev
+npm run dev
 ```
 
-This starts PostgreSQL in Docker and runs Next.js and the Go API on the host. For frontend-only native development, use `make frontend`. For the complete Docker stack, use `make dev-docker`.
+Open [http://localhost:3000](http://localhost:3000) in your browser. Next.js Fast Refresh automatically reloads pages when code changes.
 
-Open [http://localhost:3000](http://localhost:3000) in your browser.
+### 5. Sync OpenAPI Types from Backend
+
+When the Go backend API is running at `http://localhost:8080`, generate end-to-end TypeScript types into `lib/api/schema.d.ts`:
+
+```bash
+npm run openapi:generate
+```
+
+### 6. Code Quality & Typechecking
+
+Before committing changes, run:
+
+```bash
+npm run lint         # ESLint check
+npm run typecheck    # Strict TypeScript verification (tsc --noEmit)
+npm run format       # Optional: Prettier code formatting
+```
+
+---
+
+## Alternative: Root Make Commands (macOS / Linux)
+
+If you are on macOS, Linux, or WSL and prefer orchestrating from the repository root using Make:
+
+```bash
+make frontend        # Run only frontend with Next.js
+make test            # Run lint, typecheck, and backend tests
+make frontend-deps   # Refresh Docker node_modules volume after adding packages
+```
