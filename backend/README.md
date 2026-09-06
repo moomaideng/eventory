@@ -38,52 +38,93 @@ This directory contains the Go backend service. It is built utilizing a structur
 
 ## Prerequisites
 
-Before running the server, ensure the following dependencies are installed on your local machine:
+Before running the server, ensure the following dependencies are installed:
 
 * **Go:** Version 1.26 or higher.
-* **Docker & Docker Compose:** For running the local PostgreSQL instance.
-* **Make:** Optional convenience commands from the repository root.
-* **Air:** Required for native backend live reload and installed by `make install`. The Docker development image also includes it.
+* **Docker & Docker Compose:** For running the local PostgreSQL container.
+* **Air:** For live reloading (`go install github.com/air-verse/air@v1.67.3`).
+* **Make (Optional):** If you prefer running convenience shortcuts from the repository root on macOS/Linux.
 
-## Getting Started
+> **Windows Note:** Ensure your Go binary installation path (typically `%USERPROFILE%\go\bin`) is added to your user `PATH` environment variable so that you can invoke `air` directly in PowerShell or Command Prompt.
 
-Backend development is orchestrated from the repository root. The backend owns its environment file, which is used by both native Go commands and Docker Compose.
+---
 
-1. **Configure the backend environment:**
-   ```bash
-   cd ..
-   cp backend/.env.example backend/.env
-   ```
+## Getting Started (Native Development)
 
-2. **Initialize Infrastructure:**
-   Start the PostgreSQL database in the background.
-   ```bash
-   make db
-   ```
+You can run the backend service entirely natively from within this `backend/` directory without using Make or root scripts.
 
-3. **Run Database Migrations:**
-   Execute GORM auto-migrations to build the database schema based on your current models.
-   ```bash
-   make migrate
-   # or make reset (if db schema needs a clean reset)
-   ```
+### 1. Configure Environment
 
-4. **Seed the Database:**
-   Populate the database with mock records for local development.
-   ```bash
-   make seed
-   ```
+Copy the local environment template inside this directory (or duplicate it manually):
 
-   This runs the current Go seed code natively using `backend/.env`. Use `make seed-docker` when you explicitly want the Docker version.
+```bash
+cp .env.example .env
+```
 
-5. **Start the Application:**
-   Run the normal hybrid development workflow (native backend and frontend with PostgreSQL in Docker):
-   ```bash
-   make dev
-   ```
+> **PostgreSQL Port Note:** If you already run PostgreSQL natively on your machine (e.g. as a Windows service), port `5432` may already be occupied. In that case, modify `POSTGRES_PORT` in `.env` (e.g. `POSTGRES_PORT=5433`) and update the port in `DB_DSN` accordingly.
 
-   To run only the backend natively after PostgreSQL is ready, use `make backend`. To run it in Docker, use `make backend-docker`.
+### 2. Start PostgreSQL
 
-The API will start at `http://localhost:8080`. Interactive documentation (OpenAPI 3.1) is automatically generated and accessible at `http://localhost:8080/docs` (with raw schema at `http://localhost:8080/openapi.json`).
+Launch the local PostgreSQL container in the background:
+
+```bash
+docker compose -f ../docker-compose.yml --env-file .env up -d --wait postgres
+```
+
+### 3. Run Database Migrations
+
+Apply GORM auto-migrations to build or rebuild your database schema:
+
+```bash
+# Recommended for dev: wipes & rebuilds schema fresh (guarantees 100% sync with Go models)
+go run ./cmd/migrate --reset
+
+# Or omit --reset if you want to preserve existing database data:
+# go run ./cmd/migrate
+```
+
+### 4. Seed Mock Data
+
+Populate the database with initial development records (accounts, tournaments):
+
+```bash
+go run ./cmd/seed
+```
+
+### 5. Start the Server
+
+- **With live-reload (Air):**
+  ```bash
+  air -c .air.toml
+  ```
+- **Or standard Go compile & run:**
+  ```bash
+  go run ./cmd/api
+  ```
+
+The API will start at `http://localhost:8080`.
+- Interactive OpenAPI 3.1 documentation: `http://localhost:8080/docs`
+- Raw OpenAPI schema: `http://localhost:8080/openapi.json`
+- Health check: `http://localhost:8080/health`
+
+### 6. Run Unit Tests
+
+```bash
+go test -v ./...
+```
+
+---
+
+## Alternative: Root Make Commands (macOS / Linux)
+
+If you are on macOS, Linux, or WSL and prefer orchestrating from the repository root using Make:
+
+```bash
+make db             # Start PostgreSQL
+make migrate        # Run migrations
+make seed           # Seed data
+make backend        # Run backend with Air
+make test           # Run backend tests & frontend checks
+```
 
 Viper reads `backend/.env` when running locally, while actual process environment variables take precedence. Native commands use the file's `localhost` `DB_DSN`; Compose overrides it with the Docker-local `postgres` hostname. Production continues receiving its Supabase `DB_DSN` from the deployment environment.
