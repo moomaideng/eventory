@@ -3,6 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import {
+  ArrowLeft,
   CalendarDays,
   Check,
   ClipboardCopy,
@@ -18,7 +19,12 @@ import { useRouter } from "next/navigation";
 import { $api, apiClient } from "@/lib/api/client";
 import type { components } from "@/lib/api/schema";
 import { useRole } from "@/context/role-context";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import {
+  Alert,
+  AlertAction,
+  AlertDescription,
+  AlertTitle,
+} from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -53,15 +59,18 @@ export function TeamLobbyWorkspace({ inviteCode }: { inviteCode: string }) {
   const router = useRouter();
   const {
     user,
+    activeRole,
     isLoading: isAuthLoading,
     authorizationHeader,
     loginAsDev,
+    setRole,
   } = useRole();
   const [actionError, setActionError] = React.useState("");
   const [pendingAction, setPendingAction] = React.useState<string | null>(null);
   const [copied, setCopied] = React.useState(false);
   const [confirmDisband, setConfirmDisband] = React.useState(false);
   const normalizedInviteCode = inviteCode.trim().toUpperCase();
+  const isCompetitor = activeRole === "competitor";
 
   const {
     data: lobby,
@@ -150,6 +159,12 @@ export function TeamLobbyWorkspace({ inviteCode }: { inviteCode: string }) {
 
   function joinLobby() {
     if (!authorizationHeader) return;
+    if (!isCompetitor) {
+      setActionError(
+        "Switch to your Competitor profile before joining a team."
+      );
+      return;
+    }
     void runAction(
       "join",
       apiClient.POST("/api/v1/lobbies/{inviteCode}/join", {
@@ -210,11 +225,11 @@ export function TeamLobbyWorkspace({ inviteCode }: { inviteCode: string }) {
   return (
     <div className="container mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 px-4 py-12 sm:px-8">
       <Link
-        href="/lobbies"
+        href={`/tournaments/${lobby.tournament.id}`}
         className="text-muted-foreground hover:text-foreground flex w-fit items-center gap-2 text-sm font-medium"
       >
-        <UsersRound />
-        Team lobbies
+        <ArrowLeft />
+        Tournament details
       </Link>
 
       <div className="flex flex-col gap-3">
@@ -239,6 +254,25 @@ export function TeamLobbyWorkspace({ inviteCode }: { inviteCode: string }) {
           <ShieldAlert />
           <AlertTitle>Action unavailable</AlertTitle>
           <AlertDescription>{actionError}</AlertDescription>
+        </Alert>
+      ) : null}
+
+      {isInvitee && !isCompetitor ? (
+        <Alert>
+          <ShieldAlert />
+          <AlertTitle>Competitor profile required</AlertTitle>
+          <AlertDescription>
+            Switch to your Competitor profile to join this team.
+          </AlertDescription>
+          <AlertAction>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setRole("competitor")}
+            >
+              Switch to Competitor
+            </Button>
+          </AlertAction>
         </Alert>
       ) : null}
 
@@ -323,7 +357,7 @@ export function TeamLobbyWorkspace({ inviteCode }: { inviteCode: string }) {
               </TableBody>
             </Table>
           </CardContent>
-          {isInvitee ? (
+          {isInvitee && isCompetitor ? (
             <CardFooter className="flex flex-wrap items-center justify-between gap-3">
               <p className="text-muted-foreground text-sm">
                 {isForming && !rosterFull

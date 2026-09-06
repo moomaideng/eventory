@@ -40,7 +40,8 @@ import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export function TournamentDetails({ tournamentId }: { tournamentId: string }) {
-  const { authorizationHeader } = useRole();
+  const { activeRole, authorizationHeader } = useRole();
+  const isCompetitor = activeRole === "competitor";
   const { data, error, isLoading } = $api.useQuery(
     "get",
     "/api/v1/tournaments/{tournamentId}",
@@ -56,7 +57,11 @@ export function TournamentDetails({ tournamentId }: { tournamentId: string }) {
         ? { Authorization: authorizationHeader }
         : {},
     },
-    { enabled: Boolean(authorizationHeader), retry: false, staleTime: 0 }
+    {
+      enabled: Boolean(authorizationHeader) && isCompetitor,
+      retry: false,
+      staleTime: 0,
+    }
   );
 
   if (isLoading) return <DetailsSkeleton />;
@@ -96,6 +101,7 @@ export function TournamentDetails({ tournamentId }: { tournamentId: string }) {
     tournament.registrationMode === "TEAM" ||
     tournament.registrationMode === "BOTH";
   const canCreateTeam =
+    isCompetitor &&
     supportsTeams &&
     tournament.status === "REGISTRATION_OPEN" &&
     !isMyTeamLoading &&
@@ -220,7 +226,7 @@ export function TournamentDetails({ tournamentId }: { tournamentId: string }) {
         </div>
 
         <div className="flex flex-col gap-6 lg:sticky lg:top-24">
-          {myTeam ? (
+          {isCompetitor && myTeam ? (
             <Card>
               <CardHeader>
                 <CardTitle>Your team</CardTitle>
