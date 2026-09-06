@@ -11,14 +11,13 @@ import {
   MapPin,
   Search,
   Trophy,
-  UserRound,
   Users,
-  UsersRound,
   WalletCards,
   ArrowUpRight,
 } from "lucide-react";
 import { $api } from "@/lib/api/client";
 import type { components } from "@/lib/api/schema";
+import { useRole } from "@/context/role-context";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -48,6 +47,7 @@ export function TournamentCatalog() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const { activeRole } = useRole();
 
   const requestedPage = Number(searchParams.get("page") ?? "1");
   const page =
@@ -108,13 +108,30 @@ export function TournamentCatalog() {
   }
 
   return (
-    <div className="container mx-auto flex w-full max-w-7xl flex-1 flex-col gap-6 px-4 py-12 sm:px-8">
-      <div className="flex items-baseline gap-2">
-        <h1 className="text-xl font-semibold tracking-tight">Tournaments</h1>
-        <p className="text-muted-foreground text-sm">Search and filters</p>
+    <div className="container mx-auto flex w-full max-w-7xl flex-1 flex-col gap-8 px-4 py-12 sm:px-8">
+      <div className="flex flex-col gap-3">
+        <Badge variant="outline" className="capitalize">
+          {activeRole} catalog
+        </Badge>
+        <div className="flex flex-col gap-2">
+          <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
+            Find your next tournament
+          </h1>
+          <p className="text-muted-foreground max-w-2xl">
+            Search published competitions and narrow the list to events that fit
+            your schedule and budget.
+          </p>
+        </div>
       </div>
 
       <Card>
+        <CardHeader>
+          <CardTitle>Search and filters</CardTitle>
+          <CardDescription>
+            Dates and times use Bangkok time. Entry fees are currently listed in
+            Thai baht.
+          </CardDescription>
+        </CardHeader>
         <CardContent>
           <form
             id="tournament-filters"
@@ -261,9 +278,8 @@ function TournamentCard({ tournament }: { tournament: Tournament }) {
   return (
     <Card className="h-full">
       <CardHeader>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex items-start justify-between gap-3">
           <Badge variant="secondary">{tournament.game}</Badge>
-          <RegistrationBadge mode={tournament.registrationMode} />
           <Badge variant="outline" className="capitalize">
             {status}
           </Badge>
@@ -305,33 +321,6 @@ function TournamentCard({ tournament }: { tournament: Tournament }) {
         </Button>
       </CardFooter>
     </Card>
-  );
-}
-
-function RegistrationBadge({ mode }: { mode: Tournament["registrationMode"] }) {
-  if (mode === "TEAM") {
-    return (
-      <Badge variant="outline">
-        <UsersRound data-icon="inline-start" />
-        Team
-      </Badge>
-    );
-  }
-
-  if (mode === "BOTH") {
-    return (
-      <Badge variant="outline">
-        <UsersRound data-icon="inline-start" />
-        Solo or team
-      </Badge>
-    );
-  }
-
-  return (
-    <Badge variant="outline">
-      <UserRound data-icon="inline-start" />
-      Solo
-    </Badge>
   );
 }
 
