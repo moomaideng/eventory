@@ -28,6 +28,7 @@ type TeamLobbyRepository interface {
 	FindTournamentByID(ctx context.Context, id uuid.UUID) (*models.Tournament, error)
 	FindByID(ctx context.Context, id uuid.UUID) (*models.TournamentTeam, error)
 	FindByInviteCode(ctx context.Context, inviteCode string) (*models.TournamentTeam, error)
+	FindActiveByTournamentAndAccount(ctx context.Context, tournamentID, accountID uuid.UUID) (*models.TournamentTeam, error)
 	Create(ctx context.Context, team *models.TournamentTeam, captain *models.TournamentTeamMember) (*models.TournamentTeam, error)
 	Join(ctx context.Context, teamID, accountID uuid.UUID) (*models.TournamentTeam, error)
 	RegenerateInvite(ctx context.Context, teamID uuid.UUID, inviteCode string) (*models.TournamentTeam, error)
@@ -65,6 +66,18 @@ func (r *teamLobbyRepository) FindByID(ctx context.Context, id uuid.UUID) (*mode
 
 func (r *teamLobbyRepository) FindByInviteCode(ctx context.Context, inviteCode string) (*models.TournamentTeam, error) {
 	return r.find(ctx, r.db.WithContext(ctx).Where("invite_code = ?", inviteCode))
+}
+
+func (r *teamLobbyRepository) FindActiveByTournamentAndAccount(ctx context.Context, tournamentID, accountID uuid.UUID) (*models.TournamentTeam, error) {
+	return r.find(ctx, r.db.WithContext(ctx).
+		Model(&models.TournamentTeam{}).
+		Joins("JOIN tournament_team_members ON tournament_team_members.tournament_team_id = tournament_teams.id").
+		Where("tournament_teams.tournament_id = ? AND tournament_team_members.account_id = ?", tournamentID, accountID).
+		Where("tournament_teams.status IN ?", []models.TournamentTeamStatus{
+			models.TournamentTeamStatusForming,
+			models.TournamentTeamStatusLocked,
+			models.TournamentTeamStatusAccepted,
+		}))
 }
 
 func (r *teamLobbyRepository) find(ctx context.Context, query *gorm.DB) (*models.TournamentTeam, error) {

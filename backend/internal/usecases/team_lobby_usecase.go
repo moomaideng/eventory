@@ -29,6 +29,7 @@ type TeamLobbyRepository interface {
 	FindTournamentByID(ctx context.Context, id uuid.UUID) (*models.Tournament, error)
 	FindByID(ctx context.Context, id uuid.UUID) (*models.TournamentTeam, error)
 	FindByInviteCode(ctx context.Context, inviteCode string) (*models.TournamentTeam, error)
+	FindActiveByTournamentAndAccount(ctx context.Context, tournamentID, accountID uuid.UUID) (*models.TournamentTeam, error)
 	Create(ctx context.Context, team *models.TournamentTeam, captain *models.TournamentTeamMember) (*models.TournamentTeam, error)
 	Join(ctx context.Context, teamID, accountID uuid.UUID) (*models.TournamentTeam, error)
 	RegenerateInvite(ctx context.Context, teamID uuid.UUID, inviteCode string) (*models.TournamentTeam, error)
@@ -77,6 +78,10 @@ func (u *TeamLobbyUseCase) Create(ctx context.Context, tournamentID, captainID u
 
 func (u *TeamLobbyUseCase) GetByInviteCode(ctx context.Context, inviteCode string) (*models.TournamentTeam, error) {
 	return u.repo.FindByInviteCode(ctx, normalizeInviteCode(inviteCode))
+}
+
+func (u *TeamLobbyUseCase) GetActiveForTournament(ctx context.Context, tournamentID, accountID uuid.UUID) (*models.TournamentTeam, error) {
+	return u.repo.FindActiveByTournamentAndAccount(ctx, tournamentID, accountID)
 }
 
 func (u *TeamLobbyUseCase) Join(ctx context.Context, inviteCode string, accountID uuid.UUID) (*models.TournamentTeam, error) {

@@ -57,6 +57,10 @@ type CreateTeamLobbyInput struct {
 	Body         CreateTeamLobbyRequest
 }
 
+type MyTournamentTeamInput struct {
+	TournamentID uuid.UUID `path:"tournamentId" doc:"Tournament UUID"`
+}
+
 type InviteCodeInput struct {
 	InviteCode string `path:"inviteCode" pattern:"^[A-Za-z0-9]{6}$" doc:"Six-character team invite code"`
 }
@@ -71,6 +75,25 @@ type LobbyMemberInput struct {
 }
 
 func RegisterTeamLobbyRoutes(api huma.API, lobbyUseCase *usecases.TeamLobbyUseCase, accountUseCase *usecases.AccountUseCase) {
+	huma.Register(api, huma.Operation{
+		OperationID: "get-my-tournament-team",
+		Method:      http.MethodGet,
+		Path:        "/tournaments/{tournamentId}/my-team",
+		Summary:     "View the authenticated competitor's team for a tournament",
+		Tags:        []string{"Team lobbies"},
+		Security:    []map[string][]string{{"bearer": {}}},
+	}, func(ctx context.Context, input *MyTournamentTeamInput) (*TeamLobbyOutput, error) {
+		account, err := authenticatedAccount(ctx, accountUseCase)
+		if err != nil {
+			return nil, err
+		}
+		team, err := lobbyUseCase.GetActiveForTournament(ctx, input.TournamentID, account.ID)
+		if err != nil {
+			return nil, teamLobbyHTTPError(err)
+		}
+		return &TeamLobbyOutput{Body: toTeamLobbyResponse(team, account.ID)}, nil
+	})
+
 	huma.Register(api, huma.Operation{
 		OperationID: "create-team-lobby",
 		Method:      http.MethodPost,
@@ -220,12 +243,13 @@ func teamLobbyHTTPError(err error) error {
 		return huma.Error400BadRequest("Invalid team name", err)
 	case errors.Is(err, usecases.ErrLobbyAccessDenied):
 		return huma.Error403Forbidden("Only the team captain can perform this action", err)
+	case errors.Is(err, repositories.ErrAlreadyInTournamentLobby):
+		return huma.Error409Conflict("You are already in a team for this tournament", err)
 	case errors.Is(err, usecases.ErrTeamsNotAllowed),
 		errors.Is(err, usecases.ErrRegistrationNotOpen),
 		errors.Is(err, repositories.ErrTeamLobbyNotForming),
 		errors.Is(err, repositories.ErrTeamLobbyFull),
 		errors.Is(err, repositories.ErrRosterBelowMinimum),
-		errors.Is(err, repositories.ErrAlreadyInTournamentLobby),
 		errors.Is(err, repositories.ErrTournamentRegistrationClosed),
 		errors.Is(err, repositories.ErrCannotRemoveCaptain),
 		errors.Is(err, repositories.ErrCannotDisbandLobby):

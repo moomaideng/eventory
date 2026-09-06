@@ -14,6 +14,7 @@ import (
 type teamLobbyRepositoryStub struct {
 	tournament *models.Tournament
 	team       *models.TournamentTeam
+	activeTeam *models.TournamentTeam
 	created    *models.TournamentTeam
 	captain    *models.TournamentTeamMember
 }
@@ -29,6 +30,12 @@ func (s *teamLobbyRepositoryStub) FindByID(_ context.Context, _ uuid.UUID) (*mod
 }
 func (s *teamLobbyRepositoryStub) FindByInviteCode(_ context.Context, _ string) (*models.TournamentTeam, error) {
 	return nil, repositories.ErrTeamLobbyNotFound
+}
+func (s *teamLobbyRepositoryStub) FindActiveByTournamentAndAccount(_ context.Context, _ uuid.UUID, _ uuid.UUID) (*models.TournamentTeam, error) {
+	if s.activeTeam == nil {
+		return nil, repositories.ErrTeamLobbyNotFound
+	}
+	return s.activeTeam, nil
 }
 func (s *teamLobbyRepositoryStub) Create(_ context.Context, team *models.TournamentTeam, captain *models.TournamentTeamMember) (*models.TournamentTeam, error) {
 	captain.TournamentTeamID = team.ID
@@ -109,5 +116,18 @@ func TestCaptainActions_RejectNonCaptain(t *testing.T) {
 	_, err := useCase.Lock(context.Background(), repo.team.ID, uuid.New())
 	if !errors.Is(err, usecases.ErrLobbyAccessDenied) {
 		t.Fatalf("Lock() error = %v, want captain access denial", err)
+	}
+}
+
+func TestGetActiveForTournament_ReturnsActiveTeam(t *testing.T) {
+	team := &models.TournamentTeam{ID: uuid.New(), Name: "Night Owls"}
+	useCase := usecases.NewTeamLobbyUseCase(&teamLobbyRepositoryStub{activeTeam: team})
+
+	got, err := useCase.GetActiveForTournament(context.Background(), uuid.New(), uuid.New())
+	if err != nil {
+		t.Fatalf("GetActiveForTournament() error = %v", err)
+	}
+	if got != team {
+		t.Fatalf("GetActiveForTournament() = %+v, want %+v", got, team)
 	}
 }
