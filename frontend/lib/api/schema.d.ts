@@ -88,6 +88,26 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/tournaments/{tournamentId}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * View tournament details
+     * @description Returns a published tournament with its registered teams and funding progress.
+     */
+    get: operations["get-tournament-details"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/health": {
     parameters: {
       query?: never;
@@ -190,6 +210,42 @@ export interface components {
       /** @description Chosen display username */
       username: string;
     };
+    TournamentDetailsBody: {
+      /**
+       * Format: uri
+       * @description A URL to the JSON Schema for this object.
+       * @example https://example.com/schemas/TournamentDetailsBody.json
+       */
+      readonly $schema?: string;
+      funding: components["schemas"]["TournamentFundingResponse"];
+      teams: components["schemas"]["TournamentTeamResponse"][] | null;
+      tournament: components["schemas"]["TournamentResponse"];
+    };
+    TournamentFundingResponse: {
+      currency: string;
+      /**
+       * Format: int64
+       * @description Funding goal in whole currency units
+       */
+      goalAmount: number;
+      /**
+       * Format: double
+       * @description Percentage of the funding goal raised
+       */
+      percentage: number;
+      /**
+       * Format: int64
+       * @description Amount raised in whole currency units
+       */
+      raisedAmount: number;
+      /**
+       * Format: int64
+       * @description Amount remaining to reach the goal
+       */
+      remainingAmount: number;
+      /** Format: int64 */
+      supporterCount: number;
+    };
     TournamentListBody: {
       /**
        * Format: uri
@@ -229,6 +285,12 @@ export interface components {
       /** Format: date-time */
       startAt: string;
       status: string;
+    };
+    TournamentTeamResponse: {
+      id: string;
+      /** Format: int64 */
+      memberCount: number;
+      name: string;
     };
     UpdateUsernameRequest: {
       /**
@@ -408,6 +470,38 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["TournamentListBody"];
+        };
+      };
+      /** @description Error */
+      default: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["ErrorModel"];
+        };
+      };
+    };
+  };
+  "get-tournament-details": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description Tournament ID */
+        tournamentId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["TournamentDetailsBody"];
         };
       };
       /** @description Error */

@@ -6,6 +6,9 @@ func All() []any {
 		&OrganizerProfile{},
 		&SponsorProfile{},
 		&Tournament{},
+		&TournamentTeam{},
+		&TournamentTeamMember{},
+		&TournamentFunding{},
 		// TODO??????
 	}
 }

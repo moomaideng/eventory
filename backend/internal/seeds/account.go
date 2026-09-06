@@ -27,6 +27,42 @@ func SeedAccounts(db *gorm.DB) error {
 			Username: "maya_works",
 			Status:   "ACTIVE",
 		},
+		{
+			ID:       uuid.MustParse("00000000-0000-0000-0000-000000000010"),
+			Email:    "player1@example.com",
+			Username: "player_one",
+			Status:   "ACTIVE",
+		},
+		{
+			ID:       uuid.MustParse("00000000-0000-0000-0000-000000000011"),
+			Email:    "player2@example.com",
+			Username: "player_two",
+			Status:   "ACTIVE",
+		},
+		{
+			ID:       uuid.MustParse("00000000-0000-0000-0000-000000000012"),
+			Email:    "player3@example.com",
+			Username: "player_three",
+			Status:   "ACTIVE",
+		},
+		{
+			ID:       uuid.MustParse("00000000-0000-0000-0000-000000000013"),
+			Email:    "player4@example.com",
+			Username: "player_four",
+			Status:   "ACTIVE",
+		},
+		{
+			ID:       uuid.MustParse("00000000-0000-0000-0000-000000000014"),
+			Email:    "player5@example.com",
+			Username: "player_five",
+			Status:   "ACTIVE",
+		},
+		{
+			ID:       uuid.MustParse("00000000-0000-0000-0000-000000000015"),
+			Email:    "player6@example.com",
+			Username: "player_six",
+			Status:   "ACTIVE",
+		},
 	}
 
 	if err := db.Clauses(clause.OnConflict{DoNothing: true}).Create(&accounts).Error; err != nil {

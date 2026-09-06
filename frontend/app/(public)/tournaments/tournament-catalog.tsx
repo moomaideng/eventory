@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   ArrowLeft,
@@ -12,6 +13,7 @@ import {
   Trophy,
   Users,
   WalletCards,
+  ArrowUpRight,
 } from "lucide-react";
 import { $api } from "@/lib/api/client";
 import type { components } from "@/lib/api/schema";
@@ -299,11 +301,20 @@ function TournamentCard({ tournament }: { tournament: Tournament }) {
           <Detail icon={MapPin}>{tournament.location}</Detail>
         </div>
       </CardContent>
-      <CardFooter>
+      <CardFooter className="flex justify-between gap-3">
         <div className="text-muted-foreground flex items-center gap-2 text-sm">
           <Users className="size-4" />
           {seatsLeft} of {tournament.capacity} spots available
         </div>
+        <Button
+          render={<Link href={`/tournaments/${tournament.id}`} />}
+          nativeButton={false}
+          size="sm"
+          variant="outline"
+        >
+          View details
+          <ArrowUpRight data-icon="inline-end" />
+        </Button>
       </CardFooter>
     </Card>
   );
