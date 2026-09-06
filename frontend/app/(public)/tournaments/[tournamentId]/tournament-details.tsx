@@ -14,7 +14,7 @@ import { $api } from "@/lib/api/client";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -78,6 +78,11 @@ export function TournamentDetails({ tournamentId }: { tournamentId: string }) {
   );
   const status = tournament.status.replaceAll("_", " ").toLowerCase();
   const progressValue = Math.min(Math.max(funding.percentage, 0), 100);
+  const supportsTeams =
+    tournament.registrationMode === "TEAM" ||
+    tournament.registrationMode === "BOTH";
+  const canCreateTeam =
+    supportsTeams && tournament.status === "REGISTRATION_OPEN";
 
   return (
     <main className="container mx-auto flex w-full max-w-7xl flex-1 flex-col gap-8 px-4 py-10 sm:px-8">
@@ -106,6 +111,15 @@ export function TournamentDetails({ tournamentId }: { tournamentId: string }) {
             Hosted by {tournament.organizerName}
           </p>
         </div>
+        {canCreateTeam ? (
+          <Link
+            href={`/tournaments/${tournament.id}/team`}
+            className={buttonVariants({ className: "self-start" })}
+          >
+            <Users data-icon="inline-start" />
+            Create a team
+          </Link>
+        ) : null}
       </header>
 
       <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">

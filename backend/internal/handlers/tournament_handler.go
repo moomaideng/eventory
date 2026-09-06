@@ -24,12 +24,14 @@ type TournamentResponse struct {
 	RegistrationDeadline time.Time `json:"registrationDeadline"`
 	EntryFee             int64     `json:"entryFee" doc:"Entry fee in whole currency units"`
 	Currency             string    `json:"currency"`
+	RegistrationMode     string    `json:"registrationMode" enum:"SOLO,TEAM,BOTH"`
+	MinTeamSize          int       `json:"minTeamSize"`
+	MaxTeamSize          int       `json:"maxTeamSize"`
 	Capacity             int       `json:"capacity"`
 	RegisteredCount      int       `json:"registeredCount"`
 	Status               string    `json:"status"`
 }
 
-// query input
 type SearchTournamentsInput struct {
 	Q           string `query:"q" maxLength:"100" doc:"Case-insensitive name, game, or description search"`
 	StartFrom   string `query:"startFrom" doc:"Earliest tournament start date (YYYY-MM-DD)"`
@@ -157,7 +159,6 @@ func optionalFee(value int64) *int64 {
 	return &value
 }
 
-// response
 func toTournamentResponse(tournament models.Tournament, registeredCount int) TournamentResponse {
 	return TournamentResponse{
 		ID: tournament.ID, Name: tournament.Name, Description: tournament.Description,
@@ -166,6 +167,8 @@ func toTournamentResponse(tournament models.Tournament, registeredCount int) Tou
 		StartAt:       tournament.StartsAt, EndAt: tournament.EndsAt,
 		RegistrationDeadline: tournament.RegistrationDeadline,
 		EntryFee:             tournament.EntryFee, Currency: tournament.Currency,
+		RegistrationMode: string(tournament.RegistrationMode),
+		MinTeamSize:      tournament.MinTeamSize, MaxTeamSize: tournament.MaxTeamSize,
 		Capacity: tournament.Capacity, RegisteredCount: registeredCount,
 		Status: string(tournament.Status),
 	}
