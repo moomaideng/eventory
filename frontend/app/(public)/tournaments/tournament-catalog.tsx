@@ -109,16 +109,12 @@ export function TournamentCatalog() {
 
   return (
     <div className="container mx-auto flex w-full max-w-7xl flex-1 flex-col gap-6 px-4 py-12 sm:px-8">
-      <h1 className="text-xl font-semibold tracking-tight">Tournaments</h1>
+      <div className="flex items-baseline gap-2">
+        <h1 className="text-xl font-semibold tracking-tight">Tournaments</h1>
+        <p className="text-muted-foreground text-sm">Search and filters</p>
+      </div>
 
       <Card>
-        <CardHeader>
-          <CardTitle>Search and filters</CardTitle>
-          <CardDescription>
-            Dates and times use Bangkok time. Entry fees are currently listed in
-            Thai baht.
-          </CardDescription>
-        </CardHeader>
         <CardContent>
           <form
             id="tournament-filters"
