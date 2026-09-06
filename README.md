@@ -89,125 +89,119 @@ eventory/
 
 ## Local Development Setup
 
-### 1. Prerequisites
+The commands in this root directory use **GNU Make** and **Docker Compose** for multi-service orchestration.
 
-- **Docker Desktop / Docker Compose:** Runs local PostgreSQL or the optional complete containerized stack.
-- **Node.js 24+** and **Go 1.26+:** Run the frontend and backend directly on the host for reliable hot reload.
-- **GNU Make:** Optional on every platform. Native Windows users without Make can run the PowerShell script directly.
-
-Docker, Node.js, Go, and Make are system tools and must already be installed.
+> [!IMPORTANT]
+> **Want to run services manually & natively (Recommended for Windows)?**
+> **Skip this root guide completely.** If you want to develop each service natively with direct terminal control (without GNU Make or root wrapper scripts), go straight to the dedicated documentation in each service folder:
+> - 📦 **Backend & Database:** See [`backend/README.md`](backend/README.md) to start PostgreSQL, run migrations, seed mock records, and launch the Go API.
+> - 💻 **Frontend:** See [`frontend/README.md`](frontend/README.md) to install packages, sync OpenAPI contracts, and launch Next.js.
 
 ---
 
-### 2. Configure the local environment
+### 1. Prerequisites
 
-Each application owns its local environment file:
+- **Docker Desktop / Docker Compose:** Runs local PostgreSQL (or the complete containerized stack).
+- **Node.js 24+** and **Go 1.26+:** Required for running the frontend and backend on the host.
+- **GNU Make:** Used for root automation commands on macOS, Linux, and WSL.
+
+---
+
+### 2. Configure Environment Files
+
+Each application owns its local environment file (run `cp` in terminal or duplicate the files manually in your editor):
 
 ```bash
 cp backend/.env.example backend/.env
 cp frontend/.env.example frontend/.env.local
 ```
 
-On Windows PowerShell:
-
-```powershell
-Copy-Item backend/.env.example backend/.env
-Copy-Item frontend/.env.example frontend/.env.local
-```
-
 `backend/.env` uses `localhost` because native Go connects through PostgreSQL's published port. Compose injects the same file but overrides `DB_DSN` with Docker's `postgres` hostname. Next.js loads `frontend/.env.local` automatically, and Compose also injects it into the frontend container.
 
-### 3. Install local dependencies
+---
+
+### 3. Install Dependencies
+
+Install host dependencies and live-reload tools using Make:
 
 ```bash
 make install
 ```
 
-This runs `npm ci`, downloads the backend Go modules, and installs Air `v1.67.3`.
+*(This runs `npm ci` in `frontend/`, downloads Go modules in `backend/`, and installs Air `v1.67.3`).*
 
-When adding a frontend package, install it on the host to update both the manifest and lockfile:
+---
 
-```bash
-npm --prefix frontend install <package>
-```
+### 4. Run the Stack
 
-If you later use the complete Docker stack, synchronize its dependency volume with `make frontend-deps`.
+Choose between running applications natively on your host (recommended for fast reload) or fully containerized in Docker:
 
-When adding a backend module, update `go.mod` and `go.sum` from the host:
+#### Option A: Native Development (Recommended)
 
-```bash
-go -C backend get <module>
-```
-
-### 4. Run the development stack
-
-The default workflow runs PostgreSQL in Docker and both applications on the host. It stops any existing Docker frontend/backend containers first so they cannot occupy the same ports, while leaving PostgreSQL running. This gives Next.js and Air direct access to the host filesystem for reliable hot reload.
-
-With GNU Make on Linux, WSL, or Windows:
+Starts PostgreSQL in Docker, then runs the backend (Air) and frontend (Next.js) natively on your host:
 
 ```bash
 make dev
 ```
 
-Make selects Bash or PowerShell from the operating system. Native Windows users without Make can run the script directly:
-
-```powershell
-.\scripts\dev.ps1
-```
-
-For the complete containerized stack instead:
-
-```bash
-make dev-docker
-```
-
-Without Make, the equivalent Docker command works in Bash and PowerShell:
-
-```bash
-docker compose --env-file backend/.env --env-file frontend/.env.local up --build
-```
-
-Restart the affected process after changing an environment file.
+> **Platform Compatibility:** On **Linux**, **macOS**, and **WSL**, this command works seamlessly out-of-the-box. *(On native Windows, we recommend running directly within [`backend/`](backend/README.md) and [`frontend/`](frontend/README.md)).*
 
 - Frontend: `http://localhost:3000`
 - Backend: `http://localhost:8080`
 - API documentation: `http://localhost:8080/docs`
 
-Air rebuilds the native backend when Go files change. Next.js handles frontend Fast Refresh and CSS updates directly on the host.
+#### Option B: Complete Docker Stack
 
-### 5. Useful commands
+Runs all services (PostgreSQL, Go backend, and Next.js frontend) entirely inside Docker:
 
 ```bash
-# Start only PostgreSQL
-make db
-
-# Start both applications natively
-make dev
-
-# Start the complete stack in Docker
 make dev-docker
+```
 
-# Run migrations or seed data natively
-make migrate
-make seed
+Without Make, the equivalent Docker Compose command is:
+```bash
+docker compose --env-file backend/.env --env-file frontend/.env.local up --build
+```
 
-# Run migrations or seed data through a freshly built Docker image
-make migrate-docker
-make seed-docker
+> **Note on Docker & Troubleshooting:**
+> Running entirely in Docker consumes more system resources (RAM/CPU), but provides the most reliable environment that works out-of-the-box across most machines without tool version mismatches.
+> 
+> If you modify code or install dependencies and the changes do not seem to update inside the containers, the simplest, no-brainer workaround is to tear down the containers and start fresh:
+> ```bash
+> make down
+> make dev-docker
+> ```
+> *(Without Make: run `docker compose --env-file backend/.env --env-file frontend/.env.local down` followed by the `up --build` command).*
 
-# Start one application natively
-make backend
-make frontend
+---
 
-# Start one application through Docker
-make backend-docker
-make frontend-docker
+### 5. Useful Commands
 
-# Refresh Docker dependencies after changing frontend packages
-make frontend-deps
+All root commands are driven by Make:
 
-# Stop the stack
-make down
+```bash
+# Infrastructure
+make db               # Start only the PostgreSQL database container
+make dev              # Start PostgreSQL in Docker + backend & frontend on host
+make dev-docker       # Start complete stack in Docker
+make down             # Stop and remove all containers
+
+# Database Operations
+make migrate          # Run database migrations natively
+make seed             # Seed mock development records natively
+make reset            # Reset database schema and rerun migrations natively (recommended for dev)
+make migrate-docker   # Run migrations inside a Docker container
+make seed-docker      # Seed data inside a Docker container
+
+# Individual Services
+make backend          # Run only the backend natively with Air
+make frontend         # Run only the frontend natively with Next.js
+make backend-docker   # Run only the backend in Docker
+make frontend-docker  # Run only the frontend in Docker
+
+# Quality & Verification
+make test             # Run Go unit tests, ESLint, and TypeScript checks
+make frontend-deps    # Refresh Docker node_modules volume after package changes
 ```
 
 No development script parses or exports `.env` values. Viper reads `backend/.env` for native commands, Next.js reads `frontend/.env.local`, and Compose injects both files for containers. Browser-visible frontend settings use the `NEXT_PUBLIC_` prefix. In Docker, server-side frontend requests use the private `http://backend:8080` address while browser requests continue using `NEXT_PUBLIC_API_URL`.
