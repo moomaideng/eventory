@@ -11,7 +11,9 @@ import {
   MapPin,
   Search,
   Trophy,
+  UserRound,
   Users,
+  UsersRound,
   WalletCards,
   ArrowUpRight,
 } from "lucide-react";
@@ -274,8 +276,9 @@ function TournamentCard({ tournament }: { tournament: Tournament }) {
   return (
     <Card className="h-full">
       <CardHeader>
-        <div className="flex items-start justify-between gap-3">
+        <div className="flex flex-wrap gap-2">
           <Badge variant="secondary">{tournament.game}</Badge>
+          <RegistrationBadge mode={tournament.registrationMode} />
           <Badge variant="outline" className="capitalize">
             {status}
           </Badge>
@@ -317,6 +320,33 @@ function TournamentCard({ tournament }: { tournament: Tournament }) {
         </Button>
       </CardFooter>
     </Card>
+  );
+}
+
+function RegistrationBadge({ mode }: { mode: Tournament["registrationMode"] }) {
+  if (mode === "TEAM") {
+    return (
+      <Badge variant="outline">
+        <UsersRound data-icon="inline-start" />
+        Team
+      </Badge>
+    );
+  }
+
+  if (mode === "BOTH") {
+    return (
+      <Badge variant="outline">
+        <UsersRound data-icon="inline-start" />
+        Solo or team
+      </Badge>
+    );
+  }
+
+  return (
+    <Badge variant="outline">
+      <UserRound data-icon="inline-start" />
+      Solo
+    </Badge>
   );
 }
 
