@@ -96,6 +96,7 @@ export function TournamentDetails({ tournamentId }: { tournamentId: string }) {
     0
   );
   const status = tournament.status.replaceAll("_", " ").toLowerCase();
+  const registrationType = formatRegistrationType(tournament.registrationMode);
   const progressValue = Math.min(Math.max(funding.percentage, 0), 100);
   const supportsTeams =
     tournament.registrationMode === "TEAM" ||
@@ -125,6 +126,7 @@ export function TournamentDetails({ tournamentId }: { tournamentId: string }) {
           <Badge variant="outline" className="capitalize">
             {status}
           </Badge>
+          <Badge variant="outline">{registrationType}</Badge>
         </div>
         <div className="flex flex-col gap-2">
           <h1 className="max-w-4xl text-3xl font-bold tracking-tight sm:text-5xl">
@@ -174,6 +176,9 @@ export function TournamentDetails({ tournamentId }: { tournamentId: string }) {
                 </Detail>
                 <Detail icon={Users} label="Availability">
                   {spotsLeft} of {tournament.capacity} spots available
+                </Detail>
+                <Detail icon={Users} label="Registration type">
+                  {registrationType}
                 </Detail>
               </div>
             </CardContent>
@@ -378,6 +383,12 @@ function formatPercentage(value: number) {
   return `${new Intl.NumberFormat("en-US", {
     maximumFractionDigits: 1,
   }).format(value)}%`;
+}
+
+function formatRegistrationType(value: string) {
+  if (value === "TEAM") return "Team registration";
+  if (value === "BOTH") return "Solo or team registration";
+  return "Solo registration";
 }
 
 function initials(name: string) {
