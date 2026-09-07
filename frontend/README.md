@@ -36,13 +36,9 @@ frontend/
 │   ├── (auth)/                       # Auth Flow (Minimal Header with Logo only)
 │   │   ├── layout.tsx                # Auth layout
 │   │   ├── loading.tsx               # Instant card skeleton loading boundary
-│   │   ├── login/
-│   │   │   ├── page.tsx              # Server Component (Verified Auth redirect check)
-│   │   │   └── login-form.tsx        # Clean Google Sign-In card with Spinner
-│   │   └── onboarding/
+│   │   └── login/
 │   │       ├── page.tsx              # Server Component (Verified Auth redirect check)
-│   │       ├── actions.ts            # Server Action (Direct Go backend onboarding)
-│   │       └── onboarding-form.tsx   # React 19 Native useActionState Component
+│   │       └── login-form.tsx        # Clean Google Sign-In card with Spinner
 │   │
 │   ├── (public)/                     # Public & App Views (Full Navbar with Role Switcher)
 │   │   ├── layout.tsx                # Public layout with Navbar

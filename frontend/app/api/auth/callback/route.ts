@@ -36,26 +36,35 @@ export async function GET(request: Request) {
           );
         }
 
-        // Check if account already exists in Eventory PostgreSQL DB
+        // Just-In-Time (JIT) Auto-Provision Account in Eventory PostgreSQL DB
         try {
-          const { data: account } = await apiClient.GET("/api/v1/accounts/me", {
+          const userMeta = data.session.user.user_metadata || {};
+          const displayName =
+            userMeta.full_name ||
+            userMeta.name ||
+            data.session.user.email?.split("@")[0] ||
+            "User";
+          const avatarUrl = userMeta.avatar_url || userMeta.picture;
+
+          await apiClient.POST("/api/v1/accounts", {
             headers: {
               Authorization: `Bearer ${data.session.access_token}`,
             },
+            body: {
+              displayName,
+              avatarUrl,
+            },
           });
-
-          if (account) {
-            // Case 1: Existing User -> Bypass onboarding and go straight to Home
-            return NextResponse.redirect(`${origin}/`);
-          }
         } catch (backendErr) {
           if (process.env.NODE_ENV === "development") {
-            console.warn("[Auth Callback] Account lookup error:", backendErr);
+            console.warn(
+              "[Auth Callback] Account JIT auto-provisioning error:",
+              backendErr
+            );
           }
         }
 
-        // Case 2: New User (404) -> Needs to pick display name in Onboarding
-        return NextResponse.redirect(`${origin}/onboarding`);
+        return NextResponse.redirect(`${origin}/`);
       }
     } catch (err) {
       console.error("[Auth Callback] Auth exchange error:", err);
