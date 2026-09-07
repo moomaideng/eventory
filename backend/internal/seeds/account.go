@@ -10,6 +10,12 @@ import (
 func SeedAccounts(db *gorm.DB) error {
 	accounts := []models.Account{
 		{
+			ID:       uuid.MustParse("99999999-0000-0000-0000-000000000001"),
+			Email:    "dev@eventory.gg",
+			Username: "dev_competitor",
+			Status:   "ACTIVE",
+		},
+		{
 			ID:       uuid.MustParse("00000000-0000-0000-0000-000000000001"),
 			Email:    "alice@example.com",
 			Username: "alice_events",

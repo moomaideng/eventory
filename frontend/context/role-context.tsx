@@ -43,6 +43,7 @@ interface RoleContextType {
   organizerProfile: OrganizerProfile | null;
   sponsorProfile: SponsorProfile | null;
   isLoading: boolean;
+  authorizationHeader: string | undefined;
   setRole: (role: UserRole) => void;
   loginWithGoogle: () => Promise<void>;
   loginAsDev: (role?: UserRole) => void;
@@ -60,9 +61,9 @@ const RoleContext = createContext<RoleContextType | undefined>(undefined);
 
 // Mock data for local development mode
 const MOCK_USER: UserProfile = {
-  id: "dev-user-001",
+  id: "99999999-0000-0000-0000-000000000001",
   email: "dev@eventory.gg",
-  displayName: "MooMai (Dev)",
+  displayName: "Dev Competitor",
   avatarUrl: "https://api.dicebear.com/7.x/avataaars/svg?seed=MooMai",
 };
 
@@ -151,6 +152,12 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
   const isLoading =
     isAuthLoading ||
     (Boolean(session?.accessToken) && !devUser && isAccountLoading);
+
+  const authorizationHeader = devUser
+    ? "Bearer dev-token"
+    : session?.accessToken
+      ? `Bearer ${session.accessToken}`
+      : undefined;
 
   // Query cache invalidation and refetch on demand / onboarding completion
   const refreshUser = useCallback(async () => {
@@ -311,6 +318,7 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
       organizerProfile,
       sponsorProfile,
       isLoading,
+      authorizationHeader,
       setRole,
       loginWithGoogle,
       loginAsDev,
@@ -327,6 +335,7 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
       organizerProfile,
       sponsorProfile,
       isLoading,
+      authorizationHeader,
       setRole,
       loginAsDev,
       logout,

@@ -44,7 +44,6 @@ func NewTournamentRepository(db *gorm.DB) TournamentRepository {
 	return &tournamentRepositoryImpl{db: db}
 }
 
-// basically convert query into SQL
 func (r *tournamentRepositoryImpl) Search(
 	ctx context.Context,
 	filters TournamentFilters,

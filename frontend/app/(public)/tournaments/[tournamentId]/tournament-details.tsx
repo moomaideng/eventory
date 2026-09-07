@@ -11,14 +11,16 @@ import {
   WalletCards,
 } from "lucide-react";
 import { $api } from "@/lib/api/client";
+import { useRole } from "@/context/role-context";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import {
   Card,
   CardContent,
   CardDescription,
+  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -38,11 +40,28 @@ import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export function TournamentDetails({ tournamentId }: { tournamentId: string }) {
+  const { activeRole, authorizationHeader } = useRole();
+  const isCompetitor = activeRole === "competitor";
   const { data, error, isLoading } = $api.useQuery(
     "get",
     "/api/v1/tournaments/{tournamentId}",
     { params: { path: { tournamentId } } },
     { staleTime: 30_000 }
+  );
+  const { data: myTeam, isLoading: isMyTeamLoading } = $api.useQuery(
+    "get",
+    "/api/v1/tournaments/{tournamentId}/my-team",
+    {
+      params: { path: { tournamentId } },
+      headers: authorizationHeader
+        ? { Authorization: authorizationHeader }
+        : {},
+    },
+    {
+      enabled: Boolean(authorizationHeader) && isCompetitor,
+      retry: false,
+      staleTime: 0,
+    }
   );
 
   if (isLoading) return <DetailsSkeleton />;
@@ -77,7 +96,17 @@ export function TournamentDetails({ tournamentId }: { tournamentId: string }) {
     0
   );
   const status = tournament.status.replaceAll("_", " ").toLowerCase();
+  const registrationType = formatRegistrationType(tournament.registrationMode);
   const progressValue = Math.min(Math.max(funding.percentage, 0), 100);
+  const supportsTeams =
+    tournament.registrationMode === "TEAM" ||
+    tournament.registrationMode === "BOTH";
+  const canCreateTeam =
+    isCompetitor &&
+    supportsTeams &&
+    tournament.status === "REGISTRATION_OPEN" &&
+    !isMyTeamLoading &&
+    !myTeam;
 
   return (
     <main className="container mx-auto flex w-full max-w-7xl flex-1 flex-col gap-8 px-4 py-10 sm:px-8">
@@ -97,6 +126,7 @@ export function TournamentDetails({ tournamentId }: { tournamentId: string }) {
           <Badge variant="outline" className="capitalize">
             {status}
           </Badge>
+          <Badge variant="outline">{registrationType}</Badge>
         </div>
         <div className="flex flex-col gap-2">
           <h1 className="max-w-4xl text-3xl font-bold tracking-tight sm:text-5xl">
@@ -106,6 +136,15 @@ export function TournamentDetails({ tournamentId }: { tournamentId: string }) {
             Hosted by {tournament.organizerName}
           </p>
         </div>
+        {canCreateTeam ? (
+          <Link
+            href={`/tournaments/${tournament.id}/team`}
+            className={buttonVariants({ className: "self-start" })}
+          >
+            <Users data-icon="inline-start" />
+            Create a team
+          </Link>
+        ) : null}
       </header>
 
       <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
@@ -137,6 +176,9 @@ export function TournamentDetails({ tournamentId }: { tournamentId: string }) {
                 </Detail>
                 <Detail icon={Users} label="Availability">
                   {spotsLeft} of {tournament.capacity} spots available
+                </Detail>
+                <Detail icon={Users} label="Registration type">
+                  {registrationType}
                 </Detail>
               </div>
             </CardContent>
@@ -188,46 +230,80 @@ export function TournamentDetails({ tournamentId }: { tournamentId: string }) {
           </Card>
         </div>
 
-        <Card className="lg:sticky lg:top-24">
-          <CardHeader>
-            <div className="bg-primary text-primary-foreground flex size-10 items-center justify-center rounded-lg">
-              <Trophy className="size-5" />
-            </div>
-            <CardTitle>Funding progress</CardTitle>
-            <CardDescription>
-              Community support helps fund the prize pool and event costs.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="gap-5">
-            <div className="flex flex-col gap-1">
-              <p className="text-3xl font-bold tracking-tight">
-                {formatMoney(funding.raisedAmount, funding.currency)}
-              </p>
-              <p className="text-muted-foreground text-sm">
-                raised of {formatMoney(funding.goalAmount, funding.currency)}
-              </p>
-            </div>
-            <Progress value={progressValue}>
-              <ProgressLabel>Funding goal</ProgressLabel>
-              <ProgressValue>
-                {() => formatPercentage(funding.percentage)}
-              </ProgressValue>
-            </Progress>
-            <Separator />
-            <div className="grid grid-cols-2 gap-4">
-              <FundingStat
-                label="Supporters"
-                value={new Intl.NumberFormat("en-US").format(
-                  funding.supporterCount
-                )}
-              />
-              <FundingStat
-                label="Still needed"
-                value={formatMoney(funding.remainingAmount, funding.currency)}
-              />
-            </div>
-          </CardContent>
-        </Card>
+        <div className="flex flex-col gap-6 lg:sticky lg:top-24">
+          {isCompetitor && myTeam ? (
+            <Card>
+              <CardHeader>
+                <CardTitle>Your team</CardTitle>
+                <CardDescription>
+                  Your registration team for this tournament.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="flex flex-col gap-3">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="font-medium">{myTeam.name}</p>
+                  <Badge variant="outline" className="capitalize">
+                    {myTeam.status.toLowerCase()}
+                  </Badge>
+                </div>
+                <p className="text-muted-foreground text-sm">
+                  {myTeam.members?.length ?? 0} of {tournament.maxTeamSize}{" "}
+                  players
+                </p>
+              </CardContent>
+              <CardFooter>
+                <Link
+                  href={`/lobbies/${myTeam.inviteCode}`}
+                  className={buttonVariants({ className: "w-full" })}
+                >
+                  <Users data-icon="inline-start" />
+                  Open team lobby
+                </Link>
+              </CardFooter>
+            </Card>
+          ) : null}
+
+          <Card>
+            <CardHeader>
+              <div className="bg-primary text-primary-foreground flex size-10 items-center justify-center rounded-lg">
+                <Trophy className="size-5" />
+              </div>
+              <CardTitle>Funding progress</CardTitle>
+              <CardDescription>
+                Community support helps fund the prize pool and event costs.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-5">
+              <div className="flex flex-col gap-1">
+                <p className="text-3xl font-bold tracking-tight">
+                  {formatMoney(funding.raisedAmount, funding.currency)}
+                </p>
+                <p className="text-muted-foreground text-sm">
+                  raised of {formatMoney(funding.goalAmount, funding.currency)}
+                </p>
+              </div>
+              <Progress value={progressValue}>
+                <ProgressLabel>Funding goal</ProgressLabel>
+                <ProgressValue>
+                  {() => formatPercentage(funding.percentage)}
+                </ProgressValue>
+              </Progress>
+              <Separator />
+              <div className="grid grid-cols-2 gap-4">
+                <FundingStat
+                  label="Supporters"
+                  value={new Intl.NumberFormat("en-US").format(
+                    funding.supporterCount
+                  )}
+                />
+                <FundingStat
+                  label="Still needed"
+                  value={formatMoney(funding.remainingAmount, funding.currency)}
+                />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </main>
   );
@@ -307,6 +383,12 @@ function formatPercentage(value: number) {
   return `${new Intl.NumberFormat("en-US", {
     maximumFractionDigits: 1,
   }).format(value)}%`;
+}
+
+function formatRegistrationType(value: string) {
+  if (value === "TEAM") return "Team registration";
+  if (value === "BOTH") return "Solo or team registration";
+  return "Solo registration";
 }
 
 function initials(name: string) {

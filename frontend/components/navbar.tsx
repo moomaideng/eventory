@@ -38,7 +38,6 @@ const ROLES: { id: UserRole; label: string; icon: React.ElementType }[] = [
 const NAV_LINKS: Record<UserRole, { label: string; href: string }[]> = {
   competitor: [
     { label: "Tournaments", href: "/tournaments" },
-    { label: "Lobby (Demo)", href: "/lobbies/DEMO123" },
   ],
   organizer: [
     { label: "My Tournaments", href: "/organizer" },

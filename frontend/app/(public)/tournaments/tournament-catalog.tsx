@@ -132,8 +132,12 @@ export function TournamentCatalog() {
             Thai baht.
           </CardDescription>
         </CardHeader>
-        <form key={searchParams.toString()} onSubmit={applyFilters}>
-          <CardContent>
+        <CardContent>
+          <form
+            id="tournament-filters"
+            key={searchParams.toString()}
+            onSubmit={applyFilters}
+          >
             <FieldGroup className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
               <Field>
                 <FieldLabel htmlFor="tournament-search">Search</FieldLabel>
@@ -176,17 +180,17 @@ export function TournamentCatalog() {
                 />
               </Field>
             </FieldGroup>
-          </CardContent>
-          <CardFooter className="flex flex-wrap justify-end gap-2">
-            <Button type="button" variant="ghost" onClick={clearFilters}>
-              Clear filters
-            </Button>
-            <Button type="submit">
-              <Search data-icon="inline-start" />
-              Apply filters
-            </Button>
-          </CardFooter>
-        </form>
+          </form>
+        </CardContent>
+        <CardFooter className="flex flex-wrap justify-end gap-2">
+          <Button type="button" variant="ghost" onClick={clearFilters}>
+            Clear filters
+          </Button>
+          <Button type="submit" form="tournament-filters">
+            <Search data-icon="inline-start" />
+            Apply filters
+          </Button>
+        </CardFooter>
       </Card>
 
       <div className="flex items-center justify-between gap-4">

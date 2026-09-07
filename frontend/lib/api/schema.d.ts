@@ -68,6 +68,108 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/lobbies/{id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    /** Disband a team lobby */
+    delete: operations["disband-team-lobby"];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/lobbies/{id}/invite/regenerate": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Regenerate a team invite */
+    post: operations["regenerate-team-lobby-invite"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/lobbies/{id}/lock": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Lock a team roster */
+    post: operations["lock-team-lobby"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/lobbies/{id}/members/{memberId}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    /** Remove a lobby member */
+    delete: operations["remove-team-lobby-member"];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/lobbies/{inviteCode}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** View a team lobby by invite code */
+    get: operations["get-team-lobby"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/lobbies/{inviteCode}/join": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Join a team lobby */
+    post: operations["join-team-lobby"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/tournaments": {
     parameters: {
       query?: never;
@@ -100,6 +202,43 @@ export interface paths {
      * @description Returns a published tournament with its registered teams and funding progress.
      */
     get: operations["get-tournament-details"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/tournaments/{tournamentId}/lobbies": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Create a team lobby
+     * @description Creates a forming team and makes the authenticated account its captain.
+     */
+    post: operations["create-team-lobby"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/tournaments/{tournamentId}/my-team": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** View the authenticated competitor's team for a tournament */
+    get: operations["get-my-tournament-team"];
     put?: never;
     post?: never;
     delete?: never;
@@ -152,6 +291,16 @@ export interface components {
       status: string;
       /** @description User display username */
       username: string;
+    };
+    CreateTeamLobbyRequest: {
+      /**
+       * Format: uri
+       * @description A URL to the JSON Schema for this object.
+       * @example https://example.com/schemas/CreateTeamLobbyRequest.json
+       */
+      readonly $schema?: string;
+      /** @description Team name */
+      name: string;
     };
     ErrorDetail: {
       /** @description Where the error occurred, e.g. 'body.items[3].tags' or 'path.thing-id' */
@@ -209,6 +358,36 @@ export interface components {
       readonly $schema?: string;
       /** @description Chosen display username */
       username: string;
+    };
+    TeamLobbyMemberResponse: {
+      accountId: string;
+      id: string;
+      /** Format: date-time */
+      joinedAt: string;
+      /** @enum {string} */
+      role: "CAPTAIN" | "MEMBER";
+      username: string;
+    };
+    TeamLobbyResponse: {
+      /**
+       * Format: uri
+       * @description A URL to the JSON Schema for this object.
+       * @example https://example.com/schemas/TeamLobbyResponse.json
+       */
+      readonly $schema?: string;
+      captainId: string;
+      captainName: string;
+      /** Format: date-time */
+      createdAt: string;
+      id: string;
+      inviteCode: string;
+      members: components["schemas"]["TeamLobbyMemberResponse"][] | null;
+      name: string;
+      /** @enum {string} */
+      status: "FORMING" | "LOCKED" | "ACCEPTED" | "REJECTED";
+      tournament: components["schemas"]["TournamentResponse"];
+      /** @enum {string} */
+      viewerRole: "CAPTAIN" | "MEMBER" | "INVITEE";
     };
     TournamentDetailsBody: {
       /**
@@ -276,12 +455,18 @@ export interface components {
       game: string;
       id: string;
       location: string;
+      /** Format: int64 */
+      maxTeamSize: number;
+      /** Format: int64 */
+      minTeamSize: number;
       name: string;
       organizerName: string;
       /** Format: int64 */
       registeredCount: number;
       /** Format: date-time */
       registrationDeadline: string;
+      /** @enum {string} */
+      registrationMode: "SOLO" | "TEAM" | "BOTH";
       /** Format: date-time */
       startAt: string;
       status: string;
@@ -438,6 +623,198 @@ export interface operations {
       };
     };
   };
+  "disband-team-lobby": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description Team UUID */
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description No Content */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Error */
+      default: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["ErrorModel"];
+        };
+      };
+    };
+  };
+  "regenerate-team-lobby-invite": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description Team UUID */
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["TeamLobbyResponse"];
+        };
+      };
+      /** @description Error */
+      default: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["ErrorModel"];
+        };
+      };
+    };
+  };
+  "lock-team-lobby": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description Team UUID */
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["TeamLobbyResponse"];
+        };
+      };
+      /** @description Error */
+      default: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["ErrorModel"];
+        };
+      };
+    };
+  };
+  "remove-team-lobby-member": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description Team UUID */
+        id: string;
+        /** @description Team member UUID */
+        memberId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["TeamLobbyResponse"];
+        };
+      };
+      /** @description Error */
+      default: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["ErrorModel"];
+        };
+      };
+    };
+  };
+  "get-team-lobby": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description Six-character team invite code */
+        inviteCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["TeamLobbyResponse"];
+        };
+      };
+      /** @description Error */
+      default: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["ErrorModel"];
+        };
+      };
+    };
+  };
+  "join-team-lobby": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description Six-character team invite code */
+        inviteCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["TeamLobbyResponse"];
+        };
+      };
+      /** @description Error */
+      default: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["ErrorModel"];
+        };
+      };
+    };
+  };
   "search-tournaments": {
     parameters: {
       query?: {
@@ -502,6 +879,74 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["TournamentDetailsBody"];
+        };
+      };
+      /** @description Error */
+      default: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["ErrorModel"];
+        };
+      };
+    };
+  };
+  "create-team-lobby": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description Tournament UUID */
+        tournamentId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["CreateTeamLobbyRequest"];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["TeamLobbyResponse"];
+        };
+      };
+      /** @description Error */
+      default: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["ErrorModel"];
+        };
+      };
+    };
+  };
+  "get-my-tournament-team": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description Tournament UUID */
+        tournamentId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["TeamLobbyResponse"];
         };
       };
       /** @description Error */
