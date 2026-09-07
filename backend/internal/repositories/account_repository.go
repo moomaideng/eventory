@@ -13,7 +13,7 @@ import (
 type AccountRepository interface {
 	FindByID(ctx context.Context, id uuid.UUID) (*models.Account, error)
 	FindByEmail(ctx context.Context, email string) (*models.Account, error)
-	FindByUsername(ctx context.Context, username string) (*models.Account, error)
+	FindByHandle(ctx context.Context, handle string) (*models.Account, error)
 	Create(ctx context.Context, account *models.Account) error
 	Update(ctx context.Context, account *models.Account) error
 }
@@ -54,10 +54,10 @@ func (r *accountRepositoryImpl) FindByEmail(ctx context.Context, email string) (
 	return &account, nil
 }
 
-// FindByUsername retrieves an account by its unique display username.
-func (r *accountRepositoryImpl) FindByUsername(ctx context.Context, username string) (*models.Account, error) {
+// FindByHandle retrieves an account by its unique handle.
+func (r *accountRepositoryImpl) FindByHandle(ctx context.Context, handle string) (*models.Account, error) {
 	var account models.Account
-	err := r.db.WithContext(ctx).First(&account, "username = ?", username).Error
+	err := r.db.WithContext(ctx).First(&account, "handle = ?", handle).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
