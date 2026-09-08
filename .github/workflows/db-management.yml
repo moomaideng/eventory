@@ -42,7 +42,7 @@ jobs:
             set -eu
             cd /opt/eventory
 
-            if [ \"\$RESET_DB\" = 'true' ]; then
+            if [ '$RESET_DB' = 'true' ]; then
               echo '==> Resetting database schema (DROP SCHEMA public CASCADE) and migrating...'
               sudo docker compose --env-file .env -f docker-compose.yml run --rm migrate ./migrate -reset
             else
@@ -50,7 +50,7 @@ jobs:
               sudo docker compose --env-file .env -f docker-compose.yml run --rm migrate ./migrate
             fi
 
-            if [ \"\$SEED_DATA\" = 'true' ]; then
+            if [ '$SEED_DATA' = 'true' ]; then
               echo '==> Seeding mock data (tournaments & accounts)...'
               sudo docker compose --env-file .env -f docker-compose.yml run --rm migrate ./seed
             fi
