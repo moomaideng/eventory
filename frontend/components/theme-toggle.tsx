@@ -18,7 +18,12 @@ export function ThemeToggle() {
     <DropdownMenu>
       <DropdownMenuTrigger
         render={
-          <Button variant="outline" size="icon" aria-label="Toggle theme" />
+          <Button
+            variant="outline"
+            size="icon"
+            aria-label="Toggle theme"
+            className="size-9 rounded-lg"
+          />
         }
       >
         <Sun className="scale-100 rotate-0 opacity-100 transition-[transform,opacity] dark:scale-95 dark:-rotate-90 dark:opacity-0" />

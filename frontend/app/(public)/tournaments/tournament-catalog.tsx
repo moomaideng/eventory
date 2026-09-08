@@ -17,7 +17,6 @@ import {
 } from "lucide-react";
 import { $api } from "@/lib/api/client";
 import type { components } from "@/lib/api/schema";
-import { useRole } from "@/context/role-context";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -47,7 +46,6 @@ export function TournamentCatalog() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const { activeRole } = useRole();
 
   const requestedPage = Number(searchParams.get("page") ?? "1");
   const page =
@@ -109,19 +107,14 @@ export function TournamentCatalog() {
 
   return (
     <div className="container mx-auto flex w-full max-w-7xl flex-1 flex-col gap-8 px-4 py-12 sm:px-8">
-      <div className="flex flex-col gap-3">
-        <Badge variant="outline" className="capitalize">
-          {activeRole} catalog
-        </Badge>
-        <div className="flex flex-col gap-2">
-          <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
-            Find your next tournament
-          </h1>
-          <p className="text-muted-foreground max-w-2xl">
-            Search published competitions and narrow the list to events that fit
-            your schedule and budget.
-          </p>
-        </div>
+      <div className="flex flex-col gap-2">
+        <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
+          Find your next tournament
+        </h1>
+        <p className="text-muted-foreground max-w-2xl">
+          Search published competitions and narrow the list to events that fit
+          your schedule and budget.
+        </p>
       </div>
 
       <Card>

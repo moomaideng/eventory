@@ -202,6 +202,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const loginAsDev = useCallback((_role?: string) => {
     void _role;
     setDevUser(MOCK_USER);
+    if (typeof document !== "undefined") {
+      document.cookie =
+        "eventory_dev_session=true; path=/; max-age=86400; SameSite=Lax";
+    }
   }, []);
 
   // Update primary user profile details with query cache update & invalidation
@@ -254,6 +258,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await supabase.auth.signOut();
     } catch {
       // Ignore cleanup error
+    }
+    if (typeof document !== "undefined") {
+      document.cookie = "eventory_dev_session=; path=/; max-age=0";
     }
     setDevUser(null);
     setSession(null);

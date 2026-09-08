@@ -1,5 +1,5 @@
 import type { UserProfile } from "./auth-context";
-import type { OrganizerProfile, SponsorProfile } from "./role-context";
+import type { OrganizerProfile, SponsorProfile } from "@/lib/role";
 
 // Mock primary user profile for local development mode
 export const MOCK_USER: UserProfile = {

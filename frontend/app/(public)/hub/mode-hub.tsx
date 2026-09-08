@@ -4,25 +4,19 @@ import React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/auth-context";
-import { useRole, UserRole } from "@/context/role-context";
+import type { UserRole } from "@/lib/role";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
-import {
-  Gamepad2,
-  Trophy,
-  Briefcase,
-  ArrowRight,
-  CheckCircle2,
-} from "lucide-react";
+import { Gamepad2, Trophy, Briefcase, ArrowRight } from "lucide-react";
 
 interface PersonaConfig {
   id: UserRole;
   title: string;
   description: string;
   targetHref: string;
+  actionText: string;
   icon: React.ElementType;
   profileName?: string;
 }
@@ -30,7 +24,6 @@ interface PersonaConfig {
 export function ModeHub() {
   const router = useRouter();
   const { user, isLoading } = useAuth();
-  const { activeRole, organizerProfile, sponsorProfile, setRole } = useRole();
 
   const personas: PersonaConfig[] = [
     {
@@ -39,6 +32,7 @@ export function ModeHub() {
       description:
         "Browse open tournaments, join team lobbies, and compete in brackets.",
       targetHref: "/tournaments",
+      actionText: "Browse Tournaments",
       icon: Gamepad2,
       profileName: user ? `@${user.handle}` : undefined,
     },
@@ -48,8 +42,9 @@ export function ModeHub() {
       description:
         "Host tournaments, set crowdfunding prize goals, manage match schedules, and invite staff.",
       targetHref: "/organizer",
+      actionText: "Open Organizer Workspace",
       icon: Trophy,
-      profileName: organizerProfile?.name || "Organizer Profile",
+      profileName: "Organizer Workspace",
     },
     {
       id: "sponsor",
@@ -57,13 +52,13 @@ export function ModeHub() {
       description:
         "Pledge funding to tournament prize pools, track sponsorships, and showcase your brand logo.",
       targetHref: "/sponsor",
+      actionText: "Open Sponsor Workspace",
       icon: Briefcase,
-      profileName: sponsorProfile?.companyName || "Sponsor Profile",
+      profileName: "Sponsor Workspace",
     },
   ];
 
-  const handleSelectPersona = (targetRole: UserRole, targetHref: string) => {
-    setRole(targetRole);
+  const handleSelectPersona = (targetHref: string) => {
     router.push(targetHref);
   };
 
@@ -118,47 +113,37 @@ export function ModeHub() {
       {/* 3 Interactive Clickable Persona Cards */}
       <div className="grid gap-6 md:grid-cols-3">
         {personas.map(
-          ({ id, title, description, targetHref, icon: Icon, profileName }) => {
-            const isActive = activeRole === id;
-
+          ({
+            id,
+            title,
+            description,
+            targetHref,
+            actionText,
+            icon: Icon,
+            profileName,
+          }) => {
             return (
               <Card
                 key={id}
                 role="button"
                 tabIndex={0}
-                onClick={() => handleSelectPersona(id, targetHref)}
+                onClick={() => handleSelectPersona(targetHref)}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" || e.key === " ") {
                     e.preventDefault();
-                    handleSelectPersona(id, targetHref);
+                    handleSelectPersona(targetHref);
                   }
                 }}
                 className={cn(
-                  "group relative flex cursor-pointer flex-col justify-between rounded-2xl p-6 transition-all duration-200 select-none",
-                  "hover:-translate-y-1.5 hover:shadow-lg active:translate-y-0 active:scale-[0.99]",
-                  isActive
-                    ? "border-primary/80 bg-primary/3 ring-primary/40 shadow-xs ring-1"
-                    : "hover:border-primary/60 hover:bg-muted/20"
+                  "group border-border/70 bg-card relative flex cursor-pointer flex-col justify-between rounded-2xl border p-6 transition-all duration-200 select-none",
+                  "hover:border-primary/60 hover:bg-muted/20 hover:-translate-y-1.5 hover:shadow-lg active:translate-y-0 active:scale-[0.99]"
                 )}
               >
                 <div>
                   <div className="flex items-center justify-between gap-2">
-                    <div
-                      className={cn(
-                        "flex size-12 items-center justify-center rounded-xl transition-all duration-200",
-                        isActive
-                          ? "bg-primary text-primary-foreground shadow-xs"
-                          : "bg-muted text-foreground group-hover:bg-primary group-hover:text-primary-foreground"
-                      )}
-                    >
+                    <div className="bg-muted text-foreground group-hover:bg-primary group-hover:text-primary-foreground flex size-12 items-center justify-center rounded-xl transition-colors duration-200">
                       <Icon className="size-6 transition-transform duration-200 group-hover:scale-110" />
                     </div>
-                    {isActive ? (
-                      <Badge variant="default" className="gap-1 text-xs">
-                        <CheckCircle2 data-icon="inline-start" />
-                        Current Mode
-                      </Badge>
-                    ) : null}
                   </div>
 
                   <div className="mt-6">
@@ -178,11 +163,7 @@ export function ModeHub() {
                 </div>
 
                 <div className="text-muted-foreground group-hover:text-primary mt-8 flex items-center gap-1.5 text-xs font-semibold transition-[color,transform] duration-200 group-hover:translate-x-1">
-                  <span>
-                    {isActive
-                      ? "Continue as " + title
-                      : "Enter " + title + " Mode"}
-                  </span>
+                  <span>{actionText}</span>
                   <ArrowRight className="size-3.5" />
                 </div>
               </Card>

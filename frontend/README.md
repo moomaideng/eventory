@@ -71,9 +71,11 @@ frontend/
 │       └── spinner.tsx
 │
 ├── context/
-│   └── role-context.tsx              # Role & Auth Context (TanStack Query + Supabase session + Go API sync)
+│   ├── auth-context.tsx              # Auth Context (Supabase session + profile state)
+│   └── mock-data.ts                  # Development mock profiles
 │
 ├── lib/
+│   ├── role.ts                       # Stateless URL/Path-derived Workspace Roles
 │   ├── api/                          # Type-safe OpenAPI Client
 │   │   ├── schema.d.ts               # Auto-generated types from Go Huma OpenAPI 3.1
 │   │   └── client.ts                 # openapi-fetch & openapi-react-query client instances

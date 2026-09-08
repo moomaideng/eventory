@@ -12,13 +12,7 @@ import {
 import { useRouter } from "next/navigation";
 import { $api, apiClient } from "@/lib/api/client";
 import { useAuth } from "@/context/auth-context";
-import { useRole } from "@/context/role-context";
-import {
-  Alert,
-  AlertAction,
-  AlertDescription,
-  AlertTitle,
-} from "@/components/ui/alert";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -54,7 +48,6 @@ export function TeamLobbyCreate({ tournamentId }: { tournamentId: string }) {
     authorizationHeader,
     loginAsDev,
   } = useAuth();
-  const { activeRole, setRole } = useRole();
   const [teamName, setTeamName] = React.useState("");
   const [formError, setFormError] = React.useState("");
   const [isSubmitting, setIsSubmitting] = React.useState(false);
@@ -72,10 +65,6 @@ export function TeamLobbyCreate({ tournamentId }: { tournamentId: string }) {
 
   async function createLobby(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (activeRole !== "competitor") {
-      setFormError("Switch to your Competitor profile before creating a team.");
-      return;
-    }
     const name = teamName.trim();
     if (!name) {
       setFormError("Choose a team name before creating the lobby.");
@@ -196,24 +185,6 @@ export function TeamLobbyCreate({ tournamentId }: { tournamentId: string }) {
               ? "This tournament only accepts solo entries."
               : "Registration is not currently open for this tournament."}
           </AlertDescription>
-        </Alert>
-      ) : activeRole !== "competitor" ? (
-        <Alert>
-          <ShieldAlert />
-          <AlertTitle>Competitor profile required</AlertTitle>
-          <AlertDescription>
-            Switch to your Competitor profile to create a team for this
-            tournament.
-          </AlertDescription>
-          <AlertAction>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setRole("competitor")}
-            >
-              Switch to Competitor
-            </Button>
-          </AlertAction>
         </Alert>
       ) : !user && !isAuthLoading ? (
         <Card>

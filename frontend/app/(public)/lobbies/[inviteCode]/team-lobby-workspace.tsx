@@ -19,13 +19,7 @@ import { useRouter } from "next/navigation";
 import { $api, apiClient } from "@/lib/api/client";
 import type { components } from "@/lib/api/schema";
 import { useAuth } from "@/context/auth-context";
-import { useRole } from "@/context/role-context";
-import {
-  Alert,
-  AlertAction,
-  AlertDescription,
-  AlertTitle,
-} from "@/components/ui/alert";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -64,13 +58,11 @@ export function TeamLobbyWorkspace({ inviteCode }: { inviteCode: string }) {
     authorizationHeader,
     loginAsDev,
   } = useAuth();
-  const { activeRole, setRole } = useRole();
   const [actionError, setActionError] = React.useState("");
   const [pendingAction, setPendingAction] = React.useState<string | null>(null);
   const [copied, setCopied] = React.useState(false);
   const [confirmDisband, setConfirmDisband] = React.useState(false);
   const normalizedInviteCode = inviteCode.trim().toUpperCase();
-  const isCompetitor = activeRole === "competitor";
 
   const {
     data: lobby,
@@ -159,12 +151,6 @@ export function TeamLobbyWorkspace({ inviteCode }: { inviteCode: string }) {
 
   function joinLobby() {
     if (!authorizationHeader) return;
-    if (!isCompetitor) {
-      setActionError(
-        "Switch to your Competitor profile before joining a team."
-      );
-      return;
-    }
     void runAction(
       "join",
       apiClient.POST("/api/v1/lobbies/{inviteCode}/join", {
@@ -257,25 +243,6 @@ export function TeamLobbyWorkspace({ inviteCode }: { inviteCode: string }) {
         </Alert>
       ) : null}
 
-      {isInvitee && !isCompetitor ? (
-        <Alert>
-          <ShieldAlert />
-          <AlertTitle>Competitor profile required</AlertTitle>
-          <AlertDescription>
-            Switch to your Competitor profile to join this team.
-          </AlertDescription>
-          <AlertAction>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setRole("competitor")}
-            >
-              Switch to Competitor
-            </Button>
-          </AlertAction>
-        </Alert>
-      ) : null}
-
       {lobby.status === "LOCKED" ? (
         <Alert>
           <Check />
@@ -360,7 +327,7 @@ export function TeamLobbyWorkspace({ inviteCode }: { inviteCode: string }) {
               </TableBody>
             </Table>
           </CardContent>
-          {isInvitee && isCompetitor ? (
+          {isInvitee ? (
             <CardFooter className="flex flex-wrap items-center justify-between gap-3">
               <p className="text-muted-foreground text-sm">
                 {isForming && !rosterFull

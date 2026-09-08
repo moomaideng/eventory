@@ -12,7 +12,6 @@ import {
 } from "lucide-react";
 import { $api } from "@/lib/api/client";
 import { useAuth } from "@/context/auth-context";
-import { useRole } from "@/context/role-context";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -42,8 +41,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 export function TournamentDetails({ tournamentId }: { tournamentId: string }) {
   const { authorizationHeader } = useAuth();
-  const { activeRole } = useRole();
-  const isCompetitor = activeRole === "competitor";
   const { data, error, isLoading } = $api.useQuery(
     "get",
     "/api/v1/tournaments/{tournamentId}",
@@ -60,7 +57,7 @@ export function TournamentDetails({ tournamentId }: { tournamentId: string }) {
         : {},
     },
     {
-      enabled: Boolean(authorizationHeader) && isCompetitor,
+      enabled: Boolean(authorizationHeader),
       retry: false,
       staleTime: 0,
     }
@@ -104,7 +101,6 @@ export function TournamentDetails({ tournamentId }: { tournamentId: string }) {
     tournament.registrationMode === "TEAM" ||
     tournament.registrationMode === "BOTH";
   const canCreateTeam =
-    isCompetitor &&
     supportsTeams &&
     tournament.status === "REGISTRATION_OPEN" &&
     !isMyTeamLoading &&
@@ -233,7 +229,7 @@ export function TournamentDetails({ tournamentId }: { tournamentId: string }) {
         </div>
 
         <div className="flex flex-col gap-6 lg:sticky lg:top-24">
-          {isCompetitor && myTeam ? (
+          {myTeam ? (
             <Card>
               <CardHeader>
                 <CardTitle>Your team</CardTitle>
