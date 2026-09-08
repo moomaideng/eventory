@@ -3,6 +3,7 @@ import { Outfit, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { cn } from "@/lib/utils";
 import { QueryProvider } from "@/components/providers/query-provider";
+import { AuthProvider } from "@/context/auth-context";
 import { RoleProvider } from "@/context/role-context";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 
@@ -45,7 +46,9 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <QueryProvider>
-            <RoleProvider>{children}</RoleProvider>
+            <AuthProvider>
+              <RoleProvider>{children}</RoleProvider>
+            </AuthProvider>
           </QueryProvider>
         </ThemeProvider>
       </body>

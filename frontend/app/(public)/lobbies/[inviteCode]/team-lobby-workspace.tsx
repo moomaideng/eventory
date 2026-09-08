@@ -18,6 +18,7 @@ import {
 import { useRouter } from "next/navigation";
 import { $api, apiClient } from "@/lib/api/client";
 import type { components } from "@/lib/api/schema";
+import { useAuth } from "@/context/auth-context";
 import { useRole } from "@/context/role-context";
 import {
   Alert,
@@ -59,12 +60,11 @@ export function TeamLobbyWorkspace({ inviteCode }: { inviteCode: string }) {
   const router = useRouter();
   const {
     user,
-    activeRole,
     isLoading: isAuthLoading,
     authorizationHeader,
     loginAsDev,
-    setRole,
-  } = useRole();
+  } = useAuth();
+  const { activeRole, setRole } = useRole();
   const [actionError, setActionError] = React.useState("");
   const [pendingAction, setPendingAction] = React.useState<string | null>(null);
   const [copied, setCopied] = React.useState(false);

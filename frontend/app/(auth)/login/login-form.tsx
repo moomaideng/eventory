@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { useRole } from "@/context/role-context";
+import { useAuth } from "@/context/auth-context";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -14,7 +14,7 @@ import {
 import { Spinner } from "@/components/ui/spinner";
 
 export function LoginForm() {
-  const { loginWithGoogle } = useRole();
+  const { loginWithGoogle } = useAuth();
   const [isLoggingIn, setIsLoggingIn] = useState(false);
 
   const handleGoogleLogin = async () => {

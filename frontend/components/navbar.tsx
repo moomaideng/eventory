@@ -2,9 +2,11 @@
 
 import React from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { useAuth } from "@/context/auth-context";
 import { useRole, UserRole } from "@/context/role-context";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -12,7 +14,6 @@ import {
   DropdownMenuContent,
   DropdownMenuGroup,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -26,14 +27,14 @@ import {
   LogOut,
   Sparkles,
   LogIn,
-  Check,
+  LayoutGrid,
 } from "lucide-react";
 
-const ROLES: { id: UserRole; label: string; icon: React.ElementType }[] = [
-  { id: "competitor", label: "Competitor", icon: Gamepad2 },
-  { id: "organizer", label: "Organizer", icon: Trophy },
-  { id: "sponsor", label: "Sponsor", icon: Briefcase },
-];
+const ROLE_ICONS: Record<UserRole, React.ElementType> = {
+  competitor: Gamepad2,
+  organizer: Trophy,
+  sponsor: Briefcase,
+};
 
 const NAV_LINKS: Record<UserRole, { label: string; href: string }[]> = {
   competitor: [{ label: "Tournaments", href: "/tournaments" }],
@@ -49,15 +50,11 @@ const NAV_LINKS: Record<UserRole, { label: string; href: string }[]> = {
 
 export function Navbar() {
   const pathname = usePathname();
-  const {
-    user,
-    activeRole,
-    activeProfileName,
-    isLoading,
-    setRole,
-    loginAsDev,
-    logout,
-  } = useRole();
+  const router = useRouter();
+  const { user, isLoading, loginAsDev, logout } = useAuth();
+  const { activeRole } = useRole();
+
+  const ActiveRoleIcon = ROLE_ICONS[activeRole] || Gamepad2;
 
   return (
     <header className="bg-background/95 sticky top-0 z-50 w-full border-b backdrop-blur">
@@ -95,20 +92,20 @@ export function Navbar() {
           </nav>
         </div>
 
-        {/* Right: Role Switcher & Auth Actions */}
-        <div className="flex items-center gap-3">
+        {/* Right: Theme Toggle & Unified Profile Trigger */}
+        <div className="flex items-center gap-2.5">
           <ThemeToggle />
           {isLoading ? (
             /* Skeleton Loading State during Hydration (Zero Layout Shift) */
             <Skeleton className="h-9 w-28 rounded-full" />
           ) : user ? (
-            /* Role Switcher Dropdown */
+            /* Unified Profile & Mode Dropdown */
             <DropdownMenu>
               <DropdownMenuTrigger
                 render={
                   <Button
                     variant="outline"
-                    className="flex h-10 items-center gap-2.5 rounded-full px-3"
+                    className="flex h-10 items-center gap-2 rounded-full pl-2.5 pr-3"
                   />
                 }
               >
@@ -118,20 +115,26 @@ export function Navbar() {
                     {user.displayName.slice(0, 2).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
-                <div className="flex flex-col text-left">
-                  <span className="text-foreground text-xs leading-tight font-semibold">
-                    {activeProfileName}
-                  </span>
-                  <span className="text-muted-foreground text-[10px]">
-                    @{user.handle}
-                  </span>
-                </div>
-                <ChevronDown className="text-muted-foreground" />
+                <span className="text-foreground text-xs font-semibold max-w-32.5 truncate hidden sm:inline">
+                  {user.displayName}
+                </span>
+                <Badge
+                  variant="secondary"
+                  className="gap-1 px-2 py-0.5 text-[11px] font-medium capitalize"
+                >
+                  <ActiveRoleIcon data-icon="inline-start" />
+                  <span>{activeRole}</span>
+                </Badge>
+                <ChevronDown
+                  className="text-muted-foreground"
+                  data-icon="inline-end"
+                />
               </DropdownMenuTrigger>
 
-              <DropdownMenuContent align="end" className="w-64 p-1">
+              <DropdownMenuContent align="end" className="w-56 p-1">
                 <DropdownMenuGroup>
-                  <div className="px-2 py-1.5">
+                  {/* Compact User Header */}
+                  <div className="px-3 py-2">
                     <p className="text-foreground truncate text-xs font-semibold">
                       {user.displayName}
                     </p>
@@ -139,24 +142,19 @@ export function Navbar() {
                       @{user.handle}
                     </p>
                   </div>
+
                   <DropdownMenuSeparator />
-                  <DropdownMenuLabel>Switch Role Context</DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  {ROLES.map(({ id, label, icon: Icon }) => (
-                    <DropdownMenuItem
-                      key={id}
-                      onClick={() => setRole(id)}
-                      className="flex items-center justify-between py-2"
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <Icon className="text-primary" />
-                        <span className="text-sm font-medium">
-                          {label} Mode
-                        </span>
-                      </div>
-                      {activeRole === id && <Check className="text-primary" />}
-                    </DropdownMenuItem>
-                  ))}
+
+                  {/* Single Cohesive Action to Navigate to Mode Hub */}
+                  <DropdownMenuItem
+                    onClick={() => router.push("/hub")}
+                    className="flex items-center gap-2.5 py-2 cursor-pointer"
+                  >
+                    <LayoutGrid className="text-primary" />
+                    <span className="text-sm font-medium">
+                      Switch Mode Hub
+                    </span>
+                  </DropdownMenuItem>
                 </DropdownMenuGroup>
 
                 <DropdownMenuSeparator />
@@ -165,7 +163,7 @@ export function Navbar() {
                   <DropdownMenuItem
                     onClick={logout}
                     variant="destructive"
-                    className="flex items-center gap-2"
+                    className="flex items-center gap-2 cursor-pointer"
                   >
                     <LogOut />
                     <span>Sign Out</span>

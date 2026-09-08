@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { $api, apiClient } from "@/lib/api/client";
+import { useAuth } from "@/context/auth-context";
 import { useRole } from "@/context/role-context";
 import {
   Alert,
@@ -49,12 +50,11 @@ export function TeamLobbyCreate({ tournamentId }: { tournamentId: string }) {
   const router = useRouter();
   const {
     user,
-    activeRole,
     isLoading: isAuthLoading,
     authorizationHeader,
     loginAsDev,
-    setRole,
-  } = useRole();
+  } = useAuth();
+  const { activeRole, setRole } = useRole();
   const [teamName, setTeamName] = React.useState("");
   const [formError, setFormError] = React.useState("");
   const [isSubmitting, setIsSubmitting] = React.useState(false);

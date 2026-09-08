@@ -11,6 +11,7 @@ import {
   WalletCards,
 } from "lucide-react";
 import { $api } from "@/lib/api/client";
+import { useAuth } from "@/context/auth-context";
 import { useRole } from "@/context/role-context";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -40,7 +41,8 @@ import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export function TournamentDetails({ tournamentId }: { tournamentId: string }) {
-  const { activeRole, authorizationHeader } = useRole();
+  const { authorizationHeader } = useAuth();
+  const { activeRole } = useRole();
   const isCompetitor = activeRole === "competitor";
   const { data, error, isLoading } = $api.useQuery(
     "get",
