@@ -349,19 +349,28 @@ function TournamentGridSkeleton() {
   );
 }
 
+const tournamentDateFormatter = new Intl.DateTimeFormat("en-GB", {
+  dateStyle: "medium",
+  timeStyle: "short",
+  timeZone: "Asia/Bangkok",
+});
+
+const currencyFormatters = new Map<string, Intl.NumberFormat>();
+
 function formatTournamentDate(value: string) {
-  return new Intl.DateTimeFormat("en-GB", {
-    dateStyle: "medium",
-    timeStyle: "short",
-    timeZone: "Asia/Bangkok",
-  }).format(new Date(value));
+  return tournamentDateFormatter.format(new Date(value));
 }
 
 function formatEntryFee(entryFee: number, currency: string) {
   if (entryFee === 0) return "Free entry";
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency,
-    maximumFractionDigits: 0,
-  }).format(entryFee);
+  let formatter = currencyFormatters.get(currency);
+  if (!formatter) {
+    formatter = new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency,
+      maximumFractionDigits: 0,
+    });
+    currencyFormatters.set(currency, formatter);
+  }
+  return formatter.format(entryFee);
 }

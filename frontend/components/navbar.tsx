@@ -105,7 +105,7 @@ export function Navbar() {
                 render={
                   <Button
                     variant="outline"
-                    className="flex h-10 items-center gap-2 rounded-full pl-2.5 pr-3"
+                    className="flex h-10 items-center gap-2 rounded-full pr-3 pl-2.5"
                   />
                 }
               >
@@ -115,7 +115,7 @@ export function Navbar() {
                     {user.displayName.slice(0, 2).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
-                <span className="text-foreground text-xs font-semibold max-w-32.5 truncate hidden sm:inline">
+                <span className="text-foreground hidden max-w-32.5 truncate text-xs font-semibold sm:inline">
                   {user.displayName}
                 </span>
                 <Badge
@@ -148,12 +148,10 @@ export function Navbar() {
                   {/* Single Cohesive Action to Navigate to Mode Hub */}
                   <DropdownMenuItem
                     onClick={() => router.push("/hub")}
-                    className="flex items-center gap-2.5 py-2 cursor-pointer"
+                    className="flex cursor-pointer items-center gap-2.5 py-2"
                   >
                     <LayoutGrid className="text-primary" />
-                    <span className="text-sm font-medium">
-                      Switch Mode Hub
-                    </span>
+                    <span className="text-sm font-medium">Switch Mode Hub</span>
                   </DropdownMenuItem>
                 </DropdownMenuGroup>
 
@@ -163,7 +161,7 @@ export function Navbar() {
                   <DropdownMenuItem
                     onClick={logout}
                     variant="destructive"
-                    className="flex items-center gap-2 cursor-pointer"
+                    className="flex cursor-pointer items-center gap-2"
                   >
                     <LogOut />
                     <span>Sign Out</span>

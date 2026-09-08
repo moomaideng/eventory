@@ -30,12 +30,7 @@ interface PersonaConfig {
 export function ModeHub() {
   const router = useRouter();
   const { user, isLoading } = useAuth();
-  const {
-    activeRole,
-    organizerProfile,
-    sponsorProfile,
-    setRole,
-  } = useRole();
+  const { activeRole, organizerProfile, sponsorProfile, setRole } = useRole();
 
   const personas: PersonaConfig[] = [
     {
@@ -90,7 +85,7 @@ export function ModeHub() {
     return (
       <div className="container mx-auto flex max-w-md flex-1 flex-col items-center justify-center px-4 py-24 text-center">
         <h2 className="text-2xl font-bold tracking-tight">Sign In Required</h2>
-        <p className="mt-2 text-sm text-muted-foreground">
+        <p className="text-muted-foreground mt-2 text-sm">
           Please sign in to select your workspace mode and access your profile.
         </p>
         <Button
@@ -112,7 +107,7 @@ export function ModeHub() {
           Welcome back,{" "}
           <span className="text-primary">{user?.displayName || "Player"}</span>
         </h1>
-        <p className="mx-auto mt-3 max-w-xl text-muted-foreground text-sm sm:text-base">
+        <p className="text-muted-foreground mx-auto mt-3 max-w-xl text-sm sm:text-base">
           Select what profile mode you want to use to interact with Eventory.
         </p>
       </div>
@@ -120,14 +115,7 @@ export function ModeHub() {
       {/* 3 Interactive Clickable Persona Cards */}
       <div className="grid gap-6 md:grid-cols-3">
         {personas.map(
-          ({
-            id,
-            title,
-            description,
-            targetHref,
-            icon: Icon,
-            profileName,
-          }) => {
+          ({ id, title, description, targetHref, icon: Icon, profileName }) => {
             const isActive = activeRole === id;
 
             return (
@@ -143,10 +131,10 @@ export function ModeHub() {
                   }
                 }}
                 className={cn(
-                  "group relative flex flex-col justify-between cursor-pointer select-none transition-all duration-200 p-6 rounded-2xl",
+                  "group relative flex cursor-pointer flex-col justify-between rounded-2xl p-6 transition-all duration-200 select-none",
                   "hover:-translate-y-1.5 hover:shadow-lg active:translate-y-0 active:scale-[0.99]",
                   isActive
-                    ? "border-primary/80 bg-primary/3 shadow-xs ring-1 ring-primary/40"
+                    ? "border-primary/80 bg-primary/3 ring-primary/40 shadow-xs ring-1"
                     : "hover:border-primary/60 hover:bg-muted/20"
                 )}
               >
@@ -171,23 +159,27 @@ export function ModeHub() {
                   </div>
 
                   <div className="mt-6">
-                    <h3 className="text-xl font-bold tracking-tight text-foreground transition-colors group-hover:text-primary">
+                    <h3 className="text-foreground group-hover:text-primary text-xl font-bold tracking-tight transition-colors">
                       {title}
                     </h3>
                     {profileName ? (
-                      <p className="mt-1 truncate text-xs font-medium text-muted-foreground">
+                      <p className="text-muted-foreground mt-1 truncate text-xs font-medium">
                         {profileName}
                       </p>
                     ) : null}
                   </div>
 
-                  <p className="mt-3 text-sm text-muted-foreground leading-relaxed">
+                  <p className="text-muted-foreground mt-3 text-sm leading-relaxed">
                     {description}
                   </p>
                 </div>
 
-                <div className="mt-8 flex items-center gap-1.5 text-xs font-semibold text-muted-foreground transition-all duration-200 group-hover:text-primary group-hover:translate-x-1">
-                  <span>{isActive ? "Continue as " + title : "Enter " + title + " Mode"}</span>
+                <div className="text-muted-foreground group-hover:text-primary mt-8 flex items-center gap-1.5 text-xs font-semibold transition-[color,transform] duration-200 group-hover:translate-x-1">
+                  <span>
+                    {isActive
+                      ? "Continue as " + title
+                      : "Enter " + title + " Mode"}
+                  </span>
                   <ArrowRight className="size-3.5" />
                 </div>
               </Card>
