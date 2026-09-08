@@ -10,15 +10,21 @@ export const metadata: Metadata = {
 };
 
 export default async function HubPage() {
+  let shouldRedirect = false;
+
   try {
     const supabase = await createClient();
     const { data } = await supabase.auth.getClaims();
 
     if (!data?.claims) {
-      redirect("/login");
+      shouldRedirect = true;
     }
   } catch {
     // In dev offline mode or if client fails, allow ModeHub to render with mock/dev states
+  }
+
+  if (shouldRedirect) {
+    redirect("/login");
   }
 
   return <ModeHub />;
