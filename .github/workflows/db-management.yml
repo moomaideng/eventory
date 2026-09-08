@@ -38,11 +38,11 @@ jobs:
           RESET_DB: ${{ github.event.inputs.reset_db }}
           SEED_DATA: ${{ github.event.inputs.seed_data }}
         run: |
-          ssh "$ORACLE_USER@$ORACLE_HOST" "
+          ssh "$ORACLE_USER@$ORACLE_HOST" "RESET_DB='$RESET_DB' SEED_DATA='$SEED_DATA' bash -s" << 'EOF'
             set -eu
             cd /opt/eventory
 
-            if [ \"\$RESET_DB\" = 'true' ]; then
+            if [ "$RESET_DB" = 'true' ]; then
               echo '==> Resetting database schema (DROP SCHEMA public CASCADE) and migrating...'
               sudo docker compose --env-file .env -f docker-compose.yml run --rm migrate ./migrate -reset
             else
@@ -50,7 +50,7 @@ jobs:
               sudo docker compose --env-file .env -f docker-compose.yml run --rm migrate ./migrate
             fi
 
-            if [ \"\$SEED_DATA\" = 'true' ]; then
+            if [ "$SEED_DATA" = 'true' ]; then
               echo '==> Seeding mock data (tournaments & accounts)...'
               sudo docker compose --env-file .env -f docker-compose.yml run --rm migrate ./seed
             fi
@@ -59,4 +59,4 @@ jobs:
             sudo docker compose --env-file .env -f docker-compose.yml restart backend || true
 
             echo '==> Database operation completed successfully!'
-          "
+EOF
