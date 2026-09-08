@@ -5,12 +5,10 @@ import { LoginForm } from "./login-form";
 export default async function LoginPage() {
   try {
     const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const { data } = await supabase.auth.getClaims();
 
-    if (user) {
-      redirect("/");
+    if (data?.claims) {
+      redirect("/hub");
     }
   } catch {
     // Supabase client error (e.g. missing env in dev) -> allow showing login form

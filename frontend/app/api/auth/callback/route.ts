@@ -64,7 +64,7 @@ export async function GET(request: Request) {
           }
         }
 
-        return NextResponse.redirect(`${origin}/`);
+        return NextResponse.redirect(`${origin}/hub`);
       }
     } catch (err) {
       console.error("[Auth Callback] Auth exchange error:", err);

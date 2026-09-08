@@ -24,7 +24,7 @@ Before writing, modifying, or refactoring any code, you **MUST** read the source
 
 3. **Authentication & SSR (`supabase`):**
    - **Always read `.agents/skills/supabase/SKILL.md` before touching auth or sessions.**
-   - Always verify sessions cryptographically on the server using `supabase.auth.getUser()`.
+   - Verify sessions cryptographically on the server using `supabase.auth.getClaims()` for high-performance page/route protection, and `supabase.auth.getUser()` when an up-to-date user record from the Auth server is required.
 
 4. **Verification & Code Quality:**
    - Run `npm run lint` and `npx tsc --noEmit` before finishing. `npm run format` is optional for formatting cleanliness.
