@@ -1,0 +1,62 @@
+name: Database Management (Production)
+
+on:
+  workflow_dispatch:
+    inputs:
+      reset_db:
+        description: 'Reset database schema (DROP public CASCADE & re-migrate)'
+        type: boolean
+        default: true
+      seed_data:
+        description: 'Seed mock data (tournaments & accounts)'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  db-ops:
+    name: Run Database Operations
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure SSH
+        env:
+          ORACLE_SSH_KEY: ${{ secrets.ORACLE_SSH_KEY }}
+          ORACLE_KNOWN_HOSTS: ${{ secrets.ORACLE_KNOWN_HOSTS }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$ORACLE_SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "$ORACLE_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+
+      - name: Execute database commands on Oracle
+        env:
+          ORACLE_HOST: ${{ secrets.ORACLE_HOST }}
+          ORACLE_USER: ${{ secrets.ORACLE_USER }}
+          RESET_DB: ${{ github.event.inputs.reset_db }}
+          SEED_DATA: ${{ github.event.inputs.seed_data }}
+        run: |
+          ssh "$ORACLE_USER@$ORACLE_HOST" "
+            set -eu
+            cd /opt/eventory
+
+            if [ \"\$RESET_DB\" = 'true' ]; then
+              echo '==> Resetting database schema (DROP SCHEMA public CASCADE) and migrating...'
+              sudo docker compose --env-file .env -f docker-compose.yml run --rm migrate ./migrate -reset
+            else
+              echo '==> Running standard migration...'
+              sudo docker compose --env-file .env -f docker-compose.yml run --rm migrate ./migrate
+            fi
+
+            if [ \"\$SEED_DATA\" = 'true' ]; then
+              echo '==> Seeding mock data (tournaments & accounts)...'
+              sudo docker compose --env-file .env -f docker-compose.yml run --rm migrate ./seed
+            fi
+
+            echo '==> Restarting backend service...'
+            sudo docker compose --env-file .env -f docker-compose.yml restart backend || true
+
+            echo '==> Database operation completed successfully!'
+          "
