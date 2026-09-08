@@ -13,6 +13,7 @@ import (
 	"github.com/MicahParks/keyfunc/v3"
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
 )
 
 type contextKey string
@@ -28,7 +29,7 @@ const (
 	// DevEmail represents the mock email assigned when using DevToken.
 	DevEmail string = "dev@eventory.gg"
 	// DevSub represents the mock user ID assigned when using DevToken.
-	DevSub string = "dev-user-001"
+	DevSub string = "99999999-0000-0000-0000-000000000001"
 )
 
 var (
@@ -164,6 +165,11 @@ func (m *AuthMiddleware) verifyToken(tokenString string) (string, string, error)
 	}
 
 	sub, _ := claims["sub"].(string)
+	sub = strings.TrimSpace(sub)
+	if sub == "" {
+		return "", "", errors.New("sub claim missing in token")
+	}
+
 	return strings.ToLower(strings.TrimSpace(email)), sub, nil
 }
 
@@ -192,3 +198,17 @@ func GetAuthSub(ctx context.Context) string {
 	}
 	return sub
 }
+
+// GetAuthUserID extracts the authenticated user's sub UUID from request context.
+func GetAuthUserID(ctx context.Context) (uuid.UUID, error) {
+	subStr := GetAuthSub(ctx)
+	if subStr == "" {
+		return uuid.Nil, ErrUnauthorized
+	}
+	id, err := uuid.Parse(subStr)
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("invalid user sub UUID in auth token: %w", err)
+	}
+	return id, nil
+}
+

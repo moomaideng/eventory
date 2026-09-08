@@ -36,9 +36,7 @@ const ROLES: { id: UserRole; label: string; icon: React.ElementType }[] = [
 ];
 
 const NAV_LINKS: Record<UserRole, { label: string; href: string }[]> = {
-  competitor: [
-    { label: "Tournaments", href: "/tournaments" },
-  ],
+  competitor: [{ label: "Tournaments", href: "/tournaments" }],
   organizer: [
     { label: "My Tournaments", href: "/organizer" },
     { label: "+ Host Tournament", href: "/organizer/tournaments/new" },
@@ -124,8 +122,8 @@ export function Navbar() {
                   <span className="text-foreground text-xs leading-tight font-semibold">
                     {activeProfileName}
                   </span>
-                  <span className="text-muted-foreground text-[10px] capitalize">
-                    {activeRole} Mode
+                  <span className="text-muted-foreground text-[10px]">
+                    @{user.handle}
                   </span>
                 </div>
                 <ChevronDown className="text-muted-foreground" />
@@ -133,6 +131,15 @@ export function Navbar() {
 
               <DropdownMenuContent align="end" className="w-64 p-1">
                 <DropdownMenuGroup>
+                  <div className="px-2 py-1.5">
+                    <p className="text-foreground truncate text-xs font-semibold">
+                      {user.displayName}
+                    </p>
+                    <p className="text-muted-foreground truncate text-[11px]">
+                      @{user.handle}
+                    </p>
+                  </div>
+                  <DropdownMenuSeparator />
                   <DropdownMenuLabel>Switch Role Context</DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   {ROLES.map(({ id, label, icon: Icon }) => (

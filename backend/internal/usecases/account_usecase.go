@@ -2,7 +2,10 @@ package usecases
 
 import (
 	"context"
+	"crypto/rand"
 	"errors"
+	"fmt"
+	"math/big"
 	"strings"
 
 	"github.com/google/uuid"
@@ -11,12 +14,30 @@ import (
 )
 
 var (
-	ErrAccountNotFound       = errors.New("account not found")
-	ErrAccountAlreadyExists  = errors.New("account with this email already exists")
-	ErrUsernameAlreadyExists = errors.New("username is already taken")
-	ErrInvalidUsername       = errors.New("username cannot be empty")
-	ErrInvalidEmail          = errors.New("email cannot be empty")
+	ErrAccountNotFound    = errors.New("account not found")
+	ErrHandleAlreadyExists = errors.New("handle is already taken")
+	ErrInvalidHandle      = errors.New("handle must be between 3 and 32 lowercase alphanumeric characters or underscores")
+	ErrInvalidDisplayName = errors.New("display name cannot be empty")
+	ErrInvalidEmail       = errors.New("email cannot be empty")
+	ErrInvalidAccountID   = errors.New("valid account id is required")
 )
+
+// CreateAccountInput specifies input parameters for creating or ensuring an account.
+type CreateAccountInput struct {
+	ID          uuid.UUID
+	Email       string
+	DisplayName string
+	Handle      string
+	AvatarURL   *string
+}
+
+// UpdateAccountInput specifies fields that can be updated on an account.
+type UpdateAccountInput struct {
+	DisplayName *string
+	Handle      *string
+	Phone       *string
+	AvatarURL   *string
+}
 
 // AccountUseCase handles core business logic for user accounts.
 type AccountUseCase struct {
@@ -28,6 +49,27 @@ func NewAccountUseCase(accountRepo repositories.AccountRepository) *AccountUseCa
 	return &AccountUseCase{
 		accountRepo: accountRepo,
 	}
+}
+
+// SanitizeHandle cleans an input string into a lowercase alphanumeric handle with underscores.
+func SanitizeHandle(input string) string {
+	input = strings.ToLower(strings.TrimSpace(input))
+	var sb strings.Builder
+	for _, r := range input {
+		if (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') || r == '_' {
+			sb.WriteRune(r)
+		} else if r == ' ' || r == '-' || r == '.' || r == '@' {
+			sb.WriteRune('_')
+		}
+	}
+	res := strings.Trim(sb.String(), "_")
+	if len(res) > 24 {
+		res = res[:24]
+	}
+	if len(res) < 3 {
+		res = "player"
+	}
+	return res
 }
 
 // GetAccountByEmail retrieves an account by its unique email address.
@@ -59,58 +101,101 @@ func (u *AccountUseCase) GetAccountByID(ctx context.Context, id uuid.UUID) (*mod
 	return account, nil
 }
 
-// OnboardAccount creates a new account for a first-time user during onboarding.
-func (u *AccountUseCase) OnboardAccount(ctx context.Context, email string, username string) (*models.Account, error) {
-	email = strings.ToLower(strings.TrimSpace(email))
+// GetAccountByHandle retrieves an account by its unique public handle.
+func (u *AccountUseCase) GetAccountByHandle(ctx context.Context, handle string) (*models.Account, error) {
+	handle = strings.ToLower(strings.TrimSpace(handle))
+	if handle == "" {
+		return nil, ErrInvalidHandle
+	}
+
+	account, err := u.accountRepo.FindByHandle(ctx, handle)
+	if err != nil {
+		return nil, err
+	}
+	if account == nil {
+		return nil, ErrAccountNotFound
+	}
+	return account, nil
+}
+
+// CreateAccount creates or ensures an account exists for the authenticated user (Idempotent JIT provisioning).
+func (u *AccountUseCase) CreateAccount(ctx context.Context, input CreateAccountInput) (*models.Account, error) {
+	if input.ID == uuid.Nil {
+		return nil, ErrInvalidAccountID
+	}
+
+	email := strings.ToLower(strings.TrimSpace(input.Email))
 	if email == "" {
 		return nil, ErrInvalidEmail
 	}
 
-	username = strings.TrimSpace(username)
-	if username == "" {
-		return nil, ErrInvalidUsername
+	// 1. Idempotency: return existing account if already created
+	if existing, err := u.accountRepo.FindByID(ctx, input.ID); err != nil {
+		return nil, err
+	} else if existing != nil {
+		return existing, nil
 	}
 
-	// 1. Ensure account with this email does not already exist
-	existingEmail, err := u.accountRepo.FindByEmail(ctx, email)
-	if err != nil {
+	if existing, err := u.accountRepo.FindByEmail(ctx, email); err != nil {
+		return nil, err
+	} else if existing != nil {
+		return existing, nil
+	}
+
+	// 2. Default display name to email prefix if not provided
+	displayName := strings.TrimSpace(input.DisplayName)
+	if displayName == "" {
+		displayName = strings.Split(email, "@")[0]
+	}
+	if len(displayName) > 64 {
+		displayName = displayName[:64]
+	}
+
+	// 3. Resolve handle (use requested if available, otherwise generate unique)
+	handle := u.resolveUniqueHandle(ctx, input.Handle, displayName)
+
+	account := &models.Account{
+		ID:          input.ID,
+		Email:       email,
+		DisplayName: displayName,
+		Handle:      handle,
+		AvatarURL:   input.AvatarURL,
+		Status:      "ACTIVE",
+	}
+
+	if err := u.accountRepo.Create(ctx, account); err != nil {
 		return nil, err
 	}
-	if existingEmail != nil {
-		return nil, ErrAccountAlreadyExists
-	}
 
-	// 2. Ensure username is not already taken
-	existingUsername, err := u.accountRepo.FindByUsername(ctx, username)
-	if err != nil {
-		return nil, err
-	}
-	if existingUsername != nil {
-		return nil, ErrUsernameAlreadyExists
-	}
-
-	// 3. Create new account (ID is generated by UUID default or DB)
-	newAccount := &models.Account{
-		ID:       uuid.New(),
-		Email:    email,
-		Username: username,
-		Status:   "ACTIVE",
-	}
-
-	if err := u.accountRepo.Create(ctx, newAccount); err != nil {
-		return nil, err
-	}
-
-	return newAccount, nil
+	return account, nil
 }
 
-// UpdateUsername updates the username of an existing account.
-func (u *AccountUseCase) UpdateUsername(ctx context.Context, id uuid.UUID, newUsername string) (*models.Account, error) {
-	username := strings.TrimSpace(newUsername)
-	if username == "" {
-		return nil, ErrInvalidUsername
+// resolveUniqueHandle ensures a non-colliding handle using requested or fallback base name.
+func (u *AccountUseCase) resolveUniqueHandle(ctx context.Context, requested string, fallbackBase string) string {
+	if requested != "" {
+		candidate := SanitizeHandle(requested)
+		if existing, _ := u.accountRepo.FindByHandle(ctx, candidate); existing == nil {
+			return candidate
+		}
 	}
 
+	base := SanitizeHandle(fallbackBase)
+	candidate := base
+	for i := 0; i < 5; i++ {
+		if existing, _ := u.accountRepo.FindByHandle(ctx, candidate); existing == nil {
+			return candidate
+		}
+		n, _ := rand.Int(rand.Reader, big.NewInt(9000))
+		candidate = fmt.Sprintf("%s_%04d", base, n.Int64()+1000)
+		if len(candidate) > 32 {
+			candidate = candidate[:32]
+		}
+	}
+	return fmt.Sprintf("user_%s", uuid.New().String()[:8])
+}
+
+// UpdateAccount updates the profile fields of an existing account.
+func (u *AccountUseCase) UpdateAccount(ctx context.Context, id uuid.UUID, input UpdateAccountInput) (*models.Account, error) {
 	account, err := u.accountRepo.FindByID(ctx, id)
 	if err != nil {
 		return nil, err
@@ -119,23 +204,53 @@ func (u *AccountUseCase) UpdateUsername(ctx context.Context, id uuid.UUID, newUs
 		return nil, ErrAccountNotFound
 	}
 
-	if account.Username == username {
-		return account, nil
+	if input.DisplayName != nil {
+		dName := strings.TrimSpace(*input.DisplayName)
+		if dName == "" {
+			return nil, ErrInvalidDisplayName
+		}
+		if len(dName) > 64 {
+			dName = dName[:64]
+		}
+		account.DisplayName = dName
 	}
 
-	// Ensure new username is not already taken by another account
-	existingUsername, err := u.accountRepo.FindByUsername(ctx, username)
-	if err != nil {
-		return nil, err
-	}
-	if existingUsername != nil && existingUsername.ID != id {
-		return nil, ErrUsernameAlreadyExists
+	if input.Handle != nil {
+		h := SanitizeHandle(*input.Handle)
+		if len(h) < 3 || len(h) > 32 {
+			return nil, ErrInvalidHandle
+		}
+		if h != account.Handle {
+			existing, err := u.accountRepo.FindByHandle(ctx, h)
+			if err != nil {
+				return nil, err
+			}
+			if existing != nil && existing.ID != id {
+				return nil, ErrHandleAlreadyExists
+			}
+			account.Handle = h
+		}
 	}
 
-	account.Username = username
+	if input.Phone != nil {
+		account.Phone = cleanOptionalString(*input.Phone)
+	}
+
+	if input.AvatarURL != nil {
+		account.AvatarURL = cleanOptionalString(*input.AvatarURL)
+	}
+
 	if err := u.accountRepo.Update(ctx, account); err != nil {
 		return nil, err
 	}
 
 	return account, nil
+}
+
+func cleanOptionalString(s string) *string {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return nil
+	}
+	return &s
 }

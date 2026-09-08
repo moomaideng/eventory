@@ -19,7 +19,9 @@ export interface UserProfile {
   id: string;
   email: string;
   displayName: string;
+  handle: string;
   avatarUrl?: string;
+  phone?: string;
 }
 
 export interface OrganizerProfile {
@@ -48,7 +50,12 @@ interface RoleContextType {
   loginWithGoogle: () => Promise<void>;
   loginAsDev: (role?: UserRole) => void;
   logout: () => Promise<void>;
-  updateUserProfile: (displayName: string, avatarUrl?: string) => void;
+  updateUserProfile: (
+    displayName: string,
+    handle?: string,
+    avatarUrl?: string,
+    phone?: string
+  ) => void;
   createOrUpdateOrganizerProfile: (name: string, bio?: string) => void;
   createOrUpdateSponsorProfile: (
     companyName: string,
@@ -64,6 +71,7 @@ const MOCK_USER: UserProfile = {
   id: "99999999-0000-0000-0000-000000000001",
   email: "dev@eventory.gg",
   displayName: "Dev Competitor",
+  handle: "dev_competitor",
   avatarUrl: "https://api.dicebear.com/7.x/avataaars/svg?seed=MooMai",
 };
 
@@ -144,8 +152,10 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
     return {
       id: account.id,
       email: account.email,
-      displayName: account.username,
-      avatarUrl: session.avatarUrl,
+      displayName: account.displayName || account.email.split("@")[0],
+      handle: account.handle,
+      avatarUrl: account.avatarUrl || session.avatarUrl,
+      phone: account.phone || undefined,
     };
   }, [devUser, session, account]);
 
@@ -159,7 +169,7 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
       ? `Bearer ${session.accessToken}`
       : undefined;
 
-  // Query cache invalidation and refetch on demand / onboarding completion
+  // Query cache invalidation and refetch on demand / profile update
   const refreshUser = useCallback(async () => {
     await queryClient.invalidateQueries({
       queryKey: ["get", "/api/v1/accounts/me"],
@@ -175,7 +185,9 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
       if (session?.access_token) {
         setSession({
           accessToken: session.access_token,
-          avatarUrl: session.user?.user_metadata?.avatar_url,
+          avatarUrl:
+            session.user?.user_metadata?.avatar_url ||
+            session.user?.user_metadata?.picture,
         });
       } else {
         setSession(null);
@@ -190,7 +202,9 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
       if (session?.access_token) {
         setSession({
           accessToken: session.access_token,
-          avatarUrl: session.user?.user_metadata?.avatar_url,
+          avatarUrl:
+            session.user?.user_metadata?.avatar_url ||
+            session.user?.user_metadata?.picture,
         });
       } else if (event === "SIGNED_OUT") {
         setSession(null);
@@ -244,11 +258,22 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
 
   // Update primary user profile details with query cache update & invalidation
   const updateUserProfile = useCallback(
-    (displayName: string, avatarUrl?: string) => {
+    (
+      displayName: string,
+      handle?: string,
+      avatarUrl?: string,
+      phone?: string
+    ) => {
       if (devUser) {
         setDevUser((prev) =>
           prev
-            ? { ...prev, displayName, avatarUrl: avatarUrl || prev.avatarUrl }
+            ? {
+                ...prev,
+                displayName,
+                handle: handle || prev.handle,
+                avatarUrl: avatarUrl || prev.avatarUrl,
+                phone: phone || prev.phone,
+              }
             : null
         );
         return;
@@ -258,7 +283,13 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
         { queryKey: ["get", "/api/v1/accounts/me"] },
         (old) => {
           if (!old) return old;
-          return { ...old, username: displayName };
+          return {
+            ...old,
+            displayName,
+            handle: handle || old.handle,
+            avatarUrl: avatarUrl || old.avatarUrl,
+            phone: phone || old.phone,
+          };
         }
       );
       queryClient.invalidateQueries({

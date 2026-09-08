@@ -15,11 +15,12 @@ import (
 )
 
 type TeamLobbyMemberResponse struct {
-	ID        uuid.UUID `json:"id"`
-	AccountID uuid.UUID `json:"accountId"`
-	Username  string    `json:"username"`
-	Role      string    `json:"role" enum:"CAPTAIN,MEMBER"`
-	JoinedAt  time.Time `json:"joinedAt"`
+	ID          uuid.UUID `json:"id"`
+	AccountID   uuid.UUID `json:"accountId"`
+	Handle      string    `json:"handle"`
+	DisplayName string    `json:"displayName"`
+	Role        string    `json:"role" enum:"CAPTAIN,MEMBER"`
+	JoinedAt    time.Time `json:"joinedAt"`
 }
 
 type TeamLobbyResponse struct {
@@ -221,6 +222,12 @@ func registerCaptainAction(api huma.API, lobbyUseCase *usecases.TeamLobbyUseCase
 }
 
 func authenticatedAccount(ctx context.Context, accountUseCase *usecases.AccountUseCase) (*models.Account, error) {
+	if userID, err := middlewares.GetAuthUserID(ctx); err == nil {
+		if acc, _ := accountUseCase.GetAccountByID(ctx, userID); acc != nil {
+			return acc, nil
+		}
+	}
+
 	email, err := middlewares.GetAuthEmail(ctx)
 	if err != nil {
 		return nil, huma.Error401Unauthorized("Authentication required", err)
@@ -228,7 +235,7 @@ func authenticatedAccount(ctx context.Context, accountUseCase *usecases.AccountU
 	account, err := accountUseCase.GetAccountByEmail(ctx, email)
 	if err != nil {
 		if errors.Is(err, usecases.ErrAccountNotFound) {
-			return nil, huma.Error404NotFound("Account not found. Onboarding required.", err)
+			return nil, huma.Error404NotFound("Account not found.", err)
 		}
 		return nil, huma.Error500InternalServerError("Failed to retrieve account", err)
 	}
@@ -266,7 +273,8 @@ func toTeamLobbyResponse(team *models.TournamentTeam, viewerID uuid.UUID) TeamLo
 	var captainName string
 	for _, member := range team.Members {
 		members = append(members, TeamLobbyMemberResponse{
-			ID: member.ID, AccountID: member.AccountID, Username: member.Account.Username,
+			ID: member.ID, AccountID: member.AccountID,
+			Handle: member.Account.Handle, DisplayName: member.Account.DisplayName,
 			Role: string(member.Role), JoinedAt: member.JoinedAt,
 		})
 		if member.AccountID == viewerID {
@@ -274,7 +282,10 @@ func toTeamLobbyResponse(team *models.TournamentTeam, viewerID uuid.UUID) TeamLo
 		}
 		if member.Role == models.TournamentTeamMemberRoleCaptain {
 			captainID = member.AccountID
-			captainName = member.Account.Username
+			captainName = member.Account.DisplayName
+			if captainName == "" {
+				captainName = member.Account.Handle
+			}
 			if member.AccountID == viewerID {
 				viewerRole = "CAPTAIN"
 			}

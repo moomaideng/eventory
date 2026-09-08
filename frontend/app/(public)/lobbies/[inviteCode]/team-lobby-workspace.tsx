@@ -323,7 +323,10 @@ export function TeamLobbyWorkspace({ inviteCode }: { inviteCode: string }) {
                     <TableRow key={member.id}>
                       <TableCell className="font-medium">
                         <div className="flex items-center gap-2">
-                          {member.username}
+                          <span>{member.displayName}</span>
+                          <span className="text-muted-foreground text-xs">
+                            @{member.handle}
+                          </span>
                           {isMemberCaptain ? (
                             <Badge variant="outline">Captain</Badge>
                           ) : null}

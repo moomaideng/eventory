@@ -9,12 +9,15 @@ import (
 )
 
 type Account struct {
-	ID        uuid.UUID `gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
-	Email     string    `gorm:"type:varchar(255);not null;uniqueIndex"`
-	Username  string    `gorm:"type:varchar(32);not null;uniqueIndex"`
-	Status    string    `gorm:"type:varchar(16);not null;default:'ACTIVE'"`
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	ID          uuid.UUID `gorm:"type:uuid;primaryKey"`
+	Email       string    `gorm:"type:varchar(255);not null;uniqueIndex"`
+	Handle      string    `gorm:"type:varchar(32);not null;uniqueIndex"`
+	DisplayName string    `gorm:"type:varchar(64);not null"`
+	AvatarURL   *string   `gorm:"type:text"`
+	Phone       *string   `gorm:"type:varchar(32)"`
+	Status      string    `gorm:"type:varchar(16);not null;default:'ACTIVE'"`
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
 
 	// * -> optional/nullable
 	OrganizerProfile *OrganizerProfile `gorm:"foreignKey:AccountID;constraint:OnDelete:CASCADE;"`
@@ -23,7 +26,8 @@ type Account struct {
 
 func (account *Account) BeforeSave(_ *gorm.DB) error {
 	account.Email = strings.ToLower(strings.TrimSpace(account.Email))
-	account.Username = strings.TrimSpace(account.Username)
+	account.Handle = strings.ToLower(strings.TrimSpace(account.Handle))
+	account.DisplayName = strings.TrimSpace(account.DisplayName)
 	return nil
 }
 
