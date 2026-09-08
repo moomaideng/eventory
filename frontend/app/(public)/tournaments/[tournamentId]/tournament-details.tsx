@@ -11,7 +11,7 @@ import {
   WalletCards,
 } from "lucide-react";
 import { $api } from "@/lib/api/client";
-import { useRole } from "@/context/role-context";
+import { useAuth } from "@/context/auth-context";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -40,8 +40,7 @@ import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export function TournamentDetails({ tournamentId }: { tournamentId: string }) {
-  const { activeRole, authorizationHeader } = useRole();
-  const isCompetitor = activeRole === "competitor";
+  const { authorizationHeader } = useAuth();
   const { data, error, isLoading } = $api.useQuery(
     "get",
     "/api/v1/tournaments/{tournamentId}",
@@ -58,7 +57,7 @@ export function TournamentDetails({ tournamentId }: { tournamentId: string }) {
         : {},
     },
     {
-      enabled: Boolean(authorizationHeader) && isCompetitor,
+      enabled: Boolean(authorizationHeader),
       retry: false,
       staleTime: 0,
     }
@@ -102,7 +101,6 @@ export function TournamentDetails({ tournamentId }: { tournamentId: string }) {
     tournament.registrationMode === "TEAM" ||
     tournament.registrationMode === "BOTH";
   const canCreateTeam =
-    isCompetitor &&
     supportsTeams &&
     tournament.status === "REGISTRATION_OPEN" &&
     !isMyTeamLoading &&
@@ -231,7 +229,7 @@ export function TournamentDetails({ tournamentId }: { tournamentId: string }) {
         </div>
 
         <div className="flex flex-col gap-6 lg:sticky lg:top-24">
-          {isCompetitor && myTeam ? (
+          {myTeam ? (
             <Card>
               <CardHeader>
                 <CardTitle>Your team</CardTitle>
@@ -292,9 +290,7 @@ export function TournamentDetails({ tournamentId }: { tournamentId: string }) {
               <div className="grid grid-cols-2 gap-4">
                 <FundingStat
                   label="Supporters"
-                  value={new Intl.NumberFormat("en-US").format(
-                    funding.supporterCount
-                  )}
+                  value={numberFormatter.format(funding.supporterCount)}
                 />
                 <FundingStat
                   label="Still needed"
@@ -358,12 +354,22 @@ function DetailsSkeleton() {
   );
 }
 
+const numberFormatter = new Intl.NumberFormat("en-US");
+
+const tournamentDateFormatter = new Intl.DateTimeFormat("en-GB", {
+  dateStyle: "medium",
+  timeStyle: "short",
+  timeZone: "Asia/Bangkok",
+});
+
+const percentageFormatter = new Intl.NumberFormat("en-US", {
+  maximumFractionDigits: 1,
+});
+
+const currencyFormatters = new Map<string, Intl.NumberFormat>();
+
 function formatTournamentDate(value: string) {
-  return new Intl.DateTimeFormat("en-GB", {
-    dateStyle: "medium",
-    timeStyle: "short",
-    timeZone: "Asia/Bangkok",
-  }).format(new Date(value));
+  return tournamentDateFormatter.format(new Date(value));
 }
 
 function formatDateRange(startAt: string, endAt: string) {
@@ -372,17 +378,20 @@ function formatDateRange(startAt: string, endAt: string) {
 
 function formatMoney(amount: number, currency: string, freeLabel = false) {
   if (freeLabel && amount === 0) return "Free entry";
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency,
-    maximumFractionDigits: 0,
-  }).format(amount);
+  let formatter = currencyFormatters.get(currency);
+  if (!formatter) {
+    formatter = new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency,
+      maximumFractionDigits: 0,
+    });
+    currencyFormatters.set(currency, formatter);
+  }
+  return formatter.format(amount);
 }
 
 function formatPercentage(value: number) {
-  return `${new Intl.NumberFormat("en-US", {
-    maximumFractionDigits: 1,
-  }).format(value)}%`;
+  return `${percentageFormatter.format(value)}%`;
 }
 
 function formatRegistrationType(value: string) {

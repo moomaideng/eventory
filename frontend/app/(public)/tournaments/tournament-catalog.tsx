@@ -17,7 +17,6 @@ import {
 } from "lucide-react";
 import { $api } from "@/lib/api/client";
 import type { components } from "@/lib/api/schema";
-import { useRole } from "@/context/role-context";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -47,7 +46,6 @@ export function TournamentCatalog() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const { activeRole } = useRole();
 
   const requestedPage = Number(searchParams.get("page") ?? "1");
   const page =
@@ -109,19 +107,14 @@ export function TournamentCatalog() {
 
   return (
     <div className="container mx-auto flex w-full max-w-7xl flex-1 flex-col gap-8 px-4 py-12 sm:px-8">
-      <div className="flex flex-col gap-3">
-        <Badge variant="outline" className="capitalize">
-          {activeRole} catalog
-        </Badge>
-        <div className="flex flex-col gap-2">
-          <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
-            Find your next tournament
-          </h1>
-          <p className="text-muted-foreground max-w-2xl">
-            Search published competitions and narrow the list to events that fit
-            your schedule and budget.
-          </p>
-        </div>
+      <div className="flex flex-col gap-2">
+        <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
+          Find your next tournament
+        </h1>
+        <p className="text-muted-foreground max-w-2xl">
+          Search published competitions and narrow the list to events that fit
+          your schedule and budget.
+        </p>
       </div>
 
       <Card>
@@ -349,19 +342,28 @@ function TournamentGridSkeleton() {
   );
 }
 
+const tournamentDateFormatter = new Intl.DateTimeFormat("en-GB", {
+  dateStyle: "medium",
+  timeStyle: "short",
+  timeZone: "Asia/Bangkok",
+});
+
+const currencyFormatters = new Map<string, Intl.NumberFormat>();
+
 function formatTournamentDate(value: string) {
-  return new Intl.DateTimeFormat("en-GB", {
-    dateStyle: "medium",
-    timeStyle: "short",
-    timeZone: "Asia/Bangkok",
-  }).format(new Date(value));
+  return tournamentDateFormatter.format(new Date(value));
 }
 
 function formatEntryFee(entryFee: number, currency: string) {
   if (entryFee === 0) return "Free entry";
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency,
-    maximumFractionDigits: 0,
-  }).format(entryFee);
+  let formatter = currencyFormatters.get(currency);
+  if (!formatter) {
+    formatter = new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency,
+      maximumFractionDigits: 0,
+    });
+    currencyFormatters.set(currency, formatter);
+  }
+  return formatter.format(entryFee);
 }

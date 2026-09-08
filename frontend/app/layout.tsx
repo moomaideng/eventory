@@ -3,7 +3,7 @@ import { Outfit, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { cn } from "@/lib/utils";
 import { QueryProvider } from "@/components/providers/query-provider";
-import { RoleProvider } from "@/context/role-context";
+import { AuthProvider } from "@/context/auth-context";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 
 const fontSans = Outfit({
@@ -45,7 +45,7 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <QueryProvider>
-            <RoleProvider>{children}</RoleProvider>
+            <AuthProvider>{children}</AuthProvider>
           </QueryProvider>
         </ThemeProvider>
       </body>

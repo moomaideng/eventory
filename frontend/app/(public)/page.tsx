@@ -1,12 +1,28 @@
 import React from "react";
-import Link from "next/link";
-import { Button } from "@/components/ui/button";
-import { ArrowRight, Trophy, Gamepad2 } from "lucide-react";
+import type { Metadata } from "next";
+import { createClient } from "@/lib/server";
+import { HeroActions } from "./hero-actions";
 
-export default function HomePage() {
+export const metadata: Metadata = {
+  title: "Eventory - Host, Compete, and Sponsor Tournaments",
+  description:
+    "A single unified identity for competitors, organizers, and sponsors. Manage brackets, crowdfund prize pools, and organize team lobbies effortlessly.",
+};
+
+export default async function HomePage() {
+  let serverAuthenticated = false;
+
+  try {
+    const supabase = await createClient();
+    const { data } = await supabase.auth.getClaims();
+    serverAuthenticated = Boolean(data?.claims);
+  } catch {
+    // Graceful fallback if session check fails
+  }
+
   return (
-    <div className="flex flex-1 flex-col items-center justify-center px-4 py-20 sm:px-8">
-      <div className="flex w-full max-w-3xl flex-col gap-8 text-center">
+    <div className="flex flex-1 flex-col items-center justify-center px-4 py-24 sm:px-8">
+      <div className="flex w-full max-w-3xl flex-col items-center gap-8 text-center">
         {/* Clean Hero Title & Description */}
         <div className="flex flex-col gap-4">
           <h1 className="text-foreground text-4xl font-extrabold tracking-tight sm:text-6xl">
@@ -19,30 +35,8 @@ export default function HomePage() {
           </p>
         </div>
 
-        {/* Clean Primary Actions */}
-        <div className="flex flex-col items-center justify-center gap-3 pt-2 sm:flex-row">
-          <Button
-            size="lg"
-            render={<Link href="/tournaments" />}
-            nativeButton={false}
-            className="w-full sm:w-auto"
-          >
-            <Gamepad2 data-icon="inline-start" />
-            Explore Tournaments
-            <ArrowRight data-icon="inline-end" />
-          </Button>
-
-          <Button
-            variant="outline"
-            size="lg"
-            render={<Link href="/organizer/tournaments/new" />}
-            nativeButton={false}
-            className="w-full sm:w-auto"
-          >
-            <Trophy data-icon="inline-start" />
-            Host a Tournament
-          </Button>
-        </div>
+        {/* Clear, balanced primary action buttons */}
+        <HeroActions serverAuthenticated={serverAuthenticated} />
       </div>
     </div>
   );

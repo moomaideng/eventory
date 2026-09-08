@@ -2,8 +2,9 @@
 
 import React from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useRole, UserRole } from "@/context/role-context";
+import { usePathname, useRouter } from "next/navigation";
+import { useAuth } from "@/context/auth-context";
+import { getWorkspaceRoleFromPath, type UserRole } from "@/lib/role";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -12,27 +13,33 @@ import {
   DropdownMenuContent,
   DropdownMenuGroup,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "@/components/theme-toggle";
-import {
-  Gamepad2,
-  Trophy,
-  Briefcase,
-  ChevronDown,
-  LogOut,
-  Sparkles,
-  LogIn,
-  Check,
-} from "lucide-react";
+import { ChevronDown, LogOut, Sparkles, LogIn, Check } from "lucide-react";
 
-const ROLES: { id: UserRole; label: string; icon: React.ElementType }[] = [
-  { id: "competitor", label: "Competitor", icon: Gamepad2 },
-  { id: "organizer", label: "Organizer", icon: Trophy },
-  { id: "sponsor", label: "Sponsor", icon: Briefcase },
+const PERSONA_CONFIG: {
+  id: UserRole;
+  label: string;
+  href: string;
+}[] = [
+  {
+    id: "competitor",
+    label: "Competitor",
+    href: "/tournaments",
+  },
+  {
+    id: "organizer",
+    label: "Organizer",
+    href: "/organizer",
+  },
+  {
+    id: "sponsor",
+    label: "Sponsor",
+    href: "/sponsor",
+  },
 ];
 
 const NAV_LINKS: Record<UserRole, { label: string; href: string }[]> = {
@@ -49,29 +56,66 @@ const NAV_LINKS: Record<UserRole, { label: string; href: string }[]> = {
 
 export function Navbar() {
   const pathname = usePathname();
-  const {
-    user,
-    activeRole,
-    activeProfileName,
-    isLoading,
-    setRole,
-    loginAsDev,
-    logout,
-  } = useRole();
+  const router = useRouter();
+  const { user, isLoading, loginAsDev, logout } = useAuth();
+  const activeRole = getWorkspaceRoleFromPath(pathname);
+
+  const isOrganizerWorkspace = pathname.startsWith("/organizer");
+  const isSponsorWorkspace = pathname.startsWith("/sponsor");
+
+  const handleSelectRole = (targetHref: string) => {
+    router.push(targetHref);
+  };
 
   return (
     <header className="bg-background/95 sticky top-0 z-50 w-full border-b backdrop-blur">
       <div className="container mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-8">
         {/* Left: Brand Logo & Navigation */}
         <div className="flex items-center gap-8">
-          <Link href="/" className="flex items-center gap-2">
-            <div className="bg-primary text-primary-foreground flex size-9 items-center justify-center rounded-lg font-black">
+          <div className="flex items-center gap-2.5">
+            <Link
+              href="/"
+              title="Eventory Home"
+              className="bg-primary text-primary-foreground flex size-9 shrink-0 items-center justify-center rounded-lg font-black transition-transform select-none hover:scale-105"
+            >
               E
-            </div>
-            <span className="text-foreground text-xl font-bold">
-              Eventory<span className="text-primary">.</span>
-            </span>
-          </Link>
+            </Link>
+
+            <Link
+              href={
+                isOrganizerWorkspace
+                  ? "/organizer"
+                  : isSponsorWorkspace
+                    ? "/sponsor"
+                    : "/"
+              }
+              className="transition-opacity hover:opacity-90"
+            >
+              {isOrganizerWorkspace ? (
+                <div className="flex flex-col text-left leading-none">
+                  <span className="text-foreground text-sm font-bold tracking-tight">
+                    Eventory
+                  </span>
+                  <span className="text-muted-foreground mt-0.5 text-[10px] font-bold tracking-wider uppercase">
+                    Organizer
+                  </span>
+                </div>
+              ) : isSponsorWorkspace ? (
+                <div className="flex flex-col text-left leading-none">
+                  <span className="text-foreground text-sm font-bold tracking-tight">
+                    Eventory
+                  </span>
+                  <span className="text-muted-foreground mt-0.5 text-[10px] font-bold tracking-wider uppercase">
+                    Sponsor
+                  </span>
+                </div>
+              ) : (
+                <span className="text-foreground text-lg font-bold tracking-tight">
+                  Eventory
+                </span>
+              )}
+            </Link>
+          </div>
 
           {/* Dynamic Navigation Links */}
           <nav className="hidden items-center gap-6 md:flex">
@@ -95,79 +139,111 @@ export function Navbar() {
           </nav>
         </div>
 
-        {/* Right: Role Switcher & Auth Actions */}
-        <div className="flex items-center gap-3">
+        {/* Right: Theme Toggle & Unified Profile Trigger */}
+        <div className="flex items-center gap-2.5">
           <ThemeToggle />
           {isLoading ? (
             /* Skeleton Loading State during Hydration (Zero Layout Shift) */
-            <Skeleton className="h-9 w-28 rounded-full" />
+            <Skeleton className="h-9 w-28 rounded-lg" />
           ) : user ? (
-            /* Role Switcher Dropdown */
+            /* Unified Profile & Mode Dropdown with Squircle Styling */
             <DropdownMenu>
               <DropdownMenuTrigger
                 render={
                   <Button
                     variant="outline"
-                    className="flex h-10 items-center gap-2.5 rounded-full px-3"
+                    className="group flex h-9 items-center gap-2 rounded-lg px-2.5 py-1 transition-colors"
                   />
                 }
               >
-                <Avatar className="size-6">
-                  <AvatarImage src={user.avatarUrl} alt={user.displayName} />
-                  <AvatarFallback className="text-[10px]">
+                <Avatar className="ring-border/80 size-6 rounded-md ring-1 after:rounded-md">
+                  <AvatarImage
+                    src={user.avatarUrl}
+                    alt={user.displayName}
+                    className="rounded-md"
+                  />
+                  <AvatarFallback className="rounded-md text-[10px] font-bold">
                     {user.displayName.slice(0, 2).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
-                <div className="flex flex-col text-left">
-                  <span className="text-foreground text-xs leading-tight font-semibold">
-                    {activeProfileName}
-                  </span>
-                  <span className="text-muted-foreground text-[10px]">
-                    @{user.handle}
-                  </span>
-                </div>
-                <ChevronDown className="text-muted-foreground" />
+
+                <span className="text-foreground hidden max-w-32 truncate text-xs font-semibold sm:inline">
+                  {user.displayName}
+                </span>
+
+                <ChevronDown className="text-muted-foreground group-hover:text-foreground size-3 opacity-60 transition-transform duration-200 group-data-popup-open:rotate-180" />
               </DropdownMenuTrigger>
 
-              <DropdownMenuContent align="end" className="w-64 p-1">
+              <DropdownMenuContent
+                align="end"
+                className="w-56 rounded-xl border p-2 shadow-xl"
+              >
                 <DropdownMenuGroup>
-                  <div className="px-2 py-1.5">
-                    <p className="text-foreground truncate text-xs font-semibold">
-                      {user.displayName}
-                    </p>
-                    <p className="text-muted-foreground truncate text-[11px]">
-                      @{user.handle}
-                    </p>
+                  {/* Compact User Header */}
+                  <div className="flex items-center gap-3 px-2 py-1.5">
+                    <Avatar className="ring-border size-8 rounded-lg ring-1 after:rounded-lg">
+                      <AvatarImage
+                        src={user.avatarUrl}
+                        alt={user.displayName}
+                        className="rounded-lg"
+                      />
+                      <AvatarFallback className="rounded-lg text-[10px] font-bold">
+                        {user.displayName.slice(0, 2).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex min-w-0 flex-col">
+                      <p className="text-foreground truncate text-sm leading-tight font-semibold">
+                        {user.displayName}
+                      </p>
+                      <p className="text-muted-foreground truncate text-xs">
+                        @{user.handle}
+                      </p>
+                    </div>
                   </div>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuLabel>Switch Role Context</DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  {ROLES.map(({ id, label, icon: Icon }) => (
-                    <DropdownMenuItem
-                      key={id}
-                      onClick={() => setRole(id)}
-                      className="flex items-center justify-between py-2"
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <Icon className="text-primary" />
-                        <span className="text-sm font-medium">
-                          {label} Mode
-                        </span>
-                      </div>
-                      {activeRole === id && <Check className="text-primary" />}
-                    </DropdownMenuItem>
-                  ))}
+
+                  <DropdownMenuSeparator className="my-1.5" />
+
+                  {/* Quick Switch Section Header */}
+                  <div className="px-1 pb-1">
+                    <span className="text-muted-foreground text-[10px] font-bold tracking-wider uppercase">
+                      Quick Switch
+                    </span>
+                  </div>
+
+                  {/* Vertical Segmented Slider Track */}
+                  <div className="bg-muted/50 border-border/40 flex flex-col gap-1 rounded-lg border p-1 dark:bg-black/30">
+                    {PERSONA_CONFIG.map(({ id, label, href }) => {
+                      const isActive = activeRole === id;
+                      return (
+                        <DropdownMenuItem
+                          key={id}
+                          onClick={() => handleSelectRole(href)}
+                          className={cn(
+                            "flex cursor-pointer items-center justify-between rounded-md px-2.5 py-1.5 text-xs transition-all duration-150 select-none",
+                            isActive
+                              ? "bg-background text-foreground border-border/60 dark:bg-muted focus:bg-background dark:focus:bg-muted focus:text-foreground border font-semibold shadow-xs dark:border-white/10"
+                              : "text-muted-foreground hover:bg-background/30 hover:text-foreground focus:bg-background/30 focus:text-foreground dark:hover:bg-white/5 dark:focus:bg-white/5"
+                          )}
+                        >
+                          <span>{label}</span>
+                          {isActive && (
+                            <Check className="text-foreground/70 ml-2 size-3.5 shrink-0" />
+                          )}
+                        </DropdownMenuItem>
+                      );
+                    })}
+                  </div>
                 </DropdownMenuGroup>
 
-                <DropdownMenuSeparator />
+                <DropdownMenuSeparator className="my-1.5" />
 
                 <DropdownMenuGroup>
                   <DropdownMenuItem
                     onClick={logout}
                     variant="destructive"
-                    className="flex items-center gap-2"
+                    className="text-destructive hover:bg-destructive/10 flex cursor-pointer items-center gap-2 rounded-lg px-2.5 py-2 text-xs font-medium"
                   >
-                    <LogOut />
+                    <LogOut className="size-3.5" />
                     <span>Sign Out</span>
                   </DropdownMenuItem>
                 </DropdownMenuGroup>

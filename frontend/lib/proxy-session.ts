@@ -1,7 +1,14 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-export async function updateSession(request: NextRequest) {
+export interface ProxySessionResult {
+  response: NextResponse;
+  user: { id: string } | null;
+}
+
+export async function updateSession(
+  request: NextRequest
+): Promise<ProxySessionResult> {
   let supabaseResponse = NextResponse.next({
     request,
   });
@@ -9,10 +16,26 @@ export async function updateSession(request: NextRequest) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 
-  // If Supabase environment variables are not set (e.g. local offline dev), pass through gracefully
+  // Safe fallback for dev offline mode when Supabase credentials are not configured
   if (!supabaseUrl || !supabaseKey) {
-    return supabaseResponse;
+    return {
+      response: supabaseResponse,
+      user: { id: "offline-dev" },
+    };
   }
+
+  // Support dev session bypass in development mode
+  if (
+    process.env.NODE_ENV === "development" &&
+    request.cookies.get("eventory_dev_session")?.value === "true"
+  ) {
+    return {
+      response: supabaseResponse,
+      user: { id: "dev-user" },
+    };
+  }
+
+  let user: { id: string } | null = null;
 
   try {
     const supabase = createServerClient(supabaseUrl, supabaseKey, {
@@ -36,12 +59,23 @@ export async function updateSession(request: NextRequest) {
 
     // With modern Asymmetric JWT Signing, getClaims() performs local cryptographic verification (via JWKS)
     // without a network roundtrip to Supabase Auth, while keeping session cookies automatically refreshed.
-    await supabase.auth.getClaims();
+    const { data } = await supabase.auth.getClaims();
+    if (data?.claims?.sub) {
+      user = { id: data.claims.sub };
+    }
   } catch (err) {
     if (process.env.NODE_ENV === "development") {
       console.warn("[Proxy] Session refresh notice:", err);
+      // Safe fallback for dev offline mode when local Supabase instance is unreachable
+      return {
+        response: supabaseResponse,
+        user: { id: "dev-offline-fallback" },
+      };
     }
   }
 
-  return supabaseResponse;
+  return {
+    response: supabaseResponse,
+    user,
+  };
 }
