@@ -23,7 +23,6 @@ type AccountRepository interface {
 	UpsertSponsorProfile(ctx context.Context, profile *models.SponsorProfile) (*models.SponsorProfile, error)
 }
 
-
 // accountRepositoryImpl is the concrete implementation of AccountRepository using GORM.
 type accountRepositoryImpl struct {
 	db *gorm.DB
@@ -178,4 +177,3 @@ func (r *accountRepositoryImpl) UpsertSponsorProfile(ctx context.Context, profil
 	}
 	return &existing, nil
 }
-
