@@ -17,7 +17,9 @@ import (
 
 // mockAccountRepo is an in-memory repository for integration testing.
 type mockAccountRepo struct {
-	accounts []*models.Account
+	accounts          []*models.Account
+	organizerProfiles []*models.OrganizerProfile
+	sponsorProfiles   []*models.SponsorProfile
 }
 
 func (m *mockAccountRepo) FindByID(ctx context.Context, id uuid.UUID) (*models.Account, error) {
@@ -60,6 +62,52 @@ func (m *mockAccountRepo) Update(ctx context.Context, account *models.Account) e
 		}
 	}
 	return nil
+}
+
+func (m *mockAccountRepo) FindOrganizerProfileByAccountID(ctx context.Context, accountID uuid.UUID) (*models.OrganizerProfile, error) {
+	for _, p := range m.organizerProfiles {
+		if p.AccountID == accountID {
+			return p, nil
+		}
+	}
+	return nil, nil
+}
+
+func (m *mockAccountRepo) UpsertOrganizerProfile(ctx context.Context, profile *models.OrganizerProfile) (*models.OrganizerProfile, error) {
+	for i, p := range m.organizerProfiles {
+		if p.AccountID == profile.AccountID {
+			m.organizerProfiles[i] = profile
+			return profile, nil
+		}
+	}
+	if profile.ID == uuid.Nil {
+		profile.ID = uuid.New()
+	}
+	m.organizerProfiles = append(m.organizerProfiles, profile)
+	return profile, nil
+}
+
+func (m *mockAccountRepo) FindSponsorProfileByAccountID(ctx context.Context, accountID uuid.UUID) (*models.SponsorProfile, error) {
+	for _, p := range m.sponsorProfiles {
+		if p.AccountID == accountID {
+			return p, nil
+		}
+	}
+	return nil, nil
+}
+
+func (m *mockAccountRepo) UpsertSponsorProfile(ctx context.Context, profile *models.SponsorProfile) (*models.SponsorProfile, error) {
+	for i, p := range m.sponsorProfiles {
+		if p.AccountID == profile.AccountID {
+			m.sponsorProfiles[i] = profile
+			return profile, nil
+		}
+	}
+	if profile.ID == uuid.Nil {
+		profile.ID = uuid.New()
+	}
+	m.sponsorProfiles = append(m.sponsorProfiles, profile)
+	return profile, nil
 }
 
 func makeAuthContext(userID uuid.UUID, email string) context.Context {
@@ -213,7 +261,51 @@ func TestAccountDomain_Integration(t *testing.T) {
 		}
 	})
 
-	// 8. Security Guard: Request without authentication -> Returns 401 Unauthorized
+	// 8. Context Profile: Upsert organizer profile via PUT /me/organizer-profile -> Returns 200 OK
+	t.Run("PUT /me/organizer-profile upserts organizer profile", func(t *testing.T) {
+		orgEmail := "org@eventory.gg"
+		resp := api.PutCtx(user1Ctx, "/api/v1/accounts/me/organizer-profile", handlers.UpsertOrganizerProfileRequest{
+			OrganizerName:  "Chula Esports Club",
+			OrganizerEmail: &orgEmail,
+		})
+
+		if resp.Code != http.StatusOK {
+			t.Fatalf("expected status 200 OK, got %d: %s", resp.Code, resp.Body.String())
+		}
+
+		var out handlers.OrganizerProfileResponse
+		if err := json.Unmarshal(resp.Body.Bytes(), &out); err != nil {
+			t.Fatalf("failed to decode response: %v", err)
+		}
+
+		if out.OrganizerName != "Chula Esports Club" {
+			t.Errorf("expected organizer name 'Chula Esports Club', got %s", out.OrganizerName)
+		}
+	})
+
+	// 9. Context Profile: Upsert sponsor profile via PUT /me/sponsor-profile -> Returns 200 OK
+	t.Run("PUT /me/sponsor-profile upserts sponsor profile", func(t *testing.T) {
+		spEmail := "sponsor@eventory.gg"
+		resp := api.PutCtx(user1Ctx, "/api/v1/accounts/me/sponsor-profile", handlers.UpsertSponsorProfileRequest{
+			SponsorName:  "Red Bull Gaming",
+			SponsorEmail: &spEmail,
+		})
+
+		if resp.Code != http.StatusOK {
+			t.Fatalf("expected status 200 OK, got %d: %s", resp.Code, resp.Body.String())
+		}
+
+		var out handlers.SponsorProfileResponse
+		if err := json.Unmarshal(resp.Body.Bytes(), &out); err != nil {
+			t.Fatalf("failed to decode response: %v", err)
+		}
+
+		if out.SponsorName != "Red Bull Gaming" {
+			t.Errorf("expected sponsor name 'Red Bull Gaming', got %s", out.SponsorName)
+		}
+	})
+
+	// 10. Security Guard: Request without authentication -> Returns 401 Unauthorized
 	t.Run("unauthenticated request returns 401 unauthorized", func(t *testing.T) {
 		resp := api.Post("/api/v1/accounts", handlers.CreateAccountRequest{
 			DisplayName: "Anonymous",
