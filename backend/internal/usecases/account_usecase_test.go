@@ -11,12 +11,16 @@ import (
 
 // mockAccountRepository is an in-memory mock implementation of AccountRepository for unit tests.
 type mockAccountRepository struct {
-	accounts map[uuid.UUID]*models.Account
+	accounts          map[uuid.UUID]*models.Account
+	organizerProfiles map[uuid.UUID]*models.OrganizerProfile
+	sponsorProfiles   map[uuid.UUID]*models.SponsorProfile
 }
 
 func newMockAccountRepository() *mockAccountRepository {
 	return &mockAccountRepository{
-		accounts: make(map[uuid.UUID]*models.Account),
+		accounts:          make(map[uuid.UUID]*models.Account),
+		organizerProfiles: make(map[uuid.UUID]*models.OrganizerProfile),
+		sponsorProfiles:   make(map[uuid.UUID]*models.SponsorProfile),
 	}
 }
 
@@ -53,6 +57,46 @@ func (m *mockAccountRepository) Create(ctx context.Context, account *models.Acco
 func (m *mockAccountRepository) Update(ctx context.Context, account *models.Account) error {
 	m.accounts[account.ID] = account
 	return nil
+}
+
+func (m *mockAccountRepository) FindOrganizerProfileByAccountID(ctx context.Context, accountID uuid.UUID) (*models.OrganizerProfile, error) {
+	if p, exists := m.organizerProfiles[accountID]; exists {
+		return p, nil
+	}
+	return nil, nil
+}
+
+func (m *mockAccountRepository) UpsertOrganizerProfile(ctx context.Context, profile *models.OrganizerProfile) (*models.OrganizerProfile, error) {
+	if existing, exists := m.organizerProfiles[profile.AccountID]; exists {
+		existing.OrganizerName = profile.OrganizerName
+		existing.OrganizerEmail = profile.OrganizerEmail
+		return existing, nil
+	}
+	if profile.ID == uuid.Nil {
+		profile.ID = uuid.New()
+	}
+	m.organizerProfiles[profile.AccountID] = profile
+	return profile, nil
+}
+
+func (m *mockAccountRepository) FindSponsorProfileByAccountID(ctx context.Context, accountID uuid.UUID) (*models.SponsorProfile, error) {
+	if p, exists := m.sponsorProfiles[accountID]; exists {
+		return p, nil
+	}
+	return nil, nil
+}
+
+func (m *mockAccountRepository) UpsertSponsorProfile(ctx context.Context, profile *models.SponsorProfile) (*models.SponsorProfile, error) {
+	if existing, exists := m.sponsorProfiles[profile.AccountID]; exists {
+		existing.SponsorName = profile.SponsorName
+		existing.SponsorEmail = profile.SponsorEmail
+		return existing, nil
+	}
+	if profile.ID == uuid.Nil {
+		profile.ID = uuid.New()
+	}
+	m.sponsorProfiles[profile.AccountID] = profile
+	return profile, nil
 }
 
 func TestGetAccountByEmail_Found(t *testing.T) {

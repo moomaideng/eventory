@@ -4,1004 +4,1251 @@
  */
 
 export interface paths {
-  "/api/v1/accounts": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/api/v1/accounts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create Account
+         * @description Creates or ensures an account exists for the authenticated user using JWT sub and email.
+         */
+        post: operations["create-account"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    get?: never;
-    put?: never;
-    /**
-     * Create Account
-     * @description Creates or ensures an account exists for the authenticated user using JWT sub and email.
-     */
-    post: operations["create-account"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/api/v1/accounts/me": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/api/v1/accounts/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Current User Account
+         * @description Retrieves the account of the authenticated user via Bearer JWT.
+         */
+        get: operations["get-my-account"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Update Current User Account
+         * @description Updates profile fields (displayName, handle, phone, avatarUrl) of the authenticated user.
+         */
+        patch: operations["update-my-account"];
+        trace?: never;
     };
-    /**
-     * Get Current User Account
-     * @description Retrieves the account of the authenticated user via Bearer JWT.
-     */
-    get: operations["get-my-account"];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    /**
-     * Update Current User Account
-     * @description Updates profile fields (displayName, handle, phone, avatarUrl) of the authenticated user.
-     */
-    patch: operations["update-my-account"];
-    trace?: never;
-  };
-  "/api/v1/accounts/{id}": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/api/v1/accounts/me/organizer-profile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Current User Organizer Profile
+         * @description Retrieves the organizer profile linked to the authenticated user.
+         */
+        get: operations["get-my-organizer-profile"];
+        /**
+         * Upsert Current User Organizer Profile
+         * @description Upsert linked organizer profile details for the authenticated user.
+         */
+        put: operations["upsert-my-organizer-profile"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    /**
-     * Get Account by ID
-     * @description Retrieves public account details for a given internal user UUID.
-     */
-    get: operations["get-account-by-id"];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/api/v1/lobbies/{id}": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/api/v1/accounts/me/sponsor-profile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Current User Sponsor Profile
+         * @description Retrieves the sponsor profile linked to the authenticated user.
+         */
+        get: operations["get-my-sponsor-profile"];
+        /**
+         * Upsert Current User Sponsor Profile
+         * @description Upsert linked sponsor profile details for the authenticated user.
+         */
+        put: operations["upsert-my-sponsor-profile"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    get?: never;
-    put?: never;
-    post?: never;
-    /** Disband a team lobby */
-    delete: operations["disband-team-lobby"];
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/api/v1/lobbies/{id}/invite/regenerate": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/api/v1/accounts/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Account by ID
+         * @description Retrieves public account details for a given internal user UUID.
+         */
+        get: operations["get-account-by-id"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    get?: never;
-    put?: never;
-    /** Regenerate a team invite */
-    post: operations["regenerate-team-lobby-invite"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/api/v1/lobbies/{id}/lock": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/api/v1/lobbies/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Disband a team lobby */
+        delete: operations["disband-team-lobby"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    get?: never;
-    put?: never;
-    /** Lock a team roster */
-    post: operations["lock-team-lobby"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/api/v1/lobbies/{id}/members/{memberId}": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/api/v1/lobbies/{id}/invite/regenerate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Regenerate a team invite */
+        post: operations["regenerate-team-lobby-invite"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    get?: never;
-    put?: never;
-    post?: never;
-    /** Remove a lobby member */
-    delete: operations["remove-team-lobby-member"];
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/api/v1/lobbies/{inviteCode}": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/api/v1/lobbies/{id}/lock": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Lock a team roster */
+        post: operations["lock-team-lobby"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    /** View a team lobby by invite code */
-    get: operations["get-team-lobby"];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/api/v1/lobbies/{inviteCode}/join": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/api/v1/lobbies/{id}/members/{memberId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove a lobby member */
+        delete: operations["remove-team-lobby-member"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    get?: never;
-    put?: never;
-    /** Join a team lobby */
-    post: operations["join-team-lobby"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/api/v1/tournaments": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/api/v1/lobbies/{inviteCode}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** View a team lobby by invite code */
+        get: operations["get-team-lobby"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    /**
-     * Browse and filter tournaments
-     * @description Returns published tournaments matching schedule, budget, status, and text filters.
-     */
-    get: operations["search-tournaments"];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/api/v1/tournaments/{tournamentId}": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/api/v1/lobbies/{inviteCode}/join": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Join a team lobby */
+        post: operations["join-team-lobby"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    /**
-     * View tournament details
-     * @description Returns a published tournament with its registered teams and funding progress.
-     */
-    get: operations["get-tournament-details"];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/api/v1/tournaments/{tournamentId}/lobbies": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/api/v1/tournaments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Browse and filter tournaments
+         * @description Returns published tournaments matching schedule, budget, status, and text filters.
+         */
+        get: operations["search-tournaments"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    get?: never;
-    put?: never;
-    /**
-     * Create a team lobby
-     * @description Creates a forming team and makes the authenticated account its captain.
-     */
-    post: operations["create-team-lobby"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/api/v1/tournaments/{tournamentId}/my-team": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/api/v1/tournaments/{tournamentId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * View tournament details
+         * @description Returns a published tournament with its registered teams and funding progress.
+         */
+        get: operations["get-tournament-details"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    /** View the authenticated competitor's team for a tournament */
-    get: operations["get-my-tournament-team"];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/health": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/api/v1/tournaments/{tournamentId}/lobbies": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create a team lobby
+         * @description Creates a forming team and makes the authenticated account its captain.
+         */
+        post: operations["create-team-lobby"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    /**
-     * Health Check
-     * @description Returns a 204 No Content status if the server is running.
-     */
-    get: operations["health-check"];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
+    "/api/v1/tournaments/{tournamentId}/my-team": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** View the authenticated competitor's team for a tournament */
+        get: operations["get-my-tournament-team"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/health": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Health Check
+         * @description Returns a 204 No Content status if the server is running.
+         */
+        get: operations["health-check"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
-  schemas: {
-    AccountResponse: {
-      /**
-       * Format: uri
-       * @description A URL to the JSON Schema for this object.
-       * @example https://example.com/schemas/AccountResponse.json
-       */
-      readonly $schema?: string;
-      /** @description User avatar image URL */
-      avatarUrl?: string;
-      /**
-       * Format: date-time
-       * @description Timestamp of account creation
-       */
-      createdAt: string;
-      /** @description User display name */
-      displayName: string;
-      /** @description User email address verified by Auth Provider */
-      email: string;
-      /** @description Unique public handle (e.g. @moomai_01) */
-      handle: string;
-      /** @description Unique account UUID matching Supabase Auth UID */
-      id: string;
-      /** @description Contact phone number */
-      phone?: string;
-      /** @description Account status (ACTIVE, SUSPENDED) */
-      status: string;
+    schemas: {
+        AccountResponse: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/AccountResponse.json
+             */
+            readonly $schema?: string;
+            /** @description User avatar image URL */
+            avatarUrl?: string;
+            /**
+             * Format: date-time
+             * @description Timestamp of account creation
+             */
+            createdAt: string;
+            /** @description User display name */
+            displayName: string;
+            /** @description User email address verified by Auth Provider */
+            email: string;
+            /** @description Unique public handle (e.g. @moomai_01) */
+            handle: string;
+            /** @description Unique account UUID matching Supabase Auth UID */
+            id: string;
+            /** @description Contact phone number */
+            phone?: string;
+            /** @description Account status (ACTIVE, SUSPENDED) */
+            status: string;
+        };
+        CreateAccountRequest: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/CreateAccountRequest.json
+             */
+            readonly $schema?: string;
+            /** @description Optional avatar image URL */
+            avatarUrl?: string;
+            /** @description Chosen display name */
+            displayName?: string;
+            /** @description Optional requested unique handle (3-32 chars) */
+            handle?: string;
+        };
+        CreateTeamLobbyRequest: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/CreateTeamLobbyRequest.json
+             */
+            readonly $schema?: string;
+            /** @description Team name */
+            name: string;
+        };
+        ErrorDetail: {
+            /** @description Where the error occurred, e.g. 'body.items[3].tags' or 'path.thing-id' */
+            location?: string;
+            /** @description Error message text */
+            message?: string;
+            /** @description The value at the given location */
+            value?: unknown;
+        };
+        ErrorModel: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/ErrorModel.json
+             */
+            readonly $schema?: string;
+            /**
+             * @description A human-readable explanation specific to this occurrence of the problem.
+             * @example Property foo is required but is missing.
+             */
+            detail?: string;
+            /** @description Optional list of individual error details */
+            errors?: components["schemas"]["ErrorDetail"][] | null;
+            /**
+             * Format: uri
+             * @description A URI reference that identifies the specific occurrence of the problem.
+             * @example https://example.com/error-log/abc123
+             */
+            instance?: string;
+            /**
+             * Format: int64
+             * @description HTTP status code
+             * @example 400
+             */
+            status?: number;
+            /**
+             * @description A short, human-readable summary of the problem type. This value should not change between occurrences of the error.
+             * @example Bad Request
+             */
+            title?: string;
+            /**
+             * Format: uri
+             * @description A URI reference to human-readable documentation for the error.
+             * @default about:blank
+             * @example https://example.com/errors/example
+             */
+            type: string;
+        };
+        OrganizerProfileResponse: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/OrganizerProfileResponse.json
+             */
+            readonly $schema?: string;
+            /** @description Associated account UUID */
+            accountId: string;
+            /**
+             * Format: date-time
+             * @description Timestamp of profile creation
+             */
+            createdAt: string;
+            /** @description Organizer profile UUID */
+            id: string;
+            /** @description Contact email for organizer */
+            organizerEmail: string;
+            /** @description Organizer organization or brand name */
+            organizerName: string;
+            /**
+             * Format: date-time
+             * @description Timestamp of last profile update
+             */
+            updatedAt: string;
+        };
+        SponsorProfileResponse: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/SponsorProfileResponse.json
+             */
+            readonly $schema?: string;
+            /** @description Associated account UUID */
+            accountId: string;
+            /**
+             * Format: date-time
+             * @description Timestamp of profile creation
+             */
+            createdAt: string;
+            /** @description Sponsor profile UUID */
+            id: string;
+            /** @description Contact email for sponsorship communications */
+            sponsorEmail: string;
+            /** @description Sponsor company or organization name */
+            sponsorName: string;
+            /**
+             * Format: date-time
+             * @description Timestamp of last profile update
+             */
+            updatedAt: string;
+        };
+        TeamLobbyMemberResponse: {
+            accountId: string;
+            displayName: string;
+            handle: string;
+            id: string;
+            /** Format: date-time */
+            joinedAt: string;
+            /** @enum {string} */
+            role: "CAPTAIN" | "MEMBER";
+        };
+        TeamLobbyResponse: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/TeamLobbyResponse.json
+             */
+            readonly $schema?: string;
+            captainId: string;
+            captainName: string;
+            /** Format: date-time */
+            createdAt: string;
+            id: string;
+            inviteCode: string;
+            members: components["schemas"]["TeamLobbyMemberResponse"][] | null;
+            name: string;
+            /** @enum {string} */
+            status: "FORMING" | "LOCKED" | "ACCEPTED" | "REJECTED";
+            tournament: components["schemas"]["TournamentResponse"];
+            /** @enum {string} */
+            viewerRole: "CAPTAIN" | "MEMBER" | "INVITEE";
+        };
+        TournamentDetailsBody: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/TournamentDetailsBody.json
+             */
+            readonly $schema?: string;
+            funding: components["schemas"]["TournamentFundingResponse"];
+            teams: components["schemas"]["TournamentTeamResponse"][] | null;
+            tournament: components["schemas"]["TournamentResponse"];
+        };
+        TournamentFundingResponse: {
+            currency: string;
+            /**
+             * Format: int64
+             * @description Funding goal in whole currency units
+             */
+            goalAmount: number;
+            /**
+             * Format: double
+             * @description Percentage of the funding goal raised
+             */
+            percentage: number;
+            /**
+             * Format: int64
+             * @description Amount raised in whole currency units
+             */
+            raisedAmount: number;
+            /**
+             * Format: int64
+             * @description Amount remaining to reach the goal
+             */
+            remainingAmount: number;
+            /** Format: int64 */
+            supporterCount: number;
+        };
+        TournamentListBody: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/TournamentListBody.json
+             */
+            readonly $schema?: string;
+            items: components["schemas"]["TournamentResponse"][] | null;
+            /** Format: int64 */
+            page: number;
+            /** Format: int64 */
+            pageSize: number;
+            /** Format: int64 */
+            total: number;
+        };
+        TournamentResponse: {
+            /** Format: int64 */
+            capacity: number;
+            currency: string;
+            description: string;
+            /** Format: date-time */
+            endAt: string;
+            /**
+             * Format: int64
+             * @description Entry fee in whole currency units
+             */
+            entryFee: number;
+            game: string;
+            id: string;
+            location: string;
+            /** Format: int64 */
+            maxTeamSize: number;
+            /** Format: int64 */
+            minTeamSize: number;
+            name: string;
+            organizerName: string;
+            /** Format: int64 */
+            registeredCount: number;
+            /** Format: date-time */
+            registrationDeadline: string;
+            /** @enum {string} */
+            registrationMode: "SOLO" | "TEAM" | "BOTH";
+            /** Format: date-time */
+            startAt: string;
+            status: string;
+        };
+        TournamentTeamResponse: {
+            id: string;
+            /** Format: int64 */
+            memberCount: number;
+            name: string;
+        };
+        UpdateAccountRequest: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/UpdateAccountRequest.json
+             */
+            readonly $schema?: string;
+            /** @description New avatar URL */
+            avatarUrl?: string;
+            /** @description New display name */
+            displayName?: string;
+            /** @description New unique handle */
+            handle?: string;
+            /** @description New contact phone */
+            phone?: string;
+        };
+        UpsertOrganizerProfileRequest: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/UpsertOrganizerProfileRequest.json
+             */
+            readonly $schema?: string;
+            /** @description Contact email for organizer */
+            organizerEmail?: string;
+            /** @description Organizer organization or brand name */
+            organizerName: string;
+        };
+        UpsertSponsorProfileRequest: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/UpsertSponsorProfileRequest.json
+             */
+            readonly $schema?: string;
+            /** @description Contact email for sponsorship communications */
+            sponsorEmail?: string;
+            /** @description Sponsor company or organization name */
+            sponsorName: string;
+        };
     };
-    CreateAccountRequest: {
-      /**
-       * Format: uri
-       * @description A URL to the JSON Schema for this object.
-       * @example https://example.com/schemas/CreateAccountRequest.json
-       */
-      readonly $schema?: string;
-      /** @description Optional avatar image URL */
-      avatarUrl?: string;
-      /** @description Chosen display name */
-      displayName?: string;
-      /** @description Optional requested unique handle (3-32 chars) */
-      handle?: string;
-    };
-    CreateTeamLobbyRequest: {
-      /**
-       * Format: uri
-       * @description A URL to the JSON Schema for this object.
-       * @example https://example.com/schemas/CreateTeamLobbyRequest.json
-       */
-      readonly $schema?: string;
-      /** @description Team name */
-      name: string;
-    };
-    ErrorDetail: {
-      /** @description Where the error occurred, e.g. 'body.items[3].tags' or 'path.thing-id' */
-      location?: string;
-      /** @description Error message text */
-      message?: string;
-      /** @description The value at the given location */
-      value?: unknown;
-    };
-    ErrorModel: {
-      /**
-       * Format: uri
-       * @description A URL to the JSON Schema for this object.
-       * @example https://example.com/schemas/ErrorModel.json
-       */
-      readonly $schema?: string;
-      /**
-       * @description A human-readable explanation specific to this occurrence of the problem.
-       * @example Property foo is required but is missing.
-       */
-      detail?: string;
-      /** @description Optional list of individual error details */
-      errors?: components["schemas"]["ErrorDetail"][] | null;
-      /**
-       * Format: uri
-       * @description A URI reference that identifies the specific occurrence of the problem.
-       * @example https://example.com/error-log/abc123
-       */
-      instance?: string;
-      /**
-       * Format: int64
-       * @description HTTP status code
-       * @example 400
-       */
-      status?: number;
-      /**
-       * @description A short, human-readable summary of the problem type. This value should not change between occurrences of the error.
-       * @example Bad Request
-       */
-      title?: string;
-      /**
-       * Format: uri
-       * @description A URI reference to human-readable documentation for the error.
-       * @default about:blank
-       * @example https://example.com/errors/example
-       */
-      type: string;
-    };
-    TeamLobbyMemberResponse: {
-      accountId: string;
-      displayName: string;
-      handle: string;
-      id: string;
-      /** Format: date-time */
-      joinedAt: string;
-      /** @enum {string} */
-      role: "CAPTAIN" | "MEMBER";
-    };
-    TeamLobbyResponse: {
-      /**
-       * Format: uri
-       * @description A URL to the JSON Schema for this object.
-       * @example https://example.com/schemas/TeamLobbyResponse.json
-       */
-      readonly $schema?: string;
-      captainId: string;
-      captainName: string;
-      /** Format: date-time */
-      createdAt: string;
-      id: string;
-      inviteCode: string;
-      members: components["schemas"]["TeamLobbyMemberResponse"][] | null;
-      name: string;
-      /** @enum {string} */
-      status: "FORMING" | "LOCKED" | "ACCEPTED" | "REJECTED";
-      tournament: components["schemas"]["TournamentResponse"];
-      /** @enum {string} */
-      viewerRole: "CAPTAIN" | "MEMBER" | "INVITEE";
-    };
-    TournamentDetailsBody: {
-      /**
-       * Format: uri
-       * @description A URL to the JSON Schema for this object.
-       * @example https://example.com/schemas/TournamentDetailsBody.json
-       */
-      readonly $schema?: string;
-      funding: components["schemas"]["TournamentFundingResponse"];
-      teams: components["schemas"]["TournamentTeamResponse"][] | null;
-      tournament: components["schemas"]["TournamentResponse"];
-    };
-    TournamentFundingResponse: {
-      currency: string;
-      /**
-       * Format: int64
-       * @description Funding goal in whole currency units
-       */
-      goalAmount: number;
-      /**
-       * Format: double
-       * @description Percentage of the funding goal raised
-       */
-      percentage: number;
-      /**
-       * Format: int64
-       * @description Amount raised in whole currency units
-       */
-      raisedAmount: number;
-      /**
-       * Format: int64
-       * @description Amount remaining to reach the goal
-       */
-      remainingAmount: number;
-      /** Format: int64 */
-      supporterCount: number;
-    };
-    TournamentListBody: {
-      /**
-       * Format: uri
-       * @description A URL to the JSON Schema for this object.
-       * @example https://example.com/schemas/TournamentListBody.json
-       */
-      readonly $schema?: string;
-      items: components["schemas"]["TournamentResponse"][] | null;
-      /** Format: int64 */
-      page: number;
-      /** Format: int64 */
-      pageSize: number;
-      /** Format: int64 */
-      total: number;
-    };
-    TournamentResponse: {
-      /** Format: int64 */
-      capacity: number;
-      currency: string;
-      description: string;
-      /** Format: date-time */
-      endAt: string;
-      /**
-       * Format: int64
-       * @description Entry fee in whole currency units
-       */
-      entryFee: number;
-      game: string;
-      id: string;
-      location: string;
-      /** Format: int64 */
-      maxTeamSize: number;
-      /** Format: int64 */
-      minTeamSize: number;
-      name: string;
-      organizerName: string;
-      /** Format: int64 */
-      registeredCount: number;
-      /** Format: date-time */
-      registrationDeadline: string;
-      /** @enum {string} */
-      registrationMode: "SOLO" | "TEAM" | "BOTH";
-      /** Format: date-time */
-      startAt: string;
-      status: string;
-    };
-    TournamentTeamResponse: {
-      id: string;
-      /** Format: int64 */
-      memberCount: number;
-      name: string;
-    };
-    UpdateAccountRequest: {
-      /**
-       * Format: uri
-       * @description A URL to the JSON Schema for this object.
-       * @example https://example.com/schemas/UpdateAccountRequest.json
-       */
-      readonly $schema?: string;
-      /** @description New avatar URL */
-      avatarUrl?: string;
-      /** @description New display name */
-      displayName?: string;
-      /** @description New unique handle */
-      handle?: string;
-      /** @description New contact phone */
-      phone?: string;
-    };
-  };
-  responses: never;
-  parameters: never;
-  requestBodies: never;
-  headers: never;
-  pathItems: never;
+    responses: never;
+    parameters: never;
+    requestBodies: never;
+    headers: never;
+    pathItems: never;
 }
 export type $defs = Record<string, never>;
 export interface operations {
-  "create-account": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "create-account": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateAccountRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccountResponse"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
     };
-    requestBody: {
-      content: {
-        "application/json": components["schemas"]["CreateAccountRequest"];
-      };
+    "get-my-account": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccountResponse"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
     };
-    responses: {
-      /** @description Created */
-      201: {
-        headers: {
-          [name: string]: unknown;
+    "update-my-account": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
         };
-        content: {
-          "application/json": components["schemas"]["AccountResponse"];
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateAccountRequest"];
+            };
         };
-      };
-      /** @description Error */
-      default: {
-        headers: {
-          [name: string]: unknown;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccountResponse"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
         };
-        content: {
-          "application/problem+json": components["schemas"]["ErrorModel"];
-        };
-      };
     };
-  };
-  "get-my-account": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "get-my-organizer-profile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrganizerProfileResponse"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
     };
-    requestBody?: never;
-    responses: {
-      /** @description OK */
-      200: {
-        headers: {
-          [name: string]: unknown;
+    "upsert-my-organizer-profile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
         };
-        content: {
-          "application/json": components["schemas"]["AccountResponse"];
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpsertOrganizerProfileRequest"];
+            };
         };
-      };
-      /** @description Error */
-      default: {
-        headers: {
-          [name: string]: unknown;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrganizerProfileResponse"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
         };
-        content: {
-          "application/problem+json": components["schemas"]["ErrorModel"];
-        };
-      };
     };
-  };
-  "update-my-account": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "get-my-sponsor-profile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SponsorProfileResponse"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
     };
-    requestBody: {
-      content: {
-        "application/json": components["schemas"]["UpdateAccountRequest"];
-      };
+    "upsert-my-sponsor-profile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpsertSponsorProfileRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SponsorProfileResponse"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
     };
-    responses: {
-      /** @description OK */
-      200: {
-        headers: {
-          [name: string]: unknown;
+    "get-account-by-id": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Account UUID */
+                id: string;
+            };
+            cookie?: never;
         };
-        content: {
-          "application/json": components["schemas"]["AccountResponse"];
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccountResponse"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
         };
-      };
-      /** @description Error */
-      default: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/problem+json": components["schemas"]["ErrorModel"];
-        };
-      };
     };
-  };
-  "get-account-by-id": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        /** @description Account UUID */
-        id: string;
-      };
-      cookie?: never;
+    "disband-team-lobby": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Team UUID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
     };
-    requestBody?: never;
-    responses: {
-      /** @description OK */
-      200: {
-        headers: {
-          [name: string]: unknown;
+    "regenerate-team-lobby-invite": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Team UUID */
+                id: string;
+            };
+            cookie?: never;
         };
-        content: {
-          "application/json": components["schemas"]["AccountResponse"];
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TeamLobbyResponse"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
         };
-      };
-      /** @description Error */
-      default: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/problem+json": components["schemas"]["ErrorModel"];
-        };
-      };
     };
-  };
-  "disband-team-lobby": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        /** @description Team UUID */
-        id: string;
-      };
-      cookie?: never;
+    "lock-team-lobby": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Team UUID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TeamLobbyResponse"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
     };
-    requestBody?: never;
-    responses: {
-      /** @description No Content */
-      204: {
-        headers: {
-          [name: string]: unknown;
+    "remove-team-lobby-member": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Team UUID */
+                id: string;
+                /** @description Team member UUID */
+                memberId: string;
+            };
+            cookie?: never;
         };
-        content?: never;
-      };
-      /** @description Error */
-      default: {
-        headers: {
-          [name: string]: unknown;
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TeamLobbyResponse"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
         };
-        content: {
-          "application/problem+json": components["schemas"]["ErrorModel"];
-        };
-      };
     };
-  };
-  "regenerate-team-lobby-invite": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        /** @description Team UUID */
-        id: string;
-      };
-      cookie?: never;
+    "get-team-lobby": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Six-character team invite code */
+                inviteCode: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TeamLobbyResponse"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
     };
-    requestBody?: never;
-    responses: {
-      /** @description OK */
-      200: {
-        headers: {
-          [name: string]: unknown;
+    "join-team-lobby": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Six-character team invite code */
+                inviteCode: string;
+            };
+            cookie?: never;
         };
-        content: {
-          "application/json": components["schemas"]["TeamLobbyResponse"];
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TeamLobbyResponse"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
         };
-      };
-      /** @description Error */
-      default: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/problem+json": components["schemas"]["ErrorModel"];
-        };
-      };
     };
-  };
-  "lock-team-lobby": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        /** @description Team UUID */
-        id: string;
-      };
-      cookie?: never;
+    "search-tournaments": {
+        parameters: {
+            query?: {
+                /** @description Case-insensitive name, game, or description search */
+                q?: string;
+                /** @description Earliest tournament start date (YYYY-MM-DD) */
+                startFrom?: string;
+                /** @description Latest tournament start date (YYYY-MM-DD) */
+                startTo?: string;
+                /** @description Minimum entry fee; omit to disable */
+                minEntryFee?: number;
+                /** @description Maximum entry fee; omit to disable */
+                maxEntryFee?: number;
+                status?: "REGISTRATION_OPEN" | "REGISTRATION_CLOSED" | "ONGOING" | "COMPLETED";
+                sort?: "start_asc" | "start_desc" | "fee_asc" | "fee_desc";
+                page?: number;
+                pageSize?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TournamentListBody"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
     };
-    requestBody?: never;
-    responses: {
-      /** @description OK */
-      200: {
-        headers: {
-          [name: string]: unknown;
+    "get-tournament-details": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Tournament ID */
+                tournamentId: string;
+            };
+            cookie?: never;
         };
-        content: {
-          "application/json": components["schemas"]["TeamLobbyResponse"];
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TournamentDetailsBody"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
         };
-      };
-      /** @description Error */
-      default: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/problem+json": components["schemas"]["ErrorModel"];
-        };
-      };
     };
-  };
-  "remove-team-lobby-member": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        /** @description Team UUID */
-        id: string;
-        /** @description Team member UUID */
-        memberId: string;
-      };
-      cookie?: never;
+    "create-team-lobby": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Tournament UUID */
+                tournamentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateTeamLobbyRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TeamLobbyResponse"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
     };
-    requestBody?: never;
-    responses: {
-      /** @description OK */
-      200: {
-        headers: {
-          [name: string]: unknown;
+    "get-my-tournament-team": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Tournament UUID */
+                tournamentId: string;
+            };
+            cookie?: never;
         };
-        content: {
-          "application/json": components["schemas"]["TeamLobbyResponse"];
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TeamLobbyResponse"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
         };
-      };
-      /** @description Error */
-      default: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/problem+json": components["schemas"]["ErrorModel"];
-        };
-      };
     };
-  };
-  "get-team-lobby": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        /** @description Six-character team invite code */
-        inviteCode: string;
-      };
-      cookie?: never;
+    "health-check": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
     };
-    requestBody?: never;
-    responses: {
-      /** @description OK */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["TeamLobbyResponse"];
-        };
-      };
-      /** @description Error */
-      default: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/problem+json": components["schemas"]["ErrorModel"];
-        };
-      };
-    };
-  };
-  "join-team-lobby": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        /** @description Six-character team invite code */
-        inviteCode: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description OK */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["TeamLobbyResponse"];
-        };
-      };
-      /** @description Error */
-      default: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/problem+json": components["schemas"]["ErrorModel"];
-        };
-      };
-    };
-  };
-  "search-tournaments": {
-    parameters: {
-      query?: {
-        /** @description Case-insensitive name, game, or description search */
-        q?: string;
-        /** @description Earliest tournament start date (YYYY-MM-DD) */
-        startFrom?: string;
-        /** @description Latest tournament start date (YYYY-MM-DD) */
-        startTo?: string;
-        /** @description Minimum entry fee; omit to disable */
-        minEntryFee?: number;
-        /** @description Maximum entry fee; omit to disable */
-        maxEntryFee?: number;
-        status?:
-          "REGISTRATION_OPEN" | "REGISTRATION_CLOSED" | "ONGOING" | "COMPLETED";
-        sort?: "start_asc" | "start_desc" | "fee_asc" | "fee_desc";
-        page?: number;
-        pageSize?: number;
-      };
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description OK */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["TournamentListBody"];
-        };
-      };
-      /** @description Error */
-      default: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/problem+json": components["schemas"]["ErrorModel"];
-        };
-      };
-    };
-  };
-  "get-tournament-details": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        /** @description Tournament ID */
-        tournamentId: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description OK */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["TournamentDetailsBody"];
-        };
-      };
-      /** @description Error */
-      default: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/problem+json": components["schemas"]["ErrorModel"];
-        };
-      };
-    };
-  };
-  "create-team-lobby": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        /** @description Tournament UUID */
-        tournamentId: string;
-      };
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        "application/json": components["schemas"]["CreateTeamLobbyRequest"];
-      };
-    };
-    responses: {
-      /** @description OK */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["TeamLobbyResponse"];
-        };
-      };
-      /** @description Error */
-      default: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/problem+json": components["schemas"]["ErrorModel"];
-        };
-      };
-    };
-  };
-  "get-my-tournament-team": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        /** @description Tournament UUID */
-        tournamentId: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description OK */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["TeamLobbyResponse"];
-        };
-      };
-      /** @description Error */
-      default: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/problem+json": components["schemas"]["ErrorModel"];
-        };
-      };
-    };
-  };
-  "health-check": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description No Content */
-      204: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-      /** @description Error */
-      default: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/problem+json": components["schemas"]["ErrorModel"];
-        };
-      };
-    };
-  };
 }

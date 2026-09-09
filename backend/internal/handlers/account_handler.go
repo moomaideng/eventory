@@ -66,6 +66,58 @@ type UpdateAccountInput struct {
 	Body UpdateAccountRequest
 }
 
+// OrganizerProfileResponse represents the public payload for an OrganizerProfile entity.
+type OrganizerProfileResponse struct {
+	ID             uuid.UUID `json:"id" doc:"Organizer profile UUID"`
+	AccountID      uuid.UUID `json:"accountId" doc:"Associated account UUID"`
+	OrganizerName  string    `json:"organizerName" doc:"Organizer organization or brand name"`
+	OrganizerEmail string    `json:"organizerEmail" doc:"Contact email for organizer"`
+	CreatedAt      time.Time `json:"createdAt" doc:"Timestamp of profile creation"`
+	UpdatedAt      time.Time `json:"updatedAt" doc:"Timestamp of last profile update"`
+}
+
+// OrganizerProfileOutput represents the standard HTTP response returning an OrganizerProfile.
+type OrganizerProfileOutput struct {
+	Body OrganizerProfileResponse
+}
+
+// UpsertOrganizerProfileRequest defines the request body for creating or updating an organizer profile.
+type UpsertOrganizerProfileRequest struct {
+	OrganizerName  string  `json:"organizerName" doc:"Organizer organization or brand name" minLength:"1" maxLength:"150"`
+	OrganizerEmail *string `json:"organizerEmail,omitempty" doc:"Contact email for organizer" maxLength:"255"`
+}
+
+// UpsertOrganizerProfileInput represents request payload for upserting an organizer profile.
+type UpsertOrganizerProfileInput struct {
+	Body UpsertOrganizerProfileRequest
+}
+
+// SponsorProfileResponse represents the public payload for a SponsorProfile entity.
+type SponsorProfileResponse struct {
+	ID           uuid.UUID `json:"id" doc:"Sponsor profile UUID"`
+	AccountID    uuid.UUID `json:"accountId" doc:"Associated account UUID"`
+	SponsorName  string    `json:"sponsorName" doc:"Sponsor company or organization name"`
+	SponsorEmail string    `json:"sponsorEmail" doc:"Contact email for sponsorship communications"`
+	CreatedAt    time.Time `json:"createdAt" doc:"Timestamp of profile creation"`
+	UpdatedAt    time.Time `json:"updatedAt" doc:"Timestamp of last profile update"`
+}
+
+// SponsorProfileOutput represents the standard HTTP response returning a SponsorProfile.
+type SponsorProfileOutput struct {
+	Body SponsorProfileResponse
+}
+
+// UpsertSponsorProfileRequest defines the request body for creating or updating a sponsor profile.
+type UpsertSponsorProfileRequest struct {
+	SponsorName  string  `json:"sponsorName" doc:"Sponsor company or organization name" minLength:"1" maxLength:"150"`
+	SponsorEmail *string `json:"sponsorEmail,omitempty" doc:"Contact email for sponsorship communications" maxLength:"255"`
+}
+
+// UpsertSponsorProfileInput represents request payload for upserting a sponsor profile.
+type UpsertSponsorProfileInput struct {
+	Body UpsertSponsorProfileRequest
+}
+
 func toAccountResponse(acc *models.Account) AccountResponse {
 	return AccountResponse{
 		ID:          acc.ID,
@@ -78,6 +130,29 @@ func toAccountResponse(acc *models.Account) AccountResponse {
 		CreatedAt:   acc.CreatedAt,
 	}
 }
+
+func toOrganizerProfileResponse(p *models.OrganizerProfile) OrganizerProfileResponse {
+	return OrganizerProfileResponse{
+		ID:             p.ID,
+		AccountID:      p.AccountID,
+		OrganizerName:  p.OrganizerName,
+		OrganizerEmail: p.OrganizerEmail,
+		CreatedAt:      p.CreatedAt,
+		UpdatedAt:      p.UpdatedAt,
+	}
+}
+
+func toSponsorProfileResponse(p *models.SponsorProfile) SponsorProfileResponse {
+	return SponsorProfileResponse{
+		ID:           p.ID,
+		AccountID:    p.AccountID,
+		SponsorName:  p.SponsorName,
+		SponsorEmail: p.SponsorEmail,
+		CreatedAt:    p.CreatedAt,
+		UpdatedAt:    p.UpdatedAt,
+	}
+}
+
 
 // getAuthAccount resolves the authenticated account from JWT sub or email.
 func getAuthAccount(ctx context.Context, uc *usecases.AccountUseCase) (*models.Account, error) {
@@ -223,4 +298,115 @@ func RegisterAccountRoutes(api huma.API, accountUseCase *usecases.AccountUseCase
 		}
 		return &AccountOutput{Body: toAccountResponse(acc)}, nil
 	})
+
+	// 5. PUT /api/v1/accounts/me/organizer-profile (Upsert linked organizer profile details)
+	huma.Register(api, huma.Operation{
+		OperationID: "upsert-my-organizer-profile",
+		Method:      http.MethodPut,
+		Path:        "/me/organizer-profile",
+		Summary:     "Upsert Current User Organizer Profile",
+		Description: "Upsert linked organizer profile details for the authenticated user.",
+		Tags:        []string{"Accounts"},
+		Security:    []map[string][]string{{"bearer": {}}},
+	}, func(ctx context.Context, input *UpsertOrganizerProfileInput) (*OrganizerProfileOutput, error) {
+		acc, err := getAuthAccount(ctx, accountUseCase)
+		if err != nil {
+			return nil, err
+		}
+
+		profile, err := accountUseCase.UpsertOrganizerProfile(ctx, acc.ID, usecases.UpsertOrganizerProfileInput{
+			OrganizerName:  input.Body.OrganizerName,
+			OrganizerEmail: input.Body.OrganizerEmail,
+		})
+		if err != nil {
+			if errors.Is(err, usecases.ErrInvalidOrganizerName) {
+				return nil, huma.Error400BadRequest("Organizer name cannot be empty", err)
+			}
+			return nil, huma.Error500InternalServerError("Failed to upsert organizer profile", err)
+		}
+
+		return &OrganizerProfileOutput{Body: toOrganizerProfileResponse(profile)}, nil
+	})
+
+	// 6. GET /api/v1/accounts/me/organizer-profile (Get current user's organizer profile)
+	huma.Register(api, huma.Operation{
+		OperationID: "get-my-organizer-profile",
+		Method:      http.MethodGet,
+		Path:        "/me/organizer-profile",
+		Summary:     "Get Current User Organizer Profile",
+		Description: "Retrieves the organizer profile linked to the authenticated user.",
+		Tags:        []string{"Accounts"},
+		Security:    []map[string][]string{{"bearer": {}}},
+	}, func(ctx context.Context, input *struct{}) (*OrganizerProfileOutput, error) {
+		acc, err := getAuthAccount(ctx, accountUseCase)
+		if err != nil {
+			return nil, err
+		}
+
+		profile, err := accountUseCase.GetOrganizerProfile(ctx, acc.ID)
+		if err != nil {
+			if errors.Is(err, usecases.ErrOrganizerProfileNotFound) {
+				return nil, huma.Error404NotFound("Organizer profile not found", err)
+			}
+			return nil, huma.Error500InternalServerError("Failed to retrieve organizer profile", err)
+		}
+
+		return &OrganizerProfileOutput{Body: toOrganizerProfileResponse(profile)}, nil
+	})
+
+	// 7. PUT /api/v1/accounts/me/sponsor-profile (Upsert linked sponsor profile details)
+	huma.Register(api, huma.Operation{
+		OperationID: "upsert-my-sponsor-profile",
+		Method:      http.MethodPut,
+		Path:        "/me/sponsor-profile",
+		Summary:     "Upsert Current User Sponsor Profile",
+		Description: "Upsert linked sponsor profile details for the authenticated user.",
+		Tags:        []string{"Accounts"},
+		Security:    []map[string][]string{{"bearer": {}}},
+	}, func(ctx context.Context, input *UpsertSponsorProfileInput) (*SponsorProfileOutput, error) {
+		acc, err := getAuthAccount(ctx, accountUseCase)
+		if err != nil {
+			return nil, err
+		}
+
+		profile, err := accountUseCase.UpsertSponsorProfile(ctx, acc.ID, usecases.UpsertSponsorProfileInput{
+			SponsorName:  input.Body.SponsorName,
+			SponsorEmail: input.Body.SponsorEmail,
+		})
+		if err != nil {
+			if errors.Is(err, usecases.ErrInvalidSponsorName) {
+				return nil, huma.Error400BadRequest("Sponsor name cannot be empty", err)
+			}
+			return nil, huma.Error500InternalServerError("Failed to upsert sponsor profile", err)
+		}
+
+		return &SponsorProfileOutput{Body: toSponsorProfileResponse(profile)}, nil
+	})
+
+	// 8. GET /api/v1/accounts/me/sponsor-profile (Get current user's sponsor profile)
+	huma.Register(api, huma.Operation{
+		OperationID: "get-my-sponsor-profile",
+		Method:      http.MethodGet,
+		Path:        "/me/sponsor-profile",
+		Summary:     "Get Current User Sponsor Profile",
+		Description: "Retrieves the sponsor profile linked to the authenticated user.",
+		Tags:        []string{"Accounts"},
+		Security:    []map[string][]string{{"bearer": {}}},
+	}, func(ctx context.Context, input *struct{}) (*SponsorProfileOutput, error) {
+		acc, err := getAuthAccount(ctx, accountUseCase)
+		if err != nil {
+			return nil, err
+		}
+
+		profile, err := accountUseCase.GetSponsorProfile(ctx, acc.ID)
+		if err != nil {
+			if errors.Is(err, usecases.ErrSponsorProfileNotFound) {
+				return nil, huma.Error404NotFound("Sponsor profile not found", err)
+			}
+			return nil, huma.Error500InternalServerError("Failed to retrieve sponsor profile", err)
+		}
+
+		return &SponsorProfileOutput{Body: toSponsorProfileResponse(profile)}, nil
+	})
 }
+
