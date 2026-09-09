@@ -40,6 +40,12 @@ type OrganizerProfile struct {
 	UpdatedAt      time.Time
 }
 
+func (profile *OrganizerProfile) BeforeSave(_ *gorm.DB) error {
+	profile.OrganizerName = strings.TrimSpace(profile.OrganizerName)
+	profile.OrganizerEmail = strings.ToLower(strings.TrimSpace(profile.OrganizerEmail))
+	return nil
+}
+
 type SponsorProfile struct {
 	ID           uuid.UUID `gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
 	AccountID    uuid.UUID `gorm:"type:uuid;not null;uniqueIndex"`
@@ -48,3 +54,10 @@ type SponsorProfile struct {
 	CreatedAt    time.Time
 	UpdatedAt    time.Time
 }
+
+func (profile *SponsorProfile) BeforeSave(_ *gorm.DB) error {
+	profile.SponsorName = strings.TrimSpace(profile.SponsorName)
+	profile.SponsorEmail = strings.ToLower(strings.TrimSpace(profile.SponsorEmail))
+	return nil
+}
+

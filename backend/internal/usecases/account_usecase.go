@@ -14,12 +14,16 @@ import (
 )
 
 var (
-	ErrAccountNotFound    = errors.New("account not found")
-	ErrHandleAlreadyExists = errors.New("handle is already taken")
-	ErrInvalidHandle      = errors.New("handle must be between 3 and 32 lowercase alphanumeric characters or underscores")
-	ErrInvalidDisplayName = errors.New("display name cannot be empty")
-	ErrInvalidEmail       = errors.New("email cannot be empty")
-	ErrInvalidAccountID   = errors.New("valid account id is required")
+	ErrAccountNotFound          = errors.New("account not found")
+	ErrHandleAlreadyExists       = errors.New("handle is already taken")
+	ErrInvalidHandle            = errors.New("handle must be between 3 and 32 lowercase alphanumeric characters or underscores")
+	ErrInvalidDisplayName       = errors.New("display name cannot be empty")
+	ErrInvalidEmail             = errors.New("email cannot be empty")
+	ErrInvalidAccountID         = errors.New("valid account id is required")
+	ErrOrganizerProfileNotFound = errors.New("organizer profile not found")
+	ErrSponsorProfileNotFound   = errors.New("sponsor profile not found")
+	ErrInvalidOrganizerName     = errors.New("organizer name cannot be empty")
+	ErrInvalidSponsorName       = errors.New("sponsor name cannot be empty")
 )
 
 // CreateAccountInput specifies input parameters for creating or ensuring an account.
@@ -38,6 +42,19 @@ type UpdateAccountInput struct {
 	Phone       *string
 	AvatarURL   *string
 }
+
+// UpsertOrganizerProfileInput specifies input parameters for creating or updating an organizer profile.
+type UpsertOrganizerProfileInput struct {
+	OrganizerName  string
+	OrganizerEmail *string
+}
+
+// UpsertSponsorProfileInput specifies input parameters for creating or updating a sponsor profile.
+type UpsertSponsorProfileInput struct {
+	SponsorName  string
+	SponsorEmail *string
+}
+
 
 // AccountUseCase handles core business logic for user accounts.
 type AccountUseCase struct {
@@ -254,3 +271,98 @@ func cleanOptionalString(s string) *string {
 	}
 	return &s
 }
+
+// GetOrganizerProfile retrieves the organizer profile linked to an account UUID.
+func (u *AccountUseCase) GetOrganizerProfile(ctx context.Context, accountID uuid.UUID) (*models.OrganizerProfile, error) {
+	profile, err := u.accountRepo.FindOrganizerProfileByAccountID(ctx, accountID)
+	if err != nil {
+		return nil, err
+	}
+	if profile == nil {
+		return nil, ErrOrganizerProfileNotFound
+	}
+	return profile, nil
+}
+
+// UpsertOrganizerProfile creates or updates the organizer profile linked to an account UUID.
+func (u *AccountUseCase) UpsertOrganizerProfile(ctx context.Context, accountID uuid.UUID, input UpsertOrganizerProfileInput) (*models.OrganizerProfile, error) {
+	account, err := u.accountRepo.FindByID(ctx, accountID)
+	if err != nil {
+		return nil, err
+	}
+	if account == nil {
+		return nil, ErrAccountNotFound
+	}
+
+	name := strings.TrimSpace(input.OrganizerName)
+	if name == "" {
+		return nil, ErrInvalidOrganizerName
+	}
+	if len(name) > 150 {
+		name = name[:150]
+	}
+
+	email := account.Email
+	if input.OrganizerEmail != nil {
+		trimmed := strings.ToLower(strings.TrimSpace(*input.OrganizerEmail))
+		if trimmed != "" {
+			email = trimmed
+		}
+	}
+
+	profile := &models.OrganizerProfile{
+		AccountID:      accountID,
+		OrganizerName:  name,
+		OrganizerEmail: email,
+	}
+
+	return u.accountRepo.UpsertOrganizerProfile(ctx, profile)
+}
+
+// GetSponsorProfile retrieves the sponsor profile linked to an account UUID.
+func (u *AccountUseCase) GetSponsorProfile(ctx context.Context, accountID uuid.UUID) (*models.SponsorProfile, error) {
+	profile, err := u.accountRepo.FindSponsorProfileByAccountID(ctx, accountID)
+	if err != nil {
+		return nil, err
+	}
+	if profile == nil {
+		return nil, ErrSponsorProfileNotFound
+	}
+	return profile, nil
+}
+
+// UpsertSponsorProfile creates or updates the sponsor profile linked to an account UUID.
+func (u *AccountUseCase) UpsertSponsorProfile(ctx context.Context, accountID uuid.UUID, input UpsertSponsorProfileInput) (*models.SponsorProfile, error) {
+	account, err := u.accountRepo.FindByID(ctx, accountID)
+	if err != nil {
+		return nil, err
+	}
+	if account == nil {
+		return nil, ErrAccountNotFound
+	}
+
+	name := strings.TrimSpace(input.SponsorName)
+	if name == "" {
+		return nil, ErrInvalidSponsorName
+	}
+	if len(name) > 150 {
+		name = name[:150]
+	}
+
+	email := account.Email
+	if input.SponsorEmail != nil {
+		trimmed := strings.ToLower(strings.TrimSpace(*input.SponsorEmail))
+		if trimmed != "" {
+			email = trimmed
+		}
+	}
+
+	profile := &models.SponsorProfile{
+		AccountID:    accountID,
+		SponsorName:  name,
+		SponsorEmail: email,
+	}
+
+	return u.accountRepo.UpsertSponsorProfile(ctx, profile)
+}
+
