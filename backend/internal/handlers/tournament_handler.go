@@ -24,7 +24,7 @@ type TournamentResponse struct {
 	RegistrationDeadline time.Time `json:"registrationDeadline"`
 	EntryFee             int64     `json:"entryFee" doc:"Entry fee in whole currency units"`
 	Currency             string    `json:"currency"`
-	RegistrationMode     string    `json:"registrationMode" enum:"SOLO,TEAM,BOTH"`
+	RegistrationMode     string    `json:"registrationMode" enum:"SOLO,TEAM"`
 	MinTeamSize          int       `json:"minTeamSize"`
 	MaxTeamSize          int       `json:"maxTeamSize"`
 	Capacity             int       `json:"capacity"`

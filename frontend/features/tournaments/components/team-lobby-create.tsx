@@ -120,9 +120,7 @@ export function TeamLobbyCreate({ tournamentId }: { tournamentId: string }) {
   }
 
   const { tournament } = details;
-  const supportsTeams =
-    tournament.registrationMode === "TEAM" ||
-    tournament.registrationMode === "BOTH";
+  const supportsTeams = tournament.registrationMode === "TEAM";
   const registrationOpen = tournament.status === "REGISTRATION_OPEN";
 
   return (

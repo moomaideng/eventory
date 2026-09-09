@@ -672,7 +672,7 @@ export interface components {
             /** Format: date-time */
             registrationDeadline: string;
             /** @enum {string} */
-            registrationMode: "SOLO" | "TEAM" | "BOTH";
+            registrationMode: "SOLO" | "TEAM";
             /** Format: date-time */
             startAt: string;
             status: string;

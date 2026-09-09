@@ -57,7 +57,7 @@ func (u *TeamLobbyUseCase) Create(ctx context.Context, tournamentID, captainID u
 	if tournament.Status != models.TournamentStatusRegistrationOpen {
 		return nil, ErrRegistrationNotOpen
 	}
-	if tournament.RegistrationMode != models.TournamentRegistrationModeTeam && tournament.RegistrationMode != models.TournamentRegistrationModeBoth {
+	if tournament.RegistrationMode != models.TournamentRegistrationModeTeam {
 		return nil, ErrTeamsNotAllowed
 	}
 
