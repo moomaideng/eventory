@@ -281,4 +281,3 @@ func TestCreateAccount_NilIDFails(t *testing.T) {
 		t.Errorf("expected ErrInvalidAccountID, got: %v", err)
 	}
 }
-
