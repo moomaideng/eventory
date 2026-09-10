@@ -189,6 +189,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Initial session check
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(parseSession(session));
+
+      // Restore dev session from cookies in development mode if no active Supabase session
+      if (!session && typeof document !== "undefined") {
+        const hasDevSession = document.cookie.includes(
+          "eventory_dev_session=true"
+        );
+        if (hasDevSession) {
+          const match = document.cookie.match(/eventory_dev_role=([^;]+)/);
+          const role = (match?.[1] as UserRole) || "competitor";
+          let targetUser = MOCK_USER;
+          if (role === "organizer") targetUser = MOCK_ORGANIZER_USER;
+          if (role === "sponsor") targetUser = MOCK_SPONSOR_USER;
+          setDevUser(targetUser);
+          setDevRole(role);
+        }
+      }
+
       setIsAuthLoading(false);
     });
 
@@ -207,22 +224,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
       setIsAuthLoading(false);
     });
-
-    // Restore dev session from cookies in development mode
-    if (typeof document !== "undefined") {
-      const hasDevSession = document.cookie.includes(
-        "eventory_dev_session=true"
-      );
-      if (hasDevSession) {
-        const match = document.cookie.match(/eventory_dev_role=([^;]+)/);
-        const role = (match?.[1] as UserRole) || "competitor";
-        let targetUser = MOCK_USER;
-        if (role === "organizer") targetUser = MOCK_ORGANIZER_USER;
-        if (role === "sponsor") targetUser = MOCK_SPONSOR_USER;
-        setDevUser(targetUser);
-        setDevRole(role);
-      }
-    }
 
     return () => {
       subscription.unsubscribe();
