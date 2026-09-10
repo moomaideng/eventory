@@ -43,10 +43,13 @@ const PERSONA_CONFIG: {
 ];
 
 const NAV_LINKS: Record<UserRole, { label: string; href: string }[]> = {
-  competitor: [{ label: "Tournaments", href: "/tournaments" }],
+  competitor: [
+    { label: "Tournaments", href: "/tournaments" },
+    { label: "Join a Lobby", href: "/lobbies" }
+  ],
   organizer: [
     { label: "My Tournaments", href: "/organizer" },
-    { label: "+ Host Tournament", href: "/organizer/tournaments/new" },
+    { label: "Host a Tournament", href: "/organizer/tournaments/new" },
   ],
   sponsor: [
     { label: "Sponsor Dashboard", href: "/sponsor" },
