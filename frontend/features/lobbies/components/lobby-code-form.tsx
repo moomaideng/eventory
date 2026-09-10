@@ -15,6 +15,7 @@ import {
 import {
   Field,
   FieldDescription,
+  FieldError,
   FieldGroup,
   FieldLabel,
 } from "@/components/ui/field";
@@ -72,11 +73,7 @@ export function LobbyCodeForm() {
                 <FieldDescription>
                   Codes are six characters and are not case-sensitive.
                 </FieldDescription>
-                {error ? (
-                  <FieldDescription className="text-destructive">
-                    {error}
-                  </FieldDescription>
-                ) : null}
+                {error ? <FieldError>{error}</FieldError> : null}
               </Field>
             </FieldGroup>
           </CardContent>

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/server";
-import { ModeHub } from "./mode-hub";
+import { ModeHub } from "@/features/hub/components/mode-hub";
 
 export const metadata: Metadata = {
   title: "Choose Your Mode - Eventory",

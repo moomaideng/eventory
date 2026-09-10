@@ -14,17 +14,24 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 Before writing, modifying, or refactoring any code, you **MUST** read the source documentation and embedded skill rules directly:
 
-1. **Next.js 16 APIs & Breaking Changes:**
-   - **Do not rely on training weights.** Read the relevant guides in `node_modules/next/dist/docs/` directly before implementing routes, proxies, boundaries, or server components.
-   - Key differences: Next.js 16 uses `proxy.ts` (not `middleware.ts`), and all request APIs (`cookies()`, `headers()`, `params`, `searchParams`) are asynchronous Promises.
+1. **Architecture & File Boundaries:**
+   - **`page.tsx` & `layout.tsx` MUST remain Server Components.** Never add `'use client'`. Reserve them strictly for async `params`/`searchParams`, metadata, direct data fetches, and `<Suspense>` orchestration.
+   - **Push `'use client'` down** to interactive leaf components in `src/features/<feature>/components/`.
+   - **File size limit: around <240 lines.** Split complex logic into hooks, sub-components, or feature modules, while avoiding over-fragmentation. One component per file; avoid inline JSX clutter.
+   - **Path aliases:** Use `@/*`. Do not climb directories (`../../`).
 
-2. **UI & Components (`shadcn/ui`):**
-   - **Always read `.agents/skills/shadcn/` before writing UI.**
-   - We use Base UI (`base-vega` style). Inspect `.agents/skills/shadcn/rules/` for `render` prop rules (never use Radix `asChild`), `data-icon` button attributes, `<FieldGroup>` forms, `<Skeleton>` loaders, and semantic color tokens.
+2. **Next.js 16 APIs & Breaking Changes:**
+   - **Do not rely on training weights.** Read guides in `node_modules/next/dist/docs/` before implementing routes, boundaries, or server components.
+   - Uses `proxy.ts` (not `middleware.ts`). All request APIs (`cookies()`, `headers()`, `params`, `searchParams`) are asynchronous Promises.
 
-3. **Authentication & SSR (`supabase`):**
-   - **Always read `.agents/skills/supabase/SKILL.md` before touching auth or sessions.**
-   - Verify sessions cryptographically on the server using `supabase.auth.getClaims()` for high-performance page/route protection, and `supabase.auth.getUser()` when an up-to-date user record from the Auth server is required.
+3. **UI & Components (`shadcn/ui`):**
+   - **Read `.agents/skills/shadcn/` before writing UI.**
+   - Base UI (`base-vega` style): Use `render` props (never Radix `asChild`), `data-icon` button attributes, `<FieldGroup>` forms, `<Skeleton>` loaders, and semantic color tokens.
+   - Reuse `@/components/ui/` primitives; merge classes with `cn()`.
 
-4. **Verification & Code Quality:**
-   - Run `npm run lint` and `npx tsc --noEmit` before finishing. `npm run format` is optional for formatting cleanliness.
+4. **Authentication & SSR (`supabase`):**
+   - **Read `.agents/skills/supabase/SKILL.md` before touching auth.**
+   - Verify sessions with `supabase.auth.getClaims()` for route protection, and `supabase.auth.getUser()` when an up-to-date Auth record is required.
+
+5. **Verification & Code Quality:**
+   - Run `npm run lint` and `npx tsc --noEmit` before finishing. `npm run format` is optional.

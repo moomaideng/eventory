@@ -16,18 +16,17 @@ export function HeroActions({
 
   // Smart routing: unauthenticated goes to /login, authenticated jumps straight into /hub
   const primaryHref = isAuthenticated ? "/hub" : "/login";
-  // Natural gaming-oriented wording (replaces stiff "Open Workspace")
   const primaryText = isAuthenticated ? "Enter Eventory" : "Get Started";
 
   return (
-    <div className="flex w-full flex-col items-center justify-center gap-3.5 pt-3 sm:w-auto sm:flex-row">
+    <div className="flex w-full flex-col items-center justify-center gap-3 pt-2 sm:w-auto sm:flex-row">
       <Button
         size="lg"
         render={<Link href={primaryHref} />}
         nativeButton={false}
-        className="h-11 w-full justify-center rounded-lg px-5.5 text-sm font-semibold shadow-xs transition-opacity hover:opacity-95 has-data-[icon=inline-end]:pr-5 has-data-[icon=inline-start]:pl-5 sm:w-auto sm:min-w-47.5"
+        className="w-full sm:w-auto sm:min-w-48"
       >
-        <span className="leading-none">{primaryText}</span>
+        <span>{primaryText}</span>
         <ArrowRight data-icon="inline-end" />
       </Button>
 
@@ -36,10 +35,10 @@ export function HeroActions({
         size="lg"
         render={<Link href="/tournaments" />}
         nativeButton={false}
-        className="h-11 w-full justify-center rounded-lg px-5.5 text-sm font-semibold has-data-[icon=inline-end]:pr-5 has-data-[icon=inline-start]:pl-5 sm:w-auto sm:min-w-47.5"
+        className="w-full sm:w-auto sm:min-w-48"
       >
         <Gamepad2 data-icon="inline-start" />
-        <span className="leading-none">Explore Tournaments</span>
+        <span>Explore Tournaments</span>
       </Button>
     </div>
   );
