@@ -1,14 +1,14 @@
 import React from "react";
-import { CompetitorNavbar } from "@/components/navbar/competitor-navbar";
+import { OrganizerNavbar } from "@/components/navbar/organizer-navbar";
 
-export default function PublicLayout({
+export default function OrganizerLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
   return (
     <>
-      <CompetitorNavbar />
+      <OrganizerNavbar />
       <main className="flex flex-1 flex-col">{children}</main>
     </>
   );

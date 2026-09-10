@@ -1,5 +1,5 @@
 import React from "react";
-import { AuthNavbar } from "@/components/navbar";
+import { AuthNavbar } from "@/components/navbar/auth-navbar";
 
 export default function AuthLayout({
   children,
