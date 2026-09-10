@@ -67,6 +67,9 @@ export function TournamentCatalog() {
     const startFrom = String(formData.get("startFrom") ?? "");
     const startTo = String(formData.get("startTo") ?? "");
     const maxEntryFee = String(formData.get("maxEntryFee") ?? "");
+    if (startFrom && startTo && startFrom > startTo) {
+      return;
+    }
     const next = new URLSearchParams();
     if (query) next.set("q", query);
     if (startFrom) next.set("startFrom", startFrom);
@@ -102,6 +105,7 @@ export function TournamentCatalog() {
       </div>
 
       <TournamentFiltersCard
+        key={searchParams.toString()}
         searchKey={searchParams.toString()}
         defaultQ={searchParams.get("q") ?? ""}
         defaultStartFrom={searchParams.get("startFrom") ?? ""}
