@@ -21,6 +21,8 @@ import {
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 
+import { lobbyCodeSchema } from "../schemas";
+
 export function LobbyCodeForm() {
   const router = useRouter();
   const [inviteCode, setInviteCode] = React.useState("");
@@ -28,12 +30,12 @@ export function LobbyCodeForm() {
 
   function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const normalizedCode = inviteCode.trim().toUpperCase();
-    if (!/^[A-Z0-9]{6}$/.test(normalizedCode)) {
-      setError("Enter the six-character code your captain shared.");
+    const result = lobbyCodeSchema.safeParse(inviteCode);
+    if (!result.success) {
+      setError(result.error.issues[0]?.message ?? "Invalid invite code.");
       return;
     }
-    router.push(`/lobbies/${normalizedCode}`);
+    router.push(`/lobbies/${result.data}`);
   }
 
   return (

@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
+import { notFound } from "next/navigation";
 import { TeamLobbyCreate } from "@/features/tournaments/components/team-lobby-create";
+import { tournamentIdParamSchema } from "@/features/tournaments/schemas";
 
 export async function generateMetadata({
   params,
@@ -19,5 +21,10 @@ export default async function TeamLobbyCreatePage({
   params: Promise<{ tournamentId: string }>;
 }) {
   const { tournamentId } = await params;
-  return <TeamLobbyCreate tournamentId={tournamentId} />;
+  const parsed = tournamentIdParamSchema.safeParse(tournamentId);
+  if (!parsed.success) {
+    notFound();
+  }
+
+  return <TeamLobbyCreate tournamentId={parsed.data} />;
 }
