@@ -2,11 +2,13 @@ import type { components } from "@/lib/api/schema";
 
 export type Lobby = components["schemas"]["TeamLobbyResponse"];
 
+const dateFormatter = new Intl.DateTimeFormat("en-GB", {
+  dateStyle: "medium",
+  timeZone: "Asia/Bangkok",
+});
+
 export function formatDate(value: string) {
-  return new Intl.DateTimeFormat("en-GB", {
-    dateStyle: "medium",
-    timeZone: "Asia/Bangkok",
-  }).format(new Date(value));
+  return dateFormatter.format(new Date(value));
 }
 
 export function formatEntryFee(amount: number, currency: string) {

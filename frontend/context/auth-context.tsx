@@ -14,7 +14,13 @@ import type { components } from "@/lib/api/schema";
 import type { Session } from "@supabase/supabase-js";
 import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
-import { MOCK_USER } from "./mock-data";
+import {
+  MOCK_USER,
+  MOCK_ORGANIZER_USER,
+  MOCK_SPONSOR_USER,
+} from "./mock-data";
+import { getSafeRedirectPath } from "@/lib/auth-redirect";
+import type { UserRole } from "@/lib/role";
 
 export interface UserProfile {
   id: string;
@@ -29,8 +35,8 @@ export interface AuthContextType {
   user: UserProfile | null;
   isLoading: boolean;
   authorizationHeader: string | undefined;
-  loginWithGoogle: () => Promise<void>;
-  loginAsDev: (role?: string) => void;
+  loginWithGoogle: (redirectTo?: string) => Promise<void>;
+  loginAsDev: (role?: UserRole, redirectTo?: string) => void;
   logout: () => Promise<void>;
   updateUserProfile: (
     displayName: string,
@@ -44,13 +50,17 @@ export interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 // Pure function at module scope: triggers Supabase Google OAuth sign-in
-async function loginWithGoogle() {
+async function triggerGoogleOAuth(redirectTo?: string) {
   try {
     const supabase = createClient();
+    const callbackUrl = new URL("/api/auth/callback", window.location.origin);
+    if (redirectTo) {
+      callbackUrl.searchParams.set("next", getSafeRedirectPath(redirectTo));
+    }
     await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}/api/auth/callback`,
+        redirectTo: callbackUrl.toString(),
       },
     });
   } catch (error) {
@@ -63,6 +73,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const queryClient = useQueryClient();
 
   const [devUser, setDevUser] = useState<UserProfile | null>(null);
+  const [devRole, setDevRole] = useState<UserRole>("competitor");
   const [session, setSession] = useState<{
     accessToken: string;
     avatarUrl?: string;
@@ -130,7 +141,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     (Boolean(session?.accessToken) && !devUser && isAccountLoading && !account);
 
   const authorizationHeader = devUser
-    ? "Bearer dev-token"
+    ? devRole === "organizer"
+      ? "Bearer dev-token-organizer"
+      : devRole === "sponsor"
+        ? "Bearer dev-token-sponsor"
+        : "Bearer dev-token"
     : session?.accessToken
       ? `Bearer ${session.accessToken}`
       : undefined;
@@ -174,6 +189,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Initial session check
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(parseSession(session));
+
+      // Restore dev session from cookies in development mode if no active Supabase session
+      if (!session && typeof document !== "undefined") {
+        const hasDevSession = document.cookie.includes(
+          "eventory_dev_session=true"
+        );
+        if (hasDevSession) {
+          const match = document.cookie.match(/eventory_dev_role=([^;]+)/);
+          const role = (match?.[1] as UserRole) || "competitor";
+          let targetUser = MOCK_USER;
+          if (role === "organizer") targetUser = MOCK_ORGANIZER_USER;
+          if (role === "sponsor") targetUser = MOCK_SPONSOR_USER;
+          setDevUser(targetUser);
+          setDevRole(role);
+        }
+      }
+
       setIsAuthLoading(false);
     });
 
@@ -199,14 +231,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [queryClient]);
 
   // Instant mock sign-in for zero-friction local development
-  const loginAsDev = useCallback((_role?: string) => {
-    void _role;
-    setDevUser(MOCK_USER);
-    if (typeof document !== "undefined") {
-      document.cookie =
-        "eventory_dev_session=true; path=/; max-age=86400; SameSite=Lax";
-    }
-  }, []);
+  const loginAsDev = useCallback(
+    (role: UserRole = "competitor", redirectTo?: string) => {
+      let targetUser = MOCK_USER;
+      if (role === "organizer") targetUser = MOCK_ORGANIZER_USER;
+      if (role === "sponsor") targetUser = MOCK_SPONSOR_USER;
+
+      setDevUser(targetUser);
+      setDevRole(role);
+
+      if (typeof document !== "undefined") {
+        document.cookie =
+          "eventory_dev_session=true; path=/; max-age=86400; SameSite=Lax";
+        document.cookie = `eventory_dev_role=${role}; path=/; max-age=86400; SameSite=Lax`;
+      }
+
+      if (redirectTo) {
+        router.push(getSafeRedirectPath(redirectTo));
+      }
+      router.refresh();
+    },
+    [router]
+  );
+
+  const loginWithGoogle = useCallback(
+    async (redirectTo?: string) => {
+      await triggerGoogleOAuth(redirectTo);
+    },
+    []
+  );
 
   // Update primary user profile details with query cache update & invalidation
   const updateUserProfile = useCallback(
@@ -261,8 +314,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
     if (typeof document !== "undefined") {
       document.cookie = "eventory_dev_session=; path=/; max-age=0";
+      document.cookie = "eventory_dev_role=; path=/; max-age=0";
     }
     setDevUser(null);
+    setDevRole("competitor");
     setSession(null);
     queryClient.removeQueries({
       queryKey: ["get", "/api/v1/accounts/me"],
@@ -286,6 +341,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       user,
       isLoading,
       authorizationHeader,
+      loginWithGoogle,
       loginAsDev,
       logout,
       updateUserProfile,

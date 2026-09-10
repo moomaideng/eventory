@@ -17,7 +17,6 @@ import {
 } from "@/components/ui/empty";
 import { useLobbyActions } from "../hooks/use-lobby-actions";
 import { LobbyStatusBadge } from "./lobby-status-badge";
-import { LobbySignInCard } from "./lobby-sign-in-card";
 import { LobbyWorkspaceSkeleton } from "./lobby-skeleton";
 import { LobbyRosterCard } from "./lobby-roster-card";
 import { LobbyInviteCard } from "./lobby-invite-card";
@@ -28,7 +27,6 @@ export function TeamLobbyWorkspace({ inviteCode }: { inviteCode: string }) {
     user,
     isLoading: isAuthLoading,
     authorizationHeader,
-    loginAsDev,
   } = useAuth();
   const [copied, setCopied] = React.useState(false);
   const [copyError, setCopyError] = React.useState("");
@@ -81,11 +79,7 @@ export function TeamLobbyWorkspace({ inviteCode }: { inviteCode: string }) {
     }
   }
 
-  if (!user && !isAuthLoading) {
-    return <LobbySignInCard onDevLogin={() => loginAsDev("competitor")} />;
-  }
-
-  if (isAuthLoading || isLoading) {
+  if (isAuthLoading || isLoading || !user) {
     return <LobbyWorkspaceSkeleton />;
   }
 

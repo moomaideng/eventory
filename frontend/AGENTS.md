@@ -17,7 +17,7 @@ Before writing, modifying, or refactoring any code, you **MUST** read the source
 1. **Architecture & File Boundaries:**
    - **`page.tsx` & `layout.tsx` MUST remain Server Components.** Never add `'use client'`. Reserve them strictly for async `params`/`searchParams`, metadata, direct data fetches, and `<Suspense>` orchestration.
    - **Push `'use client'` down** to interactive leaf components in `features/<feature>/components/` (imported via `@/features/...`).
-   - **File size limit: around <240 lines.** Split complex logic into hooks, sub-components, or feature modules, while avoiding over-fragmentation. One component per file; avoid inline JSX clutter.
+   - **Modular design (~240 lines guideline):** Keep files focused and maintainable. Split complex logic into hooks, sub-components, or feature modules without over-fragmentation.
    - **Path aliases:** Use `@/*`. Do not climb directories (`../../`).
 
 2. **Next.js 16 APIs & Breaking Changes:**
@@ -31,6 +31,7 @@ Before writing, modifying, or refactoring any code, you **MUST** read the source
 
 4. **Authentication & SSR (`supabase`):**
    - **Read `.agents/skills/supabase/SKILL.md` before touching auth.**
+   - **Centralized route protection:** Handled at edge in `proxy.ts`. Do not re-implement redundant in-page redirect guards or sign-in cards.
    - Verify sessions with `supabase.auth.getClaims()` for route protection, and `supabase.auth.getUser()` when an up-to-date Auth record is required.
 
 5. **Verification & Code Quality:**

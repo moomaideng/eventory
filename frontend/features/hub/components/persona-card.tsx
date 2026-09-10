@@ -28,7 +28,7 @@ export function PersonaCard({ persona }: { persona: PersonaConfig }) {
 
   return (
     <Link href={targetHref} className="group block focus-visible:outline-none">
-      <Card className="flex h-full flex-col justify-between transition-all duration-200 group-hover:border-primary/60 group-hover:bg-muted/20 group-hover:-translate-y-1 group-hover:shadow-md">
+      <Card className="flex h-full flex-col justify-between transition duration-200 group-hover:border-primary/60 group-hover:bg-muted/20 group-hover:-translate-y-1 group-hover:shadow-md">
         <CardHeader>
           <div className="bg-muted text-foreground group-hover:bg-primary group-hover:text-primary-foreground mb-2 flex size-12 items-center justify-center rounded-xl transition-colors duration-200">
             <Icon />

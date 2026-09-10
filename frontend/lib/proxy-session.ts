@@ -29,9 +29,11 @@ export async function updateSession(
     process.env.NODE_ENV === "development" &&
     request.cookies.get("eventory_dev_session")?.value === "true"
   ) {
+    const devRole =
+      request.cookies.get("eventory_dev_role")?.value || "competitor";
     return {
       response: supabaseResponse,
-      user: { id: "dev-user" },
+      user: { id: `dev-user-${devRole}` },
     };
   }
 

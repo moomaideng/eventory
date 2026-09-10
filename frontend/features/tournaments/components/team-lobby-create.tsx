@@ -2,7 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
-import { ArrowLeft, LogIn, ShieldAlert, UsersRound } from "lucide-react";
+import { ArrowLeft, ShieldAlert, UsersRound } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { $api, apiClient } from "@/lib/api/client";
 import { useAuth } from "@/context/auth-context";
@@ -43,7 +43,6 @@ export function TeamLobbyCreate({ tournamentId }: { tournamentId: string }) {
     user,
     isLoading: isAuthLoading,
     authorizationHeader,
-    loginAsDev,
   } = useAuth();
   const [teamName, setTeamName] = React.useState("");
   const [formError, setFormError] = React.useState("");
@@ -163,30 +162,7 @@ export function TeamLobbyCreate({ tournamentId }: { tournamentId: string }) {
               : "Registration is not currently open for this tournament."}
           </AlertDescription>
         </Alert>
-      ) : !user && !isAuthLoading ? (
-        <Card>
-          <CardHeader>
-            <CardTitle>Sign in to become captain</CardTitle>
-            <CardDescription>
-              A captain account is required to create and manage a roster.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-muted-foreground text-sm">
-              Please sign in with your player account to start a team lobby.
-            </p>
-          </CardContent>
-          <CardFooter className="flex flex-wrap gap-2">
-            <Button render={<Link href="/login" />} nativeButton={false}>
-              <LogIn data-icon="inline-start" />
-              Sign in
-            </Button>
-            <Button variant="outline" onClick={() => loginAsDev("competitor")}>
-              Use Dev Quick Login
-            </Button>
-          </CardFooter>
-        </Card>
-      ) : isAuthLoading ? (
+      ) : isAuthLoading || !user ? (
         <TeamCreateSkeleton />
       ) : (
         <Card>

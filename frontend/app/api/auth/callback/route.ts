@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/server";
 import { apiClient } from "@/lib/api/client";
+import { getSafeRedirectPath } from "@/lib/auth-redirect";
 
 function getPublicOrigin(request: Request) {
   const forwardedHost = request.headers.get("x-forwarded-host");
@@ -64,7 +65,9 @@ export async function GET(request: Request) {
           }
         }
 
-        return NextResponse.redirect(`${origin}/hub`);
+        const next = searchParams.get("next");
+        const safeNext = getSafeRedirectPath(next);
+        return NextResponse.redirect(`${origin}${safeNext}`);
       }
     } catch (err) {
       console.error("[Auth Callback] Auth exchange error:", err);

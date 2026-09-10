@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { useAuth } from "@/context/auth-context";
 import { Button } from "@/components/ui/button";
 import {
@@ -12,15 +13,25 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Spinner } from "@/components/ui/spinner";
-
+import {
+  getRedirectDestinationLabel,
+  getSafeRedirectPath,
+} from "@/lib/auth-redirect";
 export function LoginForm() {
+  const searchParams = useSearchParams();
+  const rawRedirect = searchParams.get("redirectTo");
+  const safeRedirectTo = getSafeRedirectPath(rawRedirect);
+  const destinationLabel = rawRedirect
+    ? getRedirectDestinationLabel(rawRedirect)
+    : null;
+
   const { loginWithGoogle } = useAuth();
   const [isLoggingIn, setIsLoggingIn] = useState(false);
 
   const handleGoogleLogin = async () => {
     setIsLoggingIn(true);
     try {
-      await loginWithGoogle();
+      await loginWithGoogle(safeRedirectTo);
     } catch {
       setIsLoggingIn(false);
     }
@@ -28,26 +39,37 @@ export function LoginForm() {
 
   return (
     <div className="flex flex-1 items-center justify-center px-4 py-16 sm:px-8">
-      <Card className="w-full max-w-sm shadow-sm">
+      <Card className="w-full max-w-sm rounded-sm shadow-sm">
         <CardHeader className="text-center">
-          <div className="bg-primary text-primary-foreground mx-auto flex size-10 items-center justify-center rounded-xl text-xl font-black">
+          <div className="bg-primary text-primary-foreground mx-auto flex size-10 items-center justify-center rounded-sm text-xl font-black">
             E
           </div>
           <CardTitle className="text-xl font-bold">
             Welcome to Eventory
           </CardTitle>
           <CardDescription>
-            Sign in with your Google account to continue.
+            Sign in with your verified account to continue.
           </CardDescription>
+
+          {destinationLabel ? (
+            <div className="bg-muted/40 border-border/80 border-l-primary mt-3 border border-l-2 px-3.5 py-2 text-left">
+              <p className="text-muted-foreground text-[10px] font-mono uppercase tracking-wider">
+                Continuing to
+              </p>
+              <p className="text-foreground truncate text-xs font-semibold sm:text-sm">
+                {destinationLabel}
+              </p>
+            </div>
+          ) : null}
         </CardHeader>
 
-        <CardContent>
+        <CardContent className="flex flex-col gap-4">
           <Button
             variant="outline"
             size="lg"
             onClick={handleGoogleLogin}
             disabled={isLoggingIn}
-            className="w-full"
+            className="w-full rounded-sm"
           >
             {isLoggingIn ? (
               <>

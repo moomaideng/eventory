@@ -24,70 +24,41 @@ Eventory implements a **Single Primary Account** architecture allowing a user to
 
 ---
 
-## Project & Routing Structure
+## Project Structure
 
-We use Next.js **Route Groups** (`(public)` and `(auth)`) alongside App Router boundaries:
+Eventory follows a **Feature-Driven Architecture** combined with Next.js App Router conventions:
 
 ```text
 frontend/
-├── proxy.ts                          # Next.js 16 Proxy (Asymmetric JWT verification & session refresh)
+├── app/                  # Next.js App Router (Routing, Layouts, Server Component data fetching)
+│   ├── (auth)/           # Authentication route group (Login, minimal layout)
+│   ├── (public)/         # Main application views (Hub, Lobbies, Tournaments, etc.)
+│   └── api/              # Edge API Route Handlers (OAuth callback, webhooks)
 │
-├── app/
-│   ├── (auth)/                       # Auth Flow (Minimal Header with Logo only)
-│   │   ├── layout.tsx                # Auth layout
-│   │   ├── loading.tsx               # Instant card skeleton loading boundary
-│   │   └── login/
-│   │       ├── page.tsx              # Server Component (Verified Auth redirect check)
-│   │       └── login-form.tsx        # Clean Google Sign-In card with Spinner
-│   │
-│   ├── (public)/                     # Public & App Views (Full Navbar with Role Switcher)
-│   │   ├── layout.tsx                # Public layout with Navbar
-│   │   ├── loading.tsx               # Instant public skeleton loading boundary
-│   │   └── page.tsx                  # Minimal Landing Hero & CTA buttons (Server Component)
-│   │
-│   ├── api/
-│   │   └── auth/callback/route.ts    # Supabase OAuth PKCE code exchange Route Handler
-│   │
-│   ├── error.tsx                     # Global App Router Error Boundary
-│   ├── not-found.tsx                 # Branded 404 Not Found Page
-│   ├── layout.tsx                    # Root HTML layout (Fonts, globals.css, QueryProvider, RoleProvider)
-│   └── globals.css                   # Tailwind CSS v4 & theme variables
+├── features/             # Domain-specific feature modules
+│   └── <feature>/        # e.g., auth, hub, lobbies, tournaments
+│       ├── components/   # Feature-specific client/server UI components
+│       ├── hooks/        # Feature custom hooks & client logic
+│       └── utils/        # Feature helper functions & formatters
 │
-├── components/
-│   ├── navbar.tsx                    # Header with Base UI DropdownMenu Role Switcher & Dynamic Nav Links
-│   ├── providers/
-│   │   └── query-provider.tsx        # TanStack QueryClient Provider wrapper
-│   └── ui/                           # Pure shadcn/ui Base UI primitives
-│       ├── alert.tsx
-│       ├── avatar.tsx
-│       ├── button.tsx
-│       ├── card.tsx
-│       ├── dropdown-menu.tsx
-│       ├── field.tsx
-│       ├── input.tsx
-│       ├── label.tsx
-│       ├── separator.tsx
-│       ├── skeleton.tsx
-│       └── spinner.tsx
+├── components/           # Shared cross-feature UI components
+│   ├── ui/               # shadcn/ui design system primitives (Base UI)
+│   └── providers/        # Root client providers (QueryClient, ThemeProvider)
 │
-├── context/
-│   ├── auth-context.tsx              # Auth Context (Supabase session + profile state)
-│   └── mock-data.ts                  # Development mock profiles
+├── context/              # Global React contexts (Auth session, role state)
+├── lib/                  # Shared utilities, client helpers, API connectors
+│   ├── api/              # Contract-first OpenAPI client & generated schema types
+│   ├── auth-redirect.ts  # Route redirect sanitization & destination labeling
+│   └── proxy-session.ts  # Edge session verification helpers
 │
-├── lib/
-│   ├── role.ts                       # Stateless URL/Path-derived Workspace Roles
-│   ├── api/                          # Type-safe OpenAPI Client
-│   │   ├── schema.d.ts               # Auto-generated types from Go Huma OpenAPI 3.1
-│   │   └── client.ts                 # openapi-fetch & openapi-react-query client instances
-│   ├── client.ts                     # Supabase Browser Client helper
-│   ├── server.ts                     # Supabase Server Component helper (getUser & cookies)
-│   ├── proxy-session.ts              # Supabase Session Proxy helper (getClaims & dev fallback)
-│   └── utils.ts                      # Tailwind class merge helper (`cn`)
-│
-└── .agents/skills/
-    ├── shadcn/                       # shadcn/ui Best Practices & Rules
-    └── supabase/                     # Supabase Auth, SSR, & Database Rules
+└── proxy.ts              # Next.js 16 Edge Proxy (Centralized auth route guard)
 ```
+
+### Architectural Principles
+
+1. **Routing Layer (`app/`):** Purely handles URL routing, layouts, metadata, and Server Component data orchestration. Keep complex UI and client-side state out of `page.tsx`.
+2. **Feature Modules (`features/<domain>/`):** Self-contained domains encapsulating interactive components, custom hooks, and domain logic. Pages in `app/` import from `@/features/<feature>/components`.
+3. **Shared Primitives (`components/ui/` & `lib/`):** Domain-agnostic design system components (shadcn Base UI) and foundational utilities reusable across features.
 
 ---
 
