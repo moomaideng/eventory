@@ -20,32 +20,27 @@ export function formatDateRange(startAt: string, endAt: string) {
   return `${formatTournamentDate(startAt)} – ${formatTournamentDate(endAt)}`;
 }
 
-export function formatEntryFee(entryFee: number, currency: string) {
-  if (entryFee === 0) return "Free entry";
-  let formatter = currencyFormatters.get(currency);
-  if (!formatter) {
-    formatter = new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency,
-      maximumFractionDigits: 0,
-    });
-    currencyFormatters.set(currency, formatter);
-  }
-  return formatter.format(entryFee);
-}
-
 export function formatMoney(amount: number, currency: string, freeLabel = false) {
   if (freeLabel && amount === 0) return "Free entry";
-  let formatter = currencyFormatters.get(currency);
+  const safeCurrency = currency?.trim() || "THB";
+  let formatter = currencyFormatters.get(safeCurrency);
   if (!formatter) {
-    formatter = new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency,
-      maximumFractionDigits: 0,
-    });
-    currencyFormatters.set(currency, formatter);
+    try {
+      formatter = new Intl.NumberFormat("en-US", {
+        style: "currency",
+        currency: safeCurrency,
+        maximumFractionDigits: 0,
+      });
+      currencyFormatters.set(safeCurrency, formatter);
+    } catch {
+      return `${amount.toLocaleString("en-US")} ${currency}`;
+    }
   }
   return formatter.format(amount);
+}
+
+export function formatEntryFee(entryFee: number, currency: string) {
+  return formatMoney(entryFee, currency, true);
 }
 
 const percentageFormatter = new Intl.NumberFormat("en-US", {

@@ -27,7 +27,14 @@ export function TournamentCatalog() {
   const requestedPage = Number(searchParams.get("page") ?? "1");
   const page =
     Number.isInteger(requestedPage) && requestedPage > 0 ? requestedPage : 1;
-  const maxFeeValue = searchParams.get("maxEntryFee");
+  const rawMaxFee = searchParams.get("maxEntryFee");
+  const parsedMaxFee = rawMaxFee ? Number(rawMaxFee) : undefined;
+  const maxEntryFee =
+    typeof parsedMaxFee === "number" &&
+    !Number.isNaN(parsedMaxFee) &&
+    parsedMaxFee >= 0
+      ? parsedMaxFee
+      : undefined;
 
   const { data, error, isLoading, isFetching } = $api.useQuery(
     "get",
@@ -38,7 +45,7 @@ export function TournamentCatalog() {
           q: searchParams.get("q") || undefined,
           startFrom: searchParams.get("startFrom") || undefined,
           startTo: searchParams.get("startTo") || undefined,
-          maxEntryFee: maxFeeValue ? Number(maxFeeValue) : undefined,
+          maxEntryFee,
           sort: "start_asc",
           page,
           pageSize: PAGE_SIZE,

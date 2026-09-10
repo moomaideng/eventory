@@ -27,17 +27,22 @@ export function useLobbyActions({
   ) {
     setActionError("");
     setPendingAction(action);
-    const { data, error: requestError } = await request;
-    setPendingAction(null);
-    if (requestError) {
-      setActionError(
-        problemMessage(requestError, "We could not update this team lobby.")
-      );
-      return;
-    }
-    afterSuccess?.(data as Lobby | undefined);
-    if (!afterSuccess) {
-      await refetch();
+    try {
+      const { data, error: requestError } = await request;
+      if (requestError) {
+        setActionError(
+          problemMessage(requestError, "We could not update this team lobby.")
+        );
+        return;
+      }
+      afterSuccess?.(data as Lobby | undefined);
+      if (!afterSuccess) {
+        await refetch();
+      }
+    } catch {
+      setActionError("Connection error. Please check your network and try again.");
+    } finally {
+      setPendingAction(null);
     }
   }
 

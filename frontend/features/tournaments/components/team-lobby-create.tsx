@@ -74,22 +74,27 @@ export function TeamLobbyCreate({ tournamentId }: { tournamentId: string }) {
 
     setFormError("");
     setIsSubmitting(true);
-    const { data, error: createError } = await apiClient.POST(
-      "/api/v1/tournaments/{tournamentId}/lobbies",
-      {
-        params: { path: { tournamentId } },
-        headers: { Authorization: authorizationHeader },
-        body: { name },
-      }
-    );
-    setIsSubmitting(false);
-    if (createError || !data) {
-      setFormError(
-        problemMessage(createError, "We could not create this team lobby.")
+    try {
+      const { data, error: createError } = await apiClient.POST(
+        "/api/v1/tournaments/{tournamentId}/lobbies",
+        {
+          params: { path: { tournamentId } },
+          headers: { Authorization: authorizationHeader },
+          body: { name },
+        }
       );
-      return;
+      if (createError || !data) {
+        setFormError(
+          problemMessage(createError, "We could not create this team lobby.")
+        );
+        return;
+      }
+      router.push(`/lobbies/${data.inviteCode}`);
+    } catch {
+      setFormError("Connection error. Please check your network and try again.");
+    } finally {
+      setIsSubmitting(false);
     }
-    router.push(`/lobbies/${data.inviteCode}`);
   }
 
   if (isLoading) {
@@ -134,9 +139,7 @@ export function TeamLobbyCreate({ tournamentId }: { tournamentId: string }) {
       </Button>
 
       <div className="flex flex-col gap-3">
-        <Badge variant="secondary" className="w-fit">
-          Team registration
-        </Badge>
+        <Badge variant="secondary" className="w-fit">Team registration</Badge>
         <div className="flex flex-col gap-2">
           <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
             Create your team
@@ -174,10 +177,7 @@ export function TeamLobbyCreate({ tournamentId }: { tournamentId: string }) {
             </p>
           </CardContent>
           <CardFooter className="flex flex-wrap gap-2">
-            <Button
-              render={<Link href="/login" />}
-              nativeButton={false}
-            >
+            <Button render={<Link href="/login" />} nativeButton={false}>
               <LogIn data-icon="inline-start" />
               Sign in
             </Button>

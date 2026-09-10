@@ -16,7 +16,7 @@ Before writing, modifying, or refactoring any code, you **MUST** read the source
 
 1. **Architecture & File Boundaries:**
    - **`page.tsx` & `layout.tsx` MUST remain Server Components.** Never add `'use client'`. Reserve them strictly for async `params`/`searchParams`, metadata, direct data fetches, and `<Suspense>` orchestration.
-   - **Push `'use client'` down** to interactive leaf components in `src/features/<feature>/components/`.
+   - **Push `'use client'` down** to interactive leaf components in `features/<feature>/components/` (imported via `@/features/...`).
    - **File size limit: around <240 lines.** Split complex logic into hooks, sub-components, or feature modules, while avoiding over-fragmentation. One component per file; avoid inline JSX clutter.
    - **Path aliases:** Use `@/*`. Do not climb directories (`../../`).
 
