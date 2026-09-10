@@ -1,6 +1,14 @@
-import { Suspense } from "react";
-import { TournamentCatalog } from "./tournament-catalog";
+import React, { Suspense } from "react";
+import type { Metadata } from "next";
+import { TournamentCatalog } from "@/features/tournaments/components/tournament-catalog";
+import { TournamentGridSkeleton } from "@/features/tournaments/components/tournament-grid-skeleton";
 import { Skeleton } from "@/components/ui/skeleton";
+
+export const metadata: Metadata = {
+  title: "Tournaments - Eventory",
+  description:
+    "Browse, search, and filter open esports and gaming tournaments.",
+};
 
 function CatalogFallback() {
   return (
@@ -10,11 +18,7 @@ function CatalogFallback() {
         <Skeleton className="h-5 w-full max-w-xl" />
       </div>
       <Skeleton className="h-48 w-full" />
-      <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-        {Array.from({ length: 3 }).map((_, index) => (
-          <Skeleton key={index} className="h-72 w-full" />
-        ))}
-      </div>
+      <TournamentGridSkeleton />
     </div>
   );
 }

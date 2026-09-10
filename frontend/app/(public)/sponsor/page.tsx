@@ -1,7 +1,16 @@
 import React from "react";
+import type { Metadata } from "next";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Gamepad2 } from "lucide-react";
+import { Separator } from "@/components/ui/separator";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { ArrowLeft, Gamepad2, Info } from "lucide-react";
+
+export const metadata: Metadata = {
+  title: "Sponsor Dashboard - Eventory",
+  description:
+    "Sponsor campaigns, prize pool pledges, and brand placement workspace.",
+};
 
 export default function SponsorDashboardPage() {
   return (
@@ -29,8 +38,10 @@ export default function SponsorDashboardPage() {
       </div>
 
       {/* Blueprint Content */}
-      <div className="flex flex-col gap-4 border-t pt-6">
-        <div>
+      <div className="flex flex-col gap-6">
+        <Separator />
+
+        <div className="flex flex-col gap-1">
           <span className="text-muted-foreground text-xs font-semibold tracking-wider uppercase">
             Workspace Blueprint
           </span>
@@ -39,30 +50,31 @@ export default function SponsorDashboardPage() {
           </h1>
         </div>
 
-        <div className="bg-muted/30 text-muted-foreground flex flex-col gap-3 rounded-xl border p-5 text-sm leading-relaxed">
-          <p className="text-foreground font-semibold">
-            Sprint 1 / Epic 5 Team &amp; PO Notice:
-          </p>
-          <p>
-            This page is a placeholder blueprint scaffold to eliminate 404
-            errors from Mode Hub navigation. The full feature set is being
-            developed by the Sponsor domain team:
-          </p>
-          <ul className="list-disc space-y-1 pl-5">
-            <li>
-              <strong>US5-5 (Campaigns &amp; Pledges Overview):</strong> Summary
-              of pledged prize pool tiers and campaign statuses.
-            </li>
-            <li>
-              <strong>Brand Asset Showcase:</strong> Logo placement preview,
-              company profile, and official website redirect link.
-            </li>
-            <li>
-              <strong>Sponsor Tier Pledge Checkout:</strong> Funding integration
-              to contribute to active tournament crowdfunding goals.
-            </li>
-          </ul>
-        </div>
+        <Alert>
+          <Info />
+          <AlertTitle>Sprint 1 / Epic 5 Team &amp; PO Notice</AlertTitle>
+          <AlertDescription className="flex flex-col gap-3">
+            <p>
+              This page is a placeholder blueprint scaffold to eliminate 404
+              errors from Mode Hub navigation. The full feature set is being
+              developed by the Sponsor domain team:
+            </p>
+            <ul className="flex list-disc flex-col gap-1.5 pl-5">
+              <li>
+                <strong>US5-5 (Campaigns &amp; Pledges Overview):</strong> Summary
+                of pledged prize pool tiers and campaign statuses.
+              </li>
+              <li>
+                <strong>Brand Asset Showcase:</strong> Logo placement preview,
+                company profile, and official website redirect link.
+              </li>
+              <li>
+                <strong>Sponsor Tier Pledge Checkout:</strong> Funding integration
+                to contribute to active tournament crowdfunding goals.
+              </li>
+            </ul>
+          </AlertDescription>
+        </Alert>
       </div>
     </div>
   );

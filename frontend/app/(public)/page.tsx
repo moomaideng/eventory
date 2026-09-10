@@ -1,7 +1,7 @@
 import React from "react";
 import type { Metadata } from "next";
 import { createClient } from "@/lib/server";
-import { HeroActions } from "./hero-actions";
+import { HeroActions } from "@/features/home/components/hero-actions";
 
 export const metadata: Metadata = {
   title: "Eventory - Host, Compete, and Sponsor Tournaments",

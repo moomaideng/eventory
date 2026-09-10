@@ -2,13 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
-import {
-  ArrowLeft,
-  CalendarDays,
-  MapPin,
-  ShieldAlert,
-  UsersRound,
-} from "lucide-react";
+import { ArrowLeft, LogIn, ShieldAlert, UsersRound } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { $api, apiClient } from "@/lib/api/client";
 import { useAuth } from "@/context/auth-context";
@@ -33,12 +27,15 @@ import {
 import {
   Field,
   FieldDescription,
+  FieldError,
   FieldGroup,
   FieldLabel,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
+import { problemMessage } from "../utils";
+import { TeamCreateSkeleton } from "./team-create-skeleton";
+import { TournamentSummaryCard } from "./tournament-summary-card";
 
 export function TeamLobbyCreate({ tournamentId }: { tournamentId: string }) {
   const router = useRouter();
@@ -77,26 +74,31 @@ export function TeamLobbyCreate({ tournamentId }: { tournamentId: string }) {
 
     setFormError("");
     setIsSubmitting(true);
-    const { data, error: createError } = await apiClient.POST(
-      "/api/v1/tournaments/{tournamentId}/lobbies",
-      {
-        params: { path: { tournamentId } },
-        headers: { Authorization: authorizationHeader },
-        body: { name },
-      }
-    );
-    setIsSubmitting(false);
-    if (createError || !data) {
-      setFormError(
-        problemMessage(createError, "We could not create this team lobby.")
+    try {
+      const { data, error: createError } = await apiClient.POST(
+        "/api/v1/tournaments/{tournamentId}/lobbies",
+        {
+          params: { path: { tournamentId } },
+          headers: { Authorization: authorizationHeader },
+          body: { name },
+        }
       );
-      return;
+      if (createError || !data) {
+        setFormError(
+          problemMessage(createError, "We could not create this team lobby.")
+        );
+        return;
+      }
+      router.push(`/lobbies/${data.inviteCode}`);
+    } catch {
+      setFormError("Connection error. Please check your network and try again.");
+    } finally {
+      setIsSubmitting(false);
     }
-    router.push(`/lobbies/${data.inviteCode}`);
   }
 
   if (isLoading) {
-    return <CreatePageSkeleton />;
+    return <TeamCreateSkeleton />;
   }
 
   if (error || !details) {
@@ -125,18 +127,19 @@ export function TeamLobbyCreate({ tournamentId }: { tournamentId: string }) {
 
   return (
     <div className="container mx-auto flex w-full max-w-4xl flex-1 flex-col gap-6 px-4 py-12 sm:px-8">
-      <Link
-        href={`/tournaments/${tournamentId}`}
-        className="text-muted-foreground hover:text-foreground flex w-fit items-center gap-2 text-sm font-medium"
+      <Button
+        variant="ghost"
+        size="sm"
+        render={<Link href={`/tournaments/${tournamentId}`} />}
+        nativeButton={false}
+        className="self-start"
       >
-        <ArrowLeft />
+        <ArrowLeft data-icon="inline-start" />
         Tournament details
-      </Link>
+      </Button>
 
       <div className="flex flex-col gap-3">
-        <Badge variant="secondary" className="w-fit">
-          Team registration
-        </Badge>
+        <Badge variant="secondary" className="w-fit">Team registration</Badge>
         <div className="flex flex-col gap-2">
           <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
             Create your team
@@ -148,33 +151,7 @@ export function TeamLobbyCreate({ tournamentId }: { tournamentId: string }) {
         </div>
       </div>
 
-      <Card>
-        <CardHeader>
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div className="flex flex-col gap-1">
-              <CardTitle>{tournament.name}</CardTitle>
-              <CardDescription>
-                {tournament.game} · Hosted by {tournament.organizerName}
-              </CardDescription>
-            </div>
-            <Badge variant="outline">
-              {tournament.minTeamSize}–{tournament.maxTeamSize} players
-            </Badge>
-          </div>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-3 text-sm">
-          <p className="text-muted-foreground">{tournament.description}</p>
-          <div className="text-muted-foreground flex flex-wrap gap-x-5 gap-y-2">
-            <span className="flex items-center gap-2">
-              <CalendarDays /> Registration closes{" "}
-              {formatDate(tournament.registrationDeadline)}
-            </span>
-            <span className="flex items-center gap-2">
-              <MapPin /> {tournament.location}
-            </span>
-          </div>
-        </CardContent>
-      </Card>
+      <TournamentSummaryCard tournament={tournament} />
 
       {!supportsTeams || !registrationOpen ? (
         <Alert variant="destructive">
@@ -194,24 +171,23 @@ export function TeamLobbyCreate({ tournamentId }: { tournamentId: string }) {
               A captain account is required to create and manage a roster.
             </CardDescription>
           </CardHeader>
+          <CardContent>
+            <p className="text-muted-foreground text-sm">
+              Please sign in with your player account to start a team lobby.
+            </p>
+          </CardContent>
           <CardFooter className="flex flex-wrap gap-2">
-            <Link
-              href="/login"
-              className="text-primary text-sm font-medium underline-offset-4 hover:underline"
-            >
+            <Button render={<Link href="/login" />} nativeButton={false}>
+              <LogIn data-icon="inline-start" />
               Sign in
-            </Link>
+            </Button>
             <Button variant="outline" onClick={() => loginAsDev("competitor")}>
               Use Dev Quick Login
             </Button>
           </CardFooter>
         </Card>
       ) : isAuthLoading ? (
-        <Card>
-          <CardContent className="pt-6">
-            <Skeleton className="h-24 w-full" />
-          </CardContent>
-        </Card>
+        <TeamCreateSkeleton />
       ) : (
         <Card>
           <CardHeader>
@@ -240,11 +216,7 @@ export function TeamLobbyCreate({ tournamentId }: { tournamentId: string }) {
                     Up to 120 characters. You can manage invitations on the next
                     page.
                   </FieldDescription>
-                  {formError ? (
-                    <FieldDescription className="text-destructive">
-                      {formError}
-                    </FieldDescription>
-                  ) : null}
+                  {formError ? <FieldError>{formError}</FieldError> : null}
                 </Field>
               </FieldGroup>
             </CardContent>
@@ -263,34 +235,4 @@ export function TeamLobbyCreate({ tournamentId }: { tournamentId: string }) {
       )}
     </div>
   );
-}
-
-function CreatePageSkeleton() {
-  return (
-    <div className="container mx-auto flex w-full max-w-4xl flex-1 flex-col gap-6 px-4 py-12 sm:px-8">
-      <Skeleton className="h-5 w-36" />
-      <Skeleton className="h-12 w-72" />
-      <Skeleton className="h-52 w-full" />
-      <Skeleton className="h-48 w-full" />
-    </div>
-  );
-}
-
-function formatDate(value: string) {
-  return new Intl.DateTimeFormat("en-GB", {
-    dateStyle: "medium",
-    timeZone: "Asia/Bangkok",
-  }).format(new Date(value));
-}
-
-function problemMessage(error: unknown, fallback: string) {
-  if (
-    error &&
-    typeof error === "object" &&
-    "detail" in error &&
-    typeof error.detail === "string"
-  ) {
-    return error.detail;
-  }
-  return fallback;
 }
