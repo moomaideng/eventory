@@ -1,14 +1,12 @@
 "use client";
 
 import React from "react";
-import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/auth-context";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Gamepad2, Trophy, Briefcase } from "lucide-react";
 import { PersonaCard, type PersonaConfig } from "./persona-card";
 
 export function ModeHub() {
-  const router = useRouter();
   const { user, isLoading } = useAuth();
 
   const personas: PersonaConfig[] = [
@@ -43,12 +41,6 @@ export function ModeHub() {
       profileName: "Sponsor Workspace",
     },
   ];
-
-  React.useEffect(() => {
-    if (!isLoading && !user) {
-      router.replace("/login?redirectTo=/hub");
-    }
-  }, [isLoading, user, router]);
 
   if (isLoading || !user) {
     return (

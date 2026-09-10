@@ -2,7 +2,6 @@
 
 import React from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { ArrowLeft, Check, ShieldAlert } from "lucide-react";
 import { $api } from "@/lib/api/client";
 import { useAuth } from "@/context/auth-context";
@@ -24,7 +23,6 @@ import { LobbyInviteCard } from "./lobby-invite-card";
 import { LobbyDetailsCard } from "./lobby-details-card";
 
 export function TeamLobbyWorkspace({ inviteCode }: { inviteCode: string }) {
-  const router = useRouter();
   const {
     user,
     isLoading: isAuthLoading,
@@ -80,12 +78,6 @@ export function TeamLobbyWorkspace({ inviteCode }: { inviteCode: string }) {
       );
     }
   }
-
-  React.useEffect(() => {
-    if (!isAuthLoading && !user) {
-      router.replace(`/login?redirectTo=/lobbies/${normalizedInviteCode}`);
-    }
-  }, [isAuthLoading, user, normalizedInviteCode, router]);
 
   if (isAuthLoading || isLoading || !user) {
     return <LobbyWorkspaceSkeleton />;

@@ -48,12 +48,6 @@ export function TeamLobbyCreate({ tournamentId }: { tournamentId: string }) {
   const [formError, setFormError] = React.useState("");
   const [isSubmitting, setIsSubmitting] = React.useState(false);
 
-  React.useEffect(() => {
-    if (!isAuthLoading && !user) {
-      router.replace(`/login?redirectTo=/tournaments/${tournamentId}/team`);
-    }
-  }, [isAuthLoading, user, tournamentId, router]);
-
   const {
     data: details,
     error,
