@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/context/auth-context";
 import { $api } from "@/lib/api/client";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
   Card,
@@ -34,7 +34,6 @@ import {
   ProgressLabel,
   ProgressValue,
 } from "@/components/ui/progress";
-import { cn } from "@/lib/utils";
 import {
   formatTournamentDate,
   formatMoney,
@@ -171,17 +170,18 @@ export function OrganizerTournaments() {
                 </div>
               </CardContent>
               <CardFooter>
-                <Link
-                  href={`/organizer/tournaments/${tournament.id}`}
+                <Button
+                  variant="outline"
+                  render={
+                    <Link href={`/organizer/tournaments/${tournament.id}`} />
+                  }
+                  nativeButton={false}
                   aria-label={`Open ${tournament.name} dashboard`}
-                  className={cn(
-                    buttonVariants({ variant: "outline" }),
-                    "w-full justify-between"
-                  )}
+                  className="w-full justify-between"
                 >
                   Open dashboard
                   <ArrowUpRight data-icon="inline-end" />
-                </Link>
+                </Button>
               </CardFooter>
             </Card>
           ))}

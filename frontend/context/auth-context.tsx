@@ -16,6 +16,10 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { MOCK_USER } from "./mock-data";
 import { getSafeRedirectPath } from "@/lib/auth-redirect";
+import {
+  setDevSessionAction,
+  getDevSessionAction,
+} from "@/lib/dev-session";
 
 export interface UserProfile {
   id: string;
@@ -161,6 +165,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [queryClient, refetchAccount]);
 
   useEffect(() => {
+    let ignore = false;
     const supabase = createClient();
 
     const parseSession = (sbSession: Session | null) => {
@@ -189,26 +194,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
 
     // Initial session check
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (ignore) return;
       setSession(parseSession(session));
 
-      // Restore dev session from cookies in development mode if no active Supabase session
-      if (!session && typeof document !== "undefined") {
-        const hasDevSession = document.cookie.includes(
-          "eventory_dev_session=true"
-        );
-        if (hasDevSession) {
-          setDevUser(MOCK_USER);
+      // Restore dev session from HttpOnly cookies in development mode if no active Supabase session
+      if (!session && process.env.NODE_ENV === "development") {
+        try {
+          const hasDevSession = await getDevSessionAction();
+          if (!ignore && hasDevSession) {
+            setDevUser(MOCK_USER);
+          }
+        } catch {
+          // Ignore offline check error
         }
       }
 
-      setIsAuthLoading(false);
+      if (!ignore) {
+        setIsAuthLoading(false);
+      }
     });
 
     // Real-time auth state listener
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
+      if (ignore) return;
       if (event === "SIGNED_OUT") {
         setSession(null);
         setDevUser(null);
@@ -222,19 +233,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
 
     return () => {
+      ignore = true;
       subscription.unsubscribe();
     };
   }, [queryClient]);
 
   // Instant mock sign-in for zero-friction local development with single dev account
   const loginAsDev = useCallback(
-    (redirectTo?: string) => {
+    async (redirectTo?: string) => {
       setDevUser(MOCK_USER);
-
-      if (typeof document !== "undefined") {
-        document.cookie =
-          "eventory_dev_session=true; path=/; max-age=86400; SameSite=Lax";
-      }
+      await setDevSessionAction(true);
 
       if (redirectTo) {
         router.push(getSafeRedirectPath(redirectTo));
@@ -302,10 +310,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch {
       // Ignore cleanup error
     }
-    if (typeof document !== "undefined") {
-      document.cookie = "eventory_dev_session=; path=/; max-age=0";
-      document.cookie = "eventory_dev_role=; path=/; max-age=0";
-    }
+    await setDevSessionAction(false);
     setDevUser(null);
     setSession(null);
     queryClient.removeQueries({

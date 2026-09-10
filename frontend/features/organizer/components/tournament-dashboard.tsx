@@ -5,7 +5,7 @@ import { ArrowLeft, ArrowUpRight, Trophy } from "lucide-react";
 import { useAuth } from "@/context/auth-context";
 import { $api } from "@/lib/api/client";
 import { Badge } from "@/components/ui/badge";
-import { buttonVariants } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import {
   DashboardError,
   DashboardLoading,
@@ -34,13 +34,15 @@ export function TournamentDashboard({
   return (
     <div className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-8 px-4 py-10 sm:px-8">
       <div>
-        <Link
-          href="/organizer"
-          className={buttonVariants({ variant: "outline", size: "sm" })}
+        <Button
+          variant="outline"
+          size="sm"
+          render={<Link href="/organizer" />}
+          nativeButton={false}
         >
           <ArrowLeft data-icon="inline-start" />
           My tournaments
-        </Link>
+        </Button>
       </div>
       {loading ? (
         <DashboardLoading />
@@ -77,13 +79,13 @@ export function TournamentDashboard({
             </div>
             <div className="flex items-center gap-2">
               {data.summary.published ? (
-                <Link
-                  className={buttonVariants()}
-                  href={`/tournaments/${tournamentId}`}
+                <Button
+                  render={<Link href={`/tournaments/${tournamentId}`} />}
+                  nativeButton={false}
                 >
                   Public page
                   <ArrowUpRight data-icon="inline-end" />
-                </Link>
+                </Button>
               ) : null}
               <RefreshDashboard
                 fetching={isFetching}

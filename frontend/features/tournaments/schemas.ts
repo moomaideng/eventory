@@ -3,9 +3,7 @@ import { z } from "zod";
 /**
  * Validates a tournament UUID path parameter.
  */
-export const tournamentIdParamSchema = z
-  .string()
-  .uuid("Invalid tournament ID format.");
+export const tournamentIdParamSchema = z.uuid("Invalid tournament ID format.");
 
 export type TournamentIdParam = z.infer<typeof tournamentIdParamSchema>;
 

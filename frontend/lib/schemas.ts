@@ -23,4 +23,4 @@ export function extractProblemMessage(
 /**
  * Reusable UUID validator for entity IDs (e.g. tournaments, accounts).
  */
-export const uuidSchema = z.string().uuid("Invalid identifier format");
+export const uuidSchema = z.uuid("Invalid identifier format");
