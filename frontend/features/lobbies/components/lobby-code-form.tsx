@@ -39,7 +39,7 @@ export function LobbyCodeForm() {
   }
 
   return (
-    <div className="container mx-auto flex w-full max-w-2xl flex-1 items-center px-4 py-12 sm:px-8">
+    <div className="container mx-auto flex w-full max-w-md flex-1 items-center justify-center px-4 py-12 sm:px-8">
       <Card className="w-full">
         <CardHeader>
           <div className="flex items-center gap-3">

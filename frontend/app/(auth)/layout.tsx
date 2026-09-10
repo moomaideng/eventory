@@ -8,7 +8,7 @@ export default function AuthLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <div className="flex min-h-full flex-col">
+    <div className="flex min-h-full flex-1 flex-col">
       {/* Minimal Header with Brand Logo & Theme Toggle */}
       <header className="bg-background w-full border-b">
         <div className="container mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-8">
