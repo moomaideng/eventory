@@ -30,6 +30,20 @@ const (
 	DevEmail string = "dev@eventory.gg"
 	// DevSub represents the mock user ID assigned when using DevToken.
 	DevSub string = "99999999-0000-0000-0000-000000000001"
+
+	// DevOrganizerToken represents the dev token for organizer testing.
+	DevOrganizerToken string = "dev-token-organizer"
+	// DevOrganizerEmail matches the seeded organizer account.
+	DevOrganizerEmail string = "alice@example.com"
+	// DevOrganizerSub matches the seeded organizer account ID.
+	DevOrganizerSub string = "00000000-0000-0000-0000-000000000001"
+
+	// DevSponsorToken represents the dev token for sponsor testing.
+	DevSponsorToken string = "dev-token-sponsor"
+	// DevSponsorEmail matches the seeded sponsor account.
+	DevSponsorEmail string = "somchai@example.com"
+	// DevSponsorSub matches the seeded sponsor account ID.
+	DevSponsorSub string = "00000000-0000-0000-0000-000000000002"
 )
 
 var (
@@ -72,7 +86,7 @@ func NewAuthMiddleware(api huma.API, supabaseURL string, environment string) *Au
 
 // isDevMode checks if the current environment is development or local.
 func (m *AuthMiddleware) isDevMode() bool {
-	return m.environment == "development" || m.environment == "local" || m.environment == ""
+	return m.environment == "development" || m.environment == "local"
 }
 
 // HumaMiddleware returns the Huma middleware handler.
@@ -91,12 +105,24 @@ func (m *AuthMiddleware) HumaMiddleware() func(ctx huma.Context, next func(huma.
 		}
 
 		// 1. Explicit Dev Token Check (Permitted ONLY in development/local environment)
-		if m.isDevMode() && tokenString == DevToken {
-			newCtx := context.WithValue(ctx.Context(), UserEmailContextKey, DevEmail)
-			newCtx = context.WithValue(newCtx, UserSubContextKey, DevSub)
-			ctx = huma.WithContext(ctx, newCtx)
-			next(ctx)
-			return
+		if m.isDevMode() {
+			var devEmail, devSub string
+			switch tokenString {
+			case DevToken, "dev-token-competitor":
+				devEmail, devSub = DevEmail, DevSub
+			case DevOrganizerToken:
+				devEmail, devSub = DevOrganizerEmail, DevOrganizerSub
+			case DevSponsorToken:
+				devEmail, devSub = DevSponsorEmail, DevSponsorSub
+			}
+
+			if devEmail != "" && devSub != "" {
+				newCtx := context.WithValue(ctx.Context(), UserEmailContextKey, devEmail)
+				newCtx = context.WithValue(newCtx, UserSubContextKey, devSub)
+				ctx = huma.WithContext(ctx, newCtx)
+				next(ctx)
+				return
+			}
 		}
 
 		// 2. Cryptographic JWT Verification (ES256 / RS256 with Supabase JWKS)

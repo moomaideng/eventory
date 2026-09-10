@@ -252,15 +252,17 @@ export function Navbar() {
           ) : (
             /* Unauthenticated: Dev Login & Sign In */
             <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => loginAsDev("competitor")}
-                className="text-primary border-primary/30 hidden text-xs sm:inline-flex"
-              >
-                <Sparkles data-icon="inline-start" />
-                Dev Quick Login
-              </Button>
+              {process.env.NODE_ENV === "development" && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => loginAsDev("competitor")}
+                  className="text-primary border-primary/30 hidden text-xs sm:inline-flex"
+                >
+                  <Sparkles data-icon="inline-start" />
+                  Dev Quick Login
+                </Button>
+              )}
 
               <Button
                 size="sm"
