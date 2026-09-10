@@ -108,7 +108,7 @@ export function RegistrationTable({
                         <AvatarFallback>{initials(entry.name)}</AvatarFallback>
                       </Avatar>
                       <div className="flex min-w-0 flex-col gap-2">
-                        <span className="font-medium [overflow-wrap:anywhere]">
+                        <span className="font-medium wrap-anywhere">
                           {entry.name}
                         </span>
                         <span className="sm:hidden">
@@ -125,7 +125,7 @@ export function RegistrationTable({
                       {entry.members?.length ? (
                         entry.members.map((member) => (
                           <li key={member.id} className="min-w-0">
-                            <p className="font-medium [overflow-wrap:anywhere]">
+                            <p className="font-medium wrap-anywhere">
                               {member.displayName || member.handle}
                               {member.role === "CAPTAIN" ? (
                                 <span className="text-muted-foreground ml-2 text-xs font-normal">
@@ -133,7 +133,7 @@ export function RegistrationTable({
                                 </span>
                               ) : null}
                             </p>
-                            <p className="text-muted-foreground text-xs [overflow-wrap:anywhere]">
+                            <p className="text-muted-foreground text-xs wrap-anywhere">
                               @{member.handle}
                             </p>
                           </li>

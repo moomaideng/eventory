@@ -96,7 +96,7 @@ export function DashboardOverview({ summary }: { summary: OrganizerSummary }) {
             {facts.map(([label, value]) => (
               <div key={label} className="min-w-0">
                 <dt className="text-muted-foreground text-sm">{label}</dt>
-                <dd className="mt-1 text-sm font-medium [overflow-wrap:anywhere]">
+                <dd className="mt-1 text-sm font-medium wrap-anywhere">
                   {value}
                 </dd>
               </div>
@@ -114,7 +114,7 @@ export function DashboardOverview({ summary }: { summary: OrganizerSummary }) {
             <Wallet className="size-5" />
             Funding
           </h2>
-          <p className="text-2xl font-semibold [overflow-wrap:anywhere]">
+          <p className="text-2xl font-semibold wrap-anywhere">
             {formatMoney(f.raisedAmount, f.currency)}
           </p>
           {f.goalAmount > 0 ? (
@@ -134,7 +134,7 @@ export function DashboardOverview({ summary }: { summary: OrganizerSummary }) {
           <dl className="grid grid-cols-2 gap-4 text-sm">
             <div>
               <dt className="text-muted-foreground">Still needed</dt>
-              <dd className="mt-1 font-medium [overflow-wrap:anywhere]">
+              <dd className="mt-1 font-medium wrap-anywhere">
                 {formatMoney(f.remainingAmount, f.currency)}
               </dd>
             </div>

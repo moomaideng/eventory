@@ -12,14 +12,14 @@ import (
 func SeedTournaments(db *gorm.DB) error {
 	now := time.Now().UTC().Truncate(24 * time.Hour)
 	lockedAt := now.Add(-24 * time.Hour)
-	aliceOrganizerID := uuid.MustParse("11111111-0000-4000-8000-000000000001")
+	devOrganizerID := uuid.MustParse("99999999-0000-4000-8000-000000000002")
 	mayaOrganizerID := uuid.MustParse("11111111-0000-4000-8000-000000000003")
 
 	// Mock data, I only add 5 cuz i want it to be simple not too much
 	tournaments := []models.Tournament{
 		{
 			ID:          uuid.MustParse("33333333-0000-4000-8000-000000000001"),
-			OrganizerID: aliceOrganizerID, Name: "Bangkok Valorant Open",
+			OrganizerID: devOrganizerID, Name: "Bangkok Valorant Open",
 			Description: "A free community tournament for new and experienced Valorant teams.",
 			Game:        "Valorant", Location: "Online", StartsAt: now.AddDate(0, 0, 3).Add(12 * time.Hour),
 			EndsAt: now.AddDate(0, 0, 3).Add(20 * time.Hour), RegistrationDeadline: now.AddDate(0, 0, 2),
@@ -39,7 +39,7 @@ func SeedTournaments(db *gorm.DB) error {
 		},
 		{
 			ID:          uuid.MustParse("33333333-0000-4000-8000-000000000003"),
-			OrganizerID: aliceOrganizerID, Name: "SEA Tekken Challenger",
+			OrganizerID: devOrganizerID, Name: "SEA Tekken Challenger",
 			Description: "An offline fighting-game bracket for challengers across Southeast Asia.",
 			Game:        "Tekken 8", Location: "Siam Paragon, Bangkok", StartsAt: now.AddDate(0, 0, 21).Add(6 * time.Hour),
 			EndsAt: now.AddDate(0, 0, 21).Add(14 * time.Hour), RegistrationDeadline: now.AddDate(0, 0, 17),
@@ -59,7 +59,7 @@ func SeedTournaments(db *gorm.DB) error {
 		},
 		{
 			ID:          uuid.MustParse("33333333-0000-4000-8000-000000000005"),
-			OrganizerID: aliceOrganizerID, Name: "Eventory Invitational",
+			OrganizerID: devOrganizerID, Name: "Eventory Invitational",
 			Description: "A premium multi-day invitational featuring Thailand's top esports teams.",
 			Game:        "Counter-Strike 2", Location: "Queen Sirikit Convention Center", StartsAt: now.AddDate(0, 0, 45).Add(4 * time.Hour),
 			EndsAt: now.AddDate(0, 0, 47).Add(14 * time.Hour), RegistrationDeadline: now.AddDate(0, 0, 35),

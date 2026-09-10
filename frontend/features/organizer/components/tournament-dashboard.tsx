@@ -66,10 +66,10 @@ export function TournamentDashboard({
                   <Trophy aria-hidden="true" />
                 </div>
                 <div className="min-w-0">
-                  <h1 className="text-2xl font-bold [overflow-wrap:anywhere] sm:text-3xl">
+                  <h1 className="text-2xl font-bold wrap-anywhere sm:text-3xl">
                     {data.summary.tournament.name}
                   </h1>
-                  <p className="text-muted-foreground mt-1 text-sm [overflow-wrap:anywhere]">
+                  <p className="text-muted-foreground mt-1 text-sm wrap-anywhere">
                     Hosted by {data.summary.tournament.organizerName}
                   </p>
                 </div>

@@ -12,8 +12,8 @@ func SeedAccounts(db *gorm.DB) error {
 		{
 			ID:          uuid.MustParse("99999999-0000-4000-8000-000000000001"),
 			Email:       "dev@eventory.gg",
-			Handle:      "dev_competitor",
-			DisplayName: "Dev Competitor",
+			Handle:      "dev_alex",
+			DisplayName: "Alex (Dev)",
 			Status:      "ACTIVE",
 		},
 		{
@@ -86,6 +86,13 @@ func SeedAccounts(db *gorm.DB) error {
 	}
 
 	organizerProfiles := []models.OrganizerProfile{
+		// Alex (Dev): Full Organizer access in dev mode
+		{
+			ID:             uuid.MustParse("99999999-0000-4000-8000-000000000002"),
+			AccountID:      accounts[0].ID,
+			OrganizerName:  "Alex Events (Dev)",
+			OrganizerEmail: "dev@eventory.gg",
+		},
 		// Alice: Organizer Profile Only
 		{
 			ID:             uuid.MustParse("11111111-0000-4000-8000-000000000001"),
@@ -107,6 +114,13 @@ func SeedAccounts(db *gorm.DB) error {
 	}
 
 	sponsorProfiles := []models.SponsorProfile{
+		// Alex (Dev): Sponsor access in dev mode
+		{
+			ID:           uuid.MustParse("99999999-0000-4000-8000-000000000003"),
+			AccountID:    accounts[0].ID,
+			SponsorName:  "Alex Ventures (Dev)",
+			SponsorEmail: "dev@eventory.gg",
+		},
 		// Somchai: Sponsor Profile Only
 		{
 			ID:           uuid.MustParse("22222222-0000-4000-8000-000000000002"),

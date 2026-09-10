@@ -6,7 +6,6 @@ import {
   ArrowUpRight,
   CalendarDays,
   LayoutDashboard,
-  Sparkles,
   Trophy,
   Users,
 } from "lucide-react";
@@ -49,7 +48,7 @@ import {
 } from "@/features/organizer/components/dashboard-shared";
 
 export function OrganizerTournaments() {
-  const { authorizationHeader, isLoading: authLoading, loginAsDev } = useAuth();
+  const { authorizationHeader, isLoading: authLoading } = useAuth();
   const [page, setPage] = useState(1);
   const { data, error, isLoading, isFetching, refetch } = $api.useQuery(
     "get",
@@ -107,27 +106,13 @@ export function OrganizerTournaments() {
                 : "Your hosted tournaments will appear here."}
             </EmptyDescription>
           </EmptyHeader>
-          <EmptyContent>
-            {page > 1 ? (
+          {page > 1 ? (
+            <EmptyContent>
               <Button variant="outline" onClick={() => setPage(1)}>
                 First page
               </Button>
-            ) : null}
-            {process.env.NODE_ENV === "development" &&
-            authorizationHeader?.startsWith("Bearer dev-token") &&
-            authorizationHeader !== "Bearer dev-token-organizer" ? (
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setPage(1);
-                  loginAsDev("organizer");
-                }}
-              >
-                <Sparkles data-icon="inline-start" />
-                Use sample organizer
-              </Button>
-            ) : null}
-          </EmptyContent>
+            </EmptyContent>
+          ) : null}
         </Empty>
       ) : (
         <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
@@ -147,7 +132,7 @@ export function OrganizerTournaments() {
                   ) : null}
                 </div>
                 <CardTitle>
-                  <h2 className="text-lg font-semibold [overflow-wrap:anywhere]">
+                  <h2 className="text-lg font-semibold wrap-anywhere">
                     {tournament.name}
                   </h2>
                 </CardTitle>
