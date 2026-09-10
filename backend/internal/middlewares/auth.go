@@ -29,21 +29,21 @@ const (
 	// DevEmail represents the mock email assigned when using DevToken.
 	DevEmail string = "dev@eventory.gg"
 	// DevSub represents the mock user ID assigned when using DevToken.
-	DevSub string = "99999999-0000-0000-0000-000000000001"
+	DevSub string = "99999999-0000-4000-8000-000000000001"
 
 	// DevOrganizerToken represents the dev token for organizer testing.
 	DevOrganizerToken string = "dev-token-organizer"
 	// DevOrganizerEmail matches the seeded organizer account.
 	DevOrganizerEmail string = "alice@example.com"
 	// DevOrganizerSub matches the seeded organizer account ID.
-	DevOrganizerSub string = "00000000-0000-0000-0000-000000000001"
+	DevOrganizerSub string = "00000000-0000-4000-8000-000000000001"
 
 	// DevSponsorToken represents the dev token for sponsor testing.
 	DevSponsorToken string = "dev-token-sponsor"
 	// DevSponsorEmail matches the seeded sponsor account.
 	DevSponsorEmail string = "somchai@example.com"
 	// DevSponsorSub matches the seeded sponsor account ID.
-	DevSponsorSub string = "00000000-0000-0000-0000-000000000002"
+	DevSponsorSub string = "00000000-0000-4000-8000-000000000002"
 )
 
 var (

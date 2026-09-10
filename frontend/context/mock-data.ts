@@ -3,7 +3,7 @@ import type { OrganizerProfile, SponsorProfile } from "@/lib/role";
 
 // Mock primary user profile for local development mode (Competitor)
 export const MOCK_USER: UserProfile = {
-  id: "99999999-0000-0000-0000-000000000001",
+  id: "99999999-0000-4000-8000-000000000001",
   email: "dev@eventory.gg",
   displayName: "Dev Competitor",
   handle: "dev_competitor",
@@ -11,7 +11,7 @@ export const MOCK_USER: UserProfile = {
 };
 
 export const MOCK_ORGANIZER_USER: UserProfile = {
-  id: "00000000-0000-0000-0000-000000000001",
+  id: "00000000-0000-4000-8000-000000000001",
   email: "alice@example.com",
   displayName: "Alice Events",
   handle: "alice_events",
@@ -19,7 +19,7 @@ export const MOCK_ORGANIZER_USER: UserProfile = {
 };
 
 export const MOCK_SPONSOR_USER: UserProfile = {
-  id: "00000000-0000-0000-0000-000000000002",
+  id: "00000000-0000-4000-8000-000000000002",
   email: "somchai@example.com",
   displayName: "Bright Future",
   handle: "brightfuture",
