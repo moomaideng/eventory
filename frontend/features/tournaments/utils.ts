@@ -1,3 +1,4 @@
+import { extractProblemMessage } from "@/lib/schemas";
 import type { components } from "@/lib/api/schema";
 
 export type Tournament = components["schemas"]["TournamentResponse"];
@@ -76,15 +77,7 @@ export function formatDate(value: string) {
 }
 
 export function problemMessage(error: unknown, fallback: string) {
-  if (
-    error &&
-    typeof error === "object" &&
-    "detail" in error &&
-    typeof error.detail === "string"
-  ) {
-    return error.detail;
-  }
-  return fallback;
+  return extractProblemMessage(error, fallback);
 }
 
 

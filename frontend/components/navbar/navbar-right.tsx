@@ -42,106 +42,41 @@ const PERSONA_CONFIG: {
   },
 ];
 
-const NAV_LINKS: Record<UserRole, { label: string; href: string }[]> = {
-  competitor: [{ label: "Tournaments", href: "/tournaments" }],
-  organizer: [
-    { label: "My Tournaments", href: "/organizer" },
-    { label: "+ Host Tournament", href: "/organizer/tournaments/new" },
-  ],
-  sponsor: [
-    { label: "Sponsor Dashboard", href: "/sponsor" },
-    { label: "Fund Tournaments", href: "/tournaments?filter=crowdfunding" },
-  ],
-};
+export interface NavbarRightProps {
+  /**
+   * Whether to show authentication controls (profile dropdown, dev login, sign in).
+   * Defaults to true. Set to false for minimal navbars like Auth/Login.
+   */
+  showAuth?: boolean;
+  /**
+   * Role for active persona highlight and dev quick login.
+   * If omitted, derived from the current pathname.
+   */
+  role?: UserRole;
+  /** Optional custom slot or children */
+  children?: React.ReactNode;
+}
 
-export function Navbar() {
+export function NavbarRight({
+  showAuth = true,
+  role,
+  children,
+}: NavbarRightProps) {
   const pathname = usePathname();
   const router = useRouter();
   const { user, isLoading, loginAsDev, logout } = useAuth();
-  const activeRole = getWorkspaceRoleFromPath(pathname);
-
-  const isOrganizerWorkspace = pathname.startsWith("/organizer");
-  const isSponsorWorkspace = pathname.startsWith("/sponsor");
+  const activeRole = role ?? getWorkspaceRoleFromPath(pathname);
 
   const handleSelectRole = (targetHref: string) => {
     router.push(targetHref);
   };
 
   return (
-    <header className="bg-background/95 sticky top-0 z-50 w-full border-b backdrop-blur">
-      <div className="container mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-8">
-        {/* Left: Brand Logo & Navigation */}
-        <div className="flex items-center gap-8">
-          <div className="flex items-center gap-2.5">
-            <Link
-              href="/"
-              title="Eventory Home"
-              className="bg-primary text-primary-foreground flex size-9 shrink-0 items-center justify-center rounded-lg font-black transition-transform select-none hover:scale-105"
-            >
-              E
-            </Link>
+    <div className="flex items-center gap-2.5">
+      <ThemeToggle />
 
-            <Link
-              href={
-                isOrganizerWorkspace
-                  ? "/organizer"
-                  : isSponsorWorkspace
-                    ? "/sponsor"
-                    : "/"
-              }
-              className="transition-opacity hover:opacity-90"
-            >
-              {isOrganizerWorkspace ? (
-                <div className="flex flex-col text-left leading-none">
-                  <span className="text-foreground text-sm font-bold tracking-tight">
-                    Eventory
-                  </span>
-                  <span className="text-muted-foreground mt-0.5 text-[10px] font-bold tracking-wider uppercase">
-                    Organizer
-                  </span>
-                </div>
-              ) : isSponsorWorkspace ? (
-                <div className="flex flex-col text-left leading-none">
-                  <span className="text-foreground text-sm font-bold tracking-tight">
-                    Eventory
-                  </span>
-                  <span className="text-muted-foreground mt-0.5 text-[10px] font-bold tracking-wider uppercase">
-                    Sponsor
-                  </span>
-                </div>
-              ) : (
-                <span className="text-foreground text-lg font-bold tracking-tight">
-                  Eventory
-                </span>
-              )}
-            </Link>
-          </div>
-
-          {/* Dynamic Navigation Links */}
-          <nav className="hidden items-center gap-6 md:flex">
-            {NAV_LINKS[activeRole].map((link) => {
-              const isActive = pathname === link.href;
-              return (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  className={cn(
-                    "hover:text-foreground text-sm font-medium transition-colors",
-                    isActive
-                      ? "text-foreground font-semibold"
-                      : "text-muted-foreground"
-                  )}
-                >
-                  {link.label}
-                </Link>
-              );
-            })}
-          </nav>
-        </div>
-
-        {/* Right: Theme Toggle & Unified Profile Trigger */}
-        <div className="flex items-center gap-2.5">
-          <ThemeToggle />
+      {showAuth && (
+        <>
           {isLoading ? (
             /* Skeleton Loading State during Hydration (Zero Layout Shift) */
             <Skeleton className="h-9 w-28 rounded-lg" />
@@ -256,7 +191,7 @@ export function Navbar() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => loginAsDev("competitor")}
+                  onClick={() => loginAsDev(activeRole)}
                   className="text-primary border-primary/30 hidden text-xs sm:inline-flex"
                 >
                   <Sparkles data-icon="inline-start" />
@@ -275,8 +210,10 @@ export function Navbar() {
               </Button>
             </div>
           )}
-        </div>
-      </div>
-    </header>
+        </>
+      )}
+
+      {children}
+    </div>
   );
 }

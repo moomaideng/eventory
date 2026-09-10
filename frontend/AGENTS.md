@@ -17,7 +17,7 @@ Before writing, modifying, or refactoring any code, you **MUST** read the source
 1. **Architecture & File Boundaries:**
    - **`page.tsx` & `layout.tsx` MUST remain Server Components.** Never add `'use client'`. Reserve them strictly for async `params`/`searchParams`, metadata, direct data fetches, and `<Suspense>` orchestration.
    - **Push `'use client'` down** to interactive leaf components in `features/<feature>/components/` (imported via `@/features/...`).
-   - **Modular design (~240 lines guideline):** Keep files focused and maintainable. Split complex logic into hooks, sub-components, or feature modules without over-fragmentation.
+   - **Modular design (~240 lines guideline):** Keep files focused, short, and maintainable. Split complex logic into hooks, sub-components, or feature modules without over-fragmentation.
    - **Path aliases:** Use `@/*`. Do not climb directories (`../../`).
 
 2. **Next.js 16 APIs & Breaking Changes:**
@@ -36,3 +36,8 @@ Before writing, modifying, or refactoring any code, you **MUST** read the source
 
 5. **Verification & Code Quality:**
    - Run `npm run lint` and `npx tsc --noEmit` before finishing. `npm run format` is optional.
+
+6. **Data Validation (`zod`):**
+   - **Colocate schemas:** Store schemas in `features/<feature>/schemas.ts` or `lib/schemas.ts`; derive TypeScript types using `z.infer<typeof schema>`.
+   - **Safe parsing & UI errors:** Always use `schema.safeParse(...)` for forms and inputs; bind issue messages to Base UI `<Field data-invalid>` and `<FieldError>`.
+   - **Query & Route params:** Parse and sanitize URL `searchParams` and route `params` with `z.coerce` and `.default()`, triggering `notFound()` on invalid identifiers.

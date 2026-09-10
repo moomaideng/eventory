@@ -15,6 +15,7 @@ import {
   EmptyTitle,
 } from "@/components/ui/empty";
 import { PAGE_SIZE } from "../utils";
+import { tournamentFiltersSchema } from "../schemas";
 import { TournamentCard } from "./tournament-card";
 import { TournamentFiltersCard } from "./tournament-filters-card";
 import { TournamentGridSkeleton } from "./tournament-grid-skeleton";
@@ -24,17 +25,23 @@ export function TournamentCatalog() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
-  const requestedPage = Number(searchParams.get("page") ?? "1");
-  const page =
-    Number.isInteger(requestedPage) && requestedPage > 0 ? requestedPage : 1;
-  const rawMaxFee = searchParams.get("maxEntryFee");
-  const parsedMaxFee = rawMaxFee ? Number(rawMaxFee) : undefined;
-  const maxEntryFee =
-    typeof parsedMaxFee === "number" &&
-    !Number.isNaN(parsedMaxFee) &&
-    parsedMaxFee >= 0
-      ? parsedMaxFee
-      : undefined;
+  const parsedFilters = tournamentFiltersSchema.safeParse({
+    q: searchParams.get("q") ?? undefined,
+    startFrom: searchParams.get("startFrom") ?? undefined,
+    startTo: searchParams.get("startTo") ?? undefined,
+    maxEntryFee: searchParams.get("maxEntryFee") ?? undefined,
+    page: searchParams.get("page") ?? undefined,
+  });
+
+  const {
+    page = 1,
+    maxEntryFee,
+    q,
+    startFrom,
+    startTo,
+  } = parsedFilters.success
+    ? parsedFilters.data
+    : { page: 1, maxEntryFee: undefined, q: undefined, startFrom: undefined, startTo: undefined };
 
   const { data, error, isLoading, isFetching } = $api.useQuery(
     "get",
@@ -42,9 +49,9 @@ export function TournamentCatalog() {
     {
       params: {
         query: {
-          q: searchParams.get("q") || undefined,
-          startFrom: searchParams.get("startFrom") || undefined,
-          startTo: searchParams.get("startTo") || undefined,
+          q: q || undefined,
+          startFrom: startFrom || undefined,
+          startTo: startTo || undefined,
           maxEntryFee,
           sort: "start_asc",
           page,
@@ -63,18 +70,26 @@ export function TournamentCatalog() {
   function applyFilters(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
-    const query = String(formData.get("q") ?? "").trim();
-    const startFrom = String(formData.get("startFrom") ?? "");
-    const startTo = String(formData.get("startTo") ?? "");
-    const maxEntryFee = String(formData.get("maxEntryFee") ?? "");
+    const parsed = tournamentFiltersSchema.safeParse({
+      q: formData.get("q") || undefined,
+      startFrom: formData.get("startFrom") || undefined,
+      startTo: formData.get("startTo") || undefined,
+      maxEntryFee: formData.get("maxEntryFee") || undefined,
+    });
+    if (!parsed.success) {
+      return;
+    }
+    const { q, startFrom, startTo, maxEntryFee } = parsed.data;
     if (startFrom && startTo && startFrom > startTo) {
       return;
     }
     const next = new URLSearchParams();
-    if (query) next.set("q", query);
+    if (q) next.set("q", q);
     if (startFrom) next.set("startFrom", startFrom);
     if (startTo) next.set("startTo", startTo);
-    if (maxEntryFee) next.set("maxEntryFee", maxEntryFee);
+    if (maxEntryFee !== undefined) {
+      next.set("maxEntryFee", String(maxEntryFee));
+    }
     router.push(next.size ? `${pathname}?${next.toString()}` : pathname);
   }
 

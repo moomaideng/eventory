@@ -34,6 +34,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { problemMessage } from "../utils";
+import { createTeamLobbySchema } from "../schemas";
 import { TeamCreateSkeleton } from "./team-create-skeleton";
 import { TournamentSummaryCard } from "./tournament-summary-card";
 
@@ -61,9 +62,9 @@ export function TeamLobbyCreate({ tournamentId }: { tournamentId: string }) {
 
   async function createLobby(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const name = teamName.trim();
-    if (!name) {
-      setFormError("Choose a team name before creating the lobby.");
+    const result = createTeamLobbySchema.safeParse({ name: teamName });
+    if (!result.success) {
+      setFormError(result.error.issues[0]?.message ?? "Invalid team name.");
       return;
     }
     if (!authorizationHeader) {
@@ -79,7 +80,7 @@ export function TeamLobbyCreate({ tournamentId }: { tournamentId: string }) {
         {
           params: { path: { tournamentId } },
           headers: { Authorization: authorizationHeader },
-          body: { name },
+          body: { name: result.data.name },
         }
       );
       if (createError || !data) {

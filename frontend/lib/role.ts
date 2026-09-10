@@ -1,9 +1,12 @@
-export type UserRole = "competitor" | "organizer" | "sponsor";
+import { z } from "zod";
+
+export const userRoleSchema = z.enum(["competitor", "organizer", "sponsor"]);
+export type UserRole = z.infer<typeof userRoleSchema>;
 
 export const DEFAULT_ROLE: UserRole = "competitor";
 
 export function isValidRole(value: unknown): value is UserRole {
-  return value === "competitor" || value === "organizer" || value === "sponsor";
+  return userRoleSchema.safeParse(value).success;
 }
 
 /**

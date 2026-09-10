@@ -32,7 +32,9 @@ Eventory follows a **Feature-Driven Architecture** combined with Next.js App Rou
 frontend/
 ├── app/                  # Next.js App Router (Routing, Layouts, Server Component data fetching)
 │   ├── (auth)/           # Authentication route group (Login, minimal layout)
-│   ├── (public)/         # Main application views (Hub, Lobbies, Tournaments, etc.)
+│   ├── (organizer)/      # Organizer workspace route group (Dedicated organizer layout & navbar)
+│   ├── (public)/         # Main competitor/public views (Hub, Lobbies, Tournaments, etc.)
+│   ├── (sponsor)/        # Sponsor workspace route group (Dedicated sponsor layout & navbar)
 │   └── api/              # Edge API Route Handlers (OAuth callback, webhooks)
 │
 ├── features/             # Domain-specific feature modules

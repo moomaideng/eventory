@@ -38,18 +38,22 @@ export function LoginForm() {
   };
 
   return (
-    <div className="flex flex-1 items-center justify-center px-4 py-16 sm:px-8">
-      <Card className="w-full max-w-sm rounded-sm shadow-sm">
-        <CardHeader className="text-center">
-          <div className="bg-primary text-primary-foreground mx-auto flex size-10 items-center justify-center rounded-sm text-xl font-black">
-            E
+    <div className="container mx-auto flex w-full max-w-md flex-1 items-center justify-center px-4 py-12 sm:px-8">
+      <Card className="w-full">
+        <CardHeader>
+          <div className="flex items-center gap-3">
+            <div className="bg-primary text-primary-foreground flex size-10 items-center justify-center rounded-lg text-xl font-black">
+              E
+            </div>
+            <div className="flex flex-col gap-1">
+              <CardTitle className="text-xl font-bold">
+                Welcome to Eventory
+              </CardTitle>
+              <CardDescription>
+                Sign in with your verified account to continue.
+              </CardDescription>
+            </div>
           </div>
-          <CardTitle className="text-xl font-bold">
-            Welcome to Eventory
-          </CardTitle>
-          <CardDescription>
-            Sign in with your verified account to continue.
-          </CardDescription>
 
           {destinationLabel ? (
             <div className="bg-muted/40 border-border/80 border-l-primary mt-3 border border-l-2 px-3.5 py-2 text-left">
@@ -63,13 +67,13 @@ export function LoginForm() {
           ) : null}
         </CardHeader>
 
-        <CardContent className="flex flex-col gap-4">
+        <CardContent>
           <Button
             variant="outline"
             size="lg"
             onClick={handleGoogleLogin}
             disabled={isLoggingIn}
-            className="w-full rounded-sm"
+            className="w-full"
           >
             {isLoggingIn ? (
               <>

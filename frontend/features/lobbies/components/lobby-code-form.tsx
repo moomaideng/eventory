@@ -21,6 +21,8 @@ import {
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 
+import { lobbyCodeSchema } from "../schemas";
+
 export function LobbyCodeForm() {
   const router = useRouter();
   const [inviteCode, setInviteCode] = React.useState("");
@@ -28,16 +30,16 @@ export function LobbyCodeForm() {
 
   function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const normalizedCode = inviteCode.trim().toUpperCase();
-    if (!/^[A-Z0-9]{6}$/.test(normalizedCode)) {
-      setError("Enter the six-character code your captain shared.");
+    const result = lobbyCodeSchema.safeParse(inviteCode);
+    if (!result.success) {
+      setError(result.error.issues[0]?.message ?? "Invalid invite code.");
       return;
     }
-    router.push(`/lobbies/${normalizedCode}`);
+    router.push(`/lobbies/${result.data}`);
   }
 
   return (
-    <div className="container mx-auto flex w-full max-w-2xl flex-1 items-center px-4 py-12 sm:px-8">
+    <div className="container mx-auto flex w-full max-w-md flex-1 items-center justify-center px-4 py-12 sm:px-8">
       <Card className="w-full">
         <CardHeader>
           <div className="flex items-center gap-3">

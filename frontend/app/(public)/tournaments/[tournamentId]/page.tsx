@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
+import { notFound } from "next/navigation";
 import { TournamentDetails } from "@/features/tournaments/components/tournament-details";
+import { tournamentIdParamSchema } from "@/features/tournaments/schemas";
 
 export async function generateMetadata({
   params,
@@ -19,5 +21,10 @@ export default async function TournamentDetailsPage({
   params: Promise<{ tournamentId: string }>;
 }) {
   const { tournamentId } = await params;
-  return <TournamentDetails tournamentId={tournamentId} />;
+  const parsed = tournamentIdParamSchema.safeParse(tournamentId);
+  if (!parsed.success) {
+    notFound();
+  }
+
+  return <TournamentDetails tournamentId={parsed.data} />;
 }
