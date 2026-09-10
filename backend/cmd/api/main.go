@@ -90,6 +90,7 @@ func main() {
 	tournamentUseCase := usecases.NewTournamentUseCase(tournamentRepo)
 	teamLobbyRepo := repositories.NewTeamLobbyRepository(db)
 	teamLobbyUseCase := usecases.NewTeamLobbyUseCase(teamLobbyRepo)
+	dashboardUseCase := usecases.NewOrganizerDashboardUseCase(repositories.NewOrganizerDashboardRepository(db))
 
 	// 7. Initialize Auth Middleware & Scoped Route Groups
 	authMiddleware := middlewares.NewAuthMiddleware(api, appConfig.SupabaseURL, appConfig.Environment)
@@ -99,10 +100,13 @@ func main() {
 	accountGroup.UseMiddleware(authMiddleware.HumaMiddleware())
 	teamLobbyGroup := huma.NewGroup(api, "/api/v1")
 	teamLobbyGroup.UseMiddleware(authMiddleware.HumaMiddleware())
+	organizerGroup := huma.NewGroup(api, "/api/v1")
+	organizerGroup.UseMiddleware(authMiddleware.HumaMiddleware())
 
 	// Register Account Handlers onto the scoped group
 	handlers.RegisterAccountRoutes(accountGroup, accountUseCase)
 	handlers.RegisterTeamLobbyRoutes(teamLobbyGroup, teamLobbyUseCase, accountUseCase)
+	handlers.RegisterOrganizerDashboardRoutes(organizerGroup, dashboardUseCase, accountUseCase)
 
 	// Tournament discovery is public; joining and management will use authenticated routes.
 	handlers.RegisterTournamentRoutes(api, tournamentUseCase)
