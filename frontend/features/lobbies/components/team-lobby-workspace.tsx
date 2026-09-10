@@ -2,6 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { ArrowLeft, Check, ShieldAlert } from "lucide-react";
 import { $api } from "@/lib/api/client";
 import { useAuth } from "@/context/auth-context";
@@ -17,18 +18,17 @@ import {
 } from "@/components/ui/empty";
 import { useLobbyActions } from "../hooks/use-lobby-actions";
 import { LobbyStatusBadge } from "./lobby-status-badge";
-import { LobbySignInCard } from "./lobby-sign-in-card";
 import { LobbyWorkspaceSkeleton } from "./lobby-skeleton";
 import { LobbyRosterCard } from "./lobby-roster-card";
 import { LobbyInviteCard } from "./lobby-invite-card";
 import { LobbyDetailsCard } from "./lobby-details-card";
 
 export function TeamLobbyWorkspace({ inviteCode }: { inviteCode: string }) {
+  const router = useRouter();
   const {
     user,
     isLoading: isAuthLoading,
     authorizationHeader,
-    loginAsDev,
   } = useAuth();
   const [copied, setCopied] = React.useState(false);
   const [copyError, setCopyError] = React.useState("");
@@ -81,11 +81,13 @@ export function TeamLobbyWorkspace({ inviteCode }: { inviteCode: string }) {
     }
   }
 
-  if (!user && !isAuthLoading) {
-    return <LobbySignInCard onDevLogin={() => loginAsDev("competitor")} />;
-  }
+  React.useEffect(() => {
+    if (!isAuthLoading && !user) {
+      router.replace(`/login?redirectTo=/lobbies/${normalizedInviteCode}`);
+    }
+  }, [isAuthLoading, user, normalizedInviteCode, router]);
 
-  if (isAuthLoading || isLoading) {
+  if (isAuthLoading || isLoading || !user) {
     return <LobbyWorkspaceSkeleton />;
   }
 

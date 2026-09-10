@@ -1,21 +1,14 @@
 "use client";
 
 import React from "react";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/auth-context";
-import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  Empty,
-  EmptyContent,
-  EmptyDescription,
-  EmptyHeader,
-  EmptyTitle,
-} from "@/components/ui/empty";
 import { Gamepad2, Trophy, Briefcase } from "lucide-react";
 import { PersonaCard, type PersonaConfig } from "./persona-card";
 
 export function ModeHub() {
+  const router = useRouter();
   const { user, isLoading } = useAuth();
 
   const personas: PersonaConfig[] = [
@@ -51,7 +44,13 @@ export function ModeHub() {
     },
   ];
 
-  if (isLoading) {
+  React.useEffect(() => {
+    if (!isLoading && !user) {
+      router.replace("/login?redirectTo=/hub");
+    }
+  }, [isLoading, user, router]);
+
+  if (isLoading || !user) {
     return (
       <div className="container mx-auto flex max-w-5xl flex-1 flex-col items-center justify-center px-4 py-20 sm:px-8">
         <Skeleton className="h-8 w-48 rounded-xl" />
@@ -62,29 +61,6 @@ export function ModeHub() {
           <Skeleton className="h-72 rounded-xl" />
           <Skeleton className="h-72 rounded-xl" />
         </div>
-      </div>
-    );
-  }
-
-  if (!user) {
-    return (
-      <div className="container mx-auto flex max-w-md flex-1 items-center justify-center px-4 py-24">
-        <Empty className="border">
-          <EmptyHeader>
-            <EmptyTitle>Sign In Required</EmptyTitle>
-            <EmptyDescription>
-              Please sign in to select your workspace mode and access your profile.
-            </EmptyDescription>
-          </EmptyHeader>
-          <EmptyContent>
-            <Button
-              render={<Link href="/login" />}
-              nativeButton={false}
-            >
-              Sign In
-            </Button>
-          </EmptyContent>
-        </Empty>
       </div>
     );
   }
