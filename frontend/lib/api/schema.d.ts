@@ -854,6 +854,9 @@ export interface components {
              * @example https://example.com/schemas/TournamentStatusHistoryOutputBody.json
              */
             readonly $schema?: string;
+            allowedTransitions: string[] | null;
+            /** @enum {string} */
+            currentStatus: "DRAFT" | "CROWDFUNDING" | "REGISTRATION_OPEN" | "REGISTRATION_CLOSED" | "ONGOING" | "COMPLETED" | "CANCELLED";
             items: components["schemas"]["TournamentStatusChangeResponse"][] | null;
         };
         TournamentTeamResponse: {

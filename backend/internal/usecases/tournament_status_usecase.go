@@ -135,19 +135,35 @@ func (u *TournamentStatusUseCase) Override(
 	}, nil
 }
 
-// History returns an owned tournament's override trail, newest first.
+// TournamentStatusDetail describes where a tournament stands and where an
+// organizer may move it next.
+type TournamentStatusDetail struct {
+	CurrentStatus models.TournamentStatus
+	// AllowedTransitions is served to the client so the status modal offers
+	// only reachable options. Keeping the transition table on the server means
+	// the UI cannot drift out of step with the rules it is meant to reflect.
+	AllowedTransitions []models.TournamentStatus
+	Changes            []models.TournamentStatusChange
+}
+
+// History returns an owned tournament's current status, the statuses it may be
+// moved to, and its override trail, newest first.
 func (u *TournamentStatusUseCase) History(
 	ctx context.Context,
 	accountID, tournamentID uuid.UUID,
-) ([]models.TournamentStatusChange, error) {
-	changes, err := u.repo.ListHistory(ctx, accountID, tournamentID)
+) (*TournamentStatusDetail, error) {
+	history, err := u.repo.ListHistory(ctx, accountID, tournamentID)
 	if err != nil {
 		if errors.Is(err, repositories.ErrTournamentNotFound) {
 			return nil, ErrTournamentNotFound
 		}
 		return nil, err
 	}
-	return changes, nil
+	return &TournamentStatusDetail{
+		CurrentStatus:      history.CurrentStatus,
+		AllowedTransitions: AllowedTransitionsFrom(history.CurrentStatus),
+		Changes:            history.Changes,
+	}, nil
 }
 
 // canTransition reports whether `to` is a permitted manual override from `from`.

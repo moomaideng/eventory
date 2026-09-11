@@ -3,6 +3,7 @@ package handlers_test
 import (
 	"context"
 	"encoding/json"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -52,16 +53,16 @@ func (r *statusHTTPRepo) ApplyOverride(
 	}, nil
 }
 
-func (r *statusHTTPRepo) ListHistory(_ context.Context, accountID, tournamentID uuid.UUID) ([]models.TournamentStatusChange, error) {
+func (r *statusHTTPRepo) ListHistory(_ context.Context, accountID, tournamentID uuid.UUID) (*repositories.TournamentStatusHistory, error) {
 	if accountID != r.owner || tournamentID != r.tournamentID {
 		return nil, repositories.ErrTournamentNotFound
 	}
-	return []models.TournamentStatusChange{{
+	return &repositories.TournamentStatusHistory{CurrentStatus: r.current, Changes: []models.TournamentStatusChange{{
 		ID: uuid.New(), TournamentID: tournamentID,
 		FromStatus: models.TournamentStatusRegistrationOpen, ToStatus: r.current,
 		Reason:         "Venue double-booked, shifting the schedule",
 		ActorAccountID: accountID, Actor: r.actor,
-	}}, nil
+	}}}, nil
 }
 
 func newStatusAPI(t *testing.T, repo *statusHTTPRepo, accountIDs ...uuid.UUID) humatest.TestAPI {
@@ -228,5 +229,47 @@ func TestTournamentStatusHistoryAuthorization(t *testing.T) {
 	resp := api.GetCtx(makeAuthContext(owner, "owner@example.com"), path)
 	if strings.Contains(resp.Body.String(), "private@example.com") {
 		t.Fatal("the audit trail must not expose the actor's email")
+	}
+
+	// The modal builds its options from this list, so it must reflect the
+	// server's transition table rather than a copy kept in the client.
+	var output handlers.TournamentStatusHistoryOutput
+	if err := json.Unmarshal(resp.Body.Bytes(), &output.Body); err != nil {
+		t.Fatal(err)
+	}
+	if output.Body.CurrentStatus != "ONGOING" {
+		t.Fatalf("expected the current status, got %q", output.Body.CurrentStatus)
+	}
+	for _, forbidden := range []string{"DRAFT", "CROWDFUNDING", "ONGOING"} {
+		if slices.Contains(output.Body.AllowedTransitions, forbidden) {
+			t.Fatalf("%s must not be offered as a transition from ONGOING: %v", forbidden, output.Body.AllowedTransitions)
+		}
+	}
+	if !slices.Contains(output.Body.AllowedTransitions, "CANCELLED") {
+		t.Fatalf("expected CANCELLED to be reachable from ONGOING, got %v", output.Body.AllowedTransitions)
+	}
+}
+
+// A terminal tournament must offer nothing, which is how the client knows to
+// disable the override control entirely.
+func TestTournamentStatusHistoryOffersNoTransitionsWhenTerminal(t *testing.T) {
+	owner, tournamentID := uuid.New(), uuid.New()
+	repo := &statusHTTPRepo{owner: owner, tournamentID: tournamentID, current: models.TournamentStatusCompleted}
+	api := newStatusAPI(t, repo, owner)
+
+	resp := api.GetCtx(
+		makeAuthContext(owner, "owner@example.com"),
+		"/api/v1/tournaments/"+tournamentID.String()+"/status/history",
+	)
+	if resp.Code != 200 {
+		t.Fatalf("history failed: %s", resp.Body.String())
+	}
+
+	var output handlers.TournamentStatusHistoryOutput
+	if err := json.Unmarshal(resp.Body.Bytes(), &output.Body); err != nil {
+		t.Fatal(err)
+	}
+	if len(output.Body.AllowedTransitions) != 0 {
+		t.Fatalf("expected no transitions from COMPLETED, got %v", output.Body.AllowedTransitions)
 	}
 }

@@ -53,9 +53,12 @@ func (r *statusRepositoryStub) ApplyOverride(
 	}, nil
 }
 
-func (r *statusRepositoryStub) ListHistory(_ context.Context, _, _ uuid.UUID) ([]models.TournamentStatusChange, error) {
+func (r *statusRepositoryStub) ListHistory(_ context.Context, _, _ uuid.UUID) (*repositories.TournamentStatusHistory, error) {
 	r.historyCalled = true
-	return r.historyEntries, r.err
+	if r.err != nil {
+		return nil, r.err
+	}
+	return &repositories.TournamentStatusHistory{CurrentStatus: r.current, Changes: r.historyEntries}, nil
 }
 
 const validReason = "Venue double-booked, shifting the schedule"

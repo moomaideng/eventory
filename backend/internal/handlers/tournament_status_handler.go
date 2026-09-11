@@ -45,7 +45,11 @@ type TournamentStatusHistoryInput struct {
 
 type TournamentStatusHistoryOutput struct {
 	Body struct {
-		Items []TournamentStatusChangeResponse `json:"items"`
+		CurrentStatus string `json:"currentStatus" enum:"DRAFT,CROWDFUNDING,REGISTRATION_OPEN,REGISTRATION_CLOSED,ONGOING,COMPLETED,CANCELLED"`
+		// AllowedTransitions is empty for terminal statuses, which is how the
+		// client knows to disable the override control entirely.
+		AllowedTransitions []string                         `json:"allowedTransitions"`
+		Items              []TournamentStatusChangeResponse `json:"items"`
 	}
 }
 
@@ -95,14 +99,19 @@ func RegisterTournamentStatusRoutes(
 			return nil, err
 		}
 
-		changes, err := statuses.History(ctx, account.ID, input.TournamentID)
+		detail, err := statuses.History(ctx, account.ID, input.TournamentID)
 		if err != nil {
 			return nil, tournamentStatusHTTPError(err)
 		}
 
 		output := &TournamentStatusHistoryOutput{}
-		output.Body.Items = make([]TournamentStatusChangeResponse, 0, len(changes))
-		for _, change := range changes {
+		output.Body.CurrentStatus = string(detail.CurrentStatus)
+		output.Body.AllowedTransitions = make([]string, 0, len(detail.AllowedTransitions))
+		for _, status := range detail.AllowedTransitions {
+			output.Body.AllowedTransitions = append(output.Body.AllowedTransitions, string(status))
+		}
+		output.Body.Items = make([]TournamentStatusChangeResponse, 0, len(detail.Changes))
+		for _, change := range detail.Changes {
 			output.Body.Items = append(output.Body.Items, toStatusChangeResponse(change))
 		}
 		return output, nil

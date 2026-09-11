@@ -24,8 +24,16 @@ type TournamentStatusRepository interface {
 		mutate func(current *models.Tournament) (models.TournamentStatus, error),
 	) (*models.TournamentStatusChange, error)
 
-	// ListHistory returns an owned tournament's overrides, newest first.
-	ListHistory(ctx context.Context, accountID, tournamentID uuid.UUID) ([]models.TournamentStatusChange, error)
+	// ListHistory returns an owned tournament's current status and its override
+	// trail, newest first.
+	ListHistory(ctx context.Context, accountID, tournamentID uuid.UUID) (*TournamentStatusHistory, error)
+}
+
+// TournamentStatusHistory pairs a tournament's current status with its override
+// trail so the modal can render both from a single request.
+type TournamentStatusHistory struct {
+	CurrentStatus models.TournamentStatus
+	Changes       []models.TournamentStatusChange
 }
 
 type tournamentStatusRepository struct {
@@ -100,14 +108,14 @@ func (r *tournamentStatusRepository) ApplyOverride(
 func (r *tournamentStatusRepository) ListHistory(
 	ctx context.Context,
 	accountID, tournamentID uuid.UUID,
-) ([]models.TournamentStatusChange, error) {
+) (*TournamentStatusHistory, error) {
 	// Confirm ownership before exposing the trail; an unowned tournament must
 	// look identical to a missing one.
-	var exists models.Tournament
+	var tournament models.Tournament
 	err := ownedTournaments(r.db.WithContext(ctx), accountID).
-		Select("tournaments.id").
+		Select("tournaments.id", "tournaments.status").
 		Where("tournaments.id = ?", tournamentID).
-		First(&exists).Error
+		First(&tournament).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, ErrTournamentNotFound
 	}
@@ -121,5 +129,8 @@ func (r *tournamentStatusRepository) ListHistory(
 		Preload("Actor").
 		Order("created_at DESC, id ASC").
 		Find(&changes).Error
-	return changes, err
+	if err != nil {
+		return nil, err
+	}
+	return &TournamentStatusHistory{CurrentStatus: tournament.Status, Changes: changes}, nil
 }
