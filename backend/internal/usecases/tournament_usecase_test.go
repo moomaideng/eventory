@@ -141,7 +141,7 @@ func TestSearchTournaments_RejectsInvalidRanges(t *testing.T) {
 		{name: "invalid date", input: usecases.SearchTournamentsInput{StartFrom: "09/01/2026"}},
 		{name: "negative fee", input: usecases.SearchTournamentsInput{MaxEntryFee: ptr(int64(-1))}},
 		{name: "reversed fees", input: usecases.SearchTournamentsInput{MinEntryFee: ptr(int64(501)), MaxEntryFee: ptr(int64(500))}},
-		{name: "invalid status", input: usecases.SearchTournamentsInput{Status: "DRAFT"}},
+		{name: "invalid status", input: usecases.SearchTournamentsInput{Status: "NOT_A_STATUS"}},
 		{name: "oversized page", input: usecases.SearchTournamentsInput{PageSize: 101}},
 	}
 

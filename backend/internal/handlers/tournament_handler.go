@@ -87,7 +87,7 @@ type SearchTournamentsInput struct {
 	StartTo     string `query:"startTo" doc:"Latest tournament start date (YYYY-MM-DD)"`
 	MinEntryFee int64  `query:"minEntryFee" default:"-1" minimum:"-1" doc:"Minimum entry fee; omit to disable"`
 	MaxEntryFee int64  `query:"maxEntryFee" default:"-1" minimum:"-1" doc:"Maximum entry fee; omit to disable"`
-	Status      string `query:"status" enum:"REGISTRATION_OPEN,REGISTRATION_CLOSED,ONGOING,COMPLETED"`
+	Status      string `query:"status" enum:"DRAFT,CROWDFUNDING,REGISTRATION_OPEN,REGISTRATION_CLOSED,ONGOING,COMPLETED,CANCELLED"`
 	Sort        string `query:"sort" default:"start_asc" enum:"start_asc,start_desc,fee_asc,fee_desc"`
 	Page        int    `query:"page" default:"1" minimum:"1"`
 	PageSize    int    `query:"pageSize" default:"12" minimum:"1" maximum:"100"`

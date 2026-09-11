@@ -135,11 +135,14 @@ func (u *TournamentUseCase) Search(
 
 	status := models.TournamentStatus(strings.ToUpper(strings.TrimSpace(input.Status)))
 	validStatuses := map[models.TournamentStatus]bool{
-		"":                                      true,
-		models.TournamentStatusRegistrationOpen: true,
+		"":                                        true,
+		models.TournamentStatusDraft:              true,
+		models.TournamentStatusCrowdfunding:       true,
+		models.TournamentStatusRegistrationOpen:   true,
 		models.TournamentStatusRegistrationClosed: true,
 		models.TournamentStatusOngoing:            true,
 		models.TournamentStatusCompleted:          true,
+		models.TournamentStatusCancelled:          true,
 	}
 	if !validStatuses[status] {
 		return nil, ErrInvalidTournamentFilters

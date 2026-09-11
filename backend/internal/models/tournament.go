@@ -9,10 +9,18 @@ import (
 type TournamentStatus string
 
 const (
+	// TODO(US3-1): Draft overlaps with Tournament.Published == false.
+	// Published = visibility, Status = lifecycle stage; they only collide at draft.
+	// US3-1: HOOF owns the decision — until then, nothing sets DRAFT.
+	TournamentStatusDraft TournamentStatus = "DRAFT"
+	// TODO(US5-1): No crowdfunding flow exists yet. Nothing sets this status.
+	TournamentStatusCrowdfunding TournamentStatus = "CROWDFUNDING"
+
 	TournamentStatusRegistrationOpen   TournamentStatus = "REGISTRATION_OPEN"
 	TournamentStatusRegistrationClosed TournamentStatus = "REGISTRATION_CLOSED"
 	TournamentStatusOngoing            TournamentStatus = "ONGOING"
 	TournamentStatusCompleted          TournamentStatus = "COMPLETED"
+	TournamentStatusCancelled          TournamentStatus = "CANCELLED"
 )
 
 type TournamentRegistrationMode string
