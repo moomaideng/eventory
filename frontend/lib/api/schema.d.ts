@@ -218,7 +218,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/organizer/tournaments": {
+    "/api/v1/accounts/me/tournaments": {
         parameters: {
             query?: never;
             header?: never;
@@ -226,7 +226,7 @@ export interface paths {
             cookie?: never;
         };
         /** List the current organizer's tournaments */
-        get: operations["list-organizer-tournaments"];
+        get: operations["list-my-tournaments"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1175,7 +1175,7 @@ export interface operations {
             };
         };
     };
-    "list-organizer-tournaments": {
+    "list-my-tournaments": {
         parameters: {
             query?: {
                 page?: number;

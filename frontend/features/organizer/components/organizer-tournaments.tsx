@@ -51,7 +51,7 @@ export function OrganizerTournaments() {
   const [page, setPage] = useState(1);
   const { data, error, isLoading, isFetching, refetch } = $api.useQuery(
     "get",
-    "/api/v1/organizer/tournaments",
+    "/api/v1/accounts/me/tournaments",
     {
       params: { query: { page, pageSize: 12 } },
       headers: { Authorization: authorizationHeader ?? "" },

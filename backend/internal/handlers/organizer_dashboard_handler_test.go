@@ -47,6 +47,7 @@ func TestOrganizerDashboardHTTP(t *testing.T) {
 	_, api := humatest.New(t)
 	handlers.RegisterOrganizerDashboardRoutes(huma.NewGroup(api, "/api/v1"), usecases.NewOrganizerDashboardUseCase(repo), accounts)
 	ownerCtx, otherCtx := makeAuthContext(owner, "owner@example.com"), makeAuthContext(other, "other@example.com")
+	listPath := "/api/v1/accounts/me/tournaments"
 	path := "/api/v1/tournaments/" + tournamentID.String() + "/dashboard"
 	for _, tc := range []struct {
 		name   string
@@ -54,15 +55,15 @@ func TestOrganizerDashboardHTTP(t *testing.T) {
 		path   string
 		status int
 	}{
-		{"anonymous list", context.Background(), "/api/v1/organizer/tournaments", 401},
+		{"anonymous list", context.Background(), listPath, 401},
 		{"anonymous detail", context.Background(), path, 401},
-		{"owner list", ownerCtx, "/api/v1/organizer/tournaments", 200},
-		{"other list", otherCtx, "/api/v1/organizer/tournaments", 200},
+		{"owner list", ownerCtx, listPath, 200},
+		{"other list", otherCtx, listPath, 200},
 		{"other detail", otherCtx, path, 404},
 		{"missing detail", ownerCtx, "/api/v1/tournaments/" + uuid.NewString() + "/dashboard", 404},
 		{"invalid ID", ownerCtx, "/api/v1/tournaments/invalid/dashboard", 422},
-		{"invalid page", ownerCtx, "/api/v1/organizer/tournaments?page=0", 422},
-		{"oversized page", ownerCtx, "/api/v1/organizer/tournaments?pageSize=101", 422},
+		{"invalid page", ownerCtx, listPath + "?page=0", 422},
+		{"oversized page", ownerCtx, listPath + "?pageSize=101", 422},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			resp := api.GetCtx(tc.ctx, tc.path)

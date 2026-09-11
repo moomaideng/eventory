@@ -63,7 +63,7 @@ type OrganizerDashboardOutput struct {
 
 func RegisterOrganizerDashboardRoutes(api huma.API, dashboard *usecases.OrganizerDashboardUseCase, accounts *usecases.AccountUseCase) {
 	huma.Register(api, huma.Operation{
-		OperationID: "list-organizer-tournaments", Method: http.MethodGet, Path: "/organizer/tournaments",
+		OperationID: "list-my-tournaments", Method: http.MethodGet, Path: "/accounts/me/tournaments",
 		Summary: "List the current organizer's tournaments", Tags: []string{"Organizer dashboard"},
 		Security: []map[string][]string{{"bearer": {}}},
 	}, func(ctx context.Context, input *OrganizerTournamentListInput) (*OrganizerTournamentListOutput, error) {
