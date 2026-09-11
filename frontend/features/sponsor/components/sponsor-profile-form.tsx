@@ -3,6 +3,16 @@
 import React from "react";
 import { Building2 } from "lucide-react";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Card,
   CardContent,
   CardDescription,
@@ -19,19 +29,37 @@ import {
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { sponsorProfileSchema } from "../schemas";
+import { Spinner } from "@/components/ui/spinner";
+import { sponsorProfileSchema, type SponsorProfileInput } from "../schemas";
 
 type FieldErrors = Partial<Record<"sponsorName" | "sponsorEmail", string>>;
 
-export function SponsorProfileForm() {
-  const [sponsorName, setSponsorName] = React.useState("");
-  const [sponsorEmail, setSponsorEmail] = React.useState("");
+interface SponsorProfileFormProps {
+  initialName: string;
+  initialEmail: string;
+  onCancel: () => void;
+  onConfirmSave: (data: SponsorProfileInput) => Promise<boolean>;
+  isSaving: boolean;
+  saveError: string;
+}
+
+export function SponsorProfileForm({
+  initialName,
+  initialEmail,
+  onCancel,
+  onConfirmSave,
+  isSaving,
+  saveError,
+}: SponsorProfileFormProps) {
+  const [sponsorName, setSponsorName] = React.useState(initialName);
+  const [sponsorEmail, setSponsorEmail] = React.useState(initialEmail);
   const [fieldErrors, setFieldErrors] = React.useState<FieldErrors>({});
-  const [saved, setSaved] = React.useState(false);
+  const [dialogOpen, setDialogOpen] = React.useState(false);
+  const [pendingData, setPendingData] =
+    React.useState<SponsorProfileInput | null>(null);
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setSaved(false);
 
     const result = sponsorProfileSchema.safeParse({
       sponsorName,
@@ -48,10 +76,21 @@ export function SponsorProfileForm() {
     }
 
     setFieldErrors({});
-    // TODO(#64): call apiClient.PUT("/api/v1/accounts/me/sponsor-profile", ...)
-    // with result.data once API wiring lands. For now this only confirms the
-    // form validates correctly.
-    setSaved(true);
+    setPendingData(result.data);
+    setDialogOpen(true);
+  }
+
+  async function handleConfirm(event: React.MouseEvent) {
+    // AlertDialogAction closes the dialog on click by default. Save is
+    // async, so we take over closing ourselves: stay open on failure so
+    // the error message (and retry) stay visible.
+    event.preventDefault();
+    if (!pendingData) return;
+    const ok = await onConfirmSave(pendingData);
+    if (ok) {
+      setDialogOpen(false);
+      setPendingData(null);
+    }
   }
 
   return (
@@ -111,17 +150,37 @@ export function SponsorProfileForm() {
           </FieldGroup>
         </CardContent>
         <CardFooter className="justify-end gap-3">
-          {saved ? (
-            <span className="text-muted-foreground text-sm">
-              Looks good — saving isn&apos;t wired up yet.
-            </span>
-          ) : null}
+          <Button type="button" variant="ghost" onClick={onCancel}>
+            Cancel
+          </Button>
           <Button type="submit">
             <Building2 data-icon="inline-start" />
             Save profile
           </Button>
         </CardFooter>
       </form>
+
+      <AlertDialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Save changes?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Organizers will see this sponsor name and email the next time
+              they view your sponsorship.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          {saveError ? (
+            <p className="text-destructive text-sm">{saveError}</p>
+          ) : null}
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isSaving}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirm} disabled={isSaving}>
+              {isSaving ? <Spinner data-icon="inline-start" /> : null}
+              {isSaving ? "Saving…" : "Confirm save"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 }

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { SponsorProfileForm } from "@/features/sponsor/components/sponsor-profile-form";
+import { SponsorProfileManager } from "@/features/sponsor/components/sponsor-profile-manager";
 
 export const metadata: Metadata = {
   title: "Sponsor Profile - Eventory",
@@ -23,7 +23,7 @@ export default function SponsorProfilePage() {
         Sponsor dashboard
       </Button>
 
-      <SponsorProfileForm />
+      <SponsorProfileManager />
     </div>
   );
 }
