@@ -68,6 +68,7 @@ flowchart LR
 **After any backend endpoint changes,** start the backend, then:
 
 ```bash
+# from frontend/
 npm run openapi:generate
 ```
 

@@ -134,6 +134,11 @@ Stop it with `Ctrl+C`.
 ```bash
 cd backend
 docker compose -f ../docker-compose.yml --env-file .env up -d --wait postgres
+
+# [pick one]
+# native, must restart after every edit
+go run ./cmd/api
+# hot-reload, restarts when you save (need air toolchain)
 air -c .air.toml
 ```
 
@@ -169,7 +174,7 @@ flowchart LR
     E --> F["commit & PR"]
 ```
 
-**Changed a backend endpoint?** Start the backend, then run `npm --prefix frontend run openapi:generate`. This copies the backend's endpoint list into the frontend so TypeScript can catch mistakes.
+**Changed a backend endpoint?** Start the backend, then from the repo root run `npm --prefix frontend run openapi:generate`. This copies the backend's endpoint list into the frontend so TypeScript can catch mistakes.
 
 ---
 

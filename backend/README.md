@@ -16,7 +16,10 @@ docker compose -f ../docker-compose.yml --env-file .env up -d --wait postgres
 go run ./cmd/migrate -reset
 go run ./cmd/seed
 
-# 3. Server, restarts when you save
+# 3. Server, [pick one]
+# native, must restart after every edit
+go run ./cmd/api
+# hot-reload, restarts when you save
 air -c .air.toml
 ```
 
@@ -63,6 +66,7 @@ flowchart LR
 6. Tell the frontend about it:
 
 ```bash
+# from backend/
 npm --prefix ../frontend run openapi:generate
 ```
 

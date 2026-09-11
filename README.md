@@ -91,4 +91,4 @@ No `make` on your machine? Every command has a plain equivalent in **[Getting St
 | Commit style | `feat:` `fix:` `refactor:` `chore:` |
 | Before a PR | `make test`, then rebase onto latest `main` |
 | Merging | Squash and merge |
-| Changed a backend endpoint? | Run `npm --prefix frontend run openapi:generate` |
+| Changed a backend endpoint? | From the repo root: `npm --prefix frontend run openapi:generate` |
