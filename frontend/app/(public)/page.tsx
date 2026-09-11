@@ -20,6 +20,14 @@ export default async function HomePage() {
     // Graceful fallback if session check fails
   }
 
+  // [DEV-ONLY] Check active dev session cookie in development mode
+  if (!serverAuthenticated && process.env.NODE_ENV === "development") {
+    const { cookies } = await import("next/headers");
+    const cookieStore = await cookies();
+    serverAuthenticated =
+      cookieStore.get("eventory_dev_session")?.value === "true";
+  }
+
   return (
     <div className="flex flex-1 flex-col items-center justify-center px-4 py-24 sm:px-8">
       <div className="flex w-full max-w-3xl flex-col items-center gap-8 text-center">

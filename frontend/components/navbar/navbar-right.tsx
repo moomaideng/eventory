@@ -191,7 +191,7 @@ export function NavbarRight({
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => loginAsDev(activeRole)}
+                  onClick={() => loginAsDev()}
                   className="text-primary border-primary/30 hidden text-xs sm:inline-flex"
                 >
                   <Sparkles data-icon="inline-start" />

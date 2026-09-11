@@ -14,13 +14,12 @@ import type { components } from "@/lib/api/schema";
 import type { Session } from "@supabase/supabase-js";
 import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
-import {
-  MOCK_USER,
-  MOCK_ORGANIZER_USER,
-  MOCK_SPONSOR_USER,
-} from "./mock-data";
+import { MOCK_USER } from "./mock-data";
 import { getSafeRedirectPath } from "@/lib/auth-redirect";
-import type { UserRole } from "@/lib/role";
+import {
+  setDevSessionAction,
+  getDevSessionAction,
+} from "@/lib/dev-session";
 
 export interface UserProfile {
   id: string;
@@ -36,7 +35,7 @@ export interface AuthContextType {
   isLoading: boolean;
   authorizationHeader: string | undefined;
   loginWithGoogle: (redirectTo?: string) => Promise<void>;
-  loginAsDev: (role?: UserRole, redirectTo?: string) => void;
+  loginAsDev: (redirectTo?: string) => void;
   logout: () => Promise<void>;
   updateUserProfile: (
     displayName: string,
@@ -73,7 +72,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const queryClient = useQueryClient();
 
   const [devUser, setDevUser] = useState<UserProfile | null>(null);
-  const [devRole, setDevRole] = useState<UserRole>("competitor");
   const [session, setSession] = useState<{
     accessToken: string;
     avatarUrl?: string;
@@ -86,7 +84,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   } | null>(null);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
 
+  const authorizationHeader = useMemo(() => {
+    if (devUser) {
+      return "Bearer dev-token";
+    }
+    if (session?.accessToken) {
+      return `Bearer ${session.accessToken}`;
+    }
+    return undefined;
+  }, [devUser, session?.accessToken]);
+
   // TanStack Query integration via openapi-react-query client ($api)
+  // Queries /api/v1/accounts/me with bearer token (both real JWT and dev-token)
   const {
     data: account,
     isLoading: isAccountLoading,
@@ -96,35 +105,42 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     "/api/v1/accounts/me",
     {
       headers: {
-        Authorization: session?.accessToken
-          ? `Bearer ${session.accessToken}`
-          : "",
+        Authorization: authorizationHeader ?? "",
       },
     },
     {
-      enabled: Boolean(session?.accessToken) && !devUser,
+      enabled: Boolean(authorizationHeader),
       retry: false,
       staleTime: 60 * 1000,
     }
   );
 
-  // Derived user profile from query data or dev user state with zero-flicker OAuth fallback
+  // Derived user profile from backend account query or fallback to dev/session mock
   const user = useMemo<UserProfile | null>(() => {
+    if (account) {
+      return {
+        id: account.id,
+        email: account.email,
+        displayName:
+          account.displayName ||
+          session?.user?.displayName ||
+          devUser?.displayName ||
+          "User",
+        handle:
+          account.handle ||
+          session?.user?.email?.split("@")[0] ||
+          devUser?.handle ||
+          "user",
+        avatarUrl:
+          account.avatarUrl || session?.user?.avatarUrl || devUser?.avatarUrl,
+        phone: account.phone || undefined,
+      };
+    }
     if (devUser) {
       return devUser;
     }
     if (!session?.accessToken || !session.user) {
       return null;
-    }
-    if (account) {
-      return {
-        id: account.id,
-        email: account.email,
-        displayName: account.displayName || session.user.displayName,
-        handle: account.handle || session.user.email.split("@")[0],
-        avatarUrl: account.avatarUrl || session.user.avatarUrl,
-        phone: account.phone || undefined,
-      };
     }
     // Instant fallback from Supabase session while backend account query resolves
     return {
@@ -134,21 +150,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       handle: session.user.email.split("@")[0],
       avatarUrl: session.user.avatarUrl,
     };
-  }, [devUser, session, account]);
+  }, [account, devUser, session]);
 
   const isLoading =
     isAuthLoading ||
-    (Boolean(session?.accessToken) && !devUser && isAccountLoading && !account);
-
-  const authorizationHeader = devUser
-    ? devRole === "organizer"
-      ? "Bearer dev-token-organizer"
-      : devRole === "sponsor"
-        ? "Bearer dev-token-sponsor"
-        : "Bearer dev-token"
-    : session?.accessToken
-      ? `Bearer ${session.accessToken}`
-      : undefined;
+    (Boolean(session?.accessToken) && isAccountLoading && !account);
 
   // Query cache invalidation and refetch on demand / profile update
   const refreshUser = useCallback(async () => {
@@ -159,6 +165,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [queryClient, refetchAccount]);
 
   useEffect(() => {
+    let ignore = false;
     const supabase = createClient();
 
     const parseSession = (sbSession: Session | null) => {
@@ -187,32 +194,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
 
     // Initial session check
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (ignore) return;
       setSession(parseSession(session));
 
-      // Restore dev session from cookies in development mode if no active Supabase session
-      if (!session && typeof document !== "undefined") {
-        const hasDevSession = document.cookie.includes(
-          "eventory_dev_session=true"
-        );
-        if (hasDevSession) {
-          const match = document.cookie.match(/eventory_dev_role=([^;]+)/);
-          const role = (match?.[1] as UserRole) || "competitor";
-          let targetUser = MOCK_USER;
-          if (role === "organizer") targetUser = MOCK_ORGANIZER_USER;
-          if (role === "sponsor") targetUser = MOCK_SPONSOR_USER;
-          setDevUser(targetUser);
-          setDevRole(role);
+      // Restore dev session from HttpOnly cookies in development mode if no active Supabase session
+      if (!session && process.env.NODE_ENV === "development") {
+        try {
+          const hasDevSession = await getDevSessionAction();
+          if (!ignore && hasDevSession) {
+            setDevUser(MOCK_USER);
+          }
+        } catch {
+          // Ignore offline check error
         }
       }
 
-      setIsAuthLoading(false);
+      if (!ignore) {
+        setIsAuthLoading(false);
+      }
     });
 
     // Real-time auth state listener
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
+      if (ignore) return;
       if (event === "SIGNED_OUT") {
         setSession(null);
         setDevUser(null);
@@ -226,25 +233,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
 
     return () => {
+      ignore = true;
       subscription.unsubscribe();
     };
   }, [queryClient]);
 
-  // Instant mock sign-in for zero-friction local development
+  // Instant mock sign-in for zero-friction local development with single dev account
   const loginAsDev = useCallback(
-    (role: UserRole = "competitor", redirectTo?: string) => {
-      let targetUser = MOCK_USER;
-      if (role === "organizer") targetUser = MOCK_ORGANIZER_USER;
-      if (role === "sponsor") targetUser = MOCK_SPONSOR_USER;
-
-      setDevUser(targetUser);
-      setDevRole(role);
-
-      if (typeof document !== "undefined") {
-        document.cookie =
-          "eventory_dev_session=true; path=/; max-age=86400; SameSite=Lax";
-        document.cookie = `eventory_dev_role=${role}; path=/; max-age=86400; SameSite=Lax`;
-      }
+    async (redirectTo?: string) => {
+      setDevUser(MOCK_USER);
+      await setDevSessionAction(true);
 
       if (redirectTo) {
         router.push(getSafeRedirectPath(redirectTo));
@@ -312,12 +310,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch {
       // Ignore cleanup error
     }
-    if (typeof document !== "undefined") {
-      document.cookie = "eventory_dev_session=; path=/; max-age=0";
-      document.cookie = "eventory_dev_role=; path=/; max-age=0";
-    }
+    await setDevSessionAction(false);
     setDevUser(null);
-    setDevRole("competitor");
     setSession(null);
     queryClient.removeQueries({
       queryKey: ["get", "/api/v1/accounts/me"],

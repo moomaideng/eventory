@@ -14,14 +14,12 @@ export type AuthCallbackQuery = z.infer<typeof authCallbackQuerySchema>;
 /**
  * Validates Supabase user metadata structure on successful OAuth exchange.
  */
-export const authUserMetadataSchema = z
-  .object({
-    full_name: z.string().trim().min(1).optional(),
-    name: z.string().trim().min(1).optional(),
-    avatar_url: z.string().url().optional(),
-    picture: z.string().url().optional(),
-  })
-  .passthrough();
+export const authUserMetadataSchema = z.looseObject({
+  full_name: z.string().trim().min(1).optional(),
+  name: z.string().trim().min(1).optional(),
+  avatar_url: z.url().optional(),
+  picture: z.url().optional(),
+});
 
 export type AuthUserMetadata = z.infer<typeof authUserMetadataSchema>;
 
@@ -30,7 +28,7 @@ export type AuthUserMetadata = z.infer<typeof authUserMetadataSchema>;
  */
 export const accountProvisionSchema = z.object({
   displayName: z.string().trim().min(1).max(100),
-  avatarUrl: z.string().url().optional(),
+  avatarUrl: z.url().optional(),
 });
 
 export type AccountProvisionInput = z.infer<typeof accountProvisionSchema>;

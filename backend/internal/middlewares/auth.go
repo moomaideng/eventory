@@ -108,12 +108,8 @@ func (m *AuthMiddleware) HumaMiddleware() func(ctx huma.Context, next func(huma.
 		if m.isDevMode() {
 			var devEmail, devSub string
 			switch tokenString {
-			case DevToken, "dev-token-competitor":
+			case DevToken, "dev-token-competitor", DevOrganizerToken, DevSponsorToken:
 				devEmail, devSub = DevEmail, DevSub
-			case DevOrganizerToken:
-				devEmail, devSub = DevOrganizerEmail, DevOrganizerSub
-			case DevSponsorToken:
-				devEmail, devSub = DevSponsorEmail, DevSponsorSub
 			}
 
 			if devEmail != "" && devSub != "" {

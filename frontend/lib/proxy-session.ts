@@ -13,27 +13,25 @@ export async function updateSession(
     request,
   });
 
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
-
-  // Safe fallback for dev offline mode when Supabase credentials are not configured
-  if (!supabaseUrl || !supabaseKey) {
-    return {
-      response: supabaseResponse,
-      user: { id: "offline-dev" },
-    };
-  }
-
-  // Support dev session bypass in development mode
+  // [DEV-ONLY] Support dev session bypass in development mode
   if (
     process.env.NODE_ENV === "development" &&
     request.cookies.get("eventory_dev_session")?.value === "true"
   ) {
-    const devRole =
-      request.cookies.get("eventory_dev_role")?.value || "competitor";
     return {
       response: supabaseResponse,
-      user: { id: `dev-user-${devRole}` },
+      user: { id: "99999999-0000-4000-8000-000000000001" }, // Alex (Dev) account ID
+    };
+  }
+
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+
+  // If Supabase credentials are not configured, treat unauthenticated requests as unauthenticated
+  if (!supabaseUrl || !supabaseKey) {
+    return {
+      response: supabaseResponse,
+      user: null,
     };
   }
 
@@ -68,11 +66,6 @@ export async function updateSession(
   } catch (err) {
     if (process.env.NODE_ENV === "development") {
       console.warn("[Proxy] Session refresh notice:", err);
-      // Safe fallback for dev offline mode when local Supabase instance is unreachable
-      return {
-        response: supabaseResponse,
-        user: { id: "dev-offline-fallback" },
-      };
     }
   }
 

@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/server";
 import { LoginForm } from "@/features/auth/components/login-form";
@@ -29,6 +30,14 @@ export default async function LoginPage({
     }
   } catch {
     // Supabase client error (e.g. missing env in dev) -> allow showing login form
+  }
+
+  // [DEV-ONLY] Redirect if dev session is already active
+  if (process.env.NODE_ENV === "development") {
+    const cookieStore = await cookies();
+    if (cookieStore.get("eventory_dev_session")?.value === "true") {
+      shouldRedirect = true;
+    }
   }
 
   if (shouldRedirect) {

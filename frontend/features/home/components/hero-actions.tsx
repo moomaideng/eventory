@@ -16,7 +16,7 @@ export function HeroActions({
 
   // Smart routing: unauthenticated goes to /login, authenticated jumps straight into /hub
   const primaryHref = isAuthenticated ? "/hub" : "/login";
-  const primaryText = isAuthenticated ? "Enter Eventory" : "Get Started";
+  const primaryText = isAuthenticated ? "Enter Eventory Hub" : "Get Started";
 
   return (
     <div className="flex w-full flex-col items-center justify-center gap-3 pt-2 sm:w-auto sm:flex-row">

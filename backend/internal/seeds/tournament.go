@@ -13,9 +13,11 @@ func SeedTournaments(db *gorm.DB) error {
 	now := time.Now().UTC().Truncate(24 * time.Hour)
 	lockedAt := now.Add(-24 * time.Hour)
 	aliceOrganizerID := uuid.MustParse("11111111-0000-4000-8000-000000000001")
+	devOrganizerID := uuid.MustParse("99999999-0000-4000-8000-000000000002")
 	mayaOrganizerID := uuid.MustParse("11111111-0000-4000-8000-000000000003")
 
-	// Mock data, I only add 5 cuz i want it to be simple not too much
+	// Alice keeps the original sample tournaments while Alex has two dedicated
+	// dev-owned tournaments for exercising the organizer dashboard.
 	tournaments := []models.Tournament{
 		{
 			ID:          uuid.MustParse("33333333-0000-4000-8000-000000000001"),
@@ -66,6 +68,26 @@ func SeedTournaments(db *gorm.DB) error {
 			RegistrationMode: models.TournamentRegistrationModeTeam, MinTeamSize: 5, MaxTeamSize: 5,
 			EntryFee: 1200, Currency: "THB", Capacity: 16,
 			Status: models.TournamentStatusRegistrationOpen, Published: true,
+		},
+		{
+			ID:          uuid.MustParse("33333333-0000-4000-8000-000000000006"),
+			OrganizerID: devOrganizerID, Name: "Dev Arena Clash",
+			Description: "A local development tournament for testing team registration and organizer workflows.",
+			Game:        "Apex Legends", Location: "Online", StartsAt: now.AddDate(0, 0, 14).Add(11 * time.Hour),
+			EndsAt: now.AddDate(0, 0, 14).Add(19 * time.Hour), RegistrationDeadline: now.AddDate(0, 0, 11),
+			RegistrationMode: models.TournamentRegistrationModeTeam, MinTeamSize: 3, MaxTeamSize: 3,
+			EntryFee: 300, Currency: "THB", Capacity: 20,
+			Status: models.TournamentStatusRegistrationOpen, Published: true,
+		},
+		{
+			ID:          uuid.MustParse("33333333-0000-4000-8000-000000000007"),
+			OrganizerID: devOrganizerID, Name: "Alex's Strategy Cup",
+			Description: "A development sample for an upcoming solo strategy tournament.",
+			Game:        "Teamfight Tactics", Location: "Bangkok", StartsAt: now.AddDate(0, 0, 28).Add(10 * time.Hour),
+			EndsAt: now.AddDate(0, 0, 28).Add(17 * time.Hour), RegistrationDeadline: now.AddDate(0, 0, 24),
+			RegistrationMode: models.TournamentRegistrationModeSolo, MinTeamSize: 1, MaxTeamSize: 1,
+			EntryFee: 150, Currency: "THB", Capacity: 48,
+			Status: models.TournamentStatusRegistrationOpen, Published: false,
 		},
 	}
 
@@ -135,6 +157,8 @@ func SeedTournaments(db *gorm.DB) error {
 		{ID: uuid.MustParse("55555555-0000-4000-8000-000000000003"), TournamentID: tournaments[2].ID, GoalAmount: 120000, RaisedAmount: 84000, SupporterCount: 47},
 		{ID: uuid.MustParse("55555555-0000-4000-8000-000000000004"), TournamentID: tournaments[3].ID, GoalAmount: 25000, RaisedAmount: 25000, SupporterCount: 19},
 		{ID: uuid.MustParse("55555555-0000-4000-8000-000000000005"), TournamentID: tournaments[4].ID, GoalAmount: 500000, RaisedAmount: 287500, SupporterCount: 83},
+		{ID: uuid.MustParse("55555555-0000-4000-8000-000000000006"), TournamentID: tournaments[5].ID, GoalAmount: 60000, RaisedAmount: 18000, SupporterCount: 12},
+		{ID: uuid.MustParse("55555555-0000-4000-8000-000000000007"), TournamentID: tournaments[6].ID, GoalAmount: 30000, RaisedAmount: 0, SupporterCount: 0},
 	}
 
 	return db.Clauses(clause.OnConflict{
