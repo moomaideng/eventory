@@ -91,6 +91,7 @@ func main() {
 	teamLobbyRepo := repositories.NewTeamLobbyRepository(db)
 	teamLobbyUseCase := usecases.NewTeamLobbyUseCase(teamLobbyRepo)
 	dashboardUseCase := usecases.NewOrganizerDashboardUseCase(repositories.NewOrganizerDashboardRepository(db))
+	statusUseCase := usecases.NewTournamentStatusUseCase(repositories.NewTournamentStatusRepository(db))
 
 	// 7. Initialize Auth Middleware & Scoped Route Groups
 	authMiddleware := middlewares.NewAuthMiddleware(api, appConfig.SupabaseURL, appConfig.Environment)
@@ -110,6 +111,7 @@ func main() {
 	handlers.RegisterAccountRoutes(accountGroup, accountUseCase)
 	handlers.RegisterTeamLobbyRoutes(teamLobbyGroup, teamLobbyUseCase, accountUseCase)
 	handlers.RegisterOrganizerDashboardRoutes(organizerGroup, dashboardUseCase, accountUseCase)
+	handlers.RegisterTournamentStatusRoutes(organizerGroup, statusUseCase, accountUseCase)
 
 	// Tournament discovery is public; tournament management requires organizer authentication.
 	handlers.RegisterTournamentRoutes(api, organizerTournamentGroup, tournamentUseCase)

@@ -283,6 +283,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/tournaments/{id}/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Override a tournament's status
+         * @description Manually moves an owned tournament to another lifecycle status, recording the previous status, the reason, the acting account, and a timestamp.
+         */
+        patch: operations["override-tournament-status"];
+        trace?: never;
+    };
+    "/api/v1/tournaments/{id}/status/history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List a tournament's status override history
+         * @description Returns the audit trail of manual status overrides for an owned tournament, newest first.
+         */
+        get: operations["list-tournament-status-history"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/tournaments/{tournamentId}": {
         parameters: {
             query?: never;
@@ -623,6 +663,32 @@ export interface components {
             published: boolean;
             tournament: components["schemas"]["TournamentResponse"];
         };
+        OverrideTournamentStatusInputBody: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/OverrideTournamentStatusInputBody.json
+             */
+            readonly $schema?: string;
+            /** @description Why the status is being overridden; recorded in the audit trail */
+            reason: string;
+            /**
+             * @description Target status
+             * @enum {string}
+             */
+            status: "DRAFT" | "CROWDFUNDING" | "REGISTRATION_OPEN" | "REGISTRATION_CLOSED" | "ONGOING" | "COMPLETED" | "CANCELLED";
+        };
+        OverrideTournamentStatusOutputBody: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/OverrideTournamentStatusOutputBody.json
+             */
+            readonly $schema?: string;
+            change: components["schemas"]["TournamentStatusChangeResponse"];
+            status: string;
+            tournamentId: string;
+        };
         SponsorProfileResponse: {
             /**
              * Format: uri
@@ -767,6 +833,28 @@ export interface components {
             /** Format: date-time */
             startAt: string;
             status: string;
+        };
+        TournamentStatusChangeResponse: {
+            actorId: string;
+            actorName?: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** @enum {string} */
+            fromStatus: "DRAFT" | "CROWDFUNDING" | "REGISTRATION_OPEN" | "REGISTRATION_CLOSED" | "ONGOING" | "COMPLETED" | "CANCELLED";
+            id: string;
+            reason: string;
+            /** @enum {string} */
+            toStatus: "DRAFT" | "CROWDFUNDING" | "REGISTRATION_OPEN" | "REGISTRATION_CLOSED" | "ONGOING" | "COMPLETED" | "CANCELLED";
+            tournamentId: string;
+        };
+        TournamentStatusHistoryOutputBody: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/TournamentStatusHistoryOutputBody.json
+             */
+            readonly $schema?: string;
+            items: components["schemas"]["TournamentStatusChangeResponse"][] | null;
         };
         TournamentTeamResponse: {
             id: string;
@@ -1367,7 +1455,7 @@ export interface operations {
                 minEntryFee?: number;
                 /** @description Maximum entry fee; omit to disable */
                 maxEntryFee?: number;
-                status?: "REGISTRATION_OPEN" | "REGISTRATION_CLOSED" | "ONGOING" | "COMPLETED";
+                status?: "DRAFT" | "CROWDFUNDING" | "REGISTRATION_OPEN" | "REGISTRATION_CLOSED" | "ONGOING" | "COMPLETED" | "CANCELLED";
                 sort?: "start_asc" | "start_desc" | "fee_asc" | "fee_desc";
                 page?: number;
                 pageSize?: number;
@@ -1449,6 +1537,74 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["OrganizerDashboardOutputBody"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "override-tournament-status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Tournament ID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OverrideTournamentStatusInputBody"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OverrideTournamentStatusOutputBody"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "list-tournament-status-history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Tournament ID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TournamentStatusHistoryOutputBody"];
                 };
             };
             /** @description Error */
