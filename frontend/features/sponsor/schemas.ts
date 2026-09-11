@@ -13,9 +13,8 @@ export const sponsorProfileSchema = z.object({
   sponsorEmail: z
     .string()
     .trim()
-    .email("Enter a valid email address.")
-    .optional()
-    .or(z.literal("")),
+    .transform((val) => (val === "" ? undefined : val))
+    .pipe(z.string().email("Enter a valid email address.").optional()),
 });
 
 export type SponsorProfileInput = z.infer<typeof sponsorProfileSchema>;

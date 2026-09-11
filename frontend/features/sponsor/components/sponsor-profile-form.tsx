@@ -39,14 +39,11 @@ export function SponsorProfileForm() {
     });
 
     if (!result.success) {
-      const errors: FieldErrors = {};
-      for (const issue of result.error.issues) {
-        const key = issue.path[0] as keyof FieldErrors;
-        if (!errors[key]) {
-          errors[key] = issue.message;
-        }
-      }
-      setFieldErrors(errors);
+      const flat = result.error.flatten().fieldErrors;
+      setFieldErrors({
+        sponsorName: flat.sponsorName?.[0],
+        sponsorEmail: flat.sponsorEmail?.[0],
+      });
       return;
     }
 
