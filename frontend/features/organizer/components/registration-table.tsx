@@ -55,20 +55,20 @@ export function RegistrationTable({
       <div className="flex items-center justify-between gap-3">
         <h2
           id="registrations"
-          className="flex items-center gap-2 text-lg font-semibold"
+          className="flex items-center gap-2 text-base font-semibold"
         >
-          <ClipboardList className="size-5" />
+          <ClipboardList className="size-4 text-muted-foreground" />
           Registrations
         </h2>
-        <Badge variant="secondary">
+        <Badge variant="secondary" className="rounded-full px-2.5">
           {entries.length} {entries.length === 1 ? "entry" : "entries"}
         </Badge>
       </div>
-      <dl className="grid grid-cols-2 gap-4 border-y py-4 sm:grid-cols-5">
+      <dl className="grid grid-cols-2 gap-4 border-y border-border/40 py-3 sm:grid-cols-5">
         {counts.map(([label, count]) => (
           <div key={label}>
             <dt className="text-muted-foreground text-xs">{label}</dt>
-            <dd className="mt-1 font-semibold tabular-nums">{count}</dd>
+            <dd className="mt-0.5 font-semibold tabular-nums">{count}</dd>
           </div>
         ))}
       </dl>
@@ -82,7 +82,7 @@ export function RegistrationTable({
           </EmptyHeader>
         </Empty>
       ) : (
-        <div className="overflow-hidden rounded-lg border">
+        <div className="overflow-hidden rounded-xl border border-border/40">
           <Table className="table-fixed">
             <TableCaption className="sr-only">
               Tournament entries, status, and participant rosters
