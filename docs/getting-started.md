@@ -154,7 +154,7 @@ npm run dev
 | http://localhost:8080/docs | Clickable list of backend endpoints |
 | http://localhost:8080/health | Should answer with an empty "204" response |
 
-> No Supabase keys? Use the **Dev Quick Login** button in the navbar to fake a login and try all three modes.
+> No Supabase keys? Use the **Dev Quick Login** button in the navbar to fake a login, then switch modes from the avatar menu.
 
 ---
 

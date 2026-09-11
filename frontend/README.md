@@ -13,7 +13,7 @@ npm install    # first time, and after a teammate adds a package
 npm run dev    # http://localhost:3000
 ```
 
-You do **not** need the backend or Supabase keys to build UI. Click **Dev Quick Login** in the navbar to fake a login and switch between the three modes.
+You do **not** need the backend or Supabase keys to build UI. Click **Dev Quick Login** in the navbar to fake a login, then switch modes from the avatar menu.
 
 ---
 
