@@ -1,282 +1,94 @@
 # Eventory
 
-> **Eventory** is a full-stack platform for tournament management, competition hosting, and prize pool crowdfunding.
+A platform for hosting tournaments, with crowdfunding from sponsors.
+
+One account, three modes: **Competitor** (join events), **Organizer** (host events), **Sponsor** (fund events).
 
 ---
 
-## System Architecture
-
-Eventory connects a **Next.js 16 Frontend** and a **Go Huma v2 Backend** using a contract-first OpenAPI workflow:
-
-```mermaid
-flowchart TD
-    subgraph Frontend[" Frontend (Next.js 16 App Router) "]
-        UI["Web UI (Tailwind CSS v4 + shadcn/ui)"]
-        ApiClient["Type-safe Client (openapi-fetch)"]
-    end
-
-    subgraph AuthStorage[" Auth & Storage (Supabase) "]
-        SupaAuth["Supabase Auth (Google OAuth & JWKS)"]
-        SupaStorage["Supabase Storage (Banners & Media Assets)"]
-    end
-
-    subgraph Backend[" Backend (Go Huma v2 REST API) "]
-        GoApi["Go Huma REST API (Chi Router)"]
-        OpenAPISpec["OpenAPI 3.1 Spec (/openapi.json)"]
-        GormLayer["GORM / Data Access Layer"]
-    end
-
-    subgraph Database[" Database "]
-        Postgres[("PostgreSQL")]
-    end
-
-    UI --> SupaAuth
-    UI --> SupaStorage
-    UI --> ApiClient
-
-    ApiClient -.->|HTTP REST Requests| GoApi
-    GoApi -->|Auto-generates| OpenAPISpec
-    OpenAPISpec -.->|npm run openapi:generate| ApiClient
-
-    GoApi --> GormLayer
-    GormLayer --> Postgres
-    GoApi -.->|Cryptographic JWKS Verification| SupaAuth
-```
-
----
-
-## Technology Stack
-
-| Layer | Technology | Description |
-| :--- | :--- | :--- |
-| **Frontend** | **Next.js 16 (App Router)** | React 19, TypeScript, Tailwind CSS v4, **shadcn/ui** (Base UI style), Lucide Icons |
-| **Backend** | **Go 1.26+ & Huma v2** | High-performance Go REST API framework with automated OpenAPI 3.1 generation |
-| **Router & ORM** | **Chi Router & GORM** | Lightweight HTTP routing, Chi middlewares, and PostgreSQL ORM with automatic schema migrations |
-| **Database** | **PostgreSQL** | Relational database provisioned locally via Docker Compose |
-| **Authentication** | **Supabase Auth** | Cookie-based SSR sessions, Google OAuth, and asymmetric JWKS verification |
-| **File Storage** | **Supabase Storage** | Object storage for banners, organizer logos, and tournament assets |
-| **API & State** | **`openapi-fetch` & TanStack Query** | 100% type-safe client and server-state caching synced with Go Huma OpenAPI 3.1 schema |
-
----
-
-## Repository Structure
-
-```text
-eventory/
-├── Makefile                      # Root development commands
-├── docker-compose.yml            # Complete local stack
-├── docker-compose.production.yml # GHCR images used on Oracle
-├── frontend/                     # Next.js 16 Frontend Application
-│   ├── .env.example              # Frontend environment template
-│   ├── proxy.ts                  # Next.js 16 Proxy (JWT Verification & session refresh)
-│   ├── app/                      # App Router routes, boundaries (error, not-found, loading), layouts
-│   ├── components/               # UI Primitives (shadcn/ui Base UI) & Layout components
-│   ├── context/                  # App State & Role Context (TanStack Query + Supabase sync)
-│   ├── lib/                      # openapi-fetch client, Supabase SSR helpers, proxy-session
-│   └── .agents/skills/           # shadcn & supabase Best Practice Rules
-│
-├── backend/                      # Go Huma v2 API Service
-│   ├── .env.example              # Backend and local PostgreSQL template
-│   ├── cmd/api/main.go           # Application entry point, Chi router, and Huma wiring
-│   ├── internal/                 # Handlers, middlewares (JWKS), models, repositories, usecases
-│   ├── pkg/                      # Database & configuration packages
-│   └── Dockerfile                # Backend and migration binaries
-│
-└── .github/                      # Pull Request Template & GitHub Workflows
-```
-
----
-
-## Local Development Setup
-
-The commands in this root directory use **GNU Make** and **Docker Compose** for multi-service orchestration.
-
-> [!IMPORTANT]
-> **Want to run services manually & natively (Recommended for Windows)?**
-> **Skip this root guide completely.** If you want to develop each service natively with direct terminal control (without GNU Make or root wrapper scripts), go straight to the dedicated documentation in each service folder:
-> - 📦 **Backend & Database:** See [`backend/README.md`](backend/README.md) to start PostgreSQL, run migrations, seed mock records, and launch the Go API.
-> - 💻 **Frontend:** See [`frontend/README.md`](frontend/README.md) to install packages, sync OpenAPI contracts, and launch Next.js.
-
----
-
-### 1. Prerequisites
-
-- **Docker Desktop / Docker Compose:** Runs local PostgreSQL (or the complete containerized stack).
-- **Node.js 24+** and **Go 1.26+:** Required for running the frontend and backend on the host.
-- **GNU Make:** Used for root automation commands on macOS, Linux, and WSL.
-
----
-
-### 2. Configure Environment Files
-
-Each application owns its local environment file (run `cp` in terminal or duplicate the files manually in your editor):
-
-```bash
-cp backend/.env.example backend/.env
-cp frontend/.env.example frontend/.env.local
-```
-
-`backend/.env` uses `localhost` because native Go connects through PostgreSQL's published port. Compose injects the same file but overrides `DB_DSN` with Docker's `postgres` hostname. Next.js loads `frontend/.env.local` automatically, and Compose also injects it into the frontend container.
-
----
-
-### 3. Install Dependencies
-
-Install host dependencies and live-reload tools using Make:
-
-```bash
-make install
-```
-
-*(This runs `npm ci` in `frontend/`, downloads Go modules in `backend/`, and installs Air `v1.67.3`).*
-
----
-
-### 4. Run the Stack
-
-Choose between running applications natively on your host (recommended for fast reload) or fully containerized in Docker:
-
-#### Option A: Native Development (Recommended)
-
-Starts PostgreSQL in Docker, then runs the backend (Air) and frontend (Next.js) natively on your host:
-
-```bash
-make dev
-```
-
-> **Platform Compatibility:** On **Linux**, **macOS**, and **WSL**, this command works seamlessly out-of-the-box. *(On native Windows, we recommend running directly within [`backend/`](backend/README.md) and [`frontend/`](frontend/README.md)).*
-
-- Frontend: `http://localhost:3000`
-- Backend: `http://localhost:8080`
-- API documentation: `http://localhost:8080/docs`
-
-#### Option B: Complete Docker Stack
-
-Runs all services (PostgreSQL, Go backend, and Next.js frontend) entirely inside Docker:
-
-```bash
-make dev-docker
-```
-
-Without Make, the equivalent Docker Compose command is:
-```bash
-docker compose --env-file backend/.env --env-file frontend/.env.local up --build
-```
-
-> **Note on Docker & Troubleshooting:**
-> Running entirely in Docker consumes more system resources (RAM/CPU), but provides the most reliable environment that works out-of-the-box across most machines without tool version mismatches.
-> 
-> If you modify code or install dependencies and the changes do not seem to update inside the containers, the simplest, no-brainer workaround is to tear down the containers and start fresh:
-> ```bash
-> make down
-> make dev-docker
-> ```
-> *(Without Make: run `docker compose --env-file backend/.env --env-file frontend/.env.local down` followed by the `up --build` command).*
-
----
-
-### 5. Useful Commands
-
-All root commands are driven by Make:
-
-```bash
-# Infrastructure
-make db               # Start only the PostgreSQL database container
-make dev              # Start PostgreSQL in Docker + backend & frontend on host
-make dev-docker       # Start complete stack in Docker
-make down             # Stop and remove all containers
-
-# Database Operations
-make migrate          # Run database migrations natively
-make seed             # Seed mock development records natively
-make reset            # Reset database schema and rerun migrations natively (recommended for dev)
-make migrate-docker   # Run migrations inside a Docker container
-make seed-docker      # Seed data inside a Docker container
-
-# Individual Services
-make backend          # Run only the backend natively with Air
-make frontend         # Run only the frontend natively with Next.js
-make backend-docker   # Run only the backend in Docker
-make frontend-docker  # Run only the frontend in Docker
-
-# Quality & Verification
-make test             # Run Go unit tests, ESLint, and TypeScript checks
-make frontend-deps    # Refresh Docker node_modules volume after package changes
-```
-
-No development script parses or exports `.env` values. Viper reads `backend/.env` for native commands, Next.js reads `frontend/.env.local`, and Compose injects both files for containers. Browser-visible frontend settings use the `NEXT_PUBLIC_` prefix. In Docker, server-side frontend requests use the private `http://backend:8080` address while browser requests continue using `NEXT_PUBLIC_API_URL`.
-
-### 6. CI/CD
-
-Pull requests run tests, lint, and builds only. A merge to `main` builds ARM64 backend and frontend images, publishes commit-tagged images to GHCR, then deploys that exact commit to Oracle using `docker-compose.production.yml`. Production uses Supabase PostgreSQL and never starts the local PostgreSQL service.
-
-Required GitHub Secrets:
-
-- `PROD_SUPABASE_URL`
-- `PROD_SUPABASE_PUBLISHABLE_KEY`
-- `PROD_API_URL`
-- `PROD_DB_DSN`
-- `ORACLE_HOST`
-- `ORACLE_USER`
-- `ORACLE_SSH_KEY`
-- `ORACLE_KNOWN_HOSTS`
-
-> **Note on Frontend Dev Mode:**
-> Frontend UI components can be developed and previewed immediately without backend or Supabase credentials. Simply use **"Dev Quick Login"** on the Navbar to simulate authenticated states.
-
----
-
-## Recommended Full-Stack Development Flow
-
-This workflow is designed to keep frontend and backend development moving rapidly with contract-first type safety, design system consistency, and cryptographic security:
+## The four moving parts
 
 ```mermaid
 flowchart LR
-    Step1["1. UI Prototyping<br/>(shadcn skill + Mock)"]
-    --> Step2["2. Backend API<br/>(Go Huma + GORM)"]
-    --> Step3["3. Contract Sync<br/>(npm run openapi:generate)"]
-    --> Step4["4. State & Auth Sync<br/>(TanStack Query + supabase skill)"]
-    --> Step5["5. Verify & Merge<br/>(Lint, Test, Squash)"]
+    Browser["🌐 Browser"] --> FE["Frontend<br/>Next.js · port 3000"]
+    FE -->|REST API| BE["Backend<br/>Go · port 8080"]
+    BE --> DB[("Database<br/>PostgreSQL · port 5432")]
+    FE -.->|Google login| SB["Supabase<br/>(external)"]
+    BE -.->|verify login ticket| SB
 ```
 
-### Step 1: Frontend UI Prototyping (shadcn skill + Mock State)
-- Build pages using Base UI primitives in `components/ui/`. Refer directly to `frontend/.agents/skills/shadcn/` and `frontend/AGENTS.md` for Base UI composition (`render` prop, `data-icon` button rules, `<FieldGroup>` forms, and semantic styling tokens).
-- Use mock state (`loginAsDev` in `context/role-context.tsx`) to rapidly prototype interactive role-switching flows without waiting for backend or auth services.
+| Part | What it does | Folder |
+| --- | --- | --- |
+| **Frontend** | The pages you see and click | `frontend/` |
+| **Backend** | Rules, permissions, data access | `backend/` |
+| **Database** | Stores accounts, tournaments, teams | runs in Docker |
+| **Supabase** | "Sign in with Google" + image uploads | external service |
 
-### Step 2: Backend API Development (Go Huma v2 & GORM)
-- Implement repository interfaces, GORM models, and use cases in `backend/internal/`.
-- Register endpoints via `huma.Register(...)` with named request/response structs, producing standard HTTP statuses (e.g. `201 Created` for resource creation, RFC 9457 `409 Conflict` for collisions).
-- Validate with unit tests: `go test -v ./...` in `backend`.
+New to these words? See the **[Glossary](docs/glossary.md)**.
 
-### Step 3: API Contract Sync & TanStack Query Integration
-- Once backend endpoints are live, run in `frontend/`:
-  ```bash
-  npm run openapi:generate
-  ```
-- This updates `frontend/lib/api/schema.d.ts` with end-to-end type safety.
-- Connect the frontend to backend endpoints using the `$api` openapi-react-query client:
-  ```tsx
-  import { $api } from "@/lib/api/client";
+---
 
-  const { data, isLoading } = $api.useQuery("get", "/api/v1/tournaments");
-  ```
-- Invalidate and refetch cached queries when mutations or server actions succeed using `queryClient.invalidateQueries(...)`.
+## Quick start
 
-### Step 4: Verification & Git Workflow
-- **Frontend Quality Gate:**
-  ```bash
-  cd frontend
-  npm run lint       # ESLint check
-  npx tsc --noEmit   # Strict TypeScript typecheck
-  npm run format     # Optional: Prettier format for cleanliness (not required if diff is clean)
-  ```
-- **Backend Quality Gate:**
-  ```bash
-  cd backend
-  go test -v ./...   # Unit tests
-  go build ./cmd/api # Binary compilation check
-  ```
-- **Rebase & PR:**
-  - Prefix commit messages using Conventional Commits (`feat:`, `fix:`, `refactor:`, `chore:`).
-  - Rebase onto the latest `origin/main` before opening or updating pull requests.
-  - Merge into `main` using **Squash and Merge** to maintain a linear Git history graph.
+You need **Docker**, **Go 1.26+**, and **Node.js 24+** installed.
+
+```bash
+# 1. Settings files (once)
+cp backend/.env.example backend/.env
+cp frontend/.env.example frontend/.env.local
+
+# 2. Install packages (once, and after any teammate adds a package)
+make install
+
+# 3. Start the database, build its tables, add sample data (once)
+make db
+make reset && make seed
+
+# 4. Run it
+make dev
+```
+
+Then open:
+
+| URL | What |
+| --- | --- |
+| http://localhost:3000 | The website |
+| http://localhost:8080/docs | Backend endpoint list |
+
+No `make` on your machine? Every command has a plain equivalent in **[Getting Started](docs/getting-started.md)**.
+
+---
+
+## Documentation
+
+| Doc | Read it when |
+| --- | --- |
+| **[Getting Started](docs/getting-started.md)** | Setting up, or choosing how to run the project |
+| **[Troubleshooting](docs/troubleshooting.md)** | Something broke |
+| **[Glossary](docs/glossary.md)** | A word in the code or docs makes no sense |
+| **[Frontend](frontend/README.md)** | Working on pages and UI |
+| **[Backend](backend/README.md)** | Working on the API and database |
+| **[Deployment](docs/deployment.md)** | Wondering how code reaches the live server |
+
+---
+
+## Tech stack
+
+| Layer | Tools |
+| --- | --- |
+| Frontend | Next.js 16, React 19, TypeScript, Tailwind CSS v4, shadcn/ui |
+| Backend | Go 1.26, Huma v2, Chi router, GORM |
+| Database | PostgreSQL 18 |
+| Auth & files | Supabase |
+| Frontend ↔ backend | OpenAPI types + TanStack Query |
+
+---
+
+## Contributing
+
+| Rule | Detail |
+| --- | --- |
+| Commit style | `feat:` `fix:` `refactor:` `chore:` |
+| Before a PR | `make test`, then rebase onto latest `main` |
+| Merging | Squash and merge |
+| Changed a backend endpoint? | Run `npm --prefix frontend run openapi:generate` |

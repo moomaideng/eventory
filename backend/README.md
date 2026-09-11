@@ -1,130 +1,123 @@
-# Eventory Backend
+# Backend
 
-This directory contains the Go backend service. It is built utilizing a structured Ports & Adapters architecture to separate core business logic from frameworks, external APIs, and database implementations.
+The hidden server behind Eventory. It checks the rules and owns the database. Written in Go.
 
-## Technology Stack
-
-*   **Language:** Go 1.26+
-*   **API Framework:** Huma v2 (Automated OpenAPI 3.1 documentation)
-*   **Router & Middleware:** Chi Router with Logger, Recoverer, and CORS handler
-*   **Database & ORM:** PostgreSQL with GORM
-*   **Authentication:** Supabase Auth verification via JWKS (ES256 / RS256)
-*   **Configuration:** Viper
-*   **Live Reload:** Air
-
-## Repository Architecture
-
-```text
-.
-├── backend/
-│   ├── cmd/
-│   │   └── api/
-│   │       └── main.go         # Application entry point, Chi router, and Huma wiring
-│   ├── internal/               # Private application code
-│   │   ├── handlers/           # Huma HTTP handlers and DTOs (/me, /onboard, /{id})
-│   │   ├── middlewares/        # HTTP middlewares (Supabase JWKS Auth, Dev guard)
-│   │   ├── models/             # Domain and Database models (GORM tags)
-│   │   ├── repositories/       # Data access layer (GORM queries)
-│   │   ├── seeds/              # Seed scripts for development mock records
-│   │   ├── services/           # External service adapters
-│   │   └── usecases/           # Core business logic and unit tests
-│   ├── pkg/                    # Public/Shared utilities
-│   │   ├── config/             # Viper configuration loading
-│   │   └── database/           # PostgreSQL connection initialization
-│   ├── .air.toml               # Air configuration for live reloading
-│   ├── Dockerfile              # Container build for production
-│   └── README.md               # Backend-specific documentation
-```
-
-## Prerequisites
-
-Before running the server, ensure the following dependencies are installed:
-
-* **Go:** Version 1.26 or higher.
-* **Docker & Docker Compose:** For running the local PostgreSQL container.
-* **Air:** For live reloading (`go install github.com/air-verse/air@v1.67.3`).
-* **Make (Optional):** If you prefer running convenience shortcuts from the repository root on macOS/Linux.
-
-> **Windows Note:** Ensure your Go binary installation path (typically `%USERPROFILE%\go\bin`) is added to your user `PATH` environment variable so that you can invoke `air` directly in PowerShell or Command Prompt.
+Setup and run instructions live in **[Getting Started](../docs/getting-started.md)**. This page is about the code.
 
 ---
 
-## Getting Started (Native Development)
+## Run it
 
-You can run the backend service entirely natively from within this `backend/` directory without using Make or root scripts.
+```bash
+# 1. Database (Docker)
+docker compose -f ../docker-compose.yml --env-file .env up -d --wait postgres
 
-### 1. Configure Environment
+# 2. Tables and sample data (first time)
+go run ./cmd/migrate -reset
+go run ./cmd/seed
 
-Copy the local environment template inside this directory (or duplicate it manually):
+# 3. Server, restarts when you save
+air -c .air.toml
+```
+
+| URL | What |
+| --- | --- |
+| http://localhost:8080/docs | Clickable list of every endpoint. Start here. |
+| http://localhost:8080/health | Should answer with an empty "204" response |
+
+---
+
+## Where things go
+
+A request travels through four layers. Each one has a single job.
+
+```mermaid
+flowchart LR
+    R["Request"] --> H["handlers/<br/>read & reply"]
+    H --> U["usecases/<br/>the rules"]
+    U --> Rep["repositories/<br/>database queries"]
+    Rep --> DB[("PostgreSQL")]
+```
+
+| Folder | Job | Example question it answers |
+| --- | --- | --- |
+| `handlers/` | Read the request, send the reply | "What did the browser send?" |
+| `usecases/` | The actual rules | "Is this user allowed to close registration?" |
+| `repositories/` | Database reads and writes | "Fetch tournament 123" |
+| `models/` | Shape of each table | "What columns does a tournament have?" |
+| `middlewares/` | Runs before handlers | "Is this person logged in?" |
+| `cmd/` | Three programs: `api`, `migrate`, `seed` | — |
+| `pkg/` | Settings and database connection | — |
+
+**Why split it up:** the rules in `usecases/` stay readable and testable because they contain no web code and no database code.
+
+---
+
+## Adding an endpoint
+
+1. Add or update a table shape in `models/`.
+2. Add the query in `repositories/`.
+3. Put the rules in `usecases/`, and write a test next to it.
+4. Register the endpoint in `handlers/` with `huma.Register(...)`.
+5. Check it appears at http://localhost:8080/docs.
+6. Tell the frontend about it:
+
+```bash
+npm --prefix ../frontend run openapi:generate
+```
+
+Step 6 is required. The frontend gets its types from the running backend, so skipping it leaves the frontend blind to your new endpoint.
+
+---
+
+## Commands
+
+| Command | Does |
+| --- | --- |
+| `air -c .air.toml` | Run the server, restart on save |
+| `go run ./cmd/api` | Run the server, no auto-restart |
+| `go run ./cmd/migrate` | Add new tables, keep existing data |
+| `go run ./cmd/migrate -reset` | ⚠️ Delete everything, rebuild tables |
+| `go run ./cmd/seed` | Add sample accounts and tournaments |
+| `go test ./...` | Run the tests |
+| `go build ./cmd/api` | Check it still compiles |
+
+Run `go test ./...` before opening a pull request.
+
+---
+
+## Settings
+
+All settings come from `backend/.env`. Copy it from the template the first time:
 
 ```bash
 cp .env.example .env
 ```
 
-> **PostgreSQL Port Note:** If you already run PostgreSQL natively on your machine (e.g. as a Windows service), port `5432` may already be occupied. In that case, modify `POSTGRES_PORT` in `.env` (e.g. `POSTGRES_PORT=5433`) and update the port in `DB_DSN` accordingly.
+| Setting | Meaning |
+| --- | --- |
+| `PORT` | Which port the server listens on (8080) |
+| `DB_DSN` | Full address of the database, including user and password |
+| `POSTGRES_*` | User, password, database name and port for the Docker container |
+| `SUPABASE_URL` | Used to verify login tickets |
+| `CORS_ALLOWED_ORIGINS` | Which websites may call this API |
 
-### 2. Start PostgreSQL
-
-Launch the local PostgreSQL container in the background:
-
-```bash
-docker compose -f ../docker-compose.yml --env-file .env up -d --wait postgres
-```
-
-### 3. Run Database Migrations
-
-Apply GORM auto-migrations to build or rebuild your database schema:
-
-```bash
-# Recommended for dev: wipes & rebuilds schema fresh (guarantees 100% sync with Go models)
-go run ./cmd/migrate --reset
-
-# Or omit --reset if you want to preserve existing database data:
-# go run ./cmd/migrate
-```
-
-### 4. Seed Mock Data
-
-Populate the database with initial development records (accounts, tournaments):
-
-```bash
-go run ./cmd/seed
-```
-
-### 5. Start the Server
-
-- **With live-reload (Air):**
-  ```bash
-  air -c .air.toml
-  ```
-- **Or standard Go compile & run:**
-  ```bash
-  go run ./cmd/api
-  ```
-
-The API will start at `http://localhost:8080`.
-- Interactive OpenAPI 3.1 documentation: `http://localhost:8080/docs`
-- Raw OpenAPI schema: `http://localhost:8080/openapi.json`
-- Health check: `http://localhost:8080/health`
-
-### 6. Run Unit Tests
-
-```bash
-go test -v ./...
-```
+> Already have PostgreSQL on your machine? Port 5432 is taken. Change `POSTGRES_PORT` **and** the port inside `DB_DSN` to 5433.
 
 ---
 
-## Alternative: Root Make Commands (macOS / Linux)
+## Login, briefly
 
-If you are on macOS, Linux, or WSL and prefer orchestrating from the repository root using Make:
-
-```bash
-make db             # Start PostgreSQL
-make migrate        # Run migrations
-make seed           # Seed data
-make backend        # Run backend with Air
-make test           # Run backend tests & frontend checks
+```mermaid
+flowchart LR
+    U["User"] -->|"signs in with Google"| S["Supabase"]
+    S -->|"signed ticket"| B["Browser"]
+    B -->|"sends ticket with each request"| A["Backend"]
+    A -->|"checks signature"| S
 ```
 
-Viper reads `backend/.env` when running locally, while actual process environment variables take precedence. Native commands use the file's `localhost` `DB_DSN`; Compose overrides it with the Docker-local `postgres` hostname. Production continues receiving its Supabase `DB_DSN` from the deployment environment.
+The backend never sees a password. It only checks that the ticket's signature is genuine.
+
+---
+
+Something broken? → **[Troubleshooting](../docs/troubleshooting.md)**
