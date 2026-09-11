@@ -10,6 +10,15 @@ else
 DEV_RUNNER = bash ./scripts/dev.sh
 endif
 
+# Locate Air in Go's bin directory so `make backend` works even when that
+# directory is not on PATH. Mirrors the lookup already used by scripts/dev.sh
+# and scripts/dev.ps1.
+GOBIN_DIR := $(shell go env GOBIN)
+ifeq ($(GOBIN_DIR),)
+GOBIN_DIR := $(shell go env GOPATH)/bin
+endif
+AIR := $(GOBIN_DIR)/air
+
 # Install host-side project dependencies and the pinned live-reload tool.
 install:
 	npm --prefix frontend ci
@@ -35,7 +44,7 @@ db:
 	$(COMPOSE) up -d --wait postgres
 
 backend:
-	cd backend && air -c .air.toml
+	cd backend && "$(AIR)" -c .air.toml
 
 frontend:
 	npm --prefix frontend run dev
