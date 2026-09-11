@@ -66,7 +66,7 @@ export function SponsorProfileForm() {
           tournament.
         </CardDescription>
       </CardHeader>
-      <form onSubmit={handleSubmit}>
+      <form onSubmit={handleSubmit} noValidate>
         <CardContent>
           <FieldGroup>
             <Field data-invalid={Boolean(fieldErrors.sponsorName)}>
