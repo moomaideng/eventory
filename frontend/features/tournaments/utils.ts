@@ -54,7 +54,6 @@ export function formatPercentage(value: number) {
 
 export function formatRegistrationType(value: string) {
   if (value === "TEAM") return "Team registration";
-  if (value === "BOTH") return "Solo or team registration";
   return "Solo registration";
 }
 
@@ -79,5 +78,3 @@ export function formatDate(value: string) {
 export function problemMessage(error: unknown, fallback: string) {
   return extractProblemMessage(error, fallback);
 }
-
-
