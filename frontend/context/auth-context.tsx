@@ -21,6 +21,8 @@ import {
   getDevSessionAction,
 } from "@/lib/dev-session";
 
+export type AccountStatus = "ONBOARDING" | "ACTIVE" | "SUSPENDED";
+
 export interface UserProfile {
   id: string;
   email: string;
@@ -28,6 +30,7 @@ export interface UserProfile {
   handle: string;
   avatarUrl?: string;
   phone?: string;
+  status: AccountStatus;
 }
 
 export interface AuthContextType {
@@ -41,7 +44,8 @@ export interface AuthContextType {
     displayName: string,
     handle?: string,
     avatarUrl?: string,
-    phone?: string
+    phone?: string,
+    status?: AccountStatus
   ) => void;
   refreshUser: () => Promise<void>;
 }
@@ -134,6 +138,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         avatarUrl:
           account.avatarUrl || session?.user?.avatarUrl || devUser?.avatarUrl,
         phone: account.phone || undefined,
+        status: (account.status as AccountStatus) || "ACTIVE",
       };
     }
     if (devUser) {
@@ -149,6 +154,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       displayName: session.user.displayName,
       handle: session.user.email.split("@")[0],
       avatarUrl: session.user.avatarUrl,
+      status: "ACTIVE",
     };
   }, [account, devUser, session]);
 
@@ -265,7 +271,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       displayName: string,
       handle?: string,
       avatarUrl?: string,
-      phone?: string
+      phone?: string,
+      status?: AccountStatus
     ) => {
       if (devUser) {
         setDevUser((prev) =>
@@ -276,6 +283,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 handle: handle || prev.handle,
                 avatarUrl: avatarUrl || prev.avatarUrl,
                 phone: phone || prev.phone,
+                status: status || prev.status,
               }
             : null
         );
@@ -292,6 +300,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             handle: handle || old.handle,
             avatarUrl: avatarUrl || old.avatarUrl,
             phone: phone || old.phone,
+            status: status || old.status,
           };
         }
       );

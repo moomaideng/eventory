@@ -32,3 +32,26 @@ export const accountProvisionSchema = z.object({
 });
 
 export type AccountProvisionInput = z.infer<typeof accountProvisionSchema>;
+
+/**
+ * Validates onboarding form inputs for user display name and unique handle.
+ */
+export const onboardingFormSchema = z.object({
+  displayName: z
+    .string()
+    .trim()
+    .min(1, "Display name cannot be empty")
+    .max(64, "Display name must be 64 characters or fewer"),
+  handle: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .min(3, "Handle must be at least 3 characters")
+    .max(32, "Handle must be 32 characters or fewer")
+    .regex(
+      /^[a-z0-9_]+$/,
+      "Handle can only contain lowercase letters, numbers, and underscores"
+    ),
+});
+
+export type OnboardingFormValues = z.infer<typeof onboardingFormSchema>;
