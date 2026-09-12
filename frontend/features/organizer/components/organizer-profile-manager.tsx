@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import { useState } from "react";
 import { ShieldAlert } from "lucide-react";
 import { $api, apiClient } from "@/lib/api/client";
 import { useAuth } from "@/context/auth-context";
@@ -24,10 +24,10 @@ interface OrganizerProfileData {
 
 export function OrganizerProfileManager() {
   const { isLoading: isAuthLoading, authorizationHeader } = useAuth();
-  const [mode, setMode] = React.useState<"view" | "edit">("view");
-  const [isSaving, setIsSaving] = React.useState(false);
-  const [saveError, setSaveError] = React.useState("");
-  const [override, setOverride] = React.useState<OrganizerProfileData | null>(
+  const [mode, setMode] = useState<"view" | "edit">("view");
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState("");
+  const [override, setOverride] = useState<OrganizerProfileData | null>(
     null
   );
 

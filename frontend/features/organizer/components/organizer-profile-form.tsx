@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import { useState, type FormEvent, type MouseEvent as ReactMouseEvent } from "react";
 import { Trophy } from "lucide-react";
 import {
   AlertDialog,
@@ -56,14 +56,14 @@ export function OrganizerProfileForm({
   isSaving,
   saveError,
 }: OrganizerProfileFormProps) {
-  const [organizerName, setOrganizerName] = React.useState(initialName);
-  const [organizerEmail, setOrganizerEmail] = React.useState(initialEmail);
-  const [fieldErrors, setFieldErrors] = React.useState<FieldErrors>({});
-  const [dialogOpen, setDialogOpen] = React.useState(false);
+  const [organizerName, setOrganizerName] = useState(initialName);
+  const [organizerEmail, setOrganizerEmail] = useState(initialEmail);
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
+  const [dialogOpen, setDialogOpen] = useState(false);
   const [pendingData, setPendingData] =
-    React.useState<OrganizerProfileInput | null>(null);
+    useState<OrganizerProfileInput | null>(null);
 
-  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
     const result = organizerProfileSchema.safeParse({
@@ -85,7 +85,7 @@ export function OrganizerProfileForm({
     setDialogOpen(true);
   }
 
-  async function handleConfirm(event: React.MouseEvent) {
+  async function handleConfirm(event: ReactMouseEvent) {
     // AlertDialogAction closes the dialog on click by default. Save is
     // async, so we take over closing ourselves: stay open on failure so
     // the error message (and retry) stay visible.
