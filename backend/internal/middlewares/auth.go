@@ -138,26 +138,17 @@ func (m *AuthMiddleware) HumaMiddleware() func(ctx huma.Context, next func(huma.
 
 // verifyToken cryptographically verifies the token signature against Supabase JWKS public keys.
 func (m *AuthMiddleware) verifyToken(tokenString string) (string, string, error) {
-	var claims jwt.MapClaims
+	if m.jwks == nil {
+		return "", "", errors.New("auth: cryptographic verification service is unavailable")
+	}
 
-	// If JWKS is initialized from Supabase, verify signature cryptographically
-	if m.jwks != nil {
-		token, err := jwt.Parse(tokenString, m.jwks.Keyfunc)
-		if err != nil || !token.Valid {
-			return "", "", fmt.Errorf("cryptographic signature verification failed: %w", err)
-		}
-		var ok bool
-		claims, ok = token.Claims.(jwt.MapClaims)
-		if !ok {
-			return "", "", ErrInvalidToken
-		}
-	} else {
-		// Fallback when running offline without SUPABASE_URL configured in local dev
-		parser := jwt.NewParser()
-		_, _, err := parser.ParseUnverified(tokenString, &claims)
-		if err != nil {
-			return "", "", errors.New("invalid or malformed JWT token")
-		}
+	token, err := jwt.Parse(tokenString, m.jwks.Keyfunc)
+	if err != nil || !token.Valid {
+		return "", "", fmt.Errorf("cryptographic signature verification failed: %w", err)
+	}
+	claims, ok := token.Claims.(jwt.MapClaims)
+	if !ok {
+		return "", "", ErrInvalidToken
 	}
 
 	// Verify expiration claim (exp)

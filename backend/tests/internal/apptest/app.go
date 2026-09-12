@@ -35,9 +35,11 @@ func NewApp(tb testing.TB, dsn string) *App {
 		tb.Cleanup(func() { _ = sqlDB.Close() })
 	}
 
+	jwksServer := StartMockJWKSServer()
+
 	cfg := appconfig.Config{
 		Environment: "development",
-		SupabaseURL: "", // offline mode for tests: enables JWT validation without Supabase network calls
+		SupabaseURL: jwksServer.URL(),
 	}
 
 	router := server.NewRouter(db, cfg)
