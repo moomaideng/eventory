@@ -96,6 +96,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/accounts/me/tournaments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List the current organizer's tournaments */
+        get: operations["list-my-tournaments"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/accounts/{id}": {
         parameters: {
             query?: never;
@@ -243,6 +260,23 @@ export interface paths {
          *     - **Validation (400):** Requires non-empty `name`, `game`, `location`, `capacity >= 1`, and `entryFee >= 0`.
          */
         post: operations["create-tournament"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{id}/dashboard": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** View an owned tournament's dashboard and registrations */
+        get: operations["get-organizer-tournament-dashboard"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -499,6 +533,46 @@ export interface components {
              */
             type: string;
         };
+        OrganizerDashboardEntry: {
+            /** Format: date-time */
+            createdAt: string;
+            id: string;
+            members: components["schemas"]["TeamLobbyMemberResponse"][] | null;
+            name: string;
+            status: string;
+        };
+        OrganizerDashboardMetricsResponse: {
+            /**
+             * Format: int64
+             * @description Accepted entries consuming tournament capacity
+             */
+            acceptedEntries: number;
+            /** Format: int64 */
+            availableSpots: number;
+            /**
+             * Format: int64
+             * @description Distinct accounts on accepted entries
+             */
+            confirmedParticipants: number;
+            /** Format: int64 */
+            formingEntries: number;
+            /** Format: int64 */
+            lockedEntries: number;
+            /** Format: int64 */
+            rejectedEntries: number;
+            /** Format: int64 */
+            totalEntries: number;
+        };
+        OrganizerDashboardOutputBody: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/OrganizerDashboardOutputBody.json
+             */
+            readonly $schema?: string;
+            entries: components["schemas"]["OrganizerDashboardEntry"][] | null;
+            summary: components["schemas"]["OrganizerTournamentSummary"];
+        };
         OrganizerProfileResponse: {
             /**
              * Format: uri
@@ -524,6 +598,27 @@ export interface components {
              * @description Timestamp of last profile update
              */
             updatedAt: string;
+        };
+        OrganizerTournamentListOutputBody: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/OrganizerTournamentListOutputBody.json
+             */
+            readonly $schema?: string;
+            items: components["schemas"]["OrganizerTournamentSummary"][] | null;
+            /** Format: int64 */
+            page: number;
+            /** Format: int64 */
+            pageSize: number;
+            /** Format: int64 */
+            total: number;
+        };
+        OrganizerTournamentSummary: {
+            funding: components["schemas"]["TournamentFundingResponse"];
+            metrics: components["schemas"]["OrganizerDashboardMetricsResponse"];
+            published: boolean;
+            tournament: components["schemas"]["TournamentResponse"];
         };
         SponsorProfileResponse: {
             /**
@@ -1000,6 +1095,38 @@ export interface operations {
             };
         };
     };
+    "list-my-tournaments": {
+        parameters: {
+            query?: {
+                page?: number;
+                pageSize?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrganizerTournamentListOutputBody"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
     "get-account-by-id": {
         parameters: {
             query?: never;
@@ -1288,6 +1415,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TournamentResponse"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "get-organizer-tournament-dashboard": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrganizerDashboardOutputBody"];
                 };
             };
             /** @description Error */

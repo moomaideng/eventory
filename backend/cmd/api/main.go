@@ -101,13 +101,10 @@ func main() {
 	accountGroup.UseMiddleware(authMiddleware.HumaMiddleware())
 	teamLobbyGroup := huma.NewGroup(api, "/api/v1")
 	teamLobbyGroup.UseMiddleware(authMiddleware.HumaMiddleware())
-<<<<<<< HEAD
 	organizerGroup := huma.NewGroup(api, "/api/v1")
 	organizerGroup.UseMiddleware(authMiddleware.HumaMiddleware())
-=======
 	organizerTournamentGroup := huma.NewGroup(api, "/api/v1/tournaments")
 	organizerTournamentGroup.UseMiddleware(authMiddleware.HumaMiddleware(), organizerMiddleware.HumaMiddleware())
->>>>>>> 349d810 (feat(tournament): implement create and update tournament endpoints)
 
 	// Register Account Handlers onto the scoped group
 	handlers.RegisterAccountRoutes(accountGroup, accountUseCase)
