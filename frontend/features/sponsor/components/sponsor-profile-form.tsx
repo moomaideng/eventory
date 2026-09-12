@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import { useState, type FormEvent, type MouseEvent as ReactMouseEvent } from "react";
 import { Building2 } from "lucide-react";
 import {
   AlertDialog,
@@ -51,14 +51,14 @@ export function SponsorProfileForm({
   isSaving,
   saveError,
 }: SponsorProfileFormProps) {
-  const [sponsorName, setSponsorName] = React.useState(initialName);
-  const [sponsorEmail, setSponsorEmail] = React.useState(initialEmail);
-  const [fieldErrors, setFieldErrors] = React.useState<FieldErrors>({});
-  const [dialogOpen, setDialogOpen] = React.useState(false);
+  const [sponsorName, setSponsorName] = useState(initialName);
+  const [sponsorEmail, setSponsorEmail] = useState(initialEmail);
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
+  const [dialogOpen, setDialogOpen] = useState(false);
   const [pendingData, setPendingData] =
-    React.useState<SponsorProfileInput | null>(null);
+    useState<SponsorProfileInput | null>(null);
 
-  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
     const result = sponsorProfileSchema.safeParse({
@@ -80,7 +80,7 @@ export function SponsorProfileForm({
     setDialogOpen(true);
   }
 
-  async function handleConfirm(event: React.MouseEvent) {
+  async function handleConfirm(event: ReactMouseEvent) {
     // AlertDialogAction closes the dialog on click by default. Save is
     // async, so we take over closing ourselves: stay open on failure so
     // the error message (and retry) stay visible.
