@@ -312,6 +312,13 @@ func TestUpdateTournament_Guards(t *testing.T) {
 			wantErr:  usecases.ErrTournamentCannotBeModified,
 		},
 		{
+			name:     "cancelled status rejected",
+			setup:    func(tm *models.Tournament, _ *mockTournamentRepository) { tm.Status = models.TournamentStatusCancelled },
+			callerID: ownerID,
+			input:    usecases.UpdateTournamentInput{Name: ptr("New Name")},
+			wantErr:  usecases.ErrTournamentCannotBeModified,
+		},
+		{
 			name: "capacity below accepted count rejected",
 			setup: func(_ *models.Tournament, repo *mockTournamentRepository) {
 				repo.acceptedCount = 8

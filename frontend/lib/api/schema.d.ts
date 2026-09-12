@@ -346,7 +346,7 @@ export interface paths {
          *
          *     ### Restrictions & Invariants:
          *     - **Ownership (403 Forbidden):** Only the organizer profile that created the tournament can modify it.
-         *     - **Lifecycle Immutability (409 Conflict):** Tournaments with status `ONGOING` or `COMPLETED` cannot have their configuration modified.
+         *     - **Lifecycle Immutability (409 Conflict):** Tournaments with status `ONGOING`, `COMPLETED`, or `CANCELLED` cannot have their configuration modified.
          *     - **Capacity Floor (409 Conflict):** `capacity` cannot be reduced below the number of currently accepted teams/participants (`capacity >= acceptedCount`).
          *     - **Roster Freezing (409 Conflict):** Once any team has locked or been accepted into the tournament (`lockedOrAcceptedCount > 0`), `registrationMode`, `minTeamSize`, and `maxTeamSize` cannot be altered.
          *     - **Date Integrity (400 Bad Request):** Merged dates must maintain `registrationDeadline < startAt < endAt`.
