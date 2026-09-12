@@ -173,6 +173,9 @@ func TestCreateAccount_Success(t *testing.T) {
 	if account.AvatarURL == nil || *account.AvatarURL != avatar {
 		t.Errorf("expected AvatarURL %v, got %v", avatar, account.AvatarURL)
 	}
+	if account.Status != models.AccountStatusOnboarding {
+		t.Errorf("expected Status %v, got %v", models.AccountStatusOnboarding, account.Status)
+	}
 }
 
 func TestCreateAccount_Idempotent(t *testing.T) {
@@ -278,6 +281,35 @@ func TestUpdateAccount_Success(t *testing.T) {
 	}
 	if updated.Phone == nil || *updated.Phone != phone {
 		t.Errorf("expected updated Phone %v, got %v", phone, updated.Phone)
+	}
+}
+
+func TestUpdateAccount_OnboardingToActive(t *testing.T) {
+	mockRepo := newMockAccountRepository()
+	useCase := usecases.NewAccountUseCase(mockRepo)
+
+	userID := uuid.New()
+	mockRepo.accounts[userID] = &models.Account{
+		ID:          userID,
+		Email:       "newplayer@eventory.gg",
+		Handle:      "user_1024",
+		DisplayName: "New Player",
+		Status:      models.AccountStatusOnboarding,
+	}
+
+	newHandle := "pro_player"
+	updated, err := useCase.UpdateAccount(context.Background(), userID, usecases.UpdateAccountInput{
+		Handle: &newHandle,
+	})
+	if err != nil {
+		t.Fatalf("expected no error, got: %v", err)
+	}
+
+	if updated.Status != models.AccountStatusActive {
+		t.Errorf("expected status %v, got %v", models.AccountStatusActive, updated.Status)
+	}
+	if updated.Handle != "pro_player" {
+		t.Errorf("expected handle 'pro_player', got %v", updated.Handle)
 	}
 }
 

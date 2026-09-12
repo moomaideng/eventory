@@ -177,7 +177,7 @@ func (u *AccountUseCase) CreateAccount(ctx context.Context, input CreateAccountI
 		DisplayName: displayName,
 		Handle:      handle,
 		AvatarURL:   input.AvatarURL,
-		Status:      "ACTIVE",
+		Status:      models.AccountStatusOnboarding,
 	}
 
 	if err := u.accountRepo.Create(ctx, account); err != nil {
@@ -255,6 +255,10 @@ func (u *AccountUseCase) UpdateAccount(ctx context.Context, id uuid.UUID, input 
 
 	if input.AvatarURL != nil {
 		account.AvatarURL = cleanOptionalString(*input.AvatarURL)
+	}
+
+	if account.Status == models.AccountStatusOnboarding {
+		account.Status = models.AccountStatusActive
 	}
 
 	if err := u.accountRepo.Update(ctx, account); err != nil {
