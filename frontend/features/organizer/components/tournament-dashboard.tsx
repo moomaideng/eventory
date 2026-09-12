@@ -13,6 +13,7 @@ import {
 } from "@/features/organizer/components/dashboard-shared";
 import { DashboardOverview } from "@/features/organizer/components/dashboard-overview";
 import { RegistrationTable } from "@/features/organizer/components/registration-table";
+import { StatusControlDialog } from "@/features/organizer/components/status-control-dialog";
 import { dashboardQueryOptions, statusLabel } from "@/features/organizer/utils";
 
 export function TournamentDashboard({
@@ -77,7 +78,11 @@ export function TournamentDashboard({
                 </div>
               </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <StatusControlDialog
+                tournamentId={tournamentId}
+                currentStatus={data.summary.tournament.status}
+              />
               {data.summary.published ? (
                 <Button
                   render={<Link href={`/tournaments/${tournamentId}`} />}

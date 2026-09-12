@@ -23,7 +23,7 @@ var (
 	ErrInvalidTournamentCapacity  = errors.New("tournament capacity must be at least 1")
 	ErrInvalidRegistrationMode    = errors.New("invalid registration mode: must be SOLO or TEAM")
 	ErrInvalidTeamSize            = errors.New("minimum team size must be at least 1 and less than or equal to maximum team size")
-	ErrTournamentCannotBeModified = errors.New("ongoing or completed tournaments cannot be modified")
+	ErrTournamentCannotBeModified = errors.New("ongoing, completed, or cancelled tournaments cannot be modified")
 	ErrCapacityBelowAcceptedTeams = errors.New("capacity cannot be less than the number of accepted teams")
 	ErrRosterRulesLocked          = errors.New("team size and registration mode cannot be modified after teams have locked or been accepted")
 )
@@ -135,11 +135,14 @@ func (u *TournamentUseCase) Search(
 
 	status := models.TournamentStatus(strings.ToUpper(strings.TrimSpace(input.Status)))
 	validStatuses := map[models.TournamentStatus]bool{
-		"":                                      true,
-		models.TournamentStatusRegistrationOpen: true,
+		"":                                        true,
+		models.TournamentStatusDraft:              true,
+		models.TournamentStatusCrowdfunding:       true,
+		models.TournamentStatusRegistrationOpen:   true,
 		models.TournamentStatusRegistrationClosed: true,
 		models.TournamentStatusOngoing:            true,
 		models.TournamentStatusCompleted:          true,
+		models.TournamentStatusCancelled:          true,
 	}
 	if !validStatuses[status] {
 		return nil, ErrInvalidTournamentFilters
@@ -331,7 +334,11 @@ func (u *TournamentUseCase) UpdateTournament(
 		return nil, ErrNotTournamentOwner
 	}
 
-	if tournament.Status == models.TournamentStatusOngoing || tournament.Status == models.TournamentStatusCompleted {
+	// CANCELLED is terminal too (US3-3): cancelling refunds entrants, so the
+	// tournament must not be re-configured afterwards.
+	if tournament.Status == models.TournamentStatusOngoing ||
+		tournament.Status == models.TournamentStatusCompleted ||
+		tournament.Status == models.TournamentStatusCancelled {
 		return nil, ErrTournamentCannotBeModified
 	}
 

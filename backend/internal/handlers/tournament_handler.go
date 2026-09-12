@@ -87,7 +87,7 @@ type SearchTournamentsInput struct {
 	StartTo     string `query:"startTo" doc:"Latest tournament start date (YYYY-MM-DD)"`
 	MinEntryFee int64  `query:"minEntryFee" default:"-1" minimum:"-1" doc:"Minimum entry fee; omit to disable"`
 	MaxEntryFee int64  `query:"maxEntryFee" default:"-1" minimum:"-1" doc:"Maximum entry fee; omit to disable"`
-	Status      string `query:"status" enum:"REGISTRATION_OPEN,REGISTRATION_CLOSED,ONGOING,COMPLETED"`
+	Status      string `query:"status" enum:"DRAFT,CROWDFUNDING,REGISTRATION_OPEN,REGISTRATION_CLOSED,ONGOING,COMPLETED,CANCELLED"`
 	Sort        string `query:"sort" default:"start_asc" enum:"start_asc,start_desc,fee_asc,fee_desc"`
 	Page        int    `query:"page" default:"1" minimum:"1"`
 	PageSize    int    `query:"pageSize" default:"12" minimum:"1" maximum:"100"`
@@ -253,7 +253,7 @@ func RegisterTournamentRoutes(api huma.API, organizerGroup huma.API, tournamentU
 		Description: "Updates an existing tournament configuration. Only permitted for the organizing owner with the following invariants:\n\n" +
 			"### Restrictions & Invariants:\n" +
 			"- **Ownership (403 Forbidden):** Only the organizer profile that created the tournament can modify it.\n" +
-			"- **Lifecycle Immutability (409 Conflict):** Tournaments with status `ONGOING` or `COMPLETED` cannot have their configuration modified.\n" +
+			"- **Lifecycle Immutability (409 Conflict):** Tournaments with status `ONGOING`, `COMPLETED`, or `CANCELLED` cannot have their configuration modified.\n" +
 			"- **Capacity Floor (409 Conflict):** `capacity` cannot be reduced below the number of currently accepted teams/participants (`capacity >= acceptedCount`).\n" +
 			"- **Roster Freezing (409 Conflict):** Once any team has locked or been accepted into the tournament (`lockedOrAcceptedCount > 0`), `registrationMode`, `minTeamSize`, and `maxTeamSize` cannot be altered.\n" +
 			"- **Date Integrity (400 Bad Request):** Merged dates must maintain `registrationDeadline < startAt < endAt`.\n" +

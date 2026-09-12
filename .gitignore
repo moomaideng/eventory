@@ -1,3 +1,6 @@
 # Ignore any legacy root environment file. Local configuration lives under
 # frontend/ and backend/; each directory tracks only its .env.example.
 /.env*
+
+# for dev to put context, temporary file
+temp/
