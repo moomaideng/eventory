@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import { QueryProvider } from "@/components/providers/query-provider";
 import { AuthProvider } from "@/context/auth-context";
 import { ThemeProvider } from "@/components/providers/theme-provider";
+import { OnboardingModal } from "@/features/auth/components/onboarding-modal";
 
 const fontSans = Outfit({
   subsets: ["latin"],
@@ -45,7 +46,10 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <QueryProvider>
-            <AuthProvider>{children}</AuthProvider>
+            <AuthProvider>
+              {children}
+              <OnboardingModal />
+            </AuthProvider>
           </QueryProvider>
         </ThemeProvider>
       </body>

@@ -21,7 +21,7 @@ type AccountResponse struct {
 	DisplayName string    `json:"displayName" doc:"User display name"`
 	AvatarURL   *string   `json:"avatarUrl,omitempty" doc:"User avatar image URL"`
 	Phone       *string   `json:"phone,omitempty" doc:"Contact phone number"`
-	Status      string    `json:"status" doc:"Account status (ACTIVE, SUSPENDED)"`
+	Status      models.AccountStatus `json:"status" doc:"Account status (ONBOARDING, ACTIVE, SUSPENDED)" enum:"ONBOARDING,ACTIVE,SUSPENDED"`
 	CreatedAt   time.Time `json:"createdAt" doc:"Timestamp of account creation"`
 }
 
@@ -313,6 +313,9 @@ func RegisterAccountRoutes(api huma.API, accountUseCase *usecases.AccountUseCase
 		if err != nil {
 			return nil, err
 		}
+		if acc.Status == models.AccountStatusOnboarding {
+			return nil, huma.Error403Forbidden("Onboarding required: please complete your profile first")
+		}
 
 		profile, err := accountUseCase.UpsertOrganizerProfile(ctx, acc.ID, usecases.UpsertOrganizerProfileInput{
 			OrganizerName:  input.Body.OrganizerName,
@@ -367,6 +370,9 @@ func RegisterAccountRoutes(api huma.API, accountUseCase *usecases.AccountUseCase
 		acc, err := getAuthAccount(ctx, accountUseCase)
 		if err != nil {
 			return nil, err
+		}
+		if acc.Status == models.AccountStatusOnboarding {
+			return nil, huma.Error403Forbidden("Onboarding required: please complete your profile first")
 		}
 
 		profile, err := accountUseCase.UpsertSponsorProfile(ctx, acc.ID, usecases.UpsertSponsorProfileInput{

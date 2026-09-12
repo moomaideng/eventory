@@ -7,4 +7,5 @@ export const MOCK_USER: UserProfile = {
   displayName: "Alex (Dev)",
   handle: "dev_alex",
   avatarUrl: "https://api.dicebear.com/7.x/avataaars/svg?seed=AlexDev",
+  status: "ACTIVE",
 };

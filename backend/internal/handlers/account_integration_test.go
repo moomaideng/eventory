@@ -164,8 +164,8 @@ func TestAccountDomain_Integration(t *testing.T) {
 		if created.DisplayName != "Player One" || created.Handle != "player_one" {
 			t.Errorf("unexpected displayName or handle: %+v", created)
 		}
-		if created.Status != "ACTIVE" {
-			t.Errorf("expected status ACTIVE, got %s", created.Status)
+		if created.Status != models.AccountStatusOnboarding {
+			t.Errorf("expected status %s, got %s", models.AccountStatusOnboarding, created.Status)
 		}
 	})
 
@@ -229,6 +229,9 @@ func TestAccountDomain_Integration(t *testing.T) {
 		}
 		if updated.Phone == nil || *updated.Phone != phone {
 			t.Errorf("expected updated phone, got %v", updated.Phone)
+		}
+		if updated.Status != models.AccountStatusActive {
+			t.Errorf("expected status %s, got %s", models.AccountStatusActive, updated.Status)
 		}
 	})
 

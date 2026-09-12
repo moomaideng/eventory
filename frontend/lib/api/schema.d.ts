@@ -400,8 +400,11 @@ export interface components {
             id: string;
             /** @description Contact phone number */
             phone?: string;
-            /** @description Account status (ACTIVE, SUSPENDED) */
-            status: string;
+            /**
+             * @description Account status (ONBOARDING, ACTIVE, SUSPENDED)
+             * @enum {string}
+             */
+            status: "ONBOARDING" | "ACTIVE" | "SUSPENDED";
         };
         CreateAccountRequest: {
             /**

@@ -222,23 +222,32 @@ func registerCaptainAction(api huma.API, lobbyUseCase *usecases.TeamLobbyUseCase
 }
 
 func authenticatedAccount(ctx context.Context, accountUseCase *usecases.AccountUseCase) (*models.Account, error) {
+	var account *models.Account
 	if userID, err := middlewares.GetAuthUserID(ctx); err == nil {
 		if acc, _ := accountUseCase.GetAccountByID(ctx, userID); acc != nil {
-			return acc, nil
+			account = acc
 		}
 	}
 
-	email, err := middlewares.GetAuthEmail(ctx)
-	if err != nil {
-		return nil, huma.Error401Unauthorized("Authentication required", err)
-	}
-	account, err := accountUseCase.GetAccountByEmail(ctx, email)
-	if err != nil {
-		if errors.Is(err, usecases.ErrAccountNotFound) {
-			return nil, huma.Error404NotFound("Account not found.", err)
+	if account == nil {
+		email, err := middlewares.GetAuthEmail(ctx)
+		if err != nil {
+			return nil, huma.Error401Unauthorized("Authentication required", err)
 		}
-		return nil, huma.Error500InternalServerError("Failed to retrieve account", err)
+		acc, err := accountUseCase.GetAccountByEmail(ctx, email)
+		if err != nil {
+			if errors.Is(err, usecases.ErrAccountNotFound) {
+				return nil, huma.Error404NotFound("Account not found.", err)
+			}
+			return nil, huma.Error500InternalServerError("Failed to retrieve account", err)
+		}
+		account = acc
 	}
+
+	if account.Status == models.AccountStatusOnboarding {
+		return nil, huma.Error403Forbidden("Onboarding required: please complete your profile first")
+	}
+
 	return account, nil
 }
 
