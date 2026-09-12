@@ -12,7 +12,7 @@ export default function HostTournamentPage() {
   return (
     <>
       <HostTournamentWorkspace />
-      <OrganizerOnboardingModal redirectToOnCancel="/organizer" />
+      <OrganizerOnboardingModal redirectToOnCancel="/organizer" cancelMessage="Cancel & Return to Tournaments" />
     </>
   );
 }

@@ -41,6 +41,7 @@ interface OrganizerOnboardingFormProps {
   onSuccess?: (profile: OrganizerProfile) => void;
   onCancel?: () => void;
   showCancelButton?: boolean;
+  cancelMessage?: string;
 }
 
 function OrganizerOnboardingForm({
@@ -49,6 +50,7 @@ function OrganizerOnboardingForm({
   onSuccess,
   onCancel,
   showCancelButton = false,
+  cancelMessage = "Cancel",
 }: OrganizerOnboardingFormProps) {
   const { logout } = useAuth();
 
@@ -257,7 +259,7 @@ function OrganizerOnboardingForm({
               disabled={isSubmitting}
               className="text-muted-foreground hover:text-foreground text-xs"
             >
-              Cancel & Return to Tournaments
+              {cancelMessage}
             </Button>
           )}
         </div>
@@ -281,6 +283,8 @@ export interface OrganizerOnboardingModalProps {
   onCancel?: () => void;
   /** Optional URL path to redirect to upon modal cancellation (e.g. "/organizer"). */
   redirectToOnCancel?: string;
+  /** Optional to display as the cancel button */
+  cancelMessage?: string;
 }
 
 export function OrganizerOnboardingModal({
@@ -289,6 +293,7 @@ export function OrganizerOnboardingModal({
   onSuccess,
   onCancel,
   redirectToOnCancel,
+  cancelMessage,
 }: OrganizerOnboardingModalProps = {}) {
   const router = useRouter();
   const { user } = useAuth();
@@ -340,6 +345,7 @@ export function OrganizerOnboardingModal({
           onSuccess={handleSuccess}
           onCancel={handleCancel}
           showCancelButton={showCancelButton}
+          cancelMessage={cancelMessage}
         />
       </AlertDialogContent>
     </AlertDialog>
