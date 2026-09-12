@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
+import { useRouter } from "next/navigation";
 import { LogOut } from "lucide-react";
 import {
   AlertDialog,
@@ -34,17 +35,22 @@ type FieldErrors = Partial<Record<keyof OrganizerOnboardingValues, string>>;
 
 interface OrganizerOnboardingFormProps {
   user: UserProfile;
+  upsertProfile: (
+    input: OrganizerOnboardingValues
+  ) => Promise<{ data?: OrganizerProfile; error?: string }>;
   onSuccess?: (profile: OrganizerProfile) => void;
   onCancel?: () => void;
+  showCancelButton?: boolean;
 }
 
 function OrganizerOnboardingForm({
   user,
+  upsertProfile,
   onSuccess,
   onCancel,
+  showCancelButton = false,
 }: OrganizerOnboardingFormProps) {
   const { logout } = useAuth();
-  const { upsertProfile } = useOrganizerProfile();
 
   const [organizerName, setOrganizerName] = useState(user.displayName || "");
   const [organizerEmail, setOrganizerEmail] = useState(user.email || "");
@@ -172,13 +178,10 @@ function OrganizerOnboardingForm({
                   setApiError("");
                 }
               }}
-              placeholder="e.g. Chula Esports Club"
+              placeholder="e.g. Cool Chess Club"
               maxLength={150}
               disabled={isSubmitting}
             />
-            <FieldDescription>
-              Public organization or brand name shown across your tournaments.
-            </FieldDescription>
             {fieldErrors.organizerName && (
               <FieldError>{fieldErrors.organizerName}</FieldError>
             )}
@@ -205,12 +208,12 @@ function OrganizerOnboardingForm({
                   setApiError("");
                 }
               }}
-              placeholder="contact@chulaesports.com"
+              placeholder="contact@chessevent.com"
               maxLength={255}
               disabled={isSubmitting}
             />
             <FieldDescription>
-              Where participants and sponsors can reach you. Defaults to your account email.
+              Where participants and sponsors can reach you.
             </FieldDescription>
             {fieldErrors.organizerEmail && (
               <FieldError>{fieldErrors.organizerEmail}</FieldError>
@@ -245,7 +248,7 @@ function OrganizerOnboardingForm({
             )}
           </Button>
 
-          {onCancel && (
+          {showCancelButton && onCancel && (
             <Button
               type="button"
               variant="ghost"
@@ -276,6 +279,8 @@ export interface OrganizerOnboardingModalProps {
   onSuccess?: (profile: OrganizerProfile) => void;
   /** Callback invoked when the user cancels or dismisses the modal. */
   onCancel?: () => void;
+  /** Optional URL path to redirect to upon modal cancellation (e.g. "/organizer"). */
+  redirectToOnCancel?: string;
 }
 
 export function OrganizerOnboardingModal({
@@ -283,9 +288,11 @@ export function OrganizerOnboardingModal({
   onOpenChange,
   onSuccess,
   onCancel,
+  redirectToOnCancel,
 }: OrganizerOnboardingModalProps = {}) {
+  const router = useRouter();
   const { user } = useAuth();
-  const { needsOnboarding } = useOrganizerProfile();
+  const { needsOnboarding, upsertProfile } = useOrganizerProfile();
   const [dismissed, setDismissed] = useState(false);
 
   const isControlled = typeof open === "boolean";
@@ -301,12 +308,18 @@ export function OrganizerOnboardingModal({
     }
     onCancel?.();
     onOpenChange?.(false);
+    if (redirectToOnCancel) {
+      router.push(redirectToOnCancel);
+    }
   }
 
   function handleSuccess(profile: OrganizerProfile) {
     onSuccess?.(profile);
     onOpenChange?.(false);
   }
+
+  const showCancelButton =
+    isControlled || Boolean(onCancel) || Boolean(redirectToOnCancel);
 
   return (
     <AlertDialog
@@ -323,8 +336,10 @@ export function OrganizerOnboardingModal({
         <OrganizerOnboardingForm
           key={user.id}
           user={user}
+          upsertProfile={upsertProfile}
           onSuccess={handleSuccess}
-          onCancel={isControlled || onCancel ? handleCancel : undefined}
+          onCancel={handleCancel}
+          showCancelButton={showCancelButton}
         />
       </AlertDialogContent>
     </AlertDialog>

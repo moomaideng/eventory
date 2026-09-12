@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { HostTournamentWorkspace } from "@/features/organizer/components/host-tournament-workspace";
+import { OrganizerOnboardingModal } from "@/features/organizer/components/organizer-onboarding-modal";
 
 export const metadata: Metadata = {
   title: "Host a Tournament - Eventory",
@@ -8,5 +9,10 @@ export const metadata: Metadata = {
 };
 
 export default function HostTournamentPage() {
-  return <HostTournamentWorkspace />;
+  return (
+    <>
+      <HostTournamentWorkspace />
+      <OrganizerOnboardingModal redirectToOnCancel="/organizer" />
+    </>
+  );
 }
