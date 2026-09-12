@@ -20,6 +20,12 @@ export const organizerProfileSchema = z.object({
 export type OrganizerProfileInput = z.infer<typeof organizerProfileSchema>;
 
 /**
+ * Validates onboarding form inputs for organizer profile setup.
+ */
+export const organizerOnboardingSchema = organizerProfileSchema;
+export type OrganizerOnboardingValues = OrganizerProfileInput;
+
+/**
  * Validates form submission when hosting a new tournament.
  * Enforces date sequencing (registrationDeadline < startAt < endAt)
  * and roster sizing invariants.
