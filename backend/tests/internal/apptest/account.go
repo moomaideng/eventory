@@ -3,9 +3,7 @@ package apptest
 import (
 	"fmt"
 	"sync/atomic"
-	"time"
 
-	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 )
 
@@ -50,14 +48,7 @@ func NewTestUser() *TestUser {
 	}
 }
 
-// GenerateTestJWT signs a JWT claim containing sub, email, and exp without network calls.
+// GenerateTestJWT signs a JWT claim containing sub, email, and exp using the test RSA private key.
 func GenerateTestJWT(sub uuid.UUID, email string) string {
-	claims := jwt.MapClaims{
-		"sub":   sub.String(),
-		"email": email,
-		"exp":   time.Now().Add(2 * time.Hour).Unix(),
-	}
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	tokenString, _ := token.SignedString([]byte("eventory-bdd-test-secret"))
-	return tokenString
+	return StartMockJWKSServer().SignJWT(sub, email)
 }
