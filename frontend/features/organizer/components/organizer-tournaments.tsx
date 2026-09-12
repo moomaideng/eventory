@@ -6,6 +6,7 @@ import {
   ArrowUpRight,
   CalendarDays,
   LayoutDashboard,
+  Plus,
   Trophy,
   Users,
 } from "lucide-react";
@@ -80,10 +81,20 @@ export function OrganizerTournaments() {
             ) : null}
           </div>
         </div>
-        <RefreshDashboard
-          fetching={isFetching || loading}
-          onRefresh={() => void refetch()}
-        />
+        <div className="flex items-center gap-2">
+          <Button
+            render={<Link href="/organizer/tournaments/new" />}
+            nativeButton={false}
+            size="sm"
+          >
+            <Plus data-icon="inline-start" />
+            Host tournament
+          </Button>
+          <RefreshDashboard
+            fetching={isFetching || loading}
+            onRefresh={() => void refetch()}
+          />
+        </div>
       </header>
 
       {loading ? (
@@ -102,16 +113,24 @@ export function OrganizerTournaments() {
             <EmptyDescription>
               {page > 1
                 ? "Return to the first page to see your current tournaments."
-                : "Your hosted tournaments will appear here."}
+                : "Get started by hosting your first esports tournament."}
             </EmptyDescription>
           </EmptyHeader>
-          {page > 1 ? (
-            <EmptyContent>
+          <EmptyContent>
+            {page > 1 ? (
               <Button variant="outline" onClick={() => setPage(1)}>
                 First page
               </Button>
-            </EmptyContent>
-          ) : null}
+            ) : (
+              <Button
+                render={<Link href="/organizer/tournaments/new" />}
+                nativeButton={false}
+              >
+                <Plus data-icon="inline-start" />
+                Host a tournament
+              </Button>
+            )}
+          </EmptyContent>
         </Empty>
       ) : (
         <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
