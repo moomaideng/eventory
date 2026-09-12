@@ -34,6 +34,10 @@ type TournamentSearchItem struct {
 type TournamentRepository interface {
 	Search(ctx context.Context, filters TournamentFilters) ([]TournamentSearchItem, int64, error)
 	GetPublishedByID(ctx context.Context, id uuid.UUID) (*models.Tournament, error)
+	GetByID(ctx context.Context, id uuid.UUID) (*models.Tournament, error)
+	Create(ctx context.Context, tournament *models.Tournament, funding *models.TournamentFunding) error
+	Update(ctx context.Context, tournament *models.Tournament) error
+	GetActiveTeamCount(ctx context.Context, tournamentID uuid.UUID) (acceptedCount int64, lockedOrAcceptedCount int64, err error)
 }
 
 type tournamentRepositoryImpl struct {
@@ -159,6 +163,79 @@ func (r *tournamentRepositoryImpl) GetPublishedByID(
 	}
 
 	return &tournament, nil
+}
+
+func (r *tournamentRepositoryImpl) GetByID(
+	ctx context.Context,
+	id uuid.UUID,
+) (*models.Tournament, error) {
+	var tournament models.Tournament
+	err := r.db.WithContext(ctx).
+		Where("id = ?", id).
+		Preload("Organizer").
+		Preload("Funding").
+		First(&tournament).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, ErrTournamentNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	return &tournament, nil
+}
+
+func (r *tournamentRepositoryImpl) Create(
+	ctx context.Context,
+	tournament *models.Tournament,
+	funding *models.TournamentFunding,
+) error {
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := tx.Create(tournament).Error; err != nil {
+			return err
+		}
+		if funding != nil {
+			funding.TournamentID = tournament.ID
+			if err := tx.Create(funding).Error; err != nil {
+				return err
+			}
+			tournament.Funding = funding
+		}
+		return nil
+	})
+}
+
+func (r *tournamentRepositoryImpl) Update(
+	ctx context.Context,
+	tournament *models.Tournament,
+) error {
+	return r.db.WithContext(ctx).Save(tournament).Error
+}
+
+func (r *tournamentRepositoryImpl) GetActiveTeamCount(
+	ctx context.Context,
+	tournamentID uuid.UUID,
+) (int64, int64, error) {
+	var acceptedCount int64
+	err := r.db.WithContext(ctx).Model(&models.TournamentTeam{}).
+		Where("tournament_id = ? AND status = ?", tournamentID, models.TournamentTeamStatusAccepted).
+		Count(&acceptedCount).Error
+	if err != nil {
+		return 0, 0, err
+	}
+
+	var lockedOrAcceptedCount int64
+	err = r.db.WithContext(ctx).Model(&models.TournamentTeam{}).
+		Where("tournament_id = ? AND status IN ?", tournamentID, []models.TournamentTeamStatus{
+			models.TournamentTeamStatusAccepted,
+			models.TournamentTeamStatusLocked,
+		}).
+		Count(&lockedOrAcceptedCount).Error
+	if err != nil {
+		return 0, 0, err
+	}
+
+	return acceptedCount, lockedOrAcceptedCount, nil
 }
 
 func escapeLikePattern(value string) string {

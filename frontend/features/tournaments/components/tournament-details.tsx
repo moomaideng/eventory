@@ -79,11 +79,8 @@ export function TournamentDetails({ tournamentId }: { tournamentId: string }) {
   );
   const status = tournament.status.replaceAll("_", " ").toLowerCase();
   const registrationType = formatRegistrationType(tournament.registrationMode);
-  const supportsTeams =
-    tournament.registrationMode === "TEAM" ||
-    tournament.registrationMode === "BOTH";
   const canCreateTeam =
-    supportsTeams &&
+    tournament.registrationMode === "TEAM" &&
     tournament.status === "REGISTRATION_OPEN" &&
     !isMyTeamLoading &&
     !myTeam;

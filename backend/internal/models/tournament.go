@@ -20,7 +20,6 @@ type TournamentRegistrationMode string
 const (
 	TournamentRegistrationModeSolo TournamentRegistrationMode = "SOLO"
 	TournamentRegistrationModeTeam TournamentRegistrationMode = "TEAM"
-	TournamentRegistrationModeBoth TournamentRegistrationMode = "BOTH"
 )
 
 type TournamentTeamStatus string

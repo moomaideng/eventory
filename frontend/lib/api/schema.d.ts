@@ -96,6 +96,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/accounts/me/tournaments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List the current organizer's tournaments */
+        get: operations["list-my-tournaments"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/accounts/{id}": {
         parameters: {
             query?: never;
@@ -218,23 +235,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/accounts/me/tournaments": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List the current organizer's tournaments */
-        get: operations["list-my-tournaments"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/tournaments": {
         parameters: {
             query?: never;
@@ -248,7 +248,18 @@ export interface paths {
          */
         get: operations["search-tournaments"];
         put?: never;
-        post?: never;
+        /**
+         * Create tournament
+         * @description Creates a new tournament for the authenticated organizer. Requires an active organizer profile.
+         *
+         *     ### Rules & Defaults:
+         *     - **Status & Visibility:** Defaults to `REGISTRATION_OPEN` and `published: true`.
+         *     - **Currency:** Defaulted to `THB`.
+         *     - **Registration Mode:** If `SOLO`, `minTeamSize` and `maxTeamSize` are automatically set to `1`. If `TEAM`, requires `1 <= minTeamSize <= maxTeamSize`.
+         *     - **Date Integrity (400):** Requires `registrationDeadline < startAt < endAt`.
+         *     - **Validation (400):** Requires non-empty `name`, `game`, `location`, `capacity >= 1`, and `entryFee >= 0`.
+         */
+        post: operations["create-tournament"];
         delete?: never;
         options?: never;
         head?: never;
@@ -289,7 +300,19 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        patch?: never;
+        /**
+         * Update tournament
+         * @description Updates an existing tournament configuration. Only permitted for the organizing owner with the following invariants:
+         *
+         *     ### Restrictions & Invariants:
+         *     - **Ownership (403 Forbidden):** Only the organizer profile that created the tournament can modify it.
+         *     - **Lifecycle Immutability (409 Conflict):** Tournaments with status `ONGOING` or `COMPLETED` cannot have their configuration modified.
+         *     - **Capacity Floor (409 Conflict):** `capacity` cannot be reduced below the number of currently accepted teams/participants (`capacity >= acceptedCount`).
+         *     - **Roster Freezing (409 Conflict):** Once any team has locked or been accepted into the tournament (`lockedOrAcceptedCount > 0`), `registrationMode`, `minTeamSize`, and `maxTeamSize` cannot be altered.
+         *     - **Date Integrity (400 Bad Request):** Merged dates must maintain `registrationDeadline < startAt < endAt`.
+         *     - **Field Validation (400 Bad Request):** If provided, `name`, `game`, and `location` cannot be empty or whitespace; `entryFee` cannot be negative.
+         */
+        patch: operations["update-tournament"];
         trace?: never;
     };
     "/api/v1/tournaments/{tournamentId}/lobbies": {
@@ -403,6 +426,65 @@ export interface components {
             readonly $schema?: string;
             /** @description Team name */
             name: string;
+        };
+        CreateTournamentRequest: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/CreateTournamentRequest.json
+             */
+            readonly $schema?: string;
+            /**
+             * Format: int64
+             * @description Maximum participant or team capacity
+             */
+            capacity: number;
+            /** @description Tournament description or rules */
+            description: string;
+            /**
+             * Format: date-time
+             * @description Tournament end timestamp (RFC 3339)
+             */
+            endAt: string;
+            /**
+             * Format: int64
+             * @description Entry fee in whole currency units
+             * @default 0
+             */
+            entryFee: number;
+            /** @description Game title */
+            game: string;
+            /** @description Location or 'Online' */
+            location: string;
+            /**
+             * Format: int64
+             * @description Maximum team size (coerced to 1 for SOLO)
+             * @default 1
+             */
+            maxTeamSize: number;
+            /**
+             * Format: int64
+             * @description Minimum team size (coerced to 1 for SOLO)
+             * @default 1
+             */
+            minTeamSize: number;
+            /** @description Tournament name */
+            name: string;
+            /**
+             * Format: date-time
+             * @description Registration deadline timestamp (RFC 3339)
+             */
+            registrationDeadline: string;
+            /**
+             * @description Registration mode: SOLO or TEAM
+             * @enum {string}
+             */
+            registrationMode: "SOLO" | "TEAM";
+            /**
+             * Format: date-time
+             * @description Tournament start timestamp (RFC 3339)
+             */
+            startAt: string;
         };
         ErrorDetail: {
             /** @description Where the error occurred, e.g. 'body.items[3].tags' or 'path.thing-id' */
@@ -647,6 +729,12 @@ export interface components {
             total: number;
         };
         TournamentResponse: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/TournamentResponse.json
+             */
+            readonly $schema?: string;
             /** Format: int64 */
             capacity: number;
             currency: string;
@@ -672,7 +760,7 @@ export interface components {
             /** Format: date-time */
             registrationDeadline: string;
             /** @enum {string} */
-            registrationMode: "SOLO" | "TEAM" | "BOTH";
+            registrationMode: "SOLO" | "TEAM";
             /** Format: date-time */
             startAt: string;
             status: string;
@@ -698,6 +786,62 @@ export interface components {
             handle?: string;
             /** @description New contact phone */
             phone?: string;
+        };
+        UpdateTournamentRequest: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/UpdateTournamentRequest.json
+             */
+            readonly $schema?: string;
+            /**
+             * Format: int64
+             * @description New capacity
+             */
+            capacity?: number;
+            /** @description New tournament description */
+            description?: string;
+            /**
+             * Format: date-time
+             * @description New end timestamp
+             */
+            endAt?: string;
+            /**
+             * Format: int64
+             * @description New entry fee
+             */
+            entryFee?: number;
+            /** @description New game title */
+            game?: string;
+            /** @description New location */
+            location?: string;
+            /**
+             * Format: int64
+             * @description New maximum team size
+             */
+            maxTeamSize?: number;
+            /**
+             * Format: int64
+             * @description New minimum team size
+             */
+            minTeamSize?: number;
+            /** @description New tournament name */
+            name?: string;
+            /**
+             * Format: date-time
+             * @description New registration deadline timestamp
+             */
+            registrationDeadline?: string;
+            /**
+             * @description New registration mode
+             * @enum {string}
+             */
+            registrationMode?: "SOLO" | "TEAM";
+            /**
+             * Format: date-time
+             * @description New start timestamp
+             */
+            startAt?: string;
         };
         UpsertOrganizerProfileRequest: {
             /**
@@ -951,6 +1095,38 @@ export interface operations {
             };
         };
     };
+    "list-my-tournaments": {
+        parameters: {
+            query?: {
+                page?: number;
+                pageSize?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrganizerTournamentListOutputBody"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
     "get-account-by-id": {
         parameters: {
             query?: never;
@@ -1175,38 +1351,6 @@ export interface operations {
             };
         };
     };
-    "list-my-tournaments": {
-        parameters: {
-            query?: {
-                page?: number;
-                pageSize?: number;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OrganizerTournamentListOutputBody"];
-                };
-            };
-            /** @description Error */
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["ErrorModel"];
-                };
-            };
-        };
-    };
     "search-tournaments": {
         parameters: {
             query?: {
@@ -1238,6 +1382,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TournamentListBody"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "create-tournament": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateTournamentRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TournamentResponse"];
                 };
             };
             /** @description Error */
@@ -1301,6 +1478,42 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TournamentDetailsBody"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "update-tournament": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Tournament UUID */
+                tournamentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateTournamentRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TournamentResponse"];
                 };
             };
             /** @description Error */

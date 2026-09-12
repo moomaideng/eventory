@@ -8,9 +8,58 @@ import (
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/google/uuid"
+	"github.com/moomaideng/eventory/internal/middlewares"
 	"github.com/moomaideng/eventory/internal/models"
 	"github.com/moomaideng/eventory/internal/usecases"
 )
+
+type TournamentOutput struct {
+	Body TournamentResponse
+}
+
+type CreateTournamentRequest struct {
+	Name                 string    `json:"name" minLength:"1" maxLength:"160" doc:"Tournament name"`
+	Description          string    `json:"description" doc:"Tournament description or rules"`
+	Game                 string    `json:"game" minLength:"1" maxLength:"80" doc:"Game title"`
+	Location             string    `json:"location" minLength:"1" maxLength:"160" doc:"Location or 'Online'"`
+	StartAt              time.Time `json:"startAt" doc:"Tournament start timestamp (RFC 3339)"`
+	EndAt                time.Time `json:"endAt" doc:"Tournament end timestamp (RFC 3339)"`
+	RegistrationDeadline time.Time `json:"registrationDeadline" doc:"Registration deadline timestamp (RFC 3339)"`
+	EntryFee             int64     `json:"entryFee" minimum:"0" default:"0" doc:"Entry fee in whole currency units"`
+	RegistrationMode     string    `json:"registrationMode" enum:"SOLO,TEAM" doc:"Registration mode: SOLO or TEAM"`
+	MinTeamSize          int       `json:"minTeamSize" minimum:"1" default:"1" doc:"Minimum team size (coerced to 1 for SOLO)"`
+	MaxTeamSize          int       `json:"maxTeamSize" minimum:"1" default:"1" doc:"Maximum team size (coerced to 1 for SOLO)"`
+	Capacity             int       `json:"capacity" minimum:"1" doc:"Maximum participant or team capacity"`
+}
+
+type CreateTournamentInput struct {
+	Body CreateTournamentRequest
+}
+
+type CreateTournamentOutput struct {
+	Status int `default:"201"`
+	Body   TournamentResponse
+}
+
+type UpdateTournamentRequest struct {
+	Name                 *string    `json:"name,omitempty" minLength:"1" maxLength:"160" doc:"New tournament name"`
+	Description          *string    `json:"description,omitempty" doc:"New tournament description"`
+	Game                 *string    `json:"game,omitempty" minLength:"1" maxLength:"80" doc:"New game title"`
+	Location             *string    `json:"location,omitempty" minLength:"1" maxLength:"160" doc:"New location"`
+	StartAt              *time.Time `json:"startAt,omitempty" doc:"New start timestamp"`
+	EndAt                *time.Time `json:"endAt,omitempty" doc:"New end timestamp"`
+	RegistrationDeadline *time.Time `json:"registrationDeadline,omitempty" doc:"New registration deadline timestamp"`
+	EntryFee             *int64     `json:"entryFee,omitempty" minimum:"0" doc:"New entry fee"`
+	RegistrationMode     *string    `json:"registrationMode,omitempty" enum:"SOLO,TEAM" doc:"New registration mode"`
+	MinTeamSize          *int       `json:"minTeamSize,omitempty" minimum:"1" doc:"New minimum team size"`
+	MaxTeamSize          *int       `json:"maxTeamSize,omitempty" minimum:"1" doc:"New maximum team size"`
+	Capacity             *int       `json:"capacity,omitempty" minimum:"1" doc:"New capacity"`
+}
+
+type UpdateTournamentInput struct {
+	TournamentID uuid.UUID `path:"tournamentId" doc:"Tournament UUID"`
+	Body         UpdateTournamentRequest
+}
 
 type TournamentResponse struct {
 	ID                   uuid.UUID `json:"id"`
@@ -24,7 +73,7 @@ type TournamentResponse struct {
 	RegistrationDeadline time.Time `json:"registrationDeadline"`
 	EntryFee             int64     `json:"entryFee" doc:"Entry fee in whole currency units"`
 	Currency             string    `json:"currency"`
-	RegistrationMode     string    `json:"registrationMode" enum:"SOLO,TEAM,BOTH"`
+	RegistrationMode     string    `json:"registrationMode" enum:"SOLO,TEAM"`
 	MinTeamSize          int       `json:"minTeamSize"`
 	MaxTeamSize          int       `json:"maxTeamSize"`
 	Capacity             int       `json:"capacity"`
@@ -84,7 +133,7 @@ type GetTournamentDetailsOutput struct {
 	Body TournamentDetailsBody
 }
 
-func RegisterTournamentRoutes(api huma.API, tournamentUseCase *usecases.TournamentUseCase) {
+func RegisterTournamentRoutes(api huma.API, organizerGroup huma.API, tournamentUseCase *usecases.TournamentUseCase) {
 	huma.Register(api, huma.Operation{
 		OperationID: "search-tournaments",
 		Method:      http.MethodGet,
@@ -150,6 +199,121 @@ func RegisterTournamentRoutes(api huma.API, tournamentUseCase *usecases.Tourname
 			},
 		}}, nil
 	})
+
+	huma.Register(organizerGroup, huma.Operation{
+		OperationID:   "create-tournament",
+		Method:        http.MethodPost,
+		Path:          "",
+		Summary:       "Create tournament",
+		Description:   "Creates a new tournament for the authenticated organizer. Requires an active organizer profile.\n\n" +
+			"### Rules & Defaults:\n" +
+			"- **Status & Visibility:** Defaults to `REGISTRATION_OPEN` and `published: true`.\n" +
+			"- **Currency:** Defaulted to `THB`.\n" +
+			"- **Registration Mode:** If `SOLO`, `minTeamSize` and `maxTeamSize` are automatically set to `1`. If `TEAM`, requires `1 <= minTeamSize <= maxTeamSize`.\n" +
+			"- **Date Integrity (400):** Requires `registrationDeadline < startAt < endAt`.\n" +
+			"- **Validation (400):** Requires non-empty `name`, `game`, `location`, `capacity >= 1`, and `entryFee >= 0`.",
+		DefaultStatus: http.StatusCreated,
+		Tags:          []string{"Tournaments"},
+		Security:      []map[string][]string{{"bearer": {}}},
+	}, func(ctx context.Context, input *CreateTournamentInput) (*CreateTournamentOutput, error) {
+		organizer, err := middlewares.GetOrganizerProfile(ctx)
+		if err != nil {
+			return nil, tournamentHTTPError(err)
+		}
+
+		tournament, err := tournamentUseCase.CreateTournament(ctx, organizer, usecases.CreateTournamentInput{
+			Name:                 input.Body.Name,
+			Description:          input.Body.Description,
+			Game:                 input.Body.Game,
+			Location:             input.Body.Location,
+			StartsAt:             input.Body.StartAt,
+			EndsAt:               input.Body.EndAt,
+			RegistrationDeadline: input.Body.RegistrationDeadline,
+			EntryFee:             input.Body.EntryFee,
+			RegistrationMode:     input.Body.RegistrationMode,
+			MinTeamSize:          input.Body.MinTeamSize,
+			MaxTeamSize:          input.Body.MaxTeamSize,
+			Capacity:             input.Body.Capacity,
+		})
+		if err != nil {
+			return nil, tournamentHTTPError(err)
+		}
+
+		return &CreateTournamentOutput{
+			Status: http.StatusCreated,
+			Body:   toTournamentResponse(*tournament, 0),
+		}, nil
+	})
+
+	huma.Register(organizerGroup, huma.Operation{
+		OperationID: "update-tournament",
+		Method:      http.MethodPatch,
+		Path:        "/{tournamentId}",
+		Summary:     "Update tournament",
+		Description: "Updates an existing tournament configuration. Only permitted for the organizing owner with the following invariants:\n\n" +
+			"### Restrictions & Invariants:\n" +
+			"- **Ownership (403 Forbidden):** Only the organizer profile that created the tournament can modify it.\n" +
+			"- **Lifecycle Immutability (409 Conflict):** Tournaments with status `ONGOING` or `COMPLETED` cannot have their configuration modified.\n" +
+			"- **Capacity Floor (409 Conflict):** `capacity` cannot be reduced below the number of currently accepted teams/participants (`capacity >= acceptedCount`).\n" +
+			"- **Roster Freezing (409 Conflict):** Once any team has locked or been accepted into the tournament (`lockedOrAcceptedCount > 0`), `registrationMode`, `minTeamSize`, and `maxTeamSize` cannot be altered.\n" +
+			"- **Date Integrity (400 Bad Request):** Merged dates must maintain `registrationDeadline < startAt < endAt`.\n" +
+			"- **Field Validation (400 Bad Request):** If provided, `name`, `game`, and `location` cannot be empty or whitespace; `entryFee` cannot be negative.",
+		Tags:        []string{"Tournaments"},
+		Security:    []map[string][]string{{"bearer": {}}},
+	}, func(ctx context.Context, input *UpdateTournamentInput) (*TournamentOutput, error) {
+		organizer, err := middlewares.GetOrganizerProfile(ctx)
+		if err != nil {
+			return nil, tournamentHTTPError(err)
+		}
+
+		tournament, err := tournamentUseCase.UpdateTournament(ctx, organizer.ID, input.TournamentID, usecases.UpdateTournamentInput{
+			Name:                 input.Body.Name,
+			Description:          input.Body.Description,
+			Game:                 input.Body.Game,
+			Location:             input.Body.Location,
+			StartsAt:             input.Body.StartAt,
+			EndsAt:               input.Body.EndAt,
+			RegistrationDeadline: input.Body.RegistrationDeadline,
+			EntryFee:             input.Body.EntryFee,
+			RegistrationMode:     input.Body.RegistrationMode,
+			MinTeamSize:          input.Body.MinTeamSize,
+			MaxTeamSize:          input.Body.MaxTeamSize,
+			Capacity:             input.Body.Capacity,
+		})
+		if err != nil {
+			return nil, tournamentHTTPError(err)
+		}
+
+		return &TournamentOutput{
+			Body: toTournamentResponse(*tournament, 0),
+		}, nil
+	})
+}
+
+func tournamentHTTPError(err error) error {
+	switch {
+	case errors.Is(err, usecases.ErrTournamentNotFound):
+		return huma.Error404NotFound("Tournament not found", err)
+	case errors.Is(err, usecases.ErrNotTournamentOwner):
+		return huma.Error403Forbidden("Only the organizing owner can modify this tournament", err)
+	case errors.Is(err, middlewares.ErrOrganizerProfileRequired):
+		return huma.Error403Forbidden("Organizer profile required to perform this action", err)
+	case errors.Is(err, usecases.ErrCapacityBelowAcceptedTeams),
+		errors.Is(err, usecases.ErrRosterRulesLocked),
+		errors.Is(err, usecases.ErrTournamentCannotBeModified):
+		return huma.Error409Conflict(err.Error(), err)
+	case errors.Is(err, usecases.ErrInvalidTournamentDates),
+		errors.Is(err, usecases.ErrInvalidTournamentName),
+		errors.Is(err, usecases.ErrInvalidTournamentGame),
+		errors.Is(err, usecases.ErrInvalidTournamentLocation),
+		errors.Is(err, usecases.ErrInvalidTournamentFee),
+		errors.Is(err, usecases.ErrInvalidTournamentCapacity),
+		errors.Is(err, usecases.ErrInvalidRegistrationMode),
+		errors.Is(err, usecases.ErrInvalidTeamSize):
+		return huma.Error400BadRequest(err.Error(), err)
+	default:
+		return huma.Error500InternalServerError("Tournament operation failed", err)
+	}
 }
 
 func optionalFee(value int64) *int64 {
