@@ -18,3 +18,10 @@ export const sponsorProfileSchema = z.object({
 });
 
 export type SponsorProfileInput = z.infer<typeof sponsorProfileSchema>;
+
+/**
+ * Validates onboarding form inputs for sponsor profile setup.
+ */
+export const sponsorOnboardingSchema = sponsorProfileSchema;
+export type SponsorOnboardingValues = SponsorProfileInput;
+

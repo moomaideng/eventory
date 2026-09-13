@@ -4,47 +4,17 @@ import React, { useState } from "react";
 import Link from "next/link";
 import {
   ArrowLeft,
-  ArrowRight,
-  ShieldAlert,
   Trophy,
 } from "lucide-react";
-import { $api } from "@/lib/api/client";
-import { useAuth } from "@/context/auth-context";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { useOrganizerProfile } from "../hooks/use-organizer-profile";
 import { HostTournamentForm } from "./host-tournament-form";
 import { HostTournamentPreview } from "./host-tournament-preview";
 import type { CreateTournamentFormInput } from "../schemas";
 
 export function HostTournamentWorkspace() {
-  const { authorizationHeader, isLoading: authLoading } = useAuth();
-
-  const {
-    data: profile,
-    error: profileError,
-    isLoading: profileLoading,
-  } = $api.useQuery(
-    "get",
-    "/api/v1/accounts/me/organizer-profile",
-    {
-      headers: authorizationHeader
-        ? { Authorization: authorizationHeader }
-        : {},
-    },
-    {
-      enabled: Boolean(authorizationHeader),
-      retry: false,
-      staleTime: 60_000,
-    }
-  );
+  const { profile, isLoading } = useOrganizerProfile();
 
   const [draft, setDraft] = useState<CreateTournamentFormInput>({
     name: "",
@@ -61,9 +31,7 @@ export function HostTournamentWorkspace() {
     endAt: "",
   });
 
-  const loading = authLoading || profileLoading;
-
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-8 px-4 py-10 sm:px-8">
         <Skeleton className="h-9 w-36 rounded-md" />
@@ -73,66 +41,12 @@ export function HostTournamentWorkspace() {
         </div>
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-12">
           <div className="lg:col-span-7">
-            <Skeleton className="h-[520px] w-full rounded-xl" />
+            <Skeleton className="h-130 w-full rounded-xl" />
           </div>
           <div className="lg:col-span-5">
-            <Skeleton className="h-[360px] w-full rounded-xl" />
+            <Skeleton className="h-90 w-full rounded-xl" />
           </div>
         </div>
-      </div>
-    );
-  }
-
-  // If the user has not configured their organizer profile yet
-  if (profileError || !profile) {
-    return (
-      <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-8 px-4 py-12 sm:px-8">
-        <Button
-          variant="ghost"
-          size="sm"
-          render={<Link href="/organizer" />}
-          nativeButton={false}
-          className="self-start"
-        >
-          <ArrowLeft data-icon="inline-start" />
-          Back to Tournaments
-        </Button>
-
-        <Card className="border-border">
-          <CardHeader className="text-center sm:text-left">
-            <div className="bg-primary/10 text-primary mb-3 flex size-12 items-center justify-center rounded-lg">
-              <ShieldAlert aria-hidden="true" />
-            </div>
-            <CardTitle className="text-2xl">Organizer Profile Required</CardTitle>
-            <CardDescription className="text-sm">
-              Before hosting a tournament on Eventory, you must configure your
-              organizer brand or organization name and contact email.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-muted-foreground text-sm leading-relaxed">
-              Your organizer identity will be displayed publicly on every
-              tournament you create, allowing competitors and potential sponsors
-              to identify and reach your staff.
-            </p>
-          </CardContent>
-          <CardFooter className="flex flex-col gap-3 sm:flex-row sm:justify-end">
-            <Button
-              variant="outline"
-              render={<Link href="/organizer" />}
-              nativeButton={false}
-            >
-              Back to dashboard
-            </Button>
-            <Button
-              render={<Link href="/organizer/profile" />}
-              nativeButton={false}
-            >
-              Set up organizer profile
-              <ArrowRight data-icon="inline-end" />
-            </Button>
-          </CardFooter>
-        </Card>
       </div>
     );
   }
@@ -172,7 +86,7 @@ export function HostTournamentWorkspace() {
         {/* Form Column */}
         <div className="lg:col-span-7 xl:col-span-8">
           <HostTournamentForm
-            organizerName={profile.organizerName}
+            organizerName={profile?.organizerName}
             onValuesChange={setDraft}
           />
         </div>
@@ -191,7 +105,7 @@ export function HostTournamentWorkspace() {
             entryFee={draft.entryFee}
             registrationDeadline={draft.registrationDeadline}
             startAt={draft.startAt}
-            organizerName={profile.organizerName}
+            organizerName={profile?.organizerName}
           />
         </div>
       </div>
