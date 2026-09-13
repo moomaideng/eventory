@@ -46,34 +46,81 @@ func (s *accountScenarioContext) anotherAuthenticatedUser() error {
 	return nil
 }
 
-func (s *accountScenarioContext) anExistingUserOnboardedWithHandle(handle string) error {
-	s.currentUser = apptest.NewTestUser()
-	body := handlers.CreateAccountRequest{
-		DisplayName: "Existing Champion",
-		Handle:      &handle,
+func (s *accountScenarioContext) anExistingProvisionedUserWithEmail(email string) error {
+	id := uuid.New()
+	s.currentUser = &apptest.TestUser{
+		ID:    id,
+		Email: email,
+		Token: apptest.GenerateTestJWT(id, email),
 	}
-	resp, err := s.client.Do(http.MethodPost, "/accounts", body, s.currentUser.AuthHeaders())
+	resp, err := s.client.Do(http.MethodPost, "/accounts", nil, s.currentUser.AuthHeaders())
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode != http.StatusCreated {
+		return fmt.Errorf("expected 201 when provisioning initial user, got %d: %s", resp.StatusCode, resp.Body)
+	}
+	return nil
+}
+
+func (s *accountScenarioContext) aNewlyProvisionedUserInOnboardingStatus() error {
+	s.currentUser = apptest.NewTestUser()
+	resp, err := s.client.Do(http.MethodPost, "/accounts", nil, s.currentUser.AuthHeaders())
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode != http.StatusCreated {
+		return fmt.Errorf("expected 201 when provisioning initial user, got %d: %s", resp.StatusCode, resp.Body)
+	}
+	return nil
+}
+
+func (s *accountScenarioContext) anActiveOnboardedUserWithHandle(handle string) error {
+	s.currentUser = apptest.NewTestUser()
+	resp, err := s.client.Do(http.MethodPost, "/accounts", nil, s.currentUser.AuthHeaders())
 	if err != nil {
 		return err
 	}
 	if resp.StatusCode != http.StatusCreated {
 		return fmt.Errorf("expected 201 when creating initial user, got %d: %s", resp.StatusCode, resp.Body)
 	}
+
+	displayName := "Active User"
+	patchBody := handlers.UpdateAccountRequest{
+		DisplayName: &displayName,
+		Handle:      &handle,
+	}
+	patchResp, err := s.client.Do(http.MethodPatch, "/accounts/me", patchBody, s.currentUser.AuthHeaders())
+	if err != nil {
+		return err
+	}
+	if patchResp.StatusCode != http.StatusOK {
+		return fmt.Errorf("expected 200 when activating onboarded user, got %d: %s", patchResp.StatusCode, patchResp.Body)
+	}
 	return nil
 }
 
-func (s *accountScenarioContext) anotherUserOnboardedWithHandle(handle string) error {
+func (s *accountScenarioContext) anotherActiveOnboardedUserWithHandle(handle string) error {
 	s.secondUser = apptest.NewTestUser()
-	body := handlers.CreateAccountRequest{
-		DisplayName: "Challenger Two",
-		Handle:      &handle,
-	}
-	resp, err := s.client.Do(http.MethodPost, "/accounts", body, s.secondUser.AuthHeaders())
+	resp, err := s.client.Do(http.MethodPost, "/accounts", nil, s.secondUser.AuthHeaders())
 	if err != nil {
 		return err
 	}
 	if resp.StatusCode != http.StatusCreated {
 		return fmt.Errorf("expected 201 when creating second user, got %d: %s", resp.StatusCode, resp.Body)
+	}
+
+	displayName := "Challenger Two"
+	patchBody := handlers.UpdateAccountRequest{
+		DisplayName: &displayName,
+		Handle:      &handle,
+	}
+	patchResp, err := s.client.Do(http.MethodPatch, "/accounts/me", patchBody, s.secondUser.AuthHeaders())
+	if err != nil {
+		return err
+	}
+	if patchResp.StatusCode != http.StatusOK {
+		return fmt.Errorf("expected 200 when activating second user, got %d: %s", patchResp.StatusCode, patchResp.Body)
 	}
 	return nil
 }
@@ -90,13 +137,9 @@ func (s *accountScenarioContext) theSecondUserUpdatesTheirProfileWithHandle(hand
 	return nil
 }
 
-func (s *accountScenarioContext) anExistingUserOnboardedWithDisplayNameAndHandle(name, handle string) error {
+func (s *accountScenarioContext) anActiveOnboardedUserWithDisplayNameAndHandle(name, handle string) error {
 	s.currentUser = apptest.NewTestUser()
-	body := handlers.CreateAccountRequest{
-		DisplayName: name,
-		Handle:      &handle,
-	}
-	resp, err := s.client.Do(http.MethodPost, "/accounts", body, s.currentUser.AuthHeaders())
+	resp, err := s.client.Do(http.MethodPost, "/accounts", nil, s.currentUser.AuthHeaders())
 	if err != nil {
 		return err
 	}
@@ -104,9 +147,9 @@ func (s *accountScenarioContext) anExistingUserOnboardedWithDisplayNameAndHandle
 		return fmt.Errorf("expected 201 when creating initial user, got %d: %s", resp.StatusCode, resp.Body)
 	}
 
-	// Complete onboarding so account status transitions from onboarding to active
 	patchBody := handlers.UpdateAccountRequest{
 		DisplayName: &name,
+		Handle:      &handle,
 	}
 	patchResp, err := s.client.Do(http.MethodPatch, "/accounts/me", patchBody, s.currentUser.AuthHeaders())
 	if err != nil {
@@ -115,16 +158,11 @@ func (s *accountScenarioContext) anExistingUserOnboardedWithDisplayNameAndHandle
 	if patchResp.StatusCode != http.StatusOK {
 		return fmt.Errorf("expected 200 when activating onboarded user, got %d: %s", patchResp.StatusCode, patchResp.Body)
 	}
-
 	return nil
 }
 
-func (s *accountScenarioContext) theUserSubmitsOnboardingRequestWithDisplayNameAndHandle(displayName, handle string) error {
-	body := handlers.CreateAccountRequest{
-		DisplayName: displayName,
-		Handle:      &handle,
-	}
-	resp, err := s.client.Do(http.MethodPost, "/accounts", body, s.currentUser.AuthHeaders())
+func (s *accountScenarioContext) theUserProvisionsTheirInitialAccount() error {
+	resp, err := s.client.Do(http.MethodPost, "/accounts", nil, s.currentUser.AuthHeaders())
 	if err != nil {
 		return err
 	}
@@ -132,24 +170,12 @@ func (s *accountScenarioContext) theUserSubmitsOnboardingRequestWithDisplayNameA
 	return nil
 }
 
-func (s *accountScenarioContext) theUserSubmitsOnboardingRequestWithDisplayNameAndEmptyHandle(displayName string) error {
-	body := handlers.CreateAccountRequest{
-		DisplayName: displayName,
-	}
-	resp, err := s.client.Do(http.MethodPost, "/accounts", body, s.currentUser.AuthHeaders())
-	if err != nil {
-		return err
-	}
-	s.resp = resp
-	return nil
-}
-
-func (s *accountScenarioContext) theSecondUserSubmitsOnboardingRequestWithHandle(handle string) error {
-	body := handlers.CreateAccountRequest{
-		DisplayName: "Second Imposter",
+func (s *accountScenarioContext) theUserCompletesOnboardingWithDisplayNameAndHandle(displayName, handle string) error {
+	body := handlers.UpdateAccountRequest{
+		DisplayName: &displayName,
 		Handle:      &handle,
 	}
-	resp, err := s.client.Do(http.MethodPost, "/accounts", body, s.secondUser.AuthHeaders())
+	resp, err := s.client.Do(http.MethodPatch, "/accounts/me", body, s.currentUser.AuthHeaders())
 	if err != nil {
 		return err
 	}
@@ -324,6 +350,54 @@ func (s *accountScenarioContext) theUpdatedAccountPhoneShouldBe(expected string)
 	return nil
 }
 
+func (s *accountScenarioContext) theCreatedAccountStatusShouldBe(expectedStatus string) error {
+	var out handlers.AccountResponse
+	if err := s.resp.JSON(&out); err != nil {
+		return fmt.Errorf("failed to parse account response: %w", err)
+	}
+	if string(out.Status) != expectedStatus {
+		return fmt.Errorf("expected account status %q, got %q", expectedStatus, out.Status)
+	}
+	return nil
+}
+
+func (s *accountScenarioContext) theAccountStatusShouldBe(expectedStatus string) error {
+	return s.theCreatedAccountStatusShouldBe(expectedStatus)
+}
+
+func (s *accountScenarioContext) theCreatedAccountShouldHaveAValidDefaultHandle() error {
+	var out handlers.AccountResponse
+	if err := s.resp.JSON(&out); err != nil {
+		return fmt.Errorf("failed to parse account response: %w", err)
+	}
+	if len(out.Handle) < 3 {
+		return fmt.Errorf("expected valid handle >= 3 chars, got %q", out.Handle)
+	}
+	return nil
+}
+
+func (s *accountScenarioContext) theReturnedAccountIdShouldMatchTheExistingAccountId() error {
+	var out handlers.AccountResponse
+	if err := s.resp.JSON(&out); err != nil {
+		return fmt.Errorf("failed to parse account response: %w", err)
+	}
+	if out.ID != s.currentUser.ID {
+		return fmt.Errorf("expected account ID %v, got %v", s.currentUser.ID, out.ID)
+	}
+	return nil
+}
+
+func (s *accountScenarioContext) theUpdatedAccountHandleShouldBe(expectedHandle string) error {
+	var out handlers.AccountResponse
+	if err := s.resp.JSON(&out); err != nil {
+		return fmt.Errorf("failed to parse account response: %w", err)
+	}
+	if out.Handle != expectedHandle {
+		return fmt.Errorf("expected handle %q, got %q", expectedHandle, out.Handle)
+	}
+	return nil
+}
+
 func (s *accountScenarioContext) theOrganizerProfileNameShouldBe(expected string) error {
 	var out handlers.OrganizerProfileResponse
 	if err := s.resp.JSON(&out); err != nil {
@@ -386,32 +460,47 @@ func InitializeScenario(sc *godog.ScenarioContext) {
 	sc.Step(`^a new authenticated user with email "([^"]*)"$`, func(email string) error {
 		return s.aNewAuthenticatedUserWithEmail(email)
 	})
-	sc.Step(`^a new authenticated user$`, func() error {
-		return s.aNewAuthenticatedUser()
+	sc.Step(`^an existing provisioned user with email "([^"]*)"$`, func(email string) error {
+		return s.anExistingProvisionedUserWithEmail(email)
 	})
-	sc.Step(`^another authenticated user$`, func() error {
-		return s.anotherAuthenticatedUser()
+	sc.Step(`^a newly provisioned user in "ONBOARDING" status$`, func() error {
+		return s.aNewlyProvisionedUserInOnboardingStatus()
 	})
-	sc.Step(`^an existing user onboarded with handle "([^"]*)"$`, func(handle string) error {
-		return s.anExistingUserOnboardedWithHandle(handle)
+	sc.Step(`^the user provisions their initial account$`, func() error {
+		return s.theUserProvisionsTheirInitialAccount()
 	})
-	sc.Step(`^another user onboarded with handle "([^"]*)"$`, func(handle string) error {
-		return s.anotherUserOnboardedWithHandle(handle)
+	sc.Step(`^the user provisions their initial account again$`, func() error {
+		return s.theUserProvisionsTheirInitialAccount()
+	})
+	sc.Step(`^the created account status should be "([^"]*)"$`, func(status string) error {
+		return s.theCreatedAccountStatusShouldBe(status)
+	})
+	sc.Step(`^the account status should be "([^"]*)"$`, func(status string) error {
+		return s.theAccountStatusShouldBe(status)
+	})
+	sc.Step(`^the created account should have a valid default handle$`, func() error {
+		return s.theCreatedAccountShouldHaveAValidDefaultHandle()
+	})
+	sc.Step(`^the returned account id should match the existing account id$`, func() error {
+		return s.theReturnedAccountIdShouldMatchTheExistingAccountId()
+	})
+	sc.Step(`^the user completes onboarding with display name "([^"]*)" and handle "([^"]*)"$`, func(displayName, handle string) error {
+		return s.theUserCompletesOnboardingWithDisplayNameAndHandle(displayName, handle)
+	})
+	sc.Step(`^the updated account handle should be "([^"]*)"$`, func(handle string) error {
+		return s.theUpdatedAccountHandleShouldBe(handle)
+	})
+	sc.Step(`^an active onboarded user with handle "([^"]*)"$`, func(handle string) error {
+		return s.anActiveOnboardedUserWithHandle(handle)
+	})
+	sc.Step(`^another active onboarded user with handle "([^"]*)"$`, func(handle string) error {
+		return s.anotherActiveOnboardedUserWithHandle(handle)
 	})
 	sc.Step(`^the second user updates their profile with handle "([^"]*)"$`, func(handle string) error {
 		return s.theSecondUserUpdatesTheirProfileWithHandle(handle)
 	})
-	sc.Step(`^an existing user onboarded with display name "([^"]*)" and handle "([^"]*)"$`, func(name, handle string) error {
-		return s.anExistingUserOnboardedWithDisplayNameAndHandle(name, handle)
-	})
-	sc.Step(`^the user submits onboarding request with display name "([^"]*)" and handle "([^"]*)"$`, func(name, handle string) error {
-		return s.theUserSubmitsOnboardingRequestWithDisplayNameAndHandle(name, handle)
-	})
-	sc.Step(`^the user submits onboarding request with display name "([^"]*)" and empty handle$`, func(name string) error {
-		return s.theUserSubmitsOnboardingRequestWithDisplayNameAndEmptyHandle(name)
-	})
-	sc.Step(`^the second user submits onboarding request with handle "([^"]*)"$`, func(handle string) error {
-		return s.theSecondUserSubmitsOnboardingRequestWithHandle(handle)
+	sc.Step(`^an active onboarded user with display name "([^"]*)" and handle "([^"]*)"$`, func(name, handle string) error {
+		return s.anActiveOnboardedUserWithDisplayNameAndHandle(name, handle)
 	})
 	sc.Step(`^the user requests their current account details via "GET /me"$`, func() error {
 		return s.theUserRequestsTheirCurrentAccountDetailsViaGetMe()
