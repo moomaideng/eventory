@@ -1,5 +1,7 @@
 # Eventory Platform — Acceptance Criteria (E2E Master Specification)
 
+> **Very Important**: Only EPIC 1 has been reviewed. Other EPIC 2 - 7 are still draft.
+
 This document serves as the master end-to-end (E2E) acceptance criteria specification for the Eventory platform across **EPIC 1 through EPIC 7**.
 
 Every user story strictly adheres to the **TA Product Backlog Acceptance Criteria standard**, structured with:
