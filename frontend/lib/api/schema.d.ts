@@ -15,7 +15,7 @@ export interface paths {
         put?: never;
         /**
          * Create Account
-         * @description Creates or ensures an account exists for the authenticated user using JWT sub and email.
+         * @description Creates or ensures an account exists for the authenticated user using JWT sub and email (No request body required).
          */
         post: operations["create-account"];
         delete?: never;
@@ -445,20 +445,6 @@ export interface components {
              * @enum {string}
              */
             status: "ONBOARDING" | "ACTIVE" | "SUSPENDED";
-        };
-        CreateAccountRequest: {
-            /**
-             * Format: uri
-             * @description A URL to the JSON Schema for this object.
-             * @example https://example.com/schemas/CreateAccountRequest.json
-             */
-            readonly $schema?: string;
-            /** @description Optional avatar image URL */
-            avatarUrl?: string;
-            /** @description Chosen display name */
-            displayName?: string;
-            /** @description Optional requested unique handle (3-32 chars) */
-            handle?: string;
         };
         CreateTeamLobbyRequest: {
             /**
@@ -977,11 +963,7 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["CreateAccountRequest"];
-            };
-        };
+        requestBody?: never;
         responses: {
             /** @description Created */
             201: {

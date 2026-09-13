@@ -28,11 +28,8 @@ var (
 
 // CreateAccountInput specifies input parameters for creating or ensuring an account.
 type CreateAccountInput struct {
-	ID          uuid.UUID
-	Email       string
-	DisplayName string
-	Handle      string
-	AvatarURL   *string
+	ID    uuid.UUID
+	Email string
 }
 
 // UpdateAccountInput specifies fields that can be updated on an account.
@@ -159,24 +156,23 @@ func (u *AccountUseCase) CreateAccount(ctx context.Context, input CreateAccountI
 		return existing, nil
 	}
 
-	// 2. Default display name to email prefix if not provided
-	displayName := strings.TrimSpace(input.DisplayName)
-	if displayName == "" {
-		displayName = strings.Split(email, "@")[0]
-	}
+	// 2. Default display name to email prefix
+	displayName := strings.Split(email, "@")[0]
 	if len(displayName) > 64 {
 		displayName = displayName[:64]
 	}
+	if displayName == "" {
+		displayName = "User"
+	}
 
-	// 3. Resolve handle (use requested if available, otherwise generate unique)
-	handle := u.resolveUniqueHandle(ctx, input.Handle, displayName)
+	// 3. Resolve handle (generate unique based on displayName)
+	handle := u.resolveUniqueHandle(ctx, "", displayName)
 
 	account := &models.Account{
 		ID:          input.ID,
 		Email:       email,
 		DisplayName: displayName,
 		Handle:      handle,
-		AvatarURL:   input.AvatarURL,
 		Status:      models.AccountStatusOnboarding,
 	}
 

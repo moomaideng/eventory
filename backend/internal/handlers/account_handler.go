@@ -40,19 +40,6 @@ type CreateAccountOutput struct {
 type GetAccountByIDInput struct {
 	ID uuid.UUID `path:"id" doc:"Account UUID"`
 }
-
-// CreateAccountRequest defines the request body for creating or ensuring an account.
-type CreateAccountRequest struct {
-	DisplayName string  `json:"displayName,omitempty" doc:"Chosen display name" maxLength:"64"`
-	Handle      *string `json:"handle,omitempty" doc:"Optional requested unique handle (3-32 chars)" maxLength:"32"`
-	AvatarURL   *string `json:"avatarUrl,omitempty" doc:"Optional avatar image URL"`
-}
-
-// CreateAccountInput represents request payload for creating or ensuring an account.
-type CreateAccountInput struct {
-	Body CreateAccountRequest
-}
-
 // UpdateAccountRequest defines the request body for updating user profile fields.
 type UpdateAccountRequest struct {
 	DisplayName *string `json:"displayName,omitempty" doc:"New display name" minLength:"1" maxLength:"64"`
@@ -202,11 +189,11 @@ func RegisterAccountRoutes(api huma.API, accountUseCase *usecases.AccountUseCase
 		Method:        http.MethodPost,
 		Path:          "",
 		Summary:       "Create Account",
-		Description:   "Creates or ensures an account exists for the authenticated user using JWT sub and email.",
+		Description:   "Creates or ensures an account exists for the authenticated user using JWT sub and email (No request body required).",
 		DefaultStatus: http.StatusCreated,
 		Tags:          []string{"Accounts"},
 		Security:      []map[string][]string{{"bearer": {}}},
-	}, func(ctx context.Context, input *CreateAccountInput) (*CreateAccountOutput, error) {
+	}, func(ctx context.Context, input *struct{}) (*CreateAccountOutput, error) {
 		userID, err := middlewares.GetAuthUserID(ctx)
 		if err != nil {
 			return nil, huma.Error401Unauthorized("Authentication required: invalid or missing user id in token", err)
@@ -217,17 +204,9 @@ func RegisterAccountRoutes(api huma.API, accountUseCase *usecases.AccountUseCase
 			return nil, huma.Error401Unauthorized("Authentication required: missing email in token", err)
 		}
 
-		var handle string
-		if input.Body.Handle != nil {
-			handle = *input.Body.Handle
-		}
-
 		acc, err := accountUseCase.CreateAccount(ctx, usecases.CreateAccountInput{
-			ID:          userID,
-			Email:       email,
-			DisplayName: input.Body.DisplayName,
-			Handle:      handle,
-			AvatarURL:   input.Body.AvatarURL,
+			ID:    userID,
+			Email: email,
 		})
 		if err != nil {
 			if errors.Is(err, usecases.ErrInvalidAccountID) {

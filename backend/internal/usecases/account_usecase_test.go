@@ -143,16 +143,10 @@ func TestCreateAccount_Success(t *testing.T) {
 
 	userID := uuid.New()
 	email := "newuser@eventory.gg"
-	displayName := "MooMai"
-	requestedHandle := "moomai"
-	avatar := "https://example.com/avatar.png"
 
 	account, err := useCase.CreateAccount(context.Background(), usecases.CreateAccountInput{
-		ID:          userID,
-		Email:       email,
-		DisplayName: displayName,
-		Handle:      requestedHandle,
-		AvatarURL:   &avatar,
+		ID:    userID,
+		Email: email,
 	})
 	if err != nil {
 		t.Fatalf("expected no error, got: %v", err)
@@ -164,14 +158,11 @@ func TestCreateAccount_Success(t *testing.T) {
 	if account.Email != email {
 		t.Errorf("expected Email %v, got %v", email, account.Email)
 	}
-	if account.DisplayName != "MooMai" {
-		t.Errorf("expected DisplayName 'MooMai', got %v", account.DisplayName)
+	if account.DisplayName != "newuser" {
+		t.Errorf("expected DisplayName 'newuser', got %v", account.DisplayName)
 	}
-	if account.Handle != "moomai" {
-		t.Errorf("expected Handle 'moomai', got %v", account.Handle)
-	}
-	if account.AvatarURL == nil || *account.AvatarURL != avatar {
-		t.Errorf("expected AvatarURL %v, got %v", avatar, account.AvatarURL)
+	if account.Handle == "" {
+		t.Errorf("expected non-empty handle, got %v", account.Handle)
 	}
 	if account.Status != models.AccountStatusOnboarding {
 		t.Errorf("expected Status %v, got %v", models.AccountStatusOnboarding, account.Status)
@@ -186,10 +177,8 @@ func TestCreateAccount_Idempotent(t *testing.T) {
 	email := "idempotent@eventory.gg"
 
 	acc1, err := useCase.CreateAccount(context.Background(), usecases.CreateAccountInput{
-		ID:          userID,
-		Email:       email,
-		DisplayName: "First Name",
-		Handle:      "first_handle",
+		ID:    userID,
+		Email: email,
 	})
 	if err != nil {
 		t.Fatalf("expected no error, got: %v", err)
@@ -197,10 +186,8 @@ func TestCreateAccount_Idempotent(t *testing.T) {
 
 	// Second call with same ID or Email should return existing account
 	acc2, err := useCase.CreateAccount(context.Background(), usecases.CreateAccountInput{
-		ID:          userID,
-		Email:       email,
-		DisplayName: "Different Name",
-		Handle:      "diff_handle",
+		ID:    userID,
+		Email: email,
 	})
 	if err != nil {
 		t.Fatalf("expected no error, got: %v", err)
@@ -209,8 +196,8 @@ func TestCreateAccount_Idempotent(t *testing.T) {
 	if acc1.ID != acc2.ID {
 		t.Errorf("expected same account ID, got %v and %v", acc1.ID, acc2.ID)
 	}
-	if acc2.DisplayName != "First Name" {
-		t.Errorf("expected original DisplayName 'First Name', got %v", acc2.DisplayName)
+	if acc2.DisplayName != "idempotent" {
+		t.Errorf("expected original DisplayName 'idempotent', got %v", acc2.DisplayName)
 	}
 }
 
@@ -221,18 +208,16 @@ func TestCreateAccount_HandleCollisionFallback(t *testing.T) {
 	existingID := uuid.New()
 	mockRepo.accounts[existingID] = &models.Account{
 		ID:          existingID,
-		Email:       "existing@eventory.gg",
+		Email:       "alex@eventory.gg",
 		Handle:      "alex",
-		DisplayName: "Alex Original",
+		DisplayName: "alex",
 		Status:      "ACTIVE",
 	}
 
 	newID := uuid.New()
 	account, err := useCase.CreateAccount(context.Background(), usecases.CreateAccountInput{
-		ID:          newID,
-		Email:       "alex2@eventory.gg",
-		DisplayName: "Alex",
-		Handle:      "alex",
+		ID:    newID,
+		Email: "alex@different.gg",
 	})
 	if err != nil {
 		t.Fatalf("expected no error, got: %v", err)
@@ -242,8 +227,8 @@ func TestCreateAccount_HandleCollisionFallback(t *testing.T) {
 	if account.Handle == "alex" {
 		t.Error("expected different handle due to collision with 'alex'")
 	}
-	if account.DisplayName != "Alex" {
-		t.Errorf("expected DisplayName 'Alex', got %v", account.DisplayName)
+	if account.DisplayName != "alex" {
+		t.Errorf("expected DisplayName 'alex', got %v", account.DisplayName)
 	}
 }
 
@@ -349,9 +334,8 @@ func TestCreateAccount_NilIDFails(t *testing.T) {
 	useCase := usecases.NewAccountUseCase(mockRepo)
 
 	_, err := useCase.CreateAccount(context.Background(), usecases.CreateAccountInput{
-		ID:          uuid.Nil,
-		Email:       "test@eventory.gg",
-		DisplayName: "Test",
+		ID:    uuid.Nil,
+		Email: "test@eventory.gg",
 	})
 	if err != usecases.ErrInvalidAccountID {
 		t.Errorf("expected ErrInvalidAccountID, got: %v", err)
