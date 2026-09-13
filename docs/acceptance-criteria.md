@@ -98,35 +98,15 @@ Security Guard: Accounts in ONBOARDING status cannot create Organizer or Sponsor
 > So that I can quickly find events that fit my schedule and budget.
 
 #### Acceptance Criteria
-- **AC1 (Filter Tournaments):**
-  - **Given** the user is on the tournament catalog page,
-  - **When** the user attempts to filter tournaments by keyword, date range, or maximum fee,
-  - **Then** the system should display all published tournaments matching the applied criteria.
-- **AC2 (Date Validation):**
-  - **Given** the user inputs an inverted date range (To date is earlier than From date),
-  - **When** the user attempts to filter,
-  - **Then** the system should display an appropriate error message and disable filter submission.
-- **AC3 (Empty State):**
-  - **Given** no tournaments match the applied filter criteria,
-  - **When** the system completes the search,
-  - **Then** the system should display an appropriate empty state indicator.
 
-```gherkin
-Scenario Outline: Filtering tournaments by keyword, dates, and maximum budget
-  Given the user is on the tournament catalog page
-  When the user filters by keyword "<keyword>", From date "<fromDate>", To date "<toDate>", and max fee "<maxFee>"
-  Then the system should <systemAction>
-  And the catalog should display "<catalogDisplay>"
-
-  Examples:
-    | keyword  | fromDate   | toDate     | maxFee | systemAction                                       | catalogDisplay                      |
-    | Valorant |            |            |        | update list with matching game title               | Valorant tournaments only           |
-    |          | 2026-06-01 | 2026-07-01 |        | update list with matching tournament start dates   | June 2026 tournaments               |
-    |          |            |            | 500    | update list with entry fees up to 500 THB          | Events with entry fee <= 500 THB    |
-    |          | 2026-10-01 | 2026-09-01 |        | display error "To date must be after From"         | Filter button disabled              |
-    | Unknown  |            |            |        | display empty state                                | Empty state: "No tournaments found" |
-```
-
+* **[VALID] Business Conditions (Success):**
+Given published tournaments exist with different schedules and entry fees
+When a user applies a valid date range and fee range
+Then the system returns only published tournaments that match the selected filters and displays the active filter criteria.
+* **[INVALID] Business Conditions (Rejection):**
+Given a user enters a date range whose start is after its end or a fee range whose minimum is greater than its maximum
+When the user applies the filters
+Then the system shows a range-validation message, does not run the invalid search, and preserves the entered values for correction.
 ---
 
 ### US2-2: View Tournament Details, Teams, and Funding Progress
@@ -136,32 +116,14 @@ Scenario Outline: Filtering tournaments by keyword, dates, and maximum budget
 > So that I can decide whether to participate or provide support.
 
 #### Acceptance Criteria
-- **AC1 (View Details):**
-  - **Given** the user navigates to the tournament details page,
-  - **When** the tournament is in published status,
-  - **Then** the system should display tournament rules, schedule, participating teams, and crowdfunding progress.
-- **AC2 (Unpublished Access):**
-  - **Given** the requested tournament is in draft or unpublished status,
-  - **When** an unauthorized user attempts to view the page,
-  - **Then** the system should display an appropriate access restricted message.
-- **AC3 (Non-existent Tournament):**
-  - **Given** the requested tournament does not exist,
-  - **When** the user attempts to access the URL,
-  - **Then** the system should display an appropriate "Tournament not found" error message.
-
-```gherkin
-Scenario Outline: Accessing tournament details page by tournament status
-  Given the user navigates to the tournament details page for a tournament in state "<state>"
-  When the page finishes loading
-  Then the system should <systemAction>
-  And the page should display "<visibleContent>"
-
-  Examples:
-    | state             | systemAction                                             | visibleContent                                              |
-    | PUBLISHED         | render full tournament overview and registration options | Schedule, rules, approved teams, and funding progress bar   |
-    | DRAFT_UNPUBLISHED | block access with a restricted notice                    | Access denied notice: "This tournament is not published"    |
-    | NON_EXISTENT      | display not found page                                   | Error message: "Tournament not found"                       |
-```
+* **[VALID] Business Conditions (Success):**
+"Given a tournament is published with current schedule, rules, entry-fee, approved-team, and funding data
+When a user opens the tournament detail page
+Then the system displays the current tournament details, approved teams, confirmed funding, and funding progress relative to the configured goal."
+* **[INVALID] Business Conditions (Rejection):**
+"Given a tournament ID does not exist or the tournament is an unpublished draft owned by another organizer
+When a user opens the corresponding detail URL
+Then the system returns a not-found or access-denied response and does not expose team, funding, contact, or draft information."
 
 ---
 
