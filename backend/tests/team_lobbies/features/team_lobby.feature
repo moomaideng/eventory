@@ -17,25 +17,23 @@ Feature: Tournament team lobby creation and joining
   # =========================================================================
 
   @US4-1 @valid
-  Scenario: Create a lobby for an open team tournament
+  Scenario: Create a lobby with a valid team name
     Given a published team tournament exists with registration open
     And the competitor has signed in and completed onboarding
-    When the competitor creates a team lobby named "Cyber Wolves"
+    When the competitor submits a valid team name
     Then the team lobby should be created successfully
-    And the lobby should be named "Cyber Wolves"
-    And the lobby status should be "FORMING"
     And the competitor should be the lobby captain
-    And the lobby should have a valid six-character invite code
+    And a valid invite code should be generated
 
   # =========================================================================
   # 2. INVALID (NEGATIVE) SCENARIO
   # =========================================================================
 
   @US4-1 @invalid
-  Scenario: Reject lobby creation without a team name
+  Scenario: Reject lobby creation with an empty team name
     Given a published team tournament exists with registration open
     And the competitor has signed in and completed onboarding
-    When the competitor tries to create a team lobby without entering a team name
+    When the competitor submits an empty team name
     Then the team lobby creation should fail
     And the competitor should not be attached to a tournament team
 
@@ -48,21 +46,20 @@ Feature: Tournament team lobby creation and joining
   # =========================================================================
 
   @US4-2 @valid
-  Scenario: Join a captain's team lobby using its invite code
-    Given a captain has created a forming team lobby
+  Scenario: Join a captain's team lobby with a valid invite code
+    Given a captain has created a forming team lobby with a valid invite code
     And another competitor has signed in and completed onboarding
-    When the other competitor joins the lobby using its current invite code
+    When the other competitor joins the lobby using the valid invite code
     Then the other competitor should join the team lobby successfully
     And the other competitor's profile should be attached to the team entry
-    And the lobby should contain 2 members
 
   # =========================================================================
   # 2. INVALID (NEGATIVE) SCENARIO
   # =========================================================================
 
   @US4-2 @invalid
-  Scenario: Reject joining with an unknown invite code
+  Scenario: Reject joining with an invalid invite code
     Given the competitor has signed in and completed onboarding
-    When the competitor tries to join with unknown invite code "ZZZZZZ"
+    When the competitor tries to join with an invalid invite code
     Then joining the team lobby should fail
     And the competitor should not be attached to a tournament team

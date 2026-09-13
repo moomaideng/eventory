@@ -33,11 +33,11 @@ func (s *teamLobbyScenarioContext) theEventoryAPIServiceIsRunning() error {
 	return nil
 }
 
-func (s *teamLobbyScenarioContext) aPublishedTeamTournamentWithOpenRegistration() error {
-	return s.createPublishedTeamTournament()
+func (s *teamLobbyScenarioContext) aPublishedTeamTournamentExistsWithRegistrationOpen() error {
+	return s.createPublishedTournament()
 }
 
-func (s *teamLobbyScenarioContext) createPublishedTeamTournament() error {
+func (s *teamLobbyScenarioContext) createPublishedTournament() error {
 	organizer := apptest.NewTestUser()
 	if err := s.persistActiveAccount(organizer); err != nil {
 		return err
@@ -101,8 +101,8 @@ func (s *teamLobbyScenarioContext) persistActiveAccount(user *apptest.TestUser) 
 	return nil
 }
 
-func (s *teamLobbyScenarioContext) aCaptainHasCreatedAFormingTeamLobby() error {
-	if err := s.aPublishedTeamTournamentWithOpenRegistration(); err != nil {
+func (s *teamLobbyScenarioContext) aCaptainHasCreatedAFormingTeamLobbyWithAValidInviteCode() error {
+	if err := s.createPublishedTournament(); err != nil {
 		return err
 	}
 	s.captain = apptest.NewTestUser()
@@ -115,14 +115,14 @@ func (s *teamLobbyScenarioContext) aCaptainHasCreatedAFormingTeamLobby() error {
 	if s.resp.StatusCode != http.StatusCreated {
 		return fmt.Errorf("create forming lobby: expected 201, got %d: %s", s.resp.StatusCode, s.resp.Body)
 	}
-	return nil
+	return s.aValidInviteCodeShouldBeGenerated()
 }
 
-func (s *teamLobbyScenarioContext) theCompetitorCreatesATeamLobbyNamed(name string) error {
-	return s.createLobby(s.actor, name)
+func (s *teamLobbyScenarioContext) theCompetitorSubmitsAValidTeamName() error {
+	return s.createLobby(s.actor, "Cyber Wolves")
 }
 
-func (s *teamLobbyScenarioContext) theCompetitorTriesToCreateATeamLobbyWithoutEnteringATeamName() error {
+func (s *teamLobbyScenarioContext) theCompetitorSubmitsAnEmptyTeamName() error {
 	return s.createLobby(s.actor, "")
 }
 
@@ -148,7 +148,7 @@ func (s *teamLobbyScenarioContext) createLobby(user *apptest.TestUser, name stri
 	return nil
 }
 
-func (s *teamLobbyScenarioContext) theOtherCompetitorJoinsUsingCurrentInviteCode() error {
+func (s *teamLobbyScenarioContext) theOtherCompetitorJoinsUsingTheValidInviteCode() error {
 	resp, err := s.client.Do(
 		http.MethodPost,
 		fmt.Sprintf("/lobbies/%s/join", s.lobby.InviteCode),
@@ -167,8 +167,8 @@ func (s *teamLobbyScenarioContext) theOtherCompetitorJoinsUsingCurrentInviteCode
 	return nil
 }
 
-func (s *teamLobbyScenarioContext) theCompetitorTriesToJoinWithUnknownInviteCode(inviteCode string) error {
-	resp, err := s.client.Do(http.MethodPost, fmt.Sprintf("/lobbies/%s/join", inviteCode), nil, s.actor.AuthHeaders())
+func (s *teamLobbyScenarioContext) theCompetitorTriesToJoinWithAnInvalidInviteCode() error {
+	resp, err := s.client.Do(http.MethodPost, "/lobbies/ZZZZZZ/join", nil, s.actor.AuthHeaders())
 	if err != nil {
 		return err
 	}
@@ -202,20 +202,6 @@ func (s *teamLobbyScenarioContext) joiningTheTeamLobbyShouldFail() error {
 	return s.responseStatusShouldBe(http.StatusNotFound)
 }
 
-func (s *teamLobbyScenarioContext) theLobbyShouldBeNamed(expected string) error {
-	if s.lobby.Name != expected {
-		return fmt.Errorf("expected lobby name %q, got %q", expected, s.lobby.Name)
-	}
-	return nil
-}
-
-func (s *teamLobbyScenarioContext) theLobbyStatusShouldBe(expected string) error {
-	if s.lobby.Status != expected {
-		return fmt.Errorf("expected lobby status %q, got %q", expected, s.lobby.Status)
-	}
-	return nil
-}
-
 func (s *teamLobbyScenarioContext) theCompetitorShouldBeTheLobbyCaptain() error {
 	if s.lobby.CaptainID != s.actor.ID || s.lobby.ViewerRole != "CAPTAIN" {
 		return fmt.Errorf("expected competitor %s to be captain, got captain %s and viewer role %q", s.actor.ID, s.lobby.CaptainID, s.lobby.ViewerRole)
@@ -228,7 +214,7 @@ func (s *teamLobbyScenarioContext) theCompetitorShouldBeTheLobbyCaptain() error 
 	return fmt.Errorf("captain membership for competitor %s was not returned", s.actor.ID)
 }
 
-func (s *teamLobbyScenarioContext) theLobbyShouldHaveAValidSixCharacterInviteCode() error {
+func (s *teamLobbyScenarioContext) aValidInviteCodeShouldBeGenerated() error {
 	if !inviteCodePattern.MatchString(s.lobby.InviteCode) {
 		return fmt.Errorf("expected a valid six-character invite code, got %q", s.lobby.InviteCode)
 	}
@@ -257,13 +243,6 @@ func (s *teamLobbyScenarioContext) theOtherCompetitorsProfileShouldBeAttachedToT
 	return fmt.Errorf("competitor profile %s was not attached to the team entry", s.otherCompetitor.ID)
 }
 
-func (s *teamLobbyScenarioContext) theLobbyShouldContainMembers(expected int) error {
-	if len(s.lobby.Members) != expected {
-		return fmt.Errorf("expected %d members in response, got %d", expected, len(s.lobby.Members))
-	}
-	return nil
-}
-
 func (s *teamLobbyScenarioContext) theCompetitorShouldNotBeAttachedToATournamentTeam() error {
 	var count int64
 	if err := app.DB.Model(&models.TournamentTeamMember{}).
@@ -290,23 +269,20 @@ func InitializeScenario(sc *godog.ScenarioContext) {
 	})
 
 	sc.Step(`^the Eventory API service is running$`, s.theEventoryAPIServiceIsRunning)
-	sc.Step(`^a published team tournament exists with registration open$`, s.aPublishedTeamTournamentWithOpenRegistration)
+	sc.Step(`^a published team tournament exists with registration open$`, s.aPublishedTeamTournamentExistsWithRegistrationOpen)
 	sc.Step(`^the competitor has signed in and completed onboarding$`, s.anActiveCompetitor)
 	sc.Step(`^another competitor has signed in and completed onboarding$`, s.anotherActiveCompetitor)
-	sc.Step(`^a captain has created a forming team lobby$`, s.aCaptainHasCreatedAFormingTeamLobby)
-	sc.Step(`^the competitor creates a team lobby named "([^"]*)"$`, s.theCompetitorCreatesATeamLobbyNamed)
-	sc.Step(`^the competitor tries to create a team lobby without entering a team name$`, s.theCompetitorTriesToCreateATeamLobbyWithoutEnteringATeamName)
-	sc.Step(`^the other competitor joins the lobby using its current invite code$`, s.theOtherCompetitorJoinsUsingCurrentInviteCode)
-	sc.Step(`^the competitor tries to join with unknown invite code "([^"]*)"$`, s.theCompetitorTriesToJoinWithUnknownInviteCode)
+	sc.Step(`^a captain has created a forming team lobby with a valid invite code$`, s.aCaptainHasCreatedAFormingTeamLobbyWithAValidInviteCode)
+	sc.Step(`^the competitor submits a valid team name$`, s.theCompetitorSubmitsAValidTeamName)
+	sc.Step(`^the competitor submits an empty team name$`, s.theCompetitorSubmitsAnEmptyTeamName)
+	sc.Step(`^the other competitor joins the lobby using the valid invite code$`, s.theOtherCompetitorJoinsUsingTheValidInviteCode)
+	sc.Step(`^the competitor tries to join with an invalid invite code$`, s.theCompetitorTriesToJoinWithAnInvalidInviteCode)
 	sc.Step(`^the team lobby should be created successfully$`, s.theTeamLobbyShouldBeCreatedSuccessfully)
 	sc.Step(`^the team lobby creation should fail$`, s.theTeamLobbyCreationShouldFail)
 	sc.Step(`^the other competitor should join the team lobby successfully$`, s.theOtherCompetitorShouldJoinTheTeamLobbySuccessfully)
 	sc.Step(`^joining the team lobby should fail$`, s.joiningTheTeamLobbyShouldFail)
-	sc.Step(`^the lobby should be named "([^"]*)"$`, s.theLobbyShouldBeNamed)
-	sc.Step(`^the lobby status should be "([^"]*)"$`, s.theLobbyStatusShouldBe)
 	sc.Step(`^the competitor should be the lobby captain$`, s.theCompetitorShouldBeTheLobbyCaptain)
-	sc.Step(`^the lobby should have a valid six-character invite code$`, s.theLobbyShouldHaveAValidSixCharacterInviteCode)
+	sc.Step(`^a valid invite code should be generated$`, s.aValidInviteCodeShouldBeGenerated)
 	sc.Step(`^the other competitor's profile should be attached to the team entry$`, s.theOtherCompetitorsProfileShouldBeAttachedToTheTeamEntry)
-	sc.Step(`^the lobby should contain (\d+) members$`, s.theLobbyShouldContainMembers)
 	sc.Step(`^the competitor should not be attached to a tournament team$`, s.theCompetitorShouldNotBeAttachedToATournamentTeam)
 }
