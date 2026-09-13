@@ -15,126 +15,75 @@ Every user story strictly adheres to the **TA Product Backlog Acceptance Criteri
 
 ## EPIC 1: Account and Role Access
 
-### US1-1: Create Single Primary Account
-> **User Story:**
-> As a new user,
-> I want to register a single primary account as a User
-> So that I can have a central identity with a unique public handle to interact across the platform.
-
-#### Acceptance Criteria
-- **AC1 (Registration & Handle):**
-  - **Given** the user is on the account onboarding page,
-  - **When** the user attempts to register an account with a display name and unique handle,
-  - **Then** the system should allow the action and grant access to the personal dashboard.
-- **AC2 (Validation):**
-  - **Given** the user input is incomplete or invalid (e.g. handle already taken, shorter than 3 characters, contains invalid characters, or display name is blank),
-  - **When** the user attempts to register an account,
-  - **Then** the system should display an appropriate error message and keep the user on the onboarding page.
-- **AC3 (Confirmation):**
-  - **Given** the system has successfully processed the registration,
-  - **When** the user completes onboarding,
-  - **Then** the system should confirm success with a visual indicator and redirect to the dashboard.
-- **AC4 (Data Security):**
-  - **Given** the action involves personal identity information,
-  - **When** the user completes account registration,
-  - **Then** the system should securely associate the profile with the user's authenticated credentials.
-
-```gherkin
-Scenario Outline: Primary account registration and onboarding validation
-  Given the user is on the onboarding page
-  When the user attempts to register with display name "<displayName>" and handle "<handle>"
-  Then the system should <systemAction>
-  And the user should see message "<feedbackMessage>"
-
-  Examples:
-    | displayName | handle          | systemAction                               | feedbackMessage                                 |
-    | Alice Gamer | alice_pro       | grant access and redirect to the dashboard | Welcome to Eventory!                            |
-    | Bob The Pro | existing_handle | reject the action and highlight handle     | This handle is already taken                    |
-    | Dan Solo    | al              | reject the action and highlight handle     | Handle must be between 3 and 32 characters      |
-    | Eve Online  | eve!@#$         | reject the action and highlight handle     | Handle can only contain letters, numbers, and _ |
-    |             | sam_valid       | reject the action and highlight name field | Display name is required                        |
-```
+### Business Overview (2-Step Lifecycle)
+Eventory manages user accounts through a 2-step onboarding lifecycle:
+1. Step 1: First Login (JIT Provisioning): Authenticated user triggers body-less provisioning, creating an account with status ONBOARDING and a default handle.
+2. Step 2: Profile Activation: User provides a unique handle and display name to transition account status to ACTIVE.
+Security Guard: Accounts in ONBOARDING status cannot create Organizer or Sponsor profiles (HTTP 403 Forbidden).
 
 ---
 
-### US1-2: Create and Switch Between Role Profiles
-> **User Story:**
-> As a user,
-> I want to create and switch between Organizer and Sponsor profiles linked to my account
-> So that I can manage events or corporate funds without maintaining separate logins.
+### US1-1: Account Creation & Onboarding
+**User Story:** As a new user, I want to create a single primary account so that I have a central identity with a public handle to interact across the platform.
+* **Estimate:** 5 points
 
-#### Acceptance Criteria
-- **AC1 (Profile Creation):**
-  - **Given** the user is authenticated and on the role profile management page,
-  - **When** the user attempts to create an Organizer or Sponsor profile with a valid organization name,
-  - **Then** the system should allow the action and link the new role profile to the primary account.
-- **AC2 (Role Switching):**
-  - **Given** an authenticated user with multiple linked role profiles,
-  - **When** the user attempts to switch between active roles (Competitor, Organizer, Sponsor),
-  - **Then** the system should allow the action without requiring re-authentication and update the active workspace.
-- **AC3 (Validation & Access):**
-  - **Given** the user attempts to switch to a role profile that has not been created yet,
-  - **When** the user selects that unlinked role,
-  - **Then** the system should display an appropriate error message and maintain the current active role.
-- **AC4 (Confirmation):**
-  - **Given** the system has successfully processed the role switch,
-  - **When** the workspace reloads,
-  - **Then** the system should confirm success with a visual role indicator and role-specific navigation menus.
+* **[VALID] Business Conditions (Success):**
+  * **Given** a newly authenticated user without an existing account
+  * **When** the user provisions the account and activates it with a unique handle and display name
+  * **Then** the system creates the account with status ACTIVE, sets the unique handle, and enables full platform access.
 
-```gherkin
-Scenario Outline: Creating and switching active role profiles
-  Given an authenticated user on the dashboard with profiles "<existingProfiles>"
-  And the current active role is "<activeRole>"
-  When the user attempts to "<action>" profile for role "<targetRole>" with organization name "<orgName>"
-  Then the system should <systemAction>
-  And the active role indicator should display "<activeRoleBadge>"
-
-  Examples:
-    | existingProfiles               | activeRole | action | targetRole | orgName         | systemAction                                | activeRoleBadge |
-    | COMPETITOR                     | COMPETITOR | CREATE | ORGANIZER  | Siam Esports    | create organizer profile and link to account| Competitor      |
-    | COMPETITOR, ORGANIZER          | COMPETITOR | SWITCH | ORGANIZER  |                 | switch active workspace to Organizer        | Organizer       |
-    | COMPETITOR, ORGANIZER          | ORGANIZER  | CREATE | SPONSOR    | Apex Brands Co. | create sponsor profile and link to account  | Organizer       |
-    | COMPETITOR, ORGANIZER, SPONSOR | ORGANIZER  | SWITCH | SPONSOR    |                 | switch active workspace to Sponsor          | Sponsor         |
-    | COMPETITOR                     | COMPETITOR | SWITCH | ORGANIZER  |                 | display error "Profile not found"           | Competitor      |
-    | COMPETITOR, SPONSOR            | SPONSOR    | SWITCH | ORGANIZER  |                 | display error "Profile not found"           | Sponsor         |
-```
+* **[INVALID] Business Conditions (Rejection):**
+  * **Given** a user submits an already taken handle, an invalid handle format (< 3 or > 32 chars), or an empty display name
+  * **When** the user submits the onboarding form
+  * **Then** the system rejects the submission (HTTP 409 Conflict or 400 Bad Request) and keeps the account in ONBOARDING status.
 
 ---
 
-### US1-3: View and Update Role-Specific Profiles
-> **User Story:**
-> As an account owner,
-> I want to view and update my role-specific profile(s)
-> So that my contact and public information stays accurate.
+### US1-2: Organizer & Sponsor Role Profiles
+**User Story:** As a user, I want to create and switch between Organizer and Sponsor profiles linked to my account so that I can manage events or corporate funds without maintaining separate logins.
+* **Estimate:** 5 points
 
-#### Acceptance Criteria
-- **AC1 (Edit Information):**
-  - **Given** the user is on the role profile edit page,
-  - **When** the user attempts to edit their profile details (organization name, contact email, phone),
-  - **Then** the system should allow the action if the profile belongs to the authenticated user.
-- **AC2 (Validation):**
-  - **Given** the user input is incomplete or invalid (e.g. blank organization name or malformed email),
-  - **When** the user attempts to save profile changes,
-  - **Then** the system should display an appropriate error message and prevent saving.
-- **AC3 (Confirmation):**
-  - **Given** the system has successfully processed the update request,
-  - **When** the user saves the changes,
-  - **Then** the system should confirm success with a message or visual indicator.
+* **[VALID] Business Conditions (Success):**
+  * **Given** an authenticated user with account status ACTIVE
+  * **When** the user submits valid profile details (name and contact email) for an Organizer or Sponsor profile
+  * **Then** the system creates the linked role profile under the primary account and enables the role workspace.
 
-```gherkin
-Scenario Outline: Updating role profile contact details
-  Given an authenticated user on the "Edit <roleType> Profile" page
-  When the user attempts to update organization name to "<orgName>" and contact email to "<email>"
-  Then the system should <systemAction>
-  And the user should see message "<feedbackNotice>"
+* **[INVALID] Business Conditions (Rejection):**
+  * **Given** an authenticated user with account status ONBOARDING, or an active user submitting a blank entity name
+  * **When** the user submits the role profile creation request
+  * **Then** the system rejects the request (HTTP 403 Forbidden for incomplete onboarding, 400 Bad Request for empty name) and blocks profile creation.
 
-  Examples:
-    | roleType  | orgName         | email               | systemAction                                | feedbackNotice                     |
-    | Organizer | Bob Gaming Int. | contact@bobgame.com | save changes and display updated details    | Profile updated successfully       |
-    | Sponsor   | Acme Worldwide  | corp@acme.com       | save changes and display updated details    | Profile updated successfully       |
-    | Organizer |                 | valid@bobgame.com   | reject changes and highlight name field     | Organization name cannot be blank  |
-    | Organizer | Bob Gaming Int. | not-an-email        | reject changes and highlight email field    | Please enter a valid email address |
-```
+---
+
+### US1-3: Role-Specific Profile Viewing & Updates
+**User Story:** As an account owner, I want to view and update my role-specific profile(s) so that my contact and public information stays accurate.
+* **Estimate:** 3 points
+
+* **[VALID] Business Conditions (Success):**
+  * **Given** an authenticated account owner with existing Organizer or Sponsor profiles
+  * **When** the user views or updates role profile details (such as organization/sponsor name or contact email)
+  * **Then** the system returns or saves the updated role profile details and displays them across the platform.
+
+* **[INVALID] Business Conditions (Rejection):**
+  * **Given** an account owner submitting blank required fields (such as an empty organization or sponsor name)
+  * **When** the user submits the role profile update request
+  * **Then** the system rejects the update (HTTP 400 Bad Request) and preserves existing role profile data.
+
+---
+
+### US1-4: Primary Account Profile Viewing & Updates
+**User Story:** As an account owner, I want to view and update my primary account profile so that my information stays accurate.
+* **Estimate:** 3 points
+
+* **[VALID] Business Conditions (Success):**
+  * **Given** an authenticated account owner
+  * **When** the user views primary account details or updates display name, phone, avatar, or available unique handle
+  * **Then** the system returns or saves the profile data and reflects the updates across the platform.
+
+* **[INVALID] Business Conditions (Rejection):**
+  * **Given** an account owner updates their handle to one already taken by another account, or clears the display name
+  * **When** the user submits the primary profile update request
+  * **Then** the system rejects the update (HTTP 409 Conflict for duplicate handle, 400 Bad Request for empty name) and preserves existing profile data.
 
 ---
 
