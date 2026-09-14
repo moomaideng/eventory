@@ -17,6 +17,9 @@ type accountScenarioContext struct {
 	currentUser *apptest.TestUser
 	secondUser  *apptest.TestUser
 	resp        *apptest.Response
+
+	existingProfileName  string
+	existingProfileEmail string
 }
 
 func (s *accountScenarioContext) theEventoryAPIServiceIsRunning() error {
@@ -258,6 +261,130 @@ func (s *accountScenarioContext) theUserRetrievesTheirSponsorProfile() error {
 		return err
 	}
 	s.resp = resp
+	return nil
+}
+
+func (s *accountScenarioContext) theAccountOwnerHasAnExistingRoleProfile(role string) error {
+	s.currentUser = apptest.NewTestUser()
+	resp, err := s.client.Do(http.MethodPost, "/accounts", nil, s.currentUser.AuthHeaders())
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode != http.StatusCreated {
+		return fmt.Errorf("expected 201 when creating initial user, got %d: %s", resp.StatusCode, resp.Body)
+	}
+
+	displayName := "Role Profile Owner"
+	handle := "role_profile_owner"
+	patchResp, err := s.client.Do(http.MethodPatch, "/accounts/me", handlers.UpdateAccountRequest{
+		DisplayName: &displayName,
+		Handle:      &handle,
+	}, s.currentUser.AuthHeaders())
+	if err != nil {
+		return err
+	}
+	if patchResp.StatusCode != http.StatusOK {
+		return fmt.Errorf("expected 200 when activating onboarded user, got %d: %s", patchResp.StatusCode, patchResp.Body)
+	}
+
+	switch role {
+	case "organizer":
+		s.existingProfileName = "Existing Organizer Co"
+		s.existingProfileEmail = "existing@organizer.gg"
+		email := s.existingProfileEmail
+		resp, err := s.client.Do(http.MethodPut, "/accounts/me/organizer-profile", handlers.UpsertOrganizerProfileRequest{
+			OrganizerName:  s.existingProfileName,
+			OrganizerEmail: &email,
+		}, s.currentUser.AuthHeaders())
+		if err != nil {
+			return err
+		}
+		if resp.StatusCode != http.StatusOK {
+			return fmt.Errorf("expected 200 when creating organizer profile, got %d: %s", resp.StatusCode, resp.Body)
+		}
+	case "sponsor":
+		s.existingProfileName = "Existing Sponsor Co"
+		s.existingProfileEmail = "existing@sponsor.gg"
+		email := s.existingProfileEmail
+		resp, err := s.client.Do(http.MethodPut, "/accounts/me/sponsor-profile", handlers.UpsertSponsorProfileRequest{
+			SponsorName:  s.existingProfileName,
+			SponsorEmail: &email,
+		}, s.currentUser.AuthHeaders())
+		if err != nil {
+			return err
+		}
+		if resp.StatusCode != http.StatusOK {
+			return fmt.Errorf("expected 200 when creating sponsor profile, got %d: %s", resp.StatusCode, resp.Body)
+		}
+	default:
+		return fmt.Errorf("unknown role %q", role)
+	}
+	return nil
+}
+
+func (s *accountScenarioContext) theyUpdateTheirRoleProfileWithAnEmptyName(role string) error {
+	switch role {
+	case "organizer":
+		resp, err := s.client.Do(http.MethodPut, "/accounts/me/organizer-profile",
+			handlers.UpsertOrganizerProfileRequest{OrganizerName: ""}, s.currentUser.AuthHeaders())
+		if err != nil {
+			return err
+		}
+		s.resp = resp
+	case "sponsor":
+		resp, err := s.client.Do(http.MethodPut, "/accounts/me/sponsor-profile",
+			handlers.UpsertSponsorProfileRequest{SponsorName: ""}, s.currentUser.AuthHeaders())
+		if err != nil {
+			return err
+		}
+		s.resp = resp
+	default:
+		return fmt.Errorf("unknown role %q", role)
+	}
+	return nil
+}
+
+func (s *accountScenarioContext) theUpdateShouldFail() error {
+	if s.resp == nil {
+		return fmt.Errorf("no HTTP response captured")
+	}
+	if s.resp.StatusCode != http.StatusUnprocessableEntity {
+		return fmt.Errorf("expected update to fail with 422, got %d: %s", s.resp.StatusCode, s.resp.Body)
+	}
+	return nil
+}
+
+func (s *accountScenarioContext) theirExistingRoleProfileInformationShouldStayTheSame(role string) error {
+	switch role {
+	case "organizer":
+		resp, err := s.client.Do(http.MethodGet, "/accounts/me/organizer-profile", nil, s.currentUser.AuthHeaders())
+		if err != nil {
+			return err
+		}
+		var out handlers.OrganizerProfileResponse
+		if err := resp.JSON(&out); err != nil {
+			return fmt.Errorf("failed to parse organizer response: %w", err)
+		}
+		if out.OrganizerName != s.existingProfileName || out.OrganizerEmail != s.existingProfileEmail {
+			return fmt.Errorf("expected organizer profile to remain %q/%q, got %q/%q",
+				s.existingProfileName, s.existingProfileEmail, out.OrganizerName, out.OrganizerEmail)
+		}
+	case "sponsor":
+		resp, err := s.client.Do(http.MethodGet, "/accounts/me/sponsor-profile", nil, s.currentUser.AuthHeaders())
+		if err != nil {
+			return err
+		}
+		var out handlers.SponsorProfileResponse
+		if err := resp.JSON(&out); err != nil {
+			return fmt.Errorf("failed to parse sponsor response: %w", err)
+		}
+		if out.SponsorName != s.existingProfileName || out.SponsorEmail != s.existingProfileEmail {
+			return fmt.Errorf("expected sponsor profile to remain %q/%q, got %q/%q",
+				s.existingProfileName, s.existingProfileEmail, out.SponsorName, out.SponsorEmail)
+		}
+	default:
+		return fmt.Errorf("unknown role %q", role)
+	}
 	return nil
 }
 
@@ -522,6 +649,18 @@ func InitializeScenario(sc *godog.ScenarioContext) {
 	})
 	sc.Step(`^the user retrieves their sponsor profile$`, func() error {
 		return s.theUserRetrievesTheirSponsorProfile()
+	})
+	sc.Step(`^the account owner has an existing (organizer|sponsor) profile$`, func(role string) error {
+		return s.theAccountOwnerHasAnExistingRoleProfile(role)
+	})
+	sc.Step(`^they update their (organizer|sponsor) profile with an empty (?:organization|company) name$`, func(role string) error {
+		return s.theyUpdateTheirRoleProfileWithAnEmptyName(role)
+	})
+	sc.Step(`^the update should fail$`, func() error {
+		return s.theUpdateShouldFail()
+	})
+	sc.Step(`^their existing (organizer|sponsor) profile information should stay the same$`, func(role string) error {
+		return s.theirExistingRoleProfileInformationShouldStayTheSame(role)
 	})
 	sc.Step(`^an unauthenticated request is sent to "GET /me"$`, func() error {
 		return s.anUnauthenticatedRequestIsSentToGetMe()

@@ -65,7 +65,14 @@ Feature: Account Management and Profiles
     And the updated account display name should be "Bob Updated"
     And the updated account phone should be "+66812345678"
 
+  # =========================================================================
+  # US1-3
+  # As an account owner, I want to view and update my role-specific profile(s)
+  # so that my contact and public information stays accurate.
+  # =========================================================================
+
   # [VALID] Link and read Organizer role profile
+  @US1-3 @valid
   Scenario: Upsert and retrieve linked organizer profile
     Given an active onboarded user with display name "Org Lead" and handle "org_lead"
     When the user upserts their organizer profile with organization "Esports Global" and email "contact@esportsglobal.gg"
@@ -77,6 +84,7 @@ Feature: Account Management and Profiles
     And the organizer contact email should be "contact@esportsglobal.gg"
 
   # [VALID] Link and read Sponsor role profile
+  @US1-3 @valid
   Scenario: Upsert and retrieve linked sponsor profile
     Given an active onboarded user with display name "Sponsor Rep" and handle "sponsor_rep"
     When the user upserts their sponsor profile with company "Red Bull Thailand" and email "sponsor@redbull.co.th"
@@ -90,6 +98,18 @@ Feature: Account Management and Profiles
   # =========================================================================
   # 2. INVALID (NEGATIVE) SCENARIOS - Validation, Conflict & Security Guards
   # =========================================================================
+
+  @US1-3 @invalid
+  Scenario Outline: Reject role profile update when the name is cleared
+    Given the account owner has an existing <role> profile
+    When they update their <role> profile with an empty <name field>
+    Then the update should fail
+    And their existing <role> profile information should stay the same
+
+    Examples:
+      | role      | name field         |
+      | organizer | organization name  |
+      | sponsor   | company name       |
 
   # [INVALID] Guard: Reject organizer profile creation if still in ONBOARDING (Expect 403 Forbidden)
   Scenario: Reject organizer profile creation when account is still in ONBOARDING
