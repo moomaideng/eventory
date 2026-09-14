@@ -22,7 +22,9 @@ import {
 } from "@/components/ui/card";
 import {
   formatEntryFee,
+  formatRegistrationStatus,
   formatTournamentDate,
+  formatTournamentStatus,
   type Tournament,
 } from "../utils";
 
@@ -31,7 +33,7 @@ export function TournamentCard({ tournament }: { tournament: Tournament }) {
     0,
     tournament.capacity - tournament.registeredCount
   );
-  const status = tournament.status.replaceAll("_", " ").toLowerCase();
+  const status = formatTournamentStatus(tournament.status);
 
   return (
     <Card className="flex h-full flex-col justify-between">
@@ -57,8 +59,10 @@ export function TournamentCard({ tournament }: { tournament: Tournament }) {
           <div className="flex items-start gap-2">
             <Clock3 className="text-muted-foreground mt-0.5 size-4 shrink-0" />
             <span>
-              Registration closes{" "}
-              {formatTournamentDate(tournament.registrationDeadline)}
+              {formatRegistrationStatus(
+                tournament.status,
+                tournament.registrationDeadline
+              )}
             </span>
           </div>
           <div className="flex items-start gap-2">

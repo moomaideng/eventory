@@ -19,7 +19,7 @@ import { Separator } from "@/components/ui/separator";
 import {
   formatDateRange,
   formatMoney,
-  formatTournamentDate,
+  formatRegistrationStatus,
   type Tournament,
 } from "../utils";
 
@@ -60,9 +60,16 @@ export function TournamentAboutCard({
           <div className="flex items-start gap-3">
             <Clock3 className="text-muted-foreground mt-0.5 size-5 shrink-0" />
             <div className="flex flex-col gap-1">
-              <p className="text-sm font-medium">Registration deadline</p>
+              <p className="text-sm font-medium">
+                {tournament.status === "REGISTRATION_OPEN"
+                  ? "Registration deadline"
+                  : "Registration status"}
+              </p>
               <p className="text-muted-foreground text-sm">
-                {formatTournamentDate(tournament.registrationDeadline)}
+                {formatRegistrationStatus(
+                  tournament.status,
+                  tournament.registrationDeadline
+                )}
               </p>
             </div>
           </div>

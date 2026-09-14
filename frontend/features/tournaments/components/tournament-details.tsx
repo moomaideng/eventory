@@ -16,7 +16,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { formatRegistrationType } from "../utils";
+import { formatRegistrationType, formatTournamentStatus } from "../utils";
 import { TournamentAboutCard } from "./tournament-about-card";
 import { TournamentDetailsSkeleton } from "./tournament-details-skeleton";
 import { TournamentFundingCard } from "./tournament-funding-card";
@@ -77,7 +77,7 @@ export function TournamentDetails({ tournamentId }: { tournamentId: string }) {
     tournament.capacity - tournament.registeredCount,
     0
   );
-  const status = tournament.status.replaceAll("_", " ").toLowerCase();
+  const status = formatTournamentStatus(tournament.status);
   const registrationType = formatRegistrationType(tournament.registrationMode);
   const canCreateTeam =
     tournament.registrationMode === "TEAM" &&
