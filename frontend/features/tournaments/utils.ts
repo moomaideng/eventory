@@ -57,6 +57,31 @@ export function formatRegistrationType(value: string) {
   return "Solo registration";
 }
 
+export function formatTournamentStatus(value: string) {
+  return value.replaceAll("_", " ").toLowerCase();
+}
+
+export function formatRegistrationStatus(status: string, deadline: string) {
+  switch (status) {
+    case "REGISTRATION_OPEN":
+      return `Registration closes ${formatTournamentDate(deadline)}`;
+    case "REGISTRATION_CLOSED":
+      return "Registration closed";
+    case "ONGOING":
+      return "Tournament in progress";
+    case "COMPLETED":
+      return "Tournament completed";
+    case "CANCELLED":
+      return "Tournament cancelled";
+    case "CROWDFUNDING":
+      return "Funding in progress";
+    case "DRAFT":
+      return "Not published";
+    default:
+      return `Registration closes ${formatTournamentDate(deadline)}`;
+  }
+}
+
 export function initials(name: string) {
   return name
     .split(/\s+/)

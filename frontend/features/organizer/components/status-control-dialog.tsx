@@ -39,7 +39,7 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   REASON_MAX_LENGTH,
   REASON_MIN_LENGTH,
-  statusLabel,
+  statusTitle,
   statusOverrideSchema,
   TERMINAL_WARNING,
   type TournamentStatus,
@@ -89,12 +89,14 @@ export function StatusControlDialog({
 
   const isTerminal =
     history.isSuccess && (history.data?.allowedTransitions?.length ?? 0) === 0;
+  const isKnownTerminalStatus =
+    currentStatus === "COMPLETED" || currentStatus === "CANCELLED";
 
   const options = useMemo(
     () =>
       (history.data?.allowedTransitions ?? []).map((value) => ({
         value,
-        label: statusLabel(value),
+        label: statusTitle(value),
       })),
     [history.data?.allowedTransitions]
   );
@@ -132,7 +134,9 @@ export function StatusControlDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogTrigger render={<Button variant="outline" />}>
+      <DialogTrigger
+        render={<Button variant="outline" disabled={isKnownTerminalStatus} />}
+      >
         <Settings2 data-icon="inline-start" />
         Change status
       </DialogTrigger>
@@ -141,8 +145,8 @@ export function StatusControlDialog({
           <DialogTitle>Change tournament status</DialogTitle>
           <DialogDescription>
             This tournament is currently{" "}
-            <span className="font-medium capitalize">
-              {statusLabel(currentStatus)}
+            <span className="font-medium">
+              {statusTitle(currentStatus)}
             </span>
             . The change is recorded with your name, the reason, and the time.
           </DialogDescription>
@@ -166,7 +170,7 @@ export function StatusControlDialog({
             <AlertTriangle />
             <AlertTitle>This status is final</AlertTitle>
             <AlertDescription>
-              A {statusLabel(currentStatus)} tournament cannot be moved to
+              A {statusTitle(currentStatus)} tournament cannot be moved to
               another status.
             </AlertDescription>
           </Alert>
@@ -275,8 +279,8 @@ export function StatusControlDialog({
                 {history.data.items.map((item) => (
                   <li key={item.id} className="flex flex-col gap-1 text-sm">
                     <span className="capitalize">
-                      {statusLabel(item.fromStatus)} →{" "}
-                      {statusLabel(item.toStatus)}
+                      {statusTitle(item.fromStatus)} →{" "}
+                      {statusTitle(item.toStatus)}
                     </span>
                     <span className="text-muted-foreground wrap-anywhere">
                       {item.reason}

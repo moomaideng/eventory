@@ -10,7 +10,10 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { formatDate, type Tournament } from "../utils";
+import {
+  formatRegistrationStatus,
+  type Tournament,
+} from "../utils";
 
 export function TournamentSummaryCard({
   tournament,
@@ -37,7 +40,10 @@ export function TournamentSummaryCard({
         <div className="text-muted-foreground flex flex-wrap gap-x-5 gap-y-2">
           <span className="flex items-center gap-2">
             <CalendarDays className="size-4 shrink-0" />
-            Registration closes {formatDate(tournament.registrationDeadline)}
+            {formatRegistrationStatus(
+              tournament.status,
+              tournament.registrationDeadline
+            )}
           </span>
           <span className="flex items-center gap-2">
             <MapPin className="size-4 shrink-0" />

@@ -20,6 +20,13 @@ export function statusLabel(status: string) {
   return status.toLowerCase().replaceAll("_", " ");
 }
 
+export function statusTitle(status: string) {
+  return statusLabel(status)
+    .split(" ")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+}
+
 // Mirrors the server's limits in internal/usecases/tournament_status_usecase.go
 // so the organizer sees the problem before a request is sent. The server
 // re-validates regardless; this is convenience, not enforcement.

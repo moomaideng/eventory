@@ -21,12 +21,17 @@ import {
 const numberFormatter = new Intl.NumberFormat("en-US");
 
 function getTimeRemaining(deadlineStr: string, status: string) {
-  if (status === "COMPLETED") {
-    return { value: "Completed", detail: "Tournament ended" };
+  switch (status) {
+    case "COMPLETED":
+      return { value: "Completed", detail: "Tournament ended" };
+    case "CANCELLED":
+      return { value: "Cancelled", detail: "Tournament is no longer active" };
+    case "ONGOING":
+      return { value: "In progress", detail: "Tournament underway" };
+    case "REGISTRATION_CLOSED":
+      return { value: "Registration closed", detail: "No new entries accepted" };
   }
-  if (status === "IN_PROGRESS") {
-    return { value: "In progress", detail: "Tournament underway" };
-  }
+
   const now = Date.now();
   const deadline = new Date(deadlineStr).getTime();
   const diffMs = deadline - now;
@@ -74,12 +79,13 @@ export function DashboardOverview({ summary }: { summary: OrganizerSummary }) {
     tournament.status
   );
 
-  const readinessDetail =
-    metrics.formingEntries > 0
-      ? `${metrics.formingEntries} ${metrics.formingEntries === 1 ? "team" : "teams"} still forming`
-      : metrics.acceptedEntries > 0
-        ? "All rosters locked"
-        : "No accepted teams yet";
+  const pipelineDetails = [
+    `${metrics.formingEntries} forming`,
+    metrics.lockedEntries > 0
+      ? `${metrics.lockedEntries} locked awaiting review`
+      : "0 locked awaiting review",
+    `${metrics.acceptedEntries} accepted`,
+  ].join(" • ");
 
   const organizerMetrics = [
     {
@@ -89,9 +95,9 @@ export function DashboardOverview({ summary }: { summary: OrganizerSummary }) {
       icon: Users,
     },
     {
-      label: "Roster readiness",
-      value: `${metrics.lockedEntries} / ${metrics.acceptedEntries} Locked`,
-      detail: readinessDetail,
+      label: "Registration pipeline",
+      value: `${metrics.totalEntries} ${metrics.totalEntries === 1 ? "entry" : "entries"}`,
+      detail: pipelineDetails,
       icon: ShieldCheck,
     },
     {
