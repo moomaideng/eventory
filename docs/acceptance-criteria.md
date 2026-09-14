@@ -1,17 +1,26 @@
-# Eventory Platform — Acceptance Criteria (E2E Master Specification)
+# Eventory — Acceptance Criteria
 
-> **Very Important**: Only EPIC 1 has been reviewed. Other EPIC 2 - 7 are still draft.
+> Only **EPIC 1** is reviewed. Use it as the template but drop the API specification. Keep it simple and understandable in business language.
 
-This document serves as the master end-to-end (E2E) acceptance criteria specification for the Eventory platform across **EPIC 1 through EPIC 7**.
+## How to write a story
 
-Every user story strictly adheres to the **TA Product Backlog Acceptance Criteria standard**, structured with:
-1. **User Story Statement** (`As a..., I want..., So that...`)
-2. **Core Acceptance Criteria (Given-When-Then)** covering:
-   - **Primary Action & Condition** (Happy path flow)
-   - **Incomplete / Invalid Input** (Validation error handling)
-   - **Success Confirmation** (Visual feedback and indicators)
-   - **Business Rules & Permissions** (Access control and edge cases)
-3. **Consolidated Gherkin Scenario Outline** with parameterized **`Examples:`** table consolidating input variations and boundary values.
+- **User Story** — As a…, I want…, so that…
+- **Estimate** — story points, same as the backlog sheet
+- **[VALID]** — one Given / When / Then for the success case
+- **[INVALID]** — one Given / When / Then for the rejection case
+- Write in business language — no API paths, HTTP codes, or code names
+- Test scenarios (Gherkin) live in the `.feature` test files, not here
+
+## Review status
+
+| EPIC | Status |
+|---|---|
+| 1 | Reviewed |
+| 2 | US2-1, US2-2 in new format · rest draft |
+| 3 | US3-3 in new format · rest draft |
+| 5 | US5-4 in new format · rest draft |
+| 6 | US6-6 in new format · rest draft |
+| 4, 7 | Draft |
 
 ---
 
@@ -235,40 +244,20 @@ Scenario Outline: Tournament dashboard access permissions
 ---
 
 ### US3-3: Manual Tournament Status Override
-> **User Story:**
-> As an organizer,
-> I want the ability to manually override the tournament status
-> So that I can quickly adjust for delays, cancellations, or unexpected schedule changes.
+**User Story:** As an organizer, I want the ability to manually override the tournament status so that I can quickly adjust for delays, cancellations, or unexpected schedule changes.
+* **Estimate:** 5 points
 
-#### Acceptance Criteria
-- **AC1 (Status Override):**
-  - **Given** an authorized organizer is on the tournament settings page,
-  - **When** the organizer selects a valid target status and provides an explanation reason,
-  - **Then** the system should update the tournament status and notify registered participants.
-- **AC2 (Mandatory Reason):**
-  - **Given** the organizer attempts to cancel or override status without a reason,
-  - **When** the submission is attempted,
-  - **Then** the system should display an appropriate error message stating a reason is required.
-- **AC3 (Locked State):**
-  - **Given** a tournament is finalized or completed,
-  - **When** the organizer attempts to reopen it,
-  - **Then** the system should block the transition and display an appropriate error message.
+* **[VALID] Business Conditions (Success):**
+  * **Given** an organizer owns a tournament that can move to the chosen status
+  * **When** the organizer picks the new status and explains why
+  * **Then** the tournament shows the new status, and the change is logged with who made it, why, and when.
 
-```gherkin
-Scenario Outline: Manual tournament status transitions and mandatory reason checks
-  Given an organizer is viewing settings of a tournament in "<currentStatus>" status
-  When the organizer overrides status to "<targetStatus>" with explanation reason "<reason>"
-  Then the system should <systemAction>
-  And the tournament status badge should display "<finalStatus>"
+* **[INVALID] Business Conditions (Rejection):**
+  * **Given** the tournament is already completed or cancelled, the organizer gives no reason, or the person does not own the tournament
+  * **When** they try to change the status
+  * **Then** the change is refused and the tournament stays as it was.
 
-  Examples:
-    | currentStatus       | targetStatus        | reason            | systemAction                                    | finalStatus         |
-    | REGISTRATION_OPEN   | CANCELLED           | Severe weather    | cancel tournament and alert registered teams    | CANCELLED           |
-    | REGISTRATION_CLOSED | ONGOING             | Matches starting  | start tournament and open match bracket         | ONGOING             |
-    | ONGOING             | COMPLETED           | Finals concluded  | archive tournament standings and lock brackets  | COMPLETED           |
-    | REGISTRATION_OPEN   | CANCELLED           |                   | block action with error "Reason is required"    | REGISTRATION_OPEN   |
-    | COMPLETED           | REGISTRATION_OPEN   | Reopening test    | block action with error "Cannot reopen event"   | COMPLETED           |
-```
+* **Notes:** Completed and cancelled are final. Notifying participants is not included yet.
 
 ---
 
@@ -738,34 +727,20 @@ Scenario Outline: Sponsor directory visibility filters
 ---
 
 ### US5-4: Structured Sponsorship Tier Packages
-> **User Story:**
-> As an organizer,
-> I want to create structured sponsorship tier packages (e.g., Gold, Silver) with defined perk descriptions and a funding goal.
+**User Story:** As an organizer, I want to create structured sponsorship tier packages (e.g., Gold, Silver) with defined perk descriptions and a funding goal so that brands can sponsor my tournament through self-serve checkout.
+* **Estimate:** TBD
 
-#### Acceptance Criteria
-- **AC1 (Create Tier):**
-  - **Given** an organizer is on the sponsorship tier setup page,
-  - **When** the organizer defines tier name, positive pledge amount, and available slots count,
-  - **Then** the system should save the tier and display it on the campaign pledge card.
-- **AC2 (Validation):**
-  - **Given** pledge amount is zero or slots count is invalid,
-  - **When** the organizer attempts to save,
-  - **Then** the system should display an appropriate error message.
+* **[VALID] Business Conditions (Success):**
+  * **Given** an organizer owns a tournament open for sponsorship
+  * **When** the organizer creates a tier with a name, a price, perks, and number of slots
+  * **Then** the tier appears on the tournament page for sponsors to buy.
 
-```gherkin
-Scenario Outline: Configuring sponsorship tier packages
-  Given an organizer is on the "Sponsorship Tier Packages" tab
-  When the organizer creates tier with name "<name>", pledge amount "<price>", and slots "<slots>"
-  Then the system should <systemAction>
-  And the campaign pledge card should be "<tierStatus>"
+* **[INVALID] Business Conditions (Rejection):**
+  * **Given** the tier has no name, a price of zero, no slots, or the person does not own the tournament
+  * **When** they try to save the tier
+  * **Then** the tier is refused and sponsors do not see it.
 
-  Examples:
-    | name   | price     | slots | systemAction                                           | tierStatus |
-    | Gold   | 10000 THB | 2     | save tier and display self-service pledge card         | Displayed  |
-    | Silver | 5000 THB  | 5     | save tier and display self-service pledge card         | Displayed  |
-    | Bronze | 0 THB     | 10    | reject tier with error "Amount must be greater than 0" | Hidden     |
-    | Custom | 15000 THB | 0     | reject tier with error "Slots must be at least 1"      | Hidden     |
-```
+* **Notes:** Rough draft for Sprint 2 — will change during implementation.
 
 ---
 
@@ -997,33 +972,20 @@ Scenario Outline: Public live bracket view by tournament publication status
 ---
 
 ### US6-6: Tournament Finalization and Standings Archival
-> **User Story:**
-> As an organizer,
-> I want to finalize the tournament once all rounds are complete
-> So that placement standings are permanently archived on the public tournament page.
+**User Story:** As an organizer, I want to finalize the tournament once all rounds are complete so that placement standings are permanently archived on the public tournament page.
+* **Estimate:** TBD
 
-#### Acceptance Criteria
-- **AC1 (Finalize Event):**
-  - **Given** all tournament matches are completed and all score disputes resolved,
-  - **When** the organizer clicks the "Finalize Tournament" button,
-  - **Then** the system should lock the bracket and permanently archive final placement standings on the public page.
-- **AC2 (Open Disputes):**
-  - **Given** there are unresolved match score disputes,
-  - **When** finalization is attempted,
-  - **Then** the system should display an appropriate error message and block finalization.
+* **[VALID] Business Conditions (Success):**
+  * **Given** an organizer owns an ongoing tournament where every match has a result
+  * **When** the organizer finalizes the tournament
+  * **Then** the tournament is marked completed and the final standings are shown on its public page.
 
-```gherkin
-Scenario Outline: Finalizing tournament and locking standings
-  Given all tournament matches are completed and unresolved dispute count is "<disputeCount>"
-  When the organizer attempts to finalize the tournament
-  Then the system should <systemAction>
-  And the tournament state badge should update to "<finalState>"
+* **[INVALID] Business Conditions (Rejection):**
+  * **Given** some matches have no result yet, the tournament is already finished, or the person does not own it
+  * **When** they try to finalize
+  * **Then** finalization is refused and nothing changes.
 
-  Examples:
-    | disputeCount | systemAction                                               | finalState |
-    | 0            | archive final standings on public page and lock bracket    | Finalized  |
-    | 2            | block finalization with error "Resolve open score disputes"| Ongoing    |
-```
+* **Notes:** Rough draft for Sprint 2 — will change during implementation.
 
 ---
 
