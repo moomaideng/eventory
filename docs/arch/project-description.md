@@ -22,7 +22,7 @@ Eventory puts those flows on one platform. An organizer creates a tournament (wi
 
 - **Organizer**: hosts and runs tournaments
 - **Sponsor**: funds tournaments via packages/pledges
-- **Competitor**: joins tournaments (team captain submits registration)
+- **Competitor**: joins tournaments
 
 ## Scenario (use-case & description)
 
@@ -131,39 +131,66 @@ Eventory puts those flows on one platform. An organizer creates a tournament (wi
 
 ## Functional Requirements
 
+*Format: `[Condition] [Subject] [Action] [Object] [Constraint]` (condition and constraint optional).*
 
-TODO: these are only example sections, don't need to follow it.
+### Authentication
 
-### TODO Section
+- FR1: The system shall authenticate users with Google OAuth.
+- FR2: On a user's first successful sign-in, the system shall create a new account.
+- FR3: When a signed-in user signs out, the system shall end the session.
+- FR4: When an active account submits valid Organizer or Sponsor profile details, the system shall create the corresponding profile for that account.
+- FR5: When an active account requests a mode change, the system shall switch that account among Competitor, Organizer, and Sponsor modes under one login.
 
-- FR1: TODO
-- FR2: TODO
-- FR3: TODO
+### Tournament Hosting
 
-### TODO Section
+- FR6: When an organizer submits required event details (title, dates, rules, solo/team format, entry fee, rewards), the system shall create a tournament draft.
+- FR7: When an organizer sets a funding goal, deadline, and sponsorship packages/tiers on a draft tournament, the system shall configure crowdfunding for that tournament.
+- FR8: When an organizer defines form fields on a draft tournament, the system shall configure the custom registration form for that tournament.
+- FR9: When an organizer changes crowdfunding or registration form settings on a draft tournament, the system shall update those draft settings.
+- FR10: When an organizer chooses to open a configured tournament, the system shall open the tournament for sponsorship and/or competitor registration.
 
-- FR4: TODO
-- FR5: TODO
-- FR6: TODO
-- FR7: TODO
-- FR8: TODO
+### Sponsorship
+
+- FR11: When a tournament is open for sponsorship, the system shall display available sponsorship packages/tiers and funding progress.
+- FR12: When a sponsor submits a package selection and brand logo for checkout, the system shall process the checkout through the payment gateway.
+- FR13: On successful payment, the system shall record the confirmed sponsorship with updated funding progress and public sponsor display on the tournament page.
+- FR14: When payment fails or the selected package has no remaining slots, the system shall keep the sponsorship unconfirmed with a failure notice to the sponsor.
+
+### Registration
+
+FR15 is for Solo, FR16-19 for Team, and FR20-21 are shared.
+
+- FR15: When a competitor completes the registration form for a solo-format tournament, the system shall accept the form and process any entry fee through the payment gateway (or continue if free).
+- FR16: When a competitor creates a team for a team-format tournament, the system shall create a team lobby with an invite.
+- FR17: When a competitor joins with a valid invite, the system shall add the competitor to the team lobby before registration is submitted.
+- FR18: When a team captain submits a roster that meets tournament size rules, the system shall lock the team roster for registration submission.
+- FR19: When a team captain submits the registration form for a locked roster, the system shall process any team entry fee through the payment gateway.
+- FR20: On successful payment when required (or immediately when free), the system shall submit the registration to the organizer for review with confirmation to the competitor.
+- FR21: When payment fails or a team roster fails required size checks, the system shall keep the registration unsubmitted with the team roster unlocked.
+
+### Match Results
+
+- FR22: When an authorized organizer or tournament staff submits a final match result, the system shall record the result for that match.
+- FR23: After a valid result is saved, the system shall update the tournament bracket and/or standings on the tournament page.
+- FR24: When an unauthorized actor submits a result or the result is invalid (e.g. a disallowed tie in an elimination match), the system shall keep the match unchanged with an error notice to the actor.
 
 ## Non-functional Requirements
 
-TODO: these are only example sections, don't need to follow it.
-
 ### Security & Privacy
 
-- NFR1: TODO
+- NFR1: The system shall authenticate users with Google OAuth tokens only.
+- NFR2: The system shall process payments through an external payment gateway that handles card data.
+- NFR3: The system shall accept match result recording from the tournament owner organizer or assigned tournament staff only.
 
 ### Usability
 
-- NFR2: TODO
+- NFR4: The system shall present Competitor, Organizer, and Sponsor mode switching in the web UI under one login.
 
 ### Reliability
 
-- NFR3: TODO
+- NFR5: When a fee or pledge applies and payment succeeds, the system shall confirm the related registration or sponsorship.
+- NFR6: When a fee or pledge applies and payment fails, the system shall keep the previous registration or sponsorship state (team roster unlocked; sponsorship and registration unconfirmed).
 
 ### Performance
 
-- NFR4: TODO
+- NFR7: Under normal course-demo load, the system shall complete competitor registration confirmation with p95 latency under 3 seconds, excluding external payment-gateway processing time.
