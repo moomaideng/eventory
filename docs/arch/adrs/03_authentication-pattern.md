@@ -2,15 +2,13 @@
 
 ## Context
 
-Users need one login, then Organizer / Sponsor / Competitor workspaces. Building and securing email/password (hashing, reset, MFA) is not the product's differentiator. The team already uses Supabase in the SE stack for Google sign-in and JWT verification on the API.
-
-ASRs: no password store in Eventory services; browser client must use a standard OAuth-style flow; APIs must authorize with a short-lived token after identity is established.
+Users need one login, then Organizer / Sponsor / Competitor workspaces. Eventory's value is tournament hosting, sponsorship, and registration, not building a custom login system. Implementing email/password ourselves would mean owning password hashing, reset flows, and multi-factor auth, which adds security work without improving the core product. Eventory services should not store passwords. The browser should use a standard OAuth-style flow, and APIs should authorize with a short-lived token after identity is established.
 
 Options considered:
 
-- **Supabase Auth (external IdP, Google OAuth)**: managed identity, JWT for APIs, fits current client; depends on Supabase availability.
+- **Supabase Auth (external IdP, Google OAuth)**: managed identity and JWT for APIs; depends on Supabase availability.
 - **Custom email/password**: full control, but we own credential security and reset flows.
-- **Home-grown OAuth against Google only**: possible, but reimplements what Supabase already provides to the project.
+- **Custom OAuth against Google only**: possible, but we would build and maintain the OAuth integration ourselves instead of using a managed IdP.
 
 ## Decision
 
@@ -25,11 +23,10 @@ Accepted
 **Positive**
 
 - No password storage or reset flows inside Eventory services.
-- Reuses the existing SE auth path; less new security surface for the team.
+- Less auth security surface for the team to build and maintain.
 - Clear boundary: identity external, domain profiles in Account Service.
 
 **Negative**
 
 - Sign-in depends on Supabase (and Google) availability.
-- Users without a supported IdP path cannot register until another provider is added.
-- Token revoke/refresh edge cases must be handled at the gateway and services.
+- Users without a Google account cannot sign in unless we add another login option later.

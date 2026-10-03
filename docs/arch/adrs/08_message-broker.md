@@ -1,17 +1,17 @@
-# ADR-07: Message Broker (Asynchronous Collaboration)
+# ADR-08: Message Broker (Asynchronous Collaboration)
 
 ## Context
 
 After payment succeeds, registration is submitted, sponsorship is confirmed, or a match result is recorded, Eventory should notify interested parties (email and/or in-app). That work is not required to complete the writer's database transaction in the same synchronous call stack. Coupling Tournament or Payment to Notification over sync RPC would make user actions wait on email providers and would amplify Notification outages.
 
-Domain events already identified in the microservice design:
+Domain events in scope:
 
 - `payment.succeeded`
 - `registration.submitted`
 - `match_result.recorded`
 - `sponsorship.confirmed`
 
-ASRs: eventually consistent notification delivery; retry without blocking UC-02/UC-03/UC-04 success paths; services stay decoupled.
+Notification delivery can be eventually consistent. Retries must not block UC-02 / UC-03 / UC-04 success paths. Publishers and Notification should stay decoupled.
 
 Options considered:
 
@@ -21,7 +21,7 @@ Options considered:
 
 ## Decision
 
-Use a **message broker** for asynchronous collaboration. Payment and Tournament **publish** the domain events above. Notification Service **consumes** them and sends email / in-app notifications. Prefer at-least-once delivery with idempotent consumers (and outbox if needed later) so delivery is eventually consistent.
+Use a **message broker** for asynchronous collaboration. Payment and Tournament **publish** the domain events above. Notification Service **consumes** them and sends email / in-app notifications. Prefer at-least-once delivery with idempotent consumers so delivery is eventually consistent.
 
 ## Status
 
@@ -31,12 +31,9 @@ Accepted
 
 **Positive**
 
-- Register, sponsor, and record-result paths stay responsive.
-- Notification can retry and scale separately from Tournament/Payment.
-- New consumers can subscribe to the same events later without changing publishers' sync APIs.
+- Registration, sponsorship, and match-result paths stay responsive while notification runs separately.
 
 **Negative**
 
 - Eventual consistency: UI may confirm success before the email arrives.
-- Team must operate broker infra and define event contracts.
-- Duplicate deliveries require idempotent notification handling.
+- Duplicate deliveries are possible; Notification must handle the same event safely more than once.

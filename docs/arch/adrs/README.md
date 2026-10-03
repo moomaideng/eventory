@@ -14,7 +14,8 @@ Justify decisions with architecturally significant requirements (ASRs) and quali
 | [02 Monorepo vs Polyrepo](./02_monorepo-vs-polyrepo.md) | Accepted |
 | [03 Authentication Pattern](./03_authentication-pattern.md) | Accepted |
 | [04 Database Technology](./04_database-technology.md) | Accepted |
-| [05 API Gateway and Edge REST](./05_api-gateway-and-edge-rest.md) | Accepted |
-| [06 Internal Synchronous IPC (gRPC)](./06_internal-ipc-grpc.md) | Accepted |
-| [07 Message Broker (Asynchronous Collaboration)](./07_message-broker.md) | Accepted |
-| [08 Object Storage](./08_object-storage.md) | Accepted |
+| [05 API Gateway](./05_api-gateway.md) | Accepted |
+| [06 Public API Style](./06_public-api-style.md) | Accepted |
+| [07 Internal Synchronous IPC Style](./07_internal-ipc-style.md) | Accepted |
+| [08 Message Broker (Asynchronous Collaboration)](./08_message-broker.md) | Accepted |
+| [09 Object Storage](./09_object-storage.md) | Accepted |

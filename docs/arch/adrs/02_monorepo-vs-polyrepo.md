@@ -2,7 +2,7 @@
 
 ## Context
 
-Eventory has a web client, multiple backend services (ADR-01), infra config (API gateway, compose/swarm), and architecture docs (ADRs, use cases, microservice design). Changes often span layers: a registration field can touch Tournament API, Payment contract, frontend forms, and docs in one iteration.
+Eventory has a web client, multiple backend services (ADR-01), infra config (API gateway, Docker Compose), and architecture docs (ADRs, use cases, microservice design). Changes often span layers: a registration field can touch Tournament API, Payment contract, frontend forms, and docs in one iteration.
 
 Options considered:
 
