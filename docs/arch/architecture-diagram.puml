@@ -1,0 +1,63 @@
+@startuml architecture-diagram
+skinparam componentStyle rectangle
+skinparam shadowing false
+left to right direction
+
+actor Organizer
+actor Sponsor
+actor Competitor
+actor "Tournament Staff" as Staff
+
+rectangle "Web Client" as Client
+rectangle "API Gateway\n(Traefik)" as GW
+
+cloud "Supabase Auth\n(external Identity Provider)" as Auth
+cloud "Object Storage\n(S3-compatible)" as S3
+cloud "Payment Gateway" as PayGW
+cloud "Email Provider" as Email
+
+rectangle "Eventory" {
+  component [Account Service] as Account
+  component [Tournament Service] as Tournament
+  component [Payment Service] as Payment
+  component [Notification Service] as Notification
+
+  queue "Message Broker" as Broker
+
+  database "PostgreSQL\n(account)" as AccDB
+  database "PostgreSQL\n(tournament)" as TourDB
+  database "MongoDB\n(forms)" as FormDB
+  database "PostgreSQL\n(payment)" as PayDB
+  database "PostgreSQL\n(notification)" as NotifDB
+}
+
+Organizer --> Client
+Sponsor --> Client
+Competitor --> Client
+Staff --> Client
+
+Client --> Auth : sign in
+Client --> GW
+
+GW --> Account : CreateProfile /\nGetProfile
+GW --> Tournament : UC-01 Create Tournament\nUC-02 Sponsor Tournament\nUC-03 Submit Registration\nUC-04 Record Match Results
+
+Tournament --> Account : GetAccount
+Tournament --> Payment : CreateCheckout /\nGetPaymentStatus
+Tournament --> S3 : store/fetch sponsor logo
+Tournament --> TourDB : persist tournament,\nlobby, match
+Tournament --> FormDB : persist form\nschema/answers
+
+Account --> AccDB : persist
+Payment --> PayDB : persist ledger/checkout
+Notification --> NotifDB : persist delivery log
+
+Payment --> PayGW : charge / refund
+PayGW --> Payment : HandleGatewayCallback
+
+Payment --> Broker : publish payment.succeeded
+Tournament --> Broker : publish registration.submitted /\nmatch_result.recorded /\nsponsorship.confirmed
+Notification --> Broker : consume events
+Notification --> Email : SendEmailNotification
+
+@enduml
