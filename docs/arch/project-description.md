@@ -26,40 +26,108 @@ Eventory puts those flows on one platform. An organizer creates a tournament (wi
 
 ## Scenario (use-case & description)
 
-TODO, use 3 usecases in project-proposal-draft, but below is just example. no need to follow it
+### UC-01: Create a Tournament
 
-### UC-01: TODO
+**Primary Actor**: Organizer
 
-**Primary Actor**: Customer (college student)
+**Goal**: Set up a tournament on the platform (create a draft, configure crowdfunding and the registration form as needed, then open for participants).
 
-**Goal**: Record an expense with minimal manual typing by automatically picking up new bank receipt images from the device gallery instead of entering each transaction by hand.
-
-**Preconditions**: Customer is signed in. Customer has at least one bank expense hook configured and has granted media library access for that hook.
+**Preconditions**: Organizer is signed in and has an active Organizer profile.
 
 **Main Flow**:
 
-1. Customer completes a bank payment. The bank app saves a receipt image to the device gallery (where the OS and bank app allow).
-2. System detects a newly added receipt image associated with the configured bank hook (media-library listener or polling via the native mobile app).
-3. System uploads the image to object storage.
-4. System extracts metadata (amount, merchant/counterparty, date) from the stored image.
-5. System creates a pending expense record and notifies the customer with a suggested category.
-6. Customer confirms the suggested category or picks a different one (`<<include>> Manage Category`).
-7. System finalizes the expense record under the confirmed category.
+1. Organizer opens tournament creation and enters event details (title, dates, rules, solo/team format, entry fee, rewards).
+2. System creates the tournament as a draft and shows the organizer dashboard.
+3. Organizer configures the draft before opening:
+   - Optionally enables crowdfunding (funding goal, deadline, sponsorship packages/tiers).
+   - Configures the custom registration form (fields such as text, dropdown, file upload).
+   - May update crowdfunding and the form again while the tournament is still a draft.
+4. When ready, organizer opens the tournament for sponsorship and/or competitor registration.
 
-**Postcondition**: A categorized expense record exists and is reflected in the dashboard.
+**Postcondition**: A tournament exists with its registration form configured and is open according to the organizer’s chosen path.
 
-**Outcome**: Their spending gets tracked accurately without manually re-typing every bank transaction.
+**Outcome**: The organizer has one place to define the event, fund it if needed, and accept registrations, without chat apps, forms, and spreadsheets.
 
 **Alternate/Exceptional Flow:**
 
-1. **User denies media access**: System explains the requirement and provides a shortcut to OS settings.
-2. **Duplicate receipt detected**: System ignores duplicate images by hash to prevent double-counting.
+1. **Invalid or incomplete details**: System blocks create/save, highlights missing or invalid fields (e.g. end before start, empty title), and no tournament is published.
+2. **Invalid crowdfunding setup**: System rejects a zero/negative goal or a past deadline; tournament stays unpublished for that campaign.
+3. **Incomplete registration form**: System blocks saving a field with no label or a dropdown without enough options; form stays as last valid version.
 
-### UC-02: TODO
+### UC-02: Sponsor a Tournament
 
-### UC-03: TODO
+**Primary Actor**: Sponsor
 
-### UC-04: TODO
+**Goal**: Support a tournament by choosing a package/pledge, paying, and appearing on the tournament page as funding progress updates.
+
+**Preconditions**: Sponsor is signed in and has an active Sponsor profile. Tournament is open for sponsorship (including crowdfunding stage when used).
+
+**Main Flow**:
+
+1. Sponsor opens the tournament page and reviews available sponsorship packages/tiers and funding progress.
+2. Sponsor selects a package, uploads brand logo (and link if required), and starts checkout.
+3. System processes payment via the payment gateway.
+4. On success, system records the pledge, updates funding progress, and shows the sponsor (e.g. logo) on the tournament page.
+
+**Postcondition**: A confirmed sponsorship exists; funding progress and public sponsor display are updated.
+
+**Outcome**: The sponsor funds the event in one flow and is visibly recognized on the tournament.
+
+**Alternate/Exceptional Flow:**
+
+1. **Payment declined or fails**: System informs the sponsor, no pledge is confirmed, funding and public display stay unchanged; sponsor can retry.
+2. **Package sold out or unavailable**: System blocks checkout and explains that the tier has no remaining slots.
+
+### UC-03: Submit Registration
+
+**Primary Actor**: Competitor (solo player, or Team Captain for team events)
+
+**Goal**: Register for a tournament as a solo entry, or as a team after locking the roster; pay any entry fee, and submit the registration form to the organizer.
+
+**Preconditions**: Competitor is signed in with a completed profile. Tournament registration is open. For team events, a team lobby exists with members joined via invite before lock.
+
+**Main Flow**:
+
+1. Competitor opens the tournament and starts registration.
+2. Registration follows one of these branches:
+   - **2a. Solo**: Competitor fills the tournament registration form and proceeds to pay entry fee if any.
+   - **2b. Team**: Team members join the captain’s lobby via invite. When the roster meets tournament size rules, the Team Captain locks the roster, completes the registration form, and pays the team entry fee if any.
+3. System processes payment when required (payment gateway).
+4. On success, system submits the registration to the organizer for review/acceptance and confirms to the competitor.
+
+**Postcondition**: A registration entry exists and is visible to the organizer for review.
+
+**Outcome**: The competitor (or team) is officially entered without separate forms and bank-transfer chasing.
+
+**Alternate/Exceptional Flow:**
+
+1. **Payment fails**: System informs the competitor; solo registration is not submitted; for teams the roster stays unlocked and the team is not sent to the organizer; retry is allowed.
+2. **Incomplete team roster**: System blocks lock/submit until the roster meets required size; lobby stays forming.
+3. **Invalid or incomplete registration form**: System rejects submit, shows which required fields/files are missing or invalid, and does not create a submitted entry.
+
+### UC-04: Record Match Results
+
+**Primary Actor**: Organizer or Tournament Staff
+
+**Goal**: Record the result of a match so standings/bracket on the tournament page stay up to date.
+
+**Preconditions**: Actor is authorized for that tournament (owner organizer or assigned staff). Match exists and is ready for a result.
+
+**Main Flow**:
+
+1. Actor opens the match (from bracket/schedule) for the tournament.
+2. Actor enters the final result (e.g. scores or placement as the format requires).
+3. System validates and saves the official result.
+4. System updates the tournament view (bracket progression and/or standings) so competitors and others see the outcome.
+
+**Postcondition**: The match has an official recorded result; public tournament results reflect it.
+
+**Outcome**: Results live on the same platform as the event, with no manual spreadsheet or chat updates.
+
+**Alternate/Exceptional Flow:**
+
+1. **Unauthorized actor**: System rejects the update; match result unchanged.
+2. **Invalid result**: System rejects (e.g. disallowed tie for an elimination match) and does not advance or update standings.
 
 ## Functional Requirements
 
