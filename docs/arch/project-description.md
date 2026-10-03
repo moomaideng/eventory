@@ -14,13 +14,15 @@ Eventory
 
 ## Problem Description
 
-TODO
+Running a tournament today splits work across many tools: organizers post rules and brackets in chat apps or social media, collect entries with forms and spreadsheets, chase payments over bank transfer, and update results by hand. Competitors hunt for events, join teams, and submit forms in different places. Sponsors have no shared place to pick a package, pay, and see their support shown on the event.
+
+Eventory puts those flows on one platform. An organizer creates a tournament (with optional crowdfunding before open registration) and a registration form. A sponsor pledges a package, pays, and appears on the tournament page as funding progresses. A team captain locks the roster, pays any entry fee, and submits the registration. Match results are recorded on the same tournament so standings stay visible in one place.
 
 ## Target Customers
 
-- TODO1
-- TODO2
-- TODO3
+- **Organizer**: hosts and runs tournaments
+- **Sponsor**: funds tournaments via packages/pledges
+- **Competitor**: joins tournaments (team captain submits registration)
 
 ## Scenario (use-case & description)
 
