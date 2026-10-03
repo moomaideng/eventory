@@ -1,0 +1,36 @@
+@startuml usecase-diagram
+left to right direction
+!pragma layout smetana
+
+actor Organizer
+actor "Tournament Staff" as Staff
+actor Sponsor
+actor Competitor
+
+rectangle Eventory {
+  usecase "Configure Crowdfunding" as UCCrowd
+  usecase "UC-01: Create a Tournament" as UC01
+  usecase "Configure Registration Form" as UCForm
+  usecase "UC-04: Record Match Results" as UC04
+  usecase "UC-02: Sponsor a Tournament" as UC02
+  usecase "UC-03: Submit Registration" as UC03
+}
+
+rectangle "Payment Gateway" as PayGW <<actor>>
+
+Organizer --> UC01
+Organizer --> UC04
+Staff --> UC04
+Sponsor --> UC02
+Competitor --> UC03
+
+UC02 --> PayGW
+UC03 --> PayGW
+
+UCCrowd ..> UC01 : <<extend>>
+UC01 ..> UCForm : <<include>>
+
+UCForm -[hidden]right-> PayGW
+UC04 -[hidden]right-> PayGW
+
+@enduml
