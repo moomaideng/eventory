@@ -91,7 +91,7 @@ Eventory puts those flows on one platform. An organizer creates a tournament (wi
 1. Competitor opens the tournament and starts registration.
 2. Registration follows one of these branches:
    - **2a. Solo**: Competitor fills the tournament registration form and proceeds to pay entry fee if any.
-   - **2b. Team**: Team members join the captain’s lobby via invite. When the roster meets tournament size rules, the Team Captain locks the roster, completes the registration form, and pays the team entry fee if any.
+   - **2b. Team**: Team members join the captain’s lobby via invite and fill in their individual registration forms. When the roster meets tournament size rules, the Team Captain locks the roster and pays the team entry fee if any.
 3. System processes payment when required (payment gateway).
 4. On success, system submits the registration to the organizer for review/acceptance and confirms to the competitor.
 
@@ -151,22 +151,21 @@ Eventory puts those flows on one platform. An organizer creates a tournament (wi
 
 ### Sponsorship
 
-- FR11: When a tournament is open for sponsorship, the system shall display available sponsorship packages/tiers and funding progress.
-- FR12: When a sponsor submits a package selection and brand logo for checkout, the system shall process the checkout through the payment gateway.
+- FR11: When a tournament is open for crowdfunding, the system shall display available sponsorship packages/tiers and funding progress.
+- FR12: When a sponsor submits a package selection for checkout, the system shall process the checkout through the payment gateway.
 - FR13: On successful payment, the system shall record the confirmed sponsorship with updated funding progress and public sponsor display on the tournament page.
-- FR14: When payment fails or the selected package has no remaining slots, the system shall keep the sponsorship unconfirmed with a failure notice to the sponsor.
 
 ### Registration
 
-FR15 is for Solo, FR16-19 for Team, and FR20-21 are shared.
+FR14 is for Solo, FR15-18 for Team, and FR19-20 are shared.
 
-- FR15: When a competitor completes the registration form for a solo-format tournament, the system shall accept the form and process any entry fee through the payment gateway (or continue if free).
-- FR16: When a competitor creates a team for a team-format tournament, the system shall create a team lobby with an invite.
-- FR17: When a competitor joins with a valid invite, the system shall add the competitor to the team lobby before registration is submitted.
-- FR18: When a team captain submits a roster that meets tournament size rules, the system shall lock the team roster for registration submission.
-- FR19: When a team captain submits the registration form for a locked roster, the system shall process any team entry fee through the payment gateway.
-- FR20: On successful payment when required (or immediately when free), the system shall submit the registration to the organizer for review with confirmation to the competitor.
-- FR21: When payment fails or a team roster fails required size checks, the system shall keep the registration unsubmitted with the team roster unlocked.
+- FR14: When a competitor completes the registration form for a solo-format tournament, the system shall accept the form and process any entry fee through the payment gateway (or continue if free).
+- FR15: When a competitor creates a team for a team-format tournament and fills in their individual registration form, the system shall create a team lobby with an invite.
+- FR16: When a competitor joins with a valid invite and fills in their individual registration form, the system shall add the competitor to the team lobby before registration is submitted.
+- FR17: When a team captain submits a roster that meets tournament size rules, the system shall lock the team roster for registration submission.
+- FR18: When a team captain locks the team roster, the system shall process any team entry fee through the payment gateway.
+- FR19: On successful payment when required (or immediately when free), the system shall submit the registration to the organizer for review with confirmation to the competitor.
+- FR20: When payment fails or a team roster fails required size checks, the system shall keep the registration unsubmitted with the team roster unlocked.
 
 ### Match Results
 
