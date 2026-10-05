@@ -23,6 +23,8 @@ const (
 	UserEmailContextKey contextKey = "authenticated_user_email"
 	// UserSubContextKey stores the user's UUID (sub claim) in the context.
 	UserSubContextKey contextKey = "authenticated_user_sub"
+	// AuthTokenContextKey stores the raw bearer token for downstream service calls.
+	AuthTokenContextKey contextKey = "authenticated_bearer_token"
 
 	// DevToken represents the explicit token string used for local development.
 	DevToken string = "dev-token"
@@ -115,6 +117,7 @@ func (m *AuthMiddleware) HumaMiddleware() func(ctx huma.Context, next func(huma.
 			if devEmail != "" && devSub != "" {
 				newCtx := context.WithValue(ctx.Context(), UserEmailContextKey, devEmail)
 				newCtx = context.WithValue(newCtx, UserSubContextKey, devSub)
+				newCtx = context.WithValue(newCtx, AuthTokenContextKey, tokenString)
 				ctx = huma.WithContext(ctx, newCtx)
 				next(ctx)
 				return
@@ -131,6 +134,7 @@ func (m *AuthMiddleware) HumaMiddleware() func(ctx huma.Context, next func(huma.
 		// 3. Inject verified identity into context
 		newCtx := context.WithValue(ctx.Context(), UserEmailContextKey, email)
 		newCtx = context.WithValue(newCtx, UserSubContextKey, sub)
+		newCtx = context.WithValue(newCtx, AuthTokenContextKey, tokenString)
 		ctx = huma.WithContext(ctx, newCtx)
 		next(ctx)
 	}
@@ -210,6 +214,19 @@ func GetAuthSub(ctx context.Context) string {
 		return ""
 	}
 	return sub
+}
+
+// GetAuthToken returns the bearer token from request context.
+func GetAuthToken(ctx context.Context) (string, error) {
+	val := ctx.Value(AuthTokenContextKey)
+	if val == nil {
+		return "", ErrUnauthorized
+	}
+	token, ok := val.(string)
+	if !ok || token == "" {
+		return "", ErrUnauthorized
+	}
+	return token, nil
 }
 
 // GetAuthUserID extracts the authenticated user's sub UUID from request context.

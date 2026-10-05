@@ -9,8 +9,9 @@ import (
 
 	"github.com/cucumber/godog"
 	"github.com/google/uuid"
-	"github.com/moomaideng/eventory/internal/handlers"
-	"github.com/moomaideng/eventory/internal/models"
+	accountmodels "github.com/moomaideng/eventory/services/account/models"
+	handlers "github.com/moomaideng/eventory/services/tournament/handlers/rest"
+	"github.com/moomaideng/eventory/services/tournament/models"
 	"github.com/moomaideng/eventory/tests/internal/apptest"
 )
 
@@ -27,7 +28,7 @@ type teamLobbyScenarioContext struct {
 }
 
 func (s *teamLobbyScenarioContext) theEventoryAPIServiceIsRunning() error {
-	if app == nil || app.Server == nil {
+	if app == nil || app.TournamentServer == nil {
 		return fmt.Errorf("application server is not running")
 	}
 	return nil
@@ -42,7 +43,7 @@ func (s *teamLobbyScenarioContext) createPublishedTournament() error {
 	if err := s.persistActiveAccount(organizer); err != nil {
 		return err
 	}
-	organizerProfile := models.OrganizerProfile{
+	organizerProfile := accountmodels.OrganizerProfile{
 		ID:             uuid.New(),
 		AccountID:      organizer.ID,
 		OrganizerName:  "BDD Tournament Organizer",
@@ -88,12 +89,12 @@ func (s *teamLobbyScenarioContext) anotherActiveCompetitor() error {
 }
 
 func (s *teamLobbyScenarioContext) persistActiveAccount(user *apptest.TestUser) error {
-	account := models.Account{
+	account := accountmodels.Account{
 		ID:          user.ID,
 		Email:       user.Email,
 		Handle:      user.Handle,
 		DisplayName: user.DisplayName,
-		Status:      models.AccountStatusActive,
+		Status:      accountmodels.AccountStatusActive,
 	}
 	if err := app.DB.Create(&account).Error; err != nil {
 		return fmt.Errorf("create active account %s: %w", user.Email, err)
@@ -260,7 +261,7 @@ func InitializeScenario(sc *godog.ScenarioContext) {
 	s := &teamLobbyScenarioContext{}
 
 	sc.Before(func(ctx context.Context, _ *godog.Scenario) (context.Context, error) {
-		*s = teamLobbyScenarioContext{client: apptest.NewClient(app.BaseURL())}
+		*s = teamLobbyScenarioContext{client: apptest.NewClient(app.TournamentBaseURL())}
 		cleanup := "TRUNCATE tournament_team_members, tournament_fundings, tournament_status_changes, tournament_teams, tournaments, sponsor_profiles, organizer_profiles, accounts CASCADE"
 		if err := app.DB.Exec(cleanup).Error; err != nil {
 			return ctx, fmt.Errorf("clean scenario database: %w", err)

@@ -8,7 +8,7 @@ import (
 
 	"github.com/cucumber/godog"
 	"github.com/google/uuid"
-	"github.com/moomaideng/eventory/internal/handlers"
+	handlers "github.com/moomaideng/eventory/services/account/handlers/rest"
 	"github.com/moomaideng/eventory/tests/internal/apptest"
 )
 
@@ -23,7 +23,7 @@ type accountScenarioContext struct {
 }
 
 func (s *accountScenarioContext) theEventoryAPIServiceIsRunning() error {
-	if app == nil || app.Server == nil {
+	if app == nil || app.AccountServer == nil {
 		return fmt.Errorf("application server is not running")
 	}
 	return nil
@@ -574,7 +574,7 @@ func InitializeScenario(sc *godog.ScenarioContext) {
 
 	sc.Before(func(ctx context.Context, _ *godog.Scenario) (context.Context, error) {
 		s = &accountScenarioContext{
-			client: apptest.NewClient(app.BaseURL()),
+			client: apptest.NewClient(app.AccountBaseURL()),
 		}
 		// Clean tables between scenarios to guarantee absolute isolation
 		app.DB.Exec("DELETE FROM sponsor_profiles; DELETE FROM organizer_profiles; DELETE FROM accounts;")

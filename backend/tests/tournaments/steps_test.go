@@ -12,8 +12,9 @@ import (
 
 	"github.com/cucumber/godog"
 	"github.com/google/uuid"
-	"github.com/moomaideng/eventory/internal/handlers"
-	"github.com/moomaideng/eventory/internal/models"
+	accountmodels "github.com/moomaideng/eventory/services/account/models"
+	handlers "github.com/moomaideng/eventory/services/tournament/handlers/rest"
+	"github.com/moomaideng/eventory/services/tournament/models"
 	"github.com/moomaideng/eventory/tests/internal/apptest"
 )
 
@@ -22,14 +23,15 @@ type discoveryScenario struct {
 	client        *apptest.Client
 	resp          *apptest.Response
 	tournaments   map[string]models.Tournament
+	organizerName string
 	accountIDs    []uuid.UUID
 	acceptedID    uuid.UUID
 	privateValues []string
 }
 
-func (s *discoveryScenario) account() (models.Account, error) {
+func (s *discoveryScenario) account() (accountmodels.Account, error) {
 	id := uuid.New()
-	a := models.Account{ID: id, Email: id.String() + "@test.eventory.gg", Handle: "bdd_" + apptest.UniqueSuffix(), DisplayName: "Private Player", Status: models.AccountStatusActive}
+	a := accountmodels.Account{ID: id, Email: id.String() + "@test.eventory.gg", Handle: "bdd_" + apptest.UniqueSuffix(), DisplayName: "Private Player", Status: accountmodels.AccountStatusActive}
 	if err := s.app.DB.Create(&a).Error; err != nil {
 		return a, err
 	}
@@ -43,10 +45,11 @@ func (s *discoveryScenario) fixtures() error {
 	if err != nil {
 		return err
 	}
-	org := models.OrganizerProfile{ID: uuid.New(), AccountID: a.ID, OrganizerName: "Discovery Host", OrganizerEmail: "private-host@test.eventory.gg"}
+	org := accountmodels.OrganizerProfile{ID: uuid.New(), AccountID: a.ID, OrganizerName: "Discovery Host", OrganizerEmail: "private-host@test.eventory.gg"}
 	if err := s.app.DB.Create(&org).Error; err != nil {
 		return err
 	}
+	s.organizerName = org.OrganizerName
 	s.privateValues = append(s.privateValues, org.OrganizerEmail)
 	for _, row := range []struct {
 		name, starts string
@@ -64,18 +67,19 @@ func (s *discoveryScenario) fixtures() error {
 		if err != nil {
 			return err
 		}
-		tournament := models.Tournament{ID: uuid.New(), OrganizerID: org.ID, Name: row.name,
+		tournament := models.Tournament{
+			ID: uuid.New(), OrganizerID: org.ID, Name: row.name,
 			Description: "Rules: best of three; no cheating.", Game: "Valorant", Location: "Online",
 			StartsAt: starts, EndsAt: starts.Add(2 * time.Hour), RegistrationDeadline: starts.Add(-24 * time.Hour),
 			EntryFee: row.fee, Currency: "THB", Capacity: 16, RegistrationMode: models.TournamentRegistrationModeTeam,
-			MinTeamSize: 2, MaxTeamSize: 5, Status: models.TournamentStatusRegistrationOpen, Published: row.published}
+			MinTeamSize: 2, MaxTeamSize: 5, Status: models.TournamentStatusRegistrationOpen, Published: row.published,
+		}
 		if !row.published {
 			tournament.Status = models.TournamentStatusDraft
 		}
 		if err := s.app.DB.Create(&tournament).Error; err != nil {
 			return err
 		}
-		tournament.Organizer = org
 		s.tournaments[row.name] = tournament
 	}
 	return nil
@@ -93,7 +97,7 @@ func (s *discoveryScenario) cleanup() error {
 		}
 	}
 	if len(s.accountIDs) > 0 {
-		return s.app.DB.Where("id IN ?", s.accountIDs).Delete(&models.Account{}).Error
+		return s.app.DB.Where("id IN ?", s.accountIDs).Delete(&accountmodels.Account{}).Error
 	}
 	return nil
 }
@@ -176,7 +180,7 @@ func (s *discoveryScenario) publicDetails(name string) error {
 	}
 	want := s.tournaments[name]
 	got := body.Tournament
-	if got.ID != want.ID || got.Name != want.Name || got.Description != want.Description || got.Game != want.Game || got.Location != want.Location || got.OrganizerName != want.Organizer.OrganizerName ||
+	if got.ID != want.ID || got.Name != want.Name || got.Description != want.Description || got.Game != want.Game || got.Location != want.Location || got.OrganizerName != s.organizerName ||
 		!got.StartAt.Equal(want.StartsAt) || !got.EndAt.Equal(want.EndsAt) || !got.RegistrationDeadline.Equal(want.RegistrationDeadline) ||
 		got.EntryFee != want.EntryFee || got.Currency != want.Currency || got.Capacity != want.Capacity || got.Status != string(want.Status) ||
 		got.RegistrationMode != string(want.RegistrationMode) || got.MinTeamSize != want.MinTeamSize || got.MaxTeamSize != want.MaxTeamSize {
@@ -238,7 +242,7 @@ func (s *discoveryScenario) noData() error {
 func initializeScenario(sc *godog.ScenarioContext, app *apptest.App) {
 	var s *discoveryScenario
 	sc.Before(func(ctx context.Context, _ *godog.Scenario) (context.Context, error) {
-		s = &discoveryScenario{app: app, client: apptest.NewClient(app.BaseURL()), tournaments: make(map[string]models.Tournament)}
+		s = &discoveryScenario{app: app, client: apptest.NewClient(app.TournamentBaseURL()), tournaments: make(map[string]models.Tournament)}
 		return ctx, nil
 	})
 	sc.After(func(ctx context.Context, _ *godog.Scenario, _ error) (context.Context, error) {
