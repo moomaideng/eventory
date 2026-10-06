@@ -8,7 +8,6 @@ import (
 
 	"github.com/moomaideng/eventory/internal/database"
 	"github.com/moomaideng/eventory/services/account/config"
-	"github.com/moomaideng/eventory/services/account/models"
 	"github.com/moomaideng/eventory/services/account/server"
 )
 
@@ -21,9 +20,6 @@ func main() {
 	db, err := database.ConnectPostgres(appConfig.DBDSN)
 	if err != nil {
 		log.Fatalf("failed to connect to database: %v", err)
-	}
-	if err := db.AutoMigrate(models.All()...); err != nil {
-		log.Fatalf("failed to migrate database: %v", err)
 	}
 	log.Println("Database connection established successfully.")
 

@@ -29,7 +29,11 @@ jobs:
         run: |
           go test -v ./...
           go build -o bin/account ./services/account/cmd/api
+          go build -o bin/account-migrate ./services/account/cmd/migrate
+          go build -o bin/account-seed ./services/account/cmd/seed
           go build -o bin/tournament ./services/tournament/cmd/api
+          go build -o bin/tournament-migrate ./services/tournament/cmd/migrate
+          go build -o bin/tournament-seed ./services/tournament/cmd/seed
 
       - uses: actions/setup-node@v5
         with:
@@ -69,15 +73,27 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and push backend image
+      - name: Build and push account image
         uses: docker/build-push-action@v6
         with:
           context: ./backend
           platforms: linux/arm64
           push: true
+          build-args: SERVICE=account
           tags: |
-            ghcr.io/moomaideng/eventory-backend:latest
-            ghcr.io/moomaideng/eventory-backend:${{ github.sha }}
+            ghcr.io/moomaideng/eventory-account:latest
+            ghcr.io/moomaideng/eventory-account:${{ github.sha }}
+
+      - name: Build and push tournament image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          platforms: linux/arm64
+          push: true
+          build-args: SERVICE=tournament
+          tags: |
+            ghcr.io/moomaideng/eventory-tournament:latest
+            ghcr.io/moomaideng/eventory-tournament:${{ github.sha }}
 
       - name: Check frontend production configuration
         env:
@@ -116,14 +132,14 @@ jobs:
           ORACLE_USER: ${{ secrets.ORACLE_USER }}
           ORACLE_SSH_KEY: ${{ secrets.ORACLE_SSH_KEY }}
           ORACLE_KNOWN_HOSTS: ${{ secrets.ORACLE_KNOWN_HOSTS }}
-          PROD_DB_DSN: ${{ secrets.PROD_DB_DSN }}
+          PROD_POSTGRES_PASSWORD: ${{ secrets.PROD_POSTGRES_PASSWORD }}
           PROD_API_URL: ${{ secrets.PROD_API_URL }}
         run: |
           test -n "$ORACLE_HOST" || (echo "::error::Missing ORACLE_HOST" && exit 1)
           test -n "$ORACLE_USER" || (echo "::error::Missing ORACLE_USER" && exit 1)
           test -n "$ORACLE_SSH_KEY" || (echo "::error::Missing ORACLE_SSH_KEY" && exit 1)
           test -n "$ORACLE_KNOWN_HOSTS" || (echo "::error::Missing ORACLE_KNOWN_HOSTS" && exit 1)
-          test -n "$PROD_DB_DSN" || (echo "::error::Missing PROD_DB_DSN" && exit 1)
+          test -n "$PROD_POSTGRES_PASSWORD" || (echo "::error::Missing PROD_POSTGRES_PASSWORD" && exit 1)
           test -n "$PROD_API_URL" || (echo "::error::Missing PROD_API_URL" && exit 1)
 
       - name: Configure SSH
@@ -142,13 +158,15 @@ jobs:
           ORACLE_HOST: ${{ secrets.ORACLE_HOST }}
           ORACLE_USER: ${{ secrets.ORACLE_USER }}
         run: |
-          ssh "$ORACLE_USER@$ORACLE_HOST" 'sudo install -d -m 0755 -o "$USER" -g "$(id -gn)" /opt/eventory'
+          ssh "$ORACLE_USER@$ORACLE_HOST" 'sudo install -d -m 0755 -o "$USER" -g "$(id -gn)" /opt/eventory/docker/postgres'
           scp docker-compose.production.yml "$ORACLE_USER@$ORACLE_HOST:/opt/eventory/docker-compose.yml"
+          scp docker/postgres/init-databases.sh "$ORACLE_USER@$ORACLE_HOST:/opt/eventory/docker/postgres/init-databases.sh"
+          ssh "$ORACLE_USER@$ORACLE_HOST" 'chmod 755 /opt/eventory/docker/postgres/init-databases.sh'
 
       - name: Write production runtime environment
         env:
           IMAGE_TAG: ${{ github.sha }}
-          PROD_DB_DSN: ${{ secrets.PROD_DB_DSN }}
+          PROD_POSTGRES_PASSWORD: ${{ secrets.PROD_POSTGRES_PASSWORD }}
           PROD_SUPABASE_URL: ${{ secrets.PROD_SUPABASE_URL }}
           PROD_API_URL: ${{ secrets.PROD_API_URL }}
           ORACLE_HOST: ${{ secrets.ORACLE_HOST }}
@@ -156,7 +174,7 @@ jobs:
         run: |
           {
             printf 'IMAGE_TAG=%s\n' "$IMAGE_TAG"
-            printf 'DB_DSN=%s\n' "$PROD_DB_DSN"
+            printf 'POSTGRES_PASSWORD=%s\n' "$PROD_POSTGRES_PASSWORD"
             printf 'SUPABASE_URL=%s\n' "$PROD_SUPABASE_URL"
             printf 'CORS_ALLOWED_ORIGINS=%s\n' "$PROD_API_URL"
             printf 'BACKEND_PORT=8080\n'
@@ -181,8 +199,10 @@ jobs:
             set -eu
             cd /opt/eventory
             sudo docker compose --env-file .env -f docker-compose.yml pull
-            sudo docker compose --env-file .env -f docker-compose.yml run --rm migrate
-            sudo docker compose --env-file .env -f docker-compose.yml up -d --remove-orphans backend frontend
+            sudo docker compose --env-file .env -f docker-compose.yml up -d --wait postgres
+            sudo docker compose --env-file .env -f docker-compose.yml run --rm account-migrate
+            sudo docker compose --env-file .env -f docker-compose.yml run --rm tournament-migrate
+            sudo docker compose --env-file .env -f docker-compose.yml up -d --remove-orphans postgres account tournament traefik frontend
           '
 
       - name: Verify deployment

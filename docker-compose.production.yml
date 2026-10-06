@@ -1,33 +1,162 @@
 name: eventory-production
 
+x-migrate: &migrate
+  restart: "no"
+  healthcheck:
+    disable: true
+  depends_on:
+    postgres:
+      condition: service_healthy
+
 services:
-  migrate:
-    image: ghcr.io/moomaideng/eventory-backend:${IMAGE_TAG:?IMAGE_TAG is required}
+  postgres:
+    image: postgres:18
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      POSTGRES_DB: postgres
+      POSTGRES_MULTIPLE_DATABASES: account_db,tournament_db
+    volumes:
+      - postgres_data:/var/lib/postgresql
+      - ./docker/postgres/init-databases.sh:/docker-entrypoint-initdb.d/01-init-databases.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  traefik:
+    image: traefik:v3.7.12
+    command:
+      - --api.dashboard=false
+      - --ping=true
+      - --providers.docker=true
+      - --providers.docker.exposedbydefault=false
+      - --providers.docker.network=eventory-production_default
+      - --entrypoints.web.address=:80
+    ports:
+      - "${BACKEND_PORT:-8080}:80"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    healthcheck:
+      test: ["CMD", "traefik", "healthcheck", "--ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  account-migrate:
+    <<: *migrate
+    image: ghcr.io/moomaideng/eventory-account:${IMAGE_TAG:?IMAGE_TAG is required}
     command: ["./migrate"]
     environment:
       ENVIRONMENT: production
-      DB_DSN: ${DB_DSN:?DB_DSN is required}
-    restart: "no"
+      HTTP_PORT: "8081"
+      GRPC_PORT: "9091"
+      DB_DSN: postgresql://admin:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@postgres:5432/account_db?sslmode=disable
 
-  backend:
-    image: ghcr.io/moomaideng/eventory-backend:${IMAGE_TAG:?IMAGE_TAG is required}
+  account:
+    image: ghcr.io/moomaideng/eventory-account:${IMAGE_TAG:?IMAGE_TAG is required}
     environment:
       ENVIRONMENT: production
-      PORT: "8080"
-      DB_DSN: ${DB_DSN:?DB_DSN is required}
+      HTTP_PORT: "8081"
+      GRPC_PORT: "9091"
+      DB_DSN: postgresql://admin:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@postgres:5432/account_db?sslmode=disable
       SUPABASE_URL: ${SUPABASE_URL:?SUPABASE_URL is required}
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:?CORS_ALLOWED_ORIGINS is required}
-    ports:
-      - "${BACKEND_PORT:-8080}:8080"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "wget",
+          "--no-verbose",
+          "--tries=1",
+          "--output-document=/dev/null",
+          "http://127.0.0.1:8081/health",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    depends_on:
+      postgres:
+        condition: service_healthy
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=eventory-production_default
+      - traefik.http.routers.account.rule=PathPrefix(`/api/v1/accounts`)
+      - traefik.http.routers.account.entrypoints=web
+      - traefik.http.routers.account-health.rule=Path(`/health`)
+      - traefik.http.routers.account-health.entrypoints=web
+      - traefik.http.routers.account-health.service=account
+      - traefik.http.services.account.loadbalancer.server.port=8081
+    restart: unless-stopped
+
+  tournament-migrate:
+    <<: *migrate
+    image: ghcr.io/moomaideng/eventory-tournament:${IMAGE_TAG:?IMAGE_TAG is required}
+    command: ["./migrate"]
+    environment:
+      ENVIRONMENT: production
+      HTTP_PORT: "8082"
+      DB_DSN: postgresql://admin:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@postgres:5432/tournament_db?sslmode=disable
+      ACCOUNT_GRPC_ADDR: account:9091
+
+  tournament:
+    image: ghcr.io/moomaideng/eventory-tournament:${IMAGE_TAG:?IMAGE_TAG is required}
+    environment:
+      ENVIRONMENT: production
+      HTTP_PORT: "8082"
+      DB_DSN: postgresql://admin:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@postgres:5432/tournament_db?sslmode=disable
+      ACCOUNT_GRPC_ADDR: account:9091
+      SUPABASE_URL: ${SUPABASE_URL:?SUPABASE_URL is required}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:?CORS_ALLOWED_ORIGINS is required}
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "wget",
+          "--no-verbose",
+          "--tries=1",
+          "--output-document=/dev/null",
+          "http://127.0.0.1:8082/health",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    depends_on:
+      postgres:
+        condition: service_healthy
+      account:
+        condition: service_healthy
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=eventory-production_default
+      - traefik.http.routers.tournament.rule=PathPrefix(`/api/v1/tournaments`) || PathPrefix(`/api/v1/lobbies`)
+      - traefik.http.routers.tournament.entrypoints=web
+      - traefik.http.services.tournament.loadbalancer.server.port=8082
     restart: unless-stopped
 
   frontend:
     image: ghcr.io/moomaideng/eventory-frontend:${IMAGE_TAG:?IMAGE_TAG is required}
     environment:
-      INTERNAL_API_URL: http://backend:8080
+      INTERNAL_API_URL: http://traefik:80
     ports:
       - "${FRONTEND_PORT:-3000}:3000"
     depends_on:
-      backend:
+      traefik:
+        condition: service_healthy
+      account:
+        condition: service_healthy
+      tournament:
         condition: service_healthy
     restart: unless-stopped
+
+networks:
+  default:
+    name: eventory-production_default
+
+volumes:
+  postgres_data:

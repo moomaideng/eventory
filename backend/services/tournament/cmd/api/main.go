@@ -7,7 +7,6 @@ import (
 
 	"github.com/moomaideng/eventory/internal/database"
 	"github.com/moomaideng/eventory/services/tournament/config"
-	tournamentdb "github.com/moomaideng/eventory/services/tournament/database"
 	"github.com/moomaideng/eventory/services/tournament/server"
 )
 
@@ -20,9 +19,6 @@ func main() {
 	db, err := database.ConnectPostgres(appConfig.DBDSN)
 	if err != nil {
 		log.Fatalf("failed to connect to database: %v", err)
-	}
-	if err := tournamentdb.AutoMigrate(db); err != nil {
-		log.Fatalf("failed to migrate database: %v", err)
 	}
 	log.Println("Database connection established successfully.")
 

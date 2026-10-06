@@ -42,21 +42,30 @@ jobs:
             set -eu
             cd /opt/eventory
 
+            echo '==> Starting Postgres...'
+            sudo docker compose --env-file .env -f docker-compose.yml up -d --wait postgres
+
             if [ '$RESET_DB' = 'true' ]; then
-              echo '==> Resetting database schema (DROP SCHEMA public CASCADE) and migrating...'
-              sudo docker compose --env-file .env -f docker-compose.yml run --rm migrate ./migrate -reset
+              echo '==> Stopping backend services (account and tournament) before dropping schemas...'
+              sudo docker compose --env-file .env -f docker-compose.yml stop account tournament
+
+              echo '==> Resetting database schemas (account_db and tournament_db) and migrating...'
+              sudo docker compose --env-file .env -f docker-compose.yml run --rm account-migrate ./migrate -reset
+              sudo docker compose --env-file .env -f docker-compose.yml run --rm tournament-migrate ./migrate -reset
             else
-              echo '==> Running standard migration...'
-              sudo docker compose --env-file .env -f docker-compose.yml run --rm migrate ./migrate
+              echo '==> Running migrations (account and tournament)...'
+              sudo docker compose --env-file .env -f docker-compose.yml run --rm account-migrate
+              sudo docker compose --env-file .env -f docker-compose.yml run --rm tournament-migrate
             fi
 
             if [ '$SEED_DATA' = 'true' ]; then
-              echo '==> Seeding mock data (tournaments & accounts)...'
-              sudo docker compose --env-file .env -f docker-compose.yml run --rm migrate ./seed
+              echo '==> Seeding mock data (account and tournament)...'
+              sudo docker compose --env-file .env -f docker-compose.yml run --rm account-migrate ./seed
+              sudo docker compose --env-file .env -f docker-compose.yml run --rm tournament-migrate ./seed
             fi
 
-            echo '==> Restarting backend service...'
-            sudo docker compose --env-file .env -f docker-compose.yml restart backend || true
+            echo '==> Starting backend services (account and tournament)...'
+            sudo docker compose --env-file .env -f docker-compose.yml up -d account tournament
 
             echo '==> Database operation completed successfully!'
           "

@@ -1,0 +1,88 @@
+# yaml-language-server: $schema=https://taskfile.dev/schema.json
+
+version: "3"
+
+vars:
+  COMPOSE_ALL: docker compose --profile infra --profile apps --profile web
+  COMPOSE_APPS: docker compose --profile infra --profile apps
+
+tasks:
+  default:
+    desc: List available tasks
+    cmds:
+      - task --list
+
+  dev:
+    desc: Start infra and apps, then run the host frontend
+    cmds:
+      - task: migrate
+      - "{{.COMPOSE_APPS}} up -d --build --wait"
+      - task: frontend:install
+      - npm --prefix frontend run dev
+
+  down:
+    desc: Stop the Compose stack
+    cmds:
+      - "{{.COMPOSE_ALL}} down --remove-orphans"
+
+  logs:
+    desc: Follow infra and app logs
+    cmds:
+      - "{{.COMPOSE_APPS}} logs -f"
+
+  apps:
+    desc: Rebuild and restart infra and apps
+    cmds:
+      - task: migrate
+      - "{{.COMPOSE_APPS}} up -d --build --wait"
+
+  web:
+    desc: Start infra, apps, and the frontend container
+    cmds:
+      - task: migrate
+      - "{{.COMPOSE_ALL}} up -d --build --wait"
+
+  frontend:
+    desc: Install frontend deps if needed and run Next.js on the host
+    deps: [frontend:install]
+    cmds:
+      - npm --prefix frontend run dev
+
+  frontend:install:
+    desc: Install frontend deps when package-lock changes
+    dir: frontend
+    sources:
+      - package.json
+      - package-lock.json
+    generates:
+      - node_modules/.install-stamp
+    cmds:
+      - npm ci --no-fund --no-audit
+      - cp package-lock.json node_modules/.install-stamp
+
+  migrate:
+    desc: Apply account_db schema, then tournament_db schema
+    cmds:
+      - "{{.COMPOSE_APPS}} up -d --build --wait postgres"
+      - "{{.COMPOSE_APPS}} up -d --build --force-recreate account-migrate tournament-migrate"
+      - "{{.COMPOSE_APPS}} wait account-migrate tournament-migrate"
+
+  seed:
+    desc: Seed account_db, then tournament_db (apps must already be up)
+    cmds:
+      - go -C backend run ./services/account/cmd/seed
+      - go -C backend run ./services/tournament/cmd/seed
+
+  db:reset:
+    desc: Delete the local Postgres volume and start infra and apps again
+    cmds:
+      - "{{.COMPOSE_ALL}} down --remove-orphans"
+      - docker volume rm -f eventory_postgres_data
+      - "{{.COMPOSE_APPS}} up -d --build --wait"
+
+  test:
+    desc: Run backend tests and frontend lint and typecheck
+    cmds:
+      - go -C backend test ./...
+      - npm --prefix frontend run lint
+      - npm --prefix frontend run typecheck

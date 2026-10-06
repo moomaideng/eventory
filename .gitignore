@@ -4,3 +4,6 @@
 
 # for dev to put context, temporary file
 temp/
+
+# Taskfile
+/.task/

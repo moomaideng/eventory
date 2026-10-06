@@ -26,11 +26,16 @@ If `verify` fails, nothing is published or deployed.
 | | Local | Production |
 | --- | --- | --- |
 | Compose file | `docker-compose.yml` | `docker-compose.production.yml` |
-| Database | PostgreSQL in Docker on your machine | Supabase-hosted PostgreSQL |
+| Database | Postgres container with `account_db` and `tournament_db` | Postgres 18 container on the server, same two databases |
 | Images | Built on your machine | Pulled from GHCR, tagged by commit |
-| Server | your laptop | Oracle cloud server |
+| Public API | Traefik on port 8080 | Traefik on port 8080 |
+| Server | your machine | Oracle cloud server |
 
-Production never starts the local PostgreSQL container.
+Account and Tournament are separate images built from `backend/Dockerfile` with `SERVICE=account` or `SERVICE=tournament`. Each image contains `./api`, `./migrate`, and `./seed`. The API does not change the schema.
+
+Production Postgres is `postgres:18` in `docker-compose.production.yml`. The first start of an empty volume runs `docker/postgres/init-databases.sh` and creates `account_db` and `tournament_db`. Account and Tournament reach it at `postgres:5432` on the Compose network. Port 5432 is not published. Supabase is still only for login. The database password is `PROD_POSTGRES_PASSWORD`. Use letters and numbers so it can sit in the connection string.
+
+Deploy waits until Postgres is healthy, runs `./migrate` for Account, then Tournament, then starts the APIs.
 
 ---
 
@@ -42,8 +47,8 @@ Set once, in the repository settings. Without these, deployment fails.
 | --- | --- |
 | `PROD_SUPABASE_URL` | Login checks |
 | `PROD_SUPABASE_PUBLISHABLE_KEY` | Login checks, browser side |
-| `PROD_API_URL` | Public address of the backend |
-| `PROD_DB_DSN` | Production database address |
+| `PROD_API_URL` | Public address of the API, and the CORS origin written to the server |
+| `PROD_POSTGRES_PASSWORD` | Password for the Postgres container. User is `admin` |
 | `ORACLE_HOST` | Server address |
 | `ORACLE_USER` | Server login name |
 | `ORACLE_SSH_KEY` | Server login key |
@@ -55,6 +60,12 @@ Set once, in the repository settings. Without these, deployment fails.
 
 ## Database jobs on the server
 
-A separate workflow, `db-management.yml`, runs migrations and seeds against the production server. It is triggered manually, never on merge.
+`db-management.yml` is triggered manually, never on merge.
 
-> ⚠️ Never run `make reset` against production. It deletes every row.
+| Input | What it runs |
+| --- | --- |
+| Reset off | `./migrate` for Account, then Tournament |
+| Reset on | Stop the APIs, `./migrate -reset` for Account, then `./migrate -reset` for Tournament |
+| Seed on | `./seed` for Account, then Tournament |
+
+Reset drops the `public` schema in that service's database only. Account and Tournament each have their own database, so both resets are required. Deleting the `eventory-production_postgres_data` volume removes the data files. The next deploy creates empty databases again.

@@ -42,10 +42,10 @@ Jump to: [Architecture](#architecture) · [Frontend](#frontend) · [Backend](#ba
 | **API / endpoint** | An "API" is the list of things the backend can do. An "endpoint" is one of them, e.g. `GET /api/v1/tournaments` = "give me the tournament list". |
 | **REST** | The common style of API where each URL is a thing and the verb (GET, POST, PATCH, DELETE) says what to do with it. |
 | **OpenAPI** | A standard file format that describes every endpoint. Huma generates it for us at `/openapi.json`. |
-| **Migration** | A script that creates or updates the database tables. `go run ./cmd/migrate`. Adding `--reset` wipes everything and rebuilds. |
-| **Seed** | A script that fills the database with fake sample data for testing. `go run ./cmd/seed`. |
+| **Migration** | `task migrate` creates or updates Account tables, then Tournament tables. The API does not do this. It does not drop old columns. `task db:reset` deletes the local database volume so Postgres can create `account_db` and `tournament_db` again. |
+| **Seed** | Sample rows for local development. `task seed` fills `account_db`, then `tournament_db`. |
 | **Air** | A helper that restarts the Go server automatically every time you save a file ("live reload"). |
-| **Viper** | The library that reads settings from `backend/.env`. |
+| **Viper** | The library that reads each service's `.env.default`, then an optional `.env`, then the process environment. |
 | **JWKS / JWT** | After Google login, Supabase gives the browser a signed "ticket" (JWT). The backend checks the signature using public keys (JWKS) to trust who you are. |
 | **Ports & Adapters** | A code-organizing style: business rules in the middle (`usecases`), database and web stuff on the outside (`repositories`, `handlers`). |
 | **Foreign key** | A database rule saying "this row must point at a row that exists". Stops bad data being saved. |
@@ -59,20 +59,20 @@ Everything around the code: how you run it, and how you share it with the team.
 | Word | Plain meaning |
 | --- | --- |
 | **Docker** | Runs programs inside isolated "containers" so everyone gets the same setup no matter their OS. |
-| **Docker Compose** | Starts several containers together from one file (`docker-compose.yml`). Ours has 4 services: `postgres`, `migrate`, `backend`, `frontend`. |
+| **Docker Compose** | Starts several containers together from one file (`docker-compose.yml`). Profiles split that file into `infra` (Postgres, Traefik), `apps` (Account, Tournament, and their migrate commands), and `web` (the frontend container). |
 | **Container / image** | An image is the recipe; a container is a running copy of it. |
-| **Volume** | Docker storage that survives when a container stops (e.g. `postgres-data` keeps your database). |
-| **Makefile / make** | A file of named shortcuts. `make dev` runs a longer command so you don't have to type it. Needs the `make` program installed. |
+| **Volume** | Docker storage that survives when a container stops (e.g. `postgres_data` keeps your database). |
+| **Task** | A file of named shortcuts (`Taskfile.yml`). `task dev` starts the Docker stack and the website. Needs the `task` program installed. |
 | **Native** | Running the program directly on your computer, not inside Docker. |
-| **.env file** | A plain text file of settings (passwords, URLs). Never committed to git. Copy from `.env.example`. |
-| **localhost:3000 / :8080** | Addresses on your own computer. 3000 = frontend website, 8080 = backend API. |
+| **.env file** | A plain text file of settings. Service defaults are committed as `.env.default`. An optional `.env` beside that file is for local overrides and is not committed. The frontend copy is `frontend/.env.local`. |
+| **localhost:3000 / :8080** | Addresses on your own computer. 3000 = frontend website, 8080 = API gateway. 8081 = Account, 8082 = Tournament. |
 | **Port** | A numbered "door" a program listens on. Two programs cannot share one port. |
 | **Health check** | A tiny URL (`/health`) that answers "I'm alive" so Docker knows the service started. |
 | **CI/CD** | Automation on GitHub: every pull request gets tested, and merging to `main` deploys to the Oracle server. |
 | **GHCR** | GitHub Container Registry, where built Docker images are stored for deployment. |
 | **node_modules** | The folder holding every downloaded frontend package. Not in git, so each person builds their own with `npm ci`. Docker keeps a separate copy. |
 | **Stale install** | Your `node_modules` is older than the code, so a package the code needs is missing. Cause of most `Module not found` errors. |
-| **Idempotent** | Safe to run more than once. `make seed` is meant to be; `make reset` deliberately is not. |
+| **Idempotent** | Safe to run more than once. `task seed` is meant to be; `task db:reset` deliberately is not. |
 
 ### Git: our team rules
 

@@ -15,3 +15,8 @@ func ConnectPostgres(dsn string) (*gorm.DB, error) {
 
 	return gorm.Open(postgres.Open(dsn), &gorm.Config{})
 }
+
+// ResetPublicSchema drops every object in public and recreates the empty schema.
+func ResetPublicSchema(db *gorm.DB) error {
+	return db.Exec("DROP SCHEMA public CASCADE; CREATE SCHEMA public;").Error
+}
