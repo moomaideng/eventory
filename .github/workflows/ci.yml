@@ -28,7 +28,8 @@ jobs:
         working-directory: backend
         run: |
           go test -v ./...
-          go build -o bin/api ./cmd/api
+          go build -o bin/account ./services/account/cmd/api
+          go build -o bin/tournament ./services/tournament/cmd/api
 
       - uses: actions/setup-node@v5
         with:
