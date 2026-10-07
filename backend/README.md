@@ -99,6 +99,7 @@ Step 6 is required. The frontend gets its types from the running backend, so ski
 | `go test ./...` | Run the tests |
 | `go build ./services/account/cmd/api` | Check Account still compiles |
 | `go build ./services/tournament/cmd/api` | Check Tournament still compiles |
+| `task gen-proto` | From the repo root. Lint and regenerate gRPC code. Needs [Buf](https://buf.build/docs/installation/) |
 
 Run `go test ./...` before opening a pull request.
 

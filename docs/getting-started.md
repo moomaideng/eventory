@@ -112,6 +112,7 @@ That merges both OpenAPI documents into `frontend/lib/api/schema.d.ts`.
 | `task db:reset` | Delete the Postgres volume and start infra and apps again |
 | `task frontend` | Host Next.js only |
 | `task test` | Backend tests, frontend lint, frontend typecheck |
+| `task gen-proto` | Lint and regenerate Account gRPC code. Needs [Buf](https://buf.build/docs/installation/) |
 
 To run a service on the host, use `task migrate` first. That starts Postgres and applies both schemas. It does not start the API containers.
 

@@ -80,6 +80,13 @@ tasks:
       - docker volume rm -f eventory_postgres_data
       - "{{.COMPOSE_APPS}} up -d --build --wait"
 
+  gen-proto:
+    desc: Lint and regenerate gRPC code
+    dir: backend
+    cmds:
+      - buf lint
+      - buf generate
+
   test:
     desc: Run backend tests and frontend lint and typecheck
     cmds:
