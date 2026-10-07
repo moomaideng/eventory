@@ -61,13 +61,16 @@ The backend publishes a machine-readable list of everything it can do. We copy t
 
 ```mermaid
 flowchart LR
-    BE["Backend running<br/>on port 8080"] -->|"npm run openapi:generate"| S["lib/api/schema.d.ts"]
+    BE["Backend apps"] -->|"npm run openapi:generate"| S["lib/api/schema.d.ts"]
     S --> C["Your component"]
 ```
 
-**After any backend endpoint changes,** start the backend, then:
+**After any backend endpoint changes,** start the apps, then:
 
 ```bash
+# from the repo root
+task apps
+
 # from frontend/
 npm run openapi:generate
 ```

@@ -1,0 +1,32 @@
+# Standup is a host process on port 4174, so it cannot wear a Docker label.
+# Account, Tournament, and the frontend are routed from Compose labels.
+http:
+  routers:
+    standup-slash:
+      rule: Host(`eventory.ddns.net`) && Path(`/standup`)
+      entryPoints: [websecure]
+      middlewares: [standup-redirect]
+      service: standup
+      priority: 100
+      tls:
+        certResolver: letsencrypt
+    standup:
+      rule: Host(`eventory.ddns.net`) && PathPrefix(`/standup/`)
+      entryPoints: [websecure]
+      service: standup
+      priority: 100
+      tls:
+        certResolver: letsencrypt
+
+  middlewares:
+    standup-redirect:
+      redirectRegex:
+        regex: ^https://([^/]+)/standup$
+        replacement: https://${1}/standup/
+        permanent: true
+
+  services:
+    standup:
+      loadBalancer:
+        servers:
+          - url: http://host.docker.internal:4174

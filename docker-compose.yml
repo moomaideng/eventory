@@ -1,95 +1,191 @@
 name: eventory
 
+x-backend-dev: &backend-dev
+  build:
+    context: ./backend
+    dockerfile: docker/go-dev.Dockerfile
+  volumes:
+    - ./backend:/app
+    - go_mod_cache:/go/pkg/mod
+    - go_build_cache:/root/.cache/go-build
+  working_dir: /app
+
 services:
   postgres:
     image: postgres:18-alpine
-    env_file:
-      - ./backend/.env
+    profiles: [infra]
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:?Set POSTGRES_USER in backend/.env}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in backend/.env}
-      POSTGRES_DB: ${POSTGRES_DB:?Set POSTGRES_DB in backend/.env}
+      POSTGRES_USER: ${POSTGRES_USER:-admin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password123}
+      POSTGRES_DB: postgres
+      POSTGRES_MULTIPLE_DATABASES: account_db,tournament_db
     ports:
       - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
     volumes:
-      - postgres-data:/var/lib/postgresql
+      - postgres_data:/var/lib/postgresql
+      - ./docker/postgres/init-databases.sh:/docker-entrypoint-initdb.d/01-init-databases.sh:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
-      interval: 5s
+      interval: 1s
       timeout: 5s
-      retries: 10
+      retries: 30
 
-  migrate:
-    build:
-      context: ./backend
-    command: ["./migrate"]
-    env_file:
-      - ./backend/.env
+  traefik:
+    image: traefik:v3.7.12
+    profiles: [infra]
+    command:
+      - --api.dashboard=false
+      - --ping=true
+      - --providers.docker=true
+      - --providers.docker.exposedbydefault=false
+      - --providers.docker.network=eventory_default
+      - --entrypoints.web.address=:80
+    ports:
+      - "127.0.0.1:${BACKEND_PORT:-8080}:80"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    healthcheck:
+      test: ["CMD", "traefik", "healthcheck", "--ping"]
+      interval: 1s
+      timeout: 5s
+      retries: 30
+
+  account-migrate:
+    <<: *backend-dev
+    profiles: [apps]
+    entrypoint: ["go", "run", "./services/account/cmd/migrate"]
     environment:
-      DB_DSN: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?sslmode=disable
+      ENVIRONMENT: development
+      DB_DSN: postgresql://${POSTGRES_USER:-admin}:${POSTGRES_PASSWORD:-password123}@postgres:5432/account_db?sslmode=disable
     depends_on:
       postgres:
         condition: service_healthy
     restart: "no"
 
-  backend:
-    image: eventory-backend:local
-    build:
-      context: ./backend
-      target: development
-    command:
-      - air
-      - -c
-      - .air.toml
-      - --tmp_dir
-      - tmp
-      - --build.cmd
-      - go build -o ./tmp/main ./cmd/api
-      - --build.bin
-      - ./tmp/main
-      - --build.entrypoint
-      - ./tmp/main
-    env_file:
-      - ./backend/.env
+  account:
+    <<: *backend-dev
+    profiles: [apps]
+    environment:
+      SERVICE: account
+      ENVIRONMENT: development
+      DB_DSN: postgresql://${POSTGRES_USER:-admin}:${POSTGRES_PASSWORD:-password123}@postgres:5432/account_db?sslmode=disable
+    ports:
+      - "127.0.0.1:8081:8081"
+      - "127.0.0.1:9091:9091"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "wget",
+          "--no-verbose",
+          "--tries=1",
+          "--output-document=/dev/null",
+          "http://127.0.0.1:8081/health",
+        ]
+      interval: 1s
+      timeout: 5s
+      retries: 30
+      start_period: 120s
+    depends_on:
+      postgres:
+        condition: service_healthy
+      account-migrate:
+        condition: service_completed_successfully
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=eventory_default
+      - traefik.http.routers.account.rule=PathPrefix(`/api/v1/accounts`)
+      - traefik.http.routers.account.entrypoints=web
+      - traefik.http.routers.account-health.rule=Path(`/health`)
+      - traefik.http.routers.account-health.entrypoints=web
+      - traefik.http.routers.account-health.service=account
+      - traefik.http.services.account.loadbalancer.server.port=8081
+
+  tournament-migrate:
+    <<: *backend-dev
+    profiles: [apps]
+    entrypoint: ["go", "run", "./services/tournament/cmd/migrate"]
     environment:
       ENVIRONMENT: development
-      PORT: "8080"
-      DB_DSN: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?sslmode=disable
-    ports:
-      - "${BACKEND_PORT:-8080}:8080"
-    volumes:
-      - ./backend:/src
-      - backend-air-tmp:/src/tmp
-    healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--output-document=/dev/null", "http://127.0.0.1:8080/health"]
-      interval: 5s
-      timeout: 3s
-      retries: 10
+      DB_DSN: postgresql://${POSTGRES_USER:-admin}:${POSTGRES_PASSWORD:-password123}@postgres:5432/tournament_db?sslmode=disable
     depends_on:
-      migrate:
+      postgres:
+        condition: service_healthy
+      account-migrate:
         condition: service_completed_successfully
+    restart: "no"
+
+  tournament:
+    <<: *backend-dev
+    profiles: [apps]
+    environment:
+      SERVICE: tournament
+      ENVIRONMENT: development
+      DB_DSN: postgresql://${POSTGRES_USER:-admin}:${POSTGRES_PASSWORD:-password123}@postgres:5432/tournament_db?sslmode=disable
+      ACCOUNT_GRPC_ADDR: account:9091
+    ports:
+      - "127.0.0.1:8082:8082"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "wget",
+          "--no-verbose",
+          "--tries=1",
+          "--output-document=/dev/null",
+          "http://127.0.0.1:8082/health",
+        ]
+      interval: 1s
+      timeout: 5s
+      retries: 30
+      start_period: 120s
+    depends_on:
+      postgres:
+        condition: service_healthy
+      tournament-migrate:
+        condition: service_completed_successfully
+      account:
+        condition: service_healthy
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=eventory_default
+      - traefik.http.routers.tournament.rule=PathPrefix(`/api/v1/tournaments`) || PathPrefix(`/api/v1/lobbies`)
+      - traefik.http.routers.tournament.entrypoints=web
+      - traefik.http.services.tournament.loadbalancer.server.port=8082
 
   frontend:
     image: eventory-frontend:local
+    profiles: [web]
     build:
       context: ./frontend
       target: development
     env_file:
-      - ./frontend/.env.local
+      - path: ./frontend/.env.local
+        required: false
     environment:
-      INTERNAL_API_URL: http://backend:8080
+      INTERNAL_API_URL: http://traefik:80
+      NEXT_PUBLIC_API_URL: http://localhost:8080
     ports:
       - "${FRONTEND_PORT:-3000}:3000"
     volumes:
       - ./frontend:/app
-      - frontend-node-modules:/app/node_modules
-      - frontend-next:/app/.next
+      - frontend_node_modules:/app/node_modules
+      - frontend_next:/app/.next
     depends_on:
-      backend:
+      traefik:
+        condition: service_healthy
+      account:
+        condition: service_healthy
+      tournament:
         condition: service_healthy
 
+networks:
+  default:
+    name: eventory_default
+
 volumes:
-  postgres-data:
-  backend-air-tmp:
-  frontend-node-modules:
-  frontend-next:
+  postgres_data:
+  go_mod_cache:
+  go_build_cache:
+  frontend_node_modules:
+  frontend_next:

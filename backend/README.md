@@ -8,25 +8,37 @@ Setup and run instructions live in **[Getting Started](../docs/getting-started.m
 
 ## Run it
 
+From the repo root, pick one:
+
 ```bash
-# 1. Database (Docker)
-docker compose -f ../docker-compose.yml --env-file .env up -d --wait postgres
+# Postgres, Traefik, Account, Tournament, frontend on the host
+task dev
 
-# 2. Tables and sample data (first time)
-go run ./cmd/migrate -reset
-go run ./cmd/seed
-
-# 3. Server, [pick one]
-# native, must restart after every edit
-go run ./cmd/api
-# hot-reload, restarts when you save
-air -c .air.toml
+# or the same stack without the frontend
+task apps
 ```
+
+Both run `task migrate` first: Account schema, then Tournament. `task migrate` alone starts Postgres and applies those schemas. It does not start the APIs.
+
+```bash
+# sample rows, after the apps are healthy
+task seed
+```
+
+To run a service on the host instead of in Compose, use `task migrate`, then:
+
+```bash
+go run ./services/account/cmd/api
+go run ./services/tournament/cmd/api
+```
+
+`8081`, `9091`, and `8082` must be free, so do not leave `task apps` running. Traefik on `:8080` forwards to the containers, not to these host processes. Call `:8081` and `:8082` directly.
 
 | URL | What |
 | --- | --- |
-| http://localhost:8080/docs | Clickable list of every endpoint. Start here. |
-| http://localhost:8080/health | Should answer with an empty "204" response |
+| http://localhost:8081/docs | Account endpoints |
+| http://localhost:8082/docs | Tournament endpoints |
+| http://localhost:8080/health | Gateway health check |
 
 ---
 
@@ -49,7 +61,7 @@ flowchart LR
 | `repositories/` | Database reads and writes | "Fetch tournament 123" |
 | `models/` | Shape of each table | "What columns does a tournament have?" |
 | `middlewares/` | Runs before handlers | "Is this person logged in?" |
-| `cmd/` | Three programs: `api`, `migrate`, `seed` | — |
+| `services/<name>` | One service each: `cmd/api`, `cmd/migrate`, and `cmd/seed` | — |
 | `pkg/` | Settings and database connection | — |
 
 **Why split it up:** the rules in `usecases/` stay readable and testable because they contain no web code and no database code.
@@ -62,8 +74,8 @@ flowchart LR
 2. Add the query in `repositories/`.
 3. Put the rules in `usecases/`, and write a test next to it.
 4. Register the endpoint in `handlers/` with `huma.Register(...)`.
-5. Check it appears at http://localhost:8080/docs.
-6. Tell the frontend about it:
+5. Check it appears at http://localhost:8081/docs or http://localhost:8082/docs.
+6. Tell the frontend about it. The apps must be up (`task apps`):
 
 ```bash
 # from backend/
@@ -78,13 +90,16 @@ Step 6 is required. The frontend gets its types from the running backend, so ski
 
 | Command | Does |
 | --- | --- |
-| `air -c .air.toml` | Run the server, restart on save |
-| `go run ./cmd/api` | Run the server, no auto-restart |
-| `go run ./cmd/migrate` | Add new tables, keep existing data |
-| `go run ./cmd/migrate -reset` | ⚠️ Delete everything, rebuild tables |
-| `go run ./cmd/seed` | Add sample accounts and tournaments |
+| `go run ./services/account/cmd/migrate` | Create or update Account tables. `-reset` drops `public` first |
+| `go run ./services/tournament/cmd/migrate` | Create or update Tournament tables, including the search indexes. `-reset` drops `public` first |
+| `go run ./services/account/cmd/api` | Account on the host. Reads `services/account/.env.default` |
+| `go run ./services/tournament/cmd/api` | Tournament on the host. Reads `services/tournament/.env.default` |
+| `go run ./services/account/cmd/seed` | Sample accounts |
+| `go run ./services/tournament/cmd/seed` | Sample tournaments |
 | `go test ./...` | Run the tests |
-| `go build ./cmd/api` | Check it still compiles |
+| `go build ./services/account/cmd/api` | Check Account still compiles |
+| `go build ./services/tournament/cmd/api` | Check Tournament still compiles |
+| `task gen-proto` | From the repo root. Lint and regenerate gRPC code. Needs [Buf](https://buf.build/docs/installation/) |
 
 Run `go test ./...` before opening a pull request.
 
@@ -92,21 +107,18 @@ Run `go test ./...` before opening a pull request.
 
 ## Settings
 
-All settings come from `backend/.env`. Copy it from the template the first time:
-
-```bash
-cp .env.example .env
-```
+Each service loads `services/<name>/.env.default`, then an optional `.env` in that same directory, then the process environment.
 
 | Setting | Meaning |
 | --- | --- |
-| `PORT` | Which port the server listens on (8080) |
-| `DB_DSN` | Full address of the database, including user and password |
-| `POSTGRES_*` | User, password, database name and port for the Docker container |
+| `HTTP_PORT` | Account listens on 8081. Tournament listens on 8082 |
+| `GRPC_PORT` | Account gRPC port. Default 9091 |
+| `DB_DSN` | Database address. Account uses `account_db`. Tournament uses `tournament_db` |
+| `ACCOUNT_GRPC_ADDR` | Where Tournament calls Account. `127.0.0.1:9091` on the host, `account:9091` in Compose |
 | `SUPABASE_URL` | Used to verify login tickets |
 | `CORS_ALLOWED_ORIGINS` | Which websites may call this API |
 
-> Already have PostgreSQL on your machine? Port 5432 is taken. Change `POSTGRES_PORT` **and** the port inside `DB_DSN` to 5433.
+Compose replaces `DB_DSN` so the containers talk to the `postgres` hostname. Host `go run` keeps the `localhost` value from `.env.default`.
 
 ---
 

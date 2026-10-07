@@ -96,7 +96,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/accounts/me/tournaments": {
+    "/api/v1/tournaments/mine": {
         parameters: {
             query?: never;
             header?: never;
