@@ -1,0 +1,50 @@
+syntax = "proto3";
+
+package account.v1;
+
+option go_package = "github.com/moomaideng/eventory/services/account/pkg/proto/account/v1;accountv1";
+
+service AccountService {
+  rpc BatchGetAccounts(BatchGetAccountsRequest) returns (BatchGetAccountsResponse);
+  rpc BatchGetOrganizerProfiles(BatchGetOrganizerProfilesRequest) returns (BatchGetOrganizerProfilesResponse);
+  rpc GetOrganizerProfileByAccountID(GetOrganizerProfileByAccountIDRequest) returns (GetOrganizerProfileByAccountIDResponse);
+}
+
+message Account {
+  string id = 1;
+  string handle = 2;
+  string display_name = 3;
+  string status = 4;
+}
+
+message OrganizerProfile {
+  string id = 1;
+  string account_id = 2;
+  string organizer_name = 3;
+}
+
+message BatchGetAccountsRequest {
+  repeated string account_ids = 1;
+}
+
+message BatchGetAccountsResponse {
+  repeated Account accounts = 1;
+  repeated string not_found_ids = 2;
+}
+
+message BatchGetOrganizerProfilesRequest {
+  repeated string organizer_profile_ids = 1;
+}
+
+message BatchGetOrganizerProfilesResponse {
+  repeated OrganizerProfile profiles = 1;
+  repeated string not_found_ids = 2;
+}
+
+message GetOrganizerProfileByAccountIDRequest {
+  string account_id = 1;
+}
+
+message GetOrganizerProfileByAccountIDResponse {
+  OrganizerProfile profile = 1;
+}

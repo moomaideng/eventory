@@ -1,11 +1,16 @@
 package apptest
 
 import (
+	"net"
 	"net/http/httptest"
 	"testing"
 
-	"github.com/moomaideng/eventory/internal/server"
-	appconfig "github.com/moomaideng/eventory/pkg/config"
+	accountconfig "github.com/moomaideng/eventory/services/account/config"
+	accountserver "github.com/moomaideng/eventory/services/account/server"
+	tournamentconfig "github.com/moomaideng/eventory/services/tournament/config"
+	tournamentserver "github.com/moomaideng/eventory/services/tournament/server"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 	gormpostgres "gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
@@ -13,13 +18,14 @@ import (
 
 const basePath = "/api/v1"
 
-// App hosts the in-process HTTP server wired with real GORM repositories and handlers.
+// App hosts in-process account and tournament HTTP servers against one Postgres DSN.
 type App struct {
-	Server *httptest.Server
-	DB     *gorm.DB
+	AccountServer    *httptest.Server
+	TournamentServer *httptest.Server
+	DB               *gorm.DB
 }
 
-// NewApp instantiates the real HTTP application stack against the provided database DSN.
+// NewApp wires both microservices with tournament calling account over in-process gRPC.
 func NewApp(tb testing.TB, dsn string) *App {
 	tb.Helper()
 
@@ -37,23 +43,47 @@ func NewApp(tb testing.TB, dsn string) *App {
 
 	jwksServer := StartMockJWKSServer()
 
-	cfg := appconfig.Config{
+	accountApp := accountserver.NewApp(db, accountconfig.Config{
 		Environment: "development",
 		SupabaseURL: jwksServer.URL(),
+	})
+
+	lis, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		tb.Fatalf("apptest: listen gRPC: %v", err)
 	}
+	go func() { _ = accountApp.GRPC.Serve(lis) }()
+	tb.Cleanup(accountApp.GRPC.Stop)
 
-	router := server.NewRouter(db, cfg)
+	conn, err := grpc.NewClient(lis.Addr().String(), grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		tb.Fatalf("apptest: dial account gRPC: %v", err)
+	}
+	tb.Cleanup(func() { _ = conn.Close() })
 
-	ts := httptest.NewServer(router)
-	tb.Cleanup(ts.Close)
+	accountTS := httptest.NewServer(accountApp.HTTP)
+	tb.Cleanup(accountTS.Close)
+
+	tournamentApp := tournamentserver.NewAppWithAccountConn(db, tournamentconfig.Config{
+		Environment: "development",
+		SupabaseURL: jwksServer.URL(),
+	}, conn)
+	tournamentTS := httptest.NewServer(tournamentApp.HTTP)
+	tb.Cleanup(tournamentTS.Close)
 
 	return &App{
-		Server: ts,
-		DB:     db,
+		AccountServer:    accountTS,
+		TournamentServer: tournamentTS,
+		DB:               db,
 	}
 }
 
-// BaseURL returns the root versioned API URL (e.g. http://127.0.0.1:port/api/v1).
-func (a *App) BaseURL() string {
-	return a.Server.URL + basePath
+// TournamentBaseURL returns the tournament service versioned API root.
+func (a *App) TournamentBaseURL() string {
+	return a.TournamentServer.URL + basePath
+}
+
+// AccountBaseURL returns the account service versioned API root.
+func (a *App) AccountBaseURL() string {
+	return a.AccountServer.URL + basePath
 }

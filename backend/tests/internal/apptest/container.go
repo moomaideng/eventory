@@ -6,7 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/moomaideng/eventory/internal/models"
+	accountmodels "github.com/moomaideng/eventory/services/account/models"
+	tournamentdb "github.com/moomaideng/eventory/services/tournament/database"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/modules/postgres"
 	"github.com/testcontainers/testcontainers-go/wait"
@@ -82,5 +83,8 @@ func migrateUp(dsn string) error {
 	}
 	defer sqlDB.Close()
 
-	return db.AutoMigrate(models.All()...)
+	if err := db.AutoMigrate(accountmodels.All()...); err != nil {
+		return err
+	}
+	return tournamentdb.AutoMigrate(db)
 }
