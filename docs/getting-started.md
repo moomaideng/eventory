@@ -60,6 +60,7 @@ task web
 | http://localhost:8080/health | Gateway. Empty 204 means Account is up |
 | http://localhost:8081/docs | Account endpoints |
 | http://localhost:8082/docs | Tournament endpoints |
+| localhost:27017 | MongoDB (`tournament_db`) |
 
 The website calls `http://localhost:8080`. Traefik sends `/api/v1/accounts` to Account, and `/api/v1/tournaments` and `/api/v1/lobbies` to Tournament.
 

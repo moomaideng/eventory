@@ -16,6 +16,7 @@ flowchart LR
     GW --> TOUR["Tournament Service"]
     ACC --> PG[("Postgres<br/>account_db")]
     TOUR --> PG2[("Postgres<br/>tournament_db")]
+    TOUR --> MONGO[("MongoDB<br/>tournament_db")]
     TOUR -->|gRPC| ACC
 ```
 
@@ -23,7 +24,7 @@ flowchart LR
 | --- | --- | --- |
 | **Frontend** | The pages you see and click | `frontend/` |
 | **Account / Tournament** | Backend services | `backend/services/*`, Compose profile `apps` |
-| **Traefik + Postgres** | API Gateway and databases | Compose profile `infra` |
+| **Traefik, Postgres & MongoDB** | API Gateway and databases | Compose profile `infra` |
 | **Supabase** | Google login and uploads | external |
 
 ---
