@@ -134,6 +134,7 @@ jobs:
           ORACLE_KNOWN_HOSTS: ${{ secrets.ORACLE_KNOWN_HOSTS }}
           PROD_POSTGRES_PASSWORD: ${{ secrets.PROD_POSTGRES_PASSWORD }}
           PROD_API_URL: ${{ secrets.PROD_API_URL }}
+          PROD_ACME_EMAIL: ${{ secrets.PROD_ACME_EMAIL }}
         run: |
           test -n "$ORACLE_HOST" || (echo "::error::Missing ORACLE_HOST" && exit 1)
           test -n "$ORACLE_USER" || (echo "::error::Missing ORACLE_USER" && exit 1)
@@ -141,6 +142,7 @@ jobs:
           test -n "$ORACLE_KNOWN_HOSTS" || (echo "::error::Missing ORACLE_KNOWN_HOSTS" && exit 1)
           test -n "$PROD_POSTGRES_PASSWORD" || (echo "::error::Missing PROD_POSTGRES_PASSWORD" && exit 1)
           test -n "$PROD_API_URL" || (echo "::error::Missing PROD_API_URL" && exit 1)
+          test -n "$PROD_ACME_EMAIL" || (echo "::error::Missing PROD_ACME_EMAIL" && exit 1)
 
       - name: Configure SSH
         env:
@@ -158,9 +160,10 @@ jobs:
           ORACLE_HOST: ${{ secrets.ORACLE_HOST }}
           ORACLE_USER: ${{ secrets.ORACLE_USER }}
         run: |
-          ssh "$ORACLE_USER@$ORACLE_HOST" 'sudo install -d -m 0755 -o "$USER" -g "$(id -gn)" /opt/eventory/docker/postgres'
+          ssh "$ORACLE_USER@$ORACLE_HOST" 'sudo install -d -m 0755 -o "$USER" -g "$(id -gn)" /opt/eventory/docker/postgres /opt/eventory/docker/traefik'
           scp docker-compose.production.yml "$ORACLE_USER@$ORACLE_HOST:/opt/eventory/docker-compose.yml"
           scp docker/postgres/init-databases.sh "$ORACLE_USER@$ORACLE_HOST:/opt/eventory/docker/postgres/init-databases.sh"
+          scp docker/traefik/dynamic.yml "$ORACLE_USER@$ORACLE_HOST:/opt/eventory/docker/traefik/dynamic.yml"
           ssh "$ORACLE_USER@$ORACLE_HOST" 'chmod 755 /opt/eventory/docker/postgres/init-databases.sh'
 
       - name: Write production runtime environment
@@ -169,6 +172,7 @@ jobs:
           PROD_POSTGRES_PASSWORD: ${{ secrets.PROD_POSTGRES_PASSWORD }}
           PROD_SUPABASE_URL: ${{ secrets.PROD_SUPABASE_URL }}
           PROD_API_URL: ${{ secrets.PROD_API_URL }}
+          PROD_ACME_EMAIL: ${{ secrets.PROD_ACME_EMAIL }}
           ORACLE_HOST: ${{ secrets.ORACLE_HOST }}
           ORACLE_USER: ${{ secrets.ORACLE_USER }}
         run: |
@@ -177,8 +181,7 @@ jobs:
             printf 'POSTGRES_PASSWORD=%s\n' "$PROD_POSTGRES_PASSWORD"
             printf 'SUPABASE_URL=%s\n' "$PROD_SUPABASE_URL"
             printf 'CORS_ALLOWED_ORIGINS=%s\n' "$PROD_API_URL"
-            printf 'BACKEND_PORT=8080\n'
-            printf 'FRONTEND_PORT=3000\n'
+            printf 'ACME_EMAIL=%s\n' "$PROD_ACME_EMAIL"
           } | ssh "$ORACLE_USER@$ORACLE_HOST" 'umask 077; cat > /opt/eventory/.env'
 
       - name: Log Oracle in to GitHub Container Registry
@@ -208,7 +211,6 @@ jobs:
       - name: Verify deployment
         env:
           PROD_API_URL: ${{ secrets.PROD_API_URL }}
-          ORACLE_HOST: ${{ secrets.ORACLE_HOST }}
         run: |
           curl --fail --silent --show-error --retry 12 --retry-all-errors --retry-delay 5 "$PROD_API_URL/health"
-          curl --fail --silent --show-error --retry 12 --retry-all-errors --retry-delay 5 "http://$ORACLE_HOST:3000/" > /dev/null
+          curl --fail --silent --show-error --retry 12 --retry-all-errors --retry-delay 5 "$PROD_API_URL/" > /dev/null

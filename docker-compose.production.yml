@@ -34,11 +34,21 @@ services:
       - --providers.docker=true
       - --providers.docker.exposedbydefault=false
       - --providers.docker.network=eventory-production_default
+      - --providers.file.filename=/etc/traefik/dynamic.yml
       - --entrypoints.web.address=:80
+      - --entrypoints.websecure.address=:443
+      - --certificatesresolvers.letsencrypt.acme.tlschallenge=true
+      - --certificatesresolvers.letsencrypt.acme.email=${ACME_EMAIL:?ACME_EMAIL is required}
+      - --certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json
     ports:
-      - "${BACKEND_PORT:-8080}:80"
+      - "80:80"
+      - "443:443"
+    extra_hosts:
+      - host.docker.internal:host-gateway
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./docker/traefik/dynamic.yml:/etc/traefik/dynamic.yml:ro
+      - traefik_letsencrypt:/letsencrypt
     healthcheck:
       test: ["CMD", "traefik", "healthcheck", "--ping"]
       interval: 5s
@@ -85,11 +95,23 @@ services:
     labels:
       - traefik.enable=true
       - traefik.docker.network=eventory-production_default
-      - traefik.http.routers.account.rule=PathPrefix(`/api/v1/accounts`)
-      - traefik.http.routers.account.entrypoints=web
-      - traefik.http.routers.account-health.rule=Path(`/health`)
-      - traefik.http.routers.account-health.entrypoints=web
+      - traefik.http.routers.account.rule=Host(`eventory.ddns.net`) && PathPrefix(`/api/v1/accounts`)
+      - traefik.http.routers.account.entrypoints=websecure
+      - traefik.http.routers.account.tls=true
+      - traefik.http.routers.account.tls.certresolver=letsencrypt
+      - traefik.http.routers.account.priority=100
+      - traefik.http.routers.account-internal.rule=Host(`traefik`) && PathPrefix(`/api/v1/accounts`)
+      - traefik.http.routers.account-internal.entrypoints=web
+      - traefik.http.routers.account-internal.service=account
+      - traefik.http.routers.account-health.rule=Host(`eventory.ddns.net`) && Path(`/health`)
+      - traefik.http.routers.account-health.entrypoints=websecure
+      - traefik.http.routers.account-health.tls=true
+      - traefik.http.routers.account-health.tls.certresolver=letsencrypt
+      - traefik.http.routers.account-health.priority=100
       - traefik.http.routers.account-health.service=account
+      - traefik.http.routers.account-health-internal.rule=Host(`traefik`) && Path(`/health`)
+      - traefik.http.routers.account-health-internal.entrypoints=web
+      - traefik.http.routers.account-health-internal.service=account
       - traefik.http.services.account.loadbalancer.server.port=8081
     restart: unless-stopped
 
@@ -134,8 +156,14 @@ services:
     labels:
       - traefik.enable=true
       - traefik.docker.network=eventory-production_default
-      - traefik.http.routers.tournament.rule=PathPrefix(`/api/v1/tournaments`) || PathPrefix(`/api/v1/lobbies`)
-      - traefik.http.routers.tournament.entrypoints=web
+      - traefik.http.routers.tournament.rule=Host(`eventory.ddns.net`) && (PathPrefix(`/api/v1/tournaments`) || PathPrefix(`/api/v1/lobbies`))
+      - traefik.http.routers.tournament.entrypoints=websecure
+      - traefik.http.routers.tournament.tls=true
+      - traefik.http.routers.tournament.tls.certresolver=letsencrypt
+      - traefik.http.routers.tournament.priority=100
+      - traefik.http.routers.tournament-internal.rule=Host(`traefik`) && (PathPrefix(`/api/v1/tournaments`) || PathPrefix(`/api/v1/lobbies`))
+      - traefik.http.routers.tournament-internal.entrypoints=web
+      - traefik.http.routers.tournament-internal.service=tournament
       - traefik.http.services.tournament.loadbalancer.server.port=8082
     restart: unless-stopped
 
@@ -143,8 +171,6 @@ services:
     image: ghcr.io/moomaideng/eventory-frontend:${IMAGE_TAG:?IMAGE_TAG is required}
     environment:
       INTERNAL_API_URL: http://traefik:80
-    ports:
-      - "${FRONTEND_PORT:-3000}:3000"
     depends_on:
       traefik:
         condition: service_healthy
@@ -152,6 +178,22 @@ services:
         condition: service_healthy
       tournament:
         condition: service_healthy
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=eventory-production_default
+      - traefik.http.routers.frontend.rule=Host(`eventory.ddns.net`) && PathPrefix(`/`)
+      - traefik.http.routers.frontend.entrypoints=websecure
+      - traefik.http.routers.frontend.tls=true
+      - traefik.http.routers.frontend.tls.certresolver=letsencrypt
+      - traefik.http.routers.frontend.priority=1
+      - traefik.http.routers.frontend.service=frontend
+      - traefik.http.routers.frontend-http.rule=Host(`eventory.ddns.net`)
+      - traefik.http.routers.frontend-http.entrypoints=web
+      - traefik.http.routers.frontend-http.middlewares=redirect-https
+      - traefik.http.routers.frontend-http.service=frontend
+      - traefik.http.middlewares.redirect-https.redirectscheme.scheme=https
+      - traefik.http.middlewares.redirect-https.redirectscheme.permanent=true
+      - traefik.http.services.frontend.loadbalancer.server.port=3000
     restart: unless-stopped
 
 networks:
@@ -160,3 +202,4 @@ networks:
 
 volumes:
   postgres_data:
+  traefik_letsencrypt:
