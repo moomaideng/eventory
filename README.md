@@ -59,13 +59,13 @@ task seed      # sample data, after the apps are up
 task logs      # infra and app logs
 task down      # stop Compose
 task web       # also run the frontend in Docker
-task db:reset  # delete the local database volume and start again
+task db:reset  # stop the stack and delete the local Postgres volume
 task test      # backend tests, frontend lint, frontend typecheck
 ```
 
 `task dev` leaves the containers running after you stop Next.js with Ctrl+C. `task down` stops them.
 
-An existing Postgres volume from the old single-database setup does not contain `account_db` and `tournament_db`. Run `task db:reset` once. That deletes local data.
+An existing Postgres volume from the old single-database setup does not contain `account_db` and `tournament_db`. Run `task db:reset` once (delete local data), then `task dev` or `task apps` if you need the stack again.
 
 ---
 

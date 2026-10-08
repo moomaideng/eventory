@@ -42,7 +42,7 @@ Jump to: [Architecture](#architecture) · [Frontend](#frontend) · [Backend](#ba
 | **API / endpoint** | An "API" is the list of things the backend can do. An "endpoint" is one of them, e.g. `GET /api/v1/tournaments` = "give me the tournament list". |
 | **REST** | The common style of API where each URL is a thing and the verb (GET, POST, PATCH, DELETE) says what to do with it. |
 | **OpenAPI** | A standard file format that describes every endpoint. Huma generates it for us at `/openapi.json`. |
-| **Migration** | `task migrate` creates or updates Account tables, then Tournament tables. The API does not do this. It does not drop old columns. `task db:reset` deletes the local database volume so Postgres can create `account_db` and `tournament_db` again. |
+| **Migration** | `task migrate` creates or updates Account tables, then Tournament tables. The API does not do this. It does not drop old columns. `task db:reset` deletes the local database volume; run `task dev` or `task apps` so Postgres can create `account_db` and `tournament_db` again. |
 | **Seed** | Sample rows for local development. `task seed` fills `account_db`, then `tournament_db`. |
 | **Air** | A helper that restarts the Go server automatically every time you save a file ("live reload"). |
 | **Viper** | The library that reads each service's `.env.default`, then an optional `.env`, then the process environment. |

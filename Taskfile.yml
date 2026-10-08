@@ -15,8 +15,7 @@ tasks:
   dev:
     desc: Start infra and apps, then run the host frontend
     cmds:
-      - task: migrate
-      - "{{.COMPOSE_APPS}} up -d --build --wait"
+      - "{{.COMPOSE_APPS}} up -d --build"
       - task: frontend:install
       - npm --prefix frontend run dev
 
@@ -33,14 +32,12 @@ tasks:
   apps:
     desc: Rebuild and restart infra and apps
     cmds:
-      - task: migrate
-      - "{{.COMPOSE_APPS}} up -d --build --wait"
+      - "{{.COMPOSE_APPS}} up -d --build"
 
   web:
     desc: Start infra, apps, and the frontend container
     cmds:
-      - task: migrate
-      - "{{.COMPOSE_ALL}} up -d --build --wait"
+      - "{{.COMPOSE_ALL}} up -d --build"
 
   frontend:
     desc: Install frontend deps if needed and run Next.js on the host
@@ -74,11 +71,10 @@ tasks:
       - go -C backend run ./services/tournament/cmd/seed
 
   db:reset:
-    desc: Delete the local Postgres volume and start infra and apps again
+    desc: Stop the stack and delete the local Postgres volume
     cmds:
       - "{{.COMPOSE_ALL}} down --remove-orphans"
       - docker volume rm -f eventory_postgres_data
-      - "{{.COMPOSE_APPS}} up -d --build --wait"
 
   gen-proto:
     desc: Lint and regenerate gRPC code
