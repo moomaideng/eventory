@@ -10,11 +10,11 @@ Find your error message, apply the fix.
 | --- | --- | --- |
 | `Module not found: Can't resolve '...'` | Your packages are older than the code | `npm --prefix frontend ci` |
 | Same error, but running in Docker | Docker keeps its **own** copy of packages | See [Stale frontend packages](#the-two-stale-package-traps) |
-| `violates foreign key constraint` while seeding | Your database holds rows from an older version of the code | `task db:reset`, then `task seed` |
+| `violates foreign key constraint` while seeding | Your database holds rows from an older version of the code | `task db:reset`, then `task dev` or `task apps`, then `task seed` |
 | `connection refused` on port 5432 | The database is not running yet | `task migrate` |
 | `port is already allocated` | Something else uses 3000, 8080, 8081, 8082, 9091, or 5432 | See [Port already in use](#port-already-in-use) |
 | `Cannot connect to the Docker daemon` | Docker is not running | Start Docker and wait until it accepts commands |
-| `database "account_db" does not exist` | The Postgres volume was created before the split | `task db:reset` |
+| `database "account_db" does not exist` | The Postgres volume was created before the split | `task db:reset`, then `task dev` or `task apps` |
 | `Required command not found: docker` (or `go`, `npm`) | That tool is missing, or not on your `PATH` | Install it, then open a new terminal |
 | `task: command not found` | Task is not installed | [Install Task](https://taskfile.dev/installation/) |
 | Tournament list is empty | Sample data was never added | `task seed` |
@@ -62,6 +62,7 @@ violates foreign key constraint "fk_accounts_organizer_profile"
 
 ```bash
 task db:reset
+task dev   # or task apps
 task seed
 ```
 

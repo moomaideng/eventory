@@ -111,8 +111,6 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-      account-migrate:
-        condition: service_completed_successfully
     restart: "no"
 
   tournament:
@@ -145,7 +143,7 @@ services:
       tournament-migrate:
         condition: service_completed_successfully
       account:
-        condition: service_healthy
+        condition: service_started
     labels:
       - traefik.enable=true
       - traefik.docker.network=eventory_default
