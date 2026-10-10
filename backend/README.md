@@ -32,13 +32,14 @@ go run ./services/account/cmd/api
 go run ./services/tournament/cmd/api
 ```
 
-`8081`, `9091`, and `8082` must be free, so do not leave `task apps` running. Traefik on `:8080` forwards to the containers, not to these host processes. Call `:8081` and `:8082` directly.
+`8081`, `9091`, and `8082` must be free, so do not leave `task apps` running. Traefik on `:8080` forwards to the containers, not to these host processes. Call `:8081` and `:8082` directly. MongoDB runs on port `27017` as a secondary database for the Tournament Service.
 
 | URL | What |
 | --- | --- |
 | http://localhost:8081/docs | Account endpoints |
 | http://localhost:8082/docs | Tournament endpoints |
 | http://localhost:8080/health | Gateway health check |
+| localhost:27017 | MongoDB (database: `tournament_db`) |
 
 ---
 

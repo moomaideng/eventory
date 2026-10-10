@@ -30,6 +30,22 @@ services:
       timeout: 5s
       retries: 30
 
+  mongodb:
+    image: mongo:7.0
+    profiles: [infra]
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER:-admin}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD:-password123}
+    ports:
+      - "127.0.0.1:${MONGO_PORT:-27017}:27017"
+    volumes:
+      - mongo_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping')", "-u", "${MONGO_USER:-admin}", "-p", "${MONGO_PASSWORD:-password123}", "--authenticationDatabase", "admin"]
+      interval: 1s
+      timeout: 5s
+      retries: 30
+
   traefik:
     image: traefik:v3.7.12
     profiles: [infra]
@@ -121,6 +137,8 @@ services:
       ENVIRONMENT: development
       DB_DSN: postgresql://${POSTGRES_USER:-admin}:${POSTGRES_PASSWORD:-password123}@postgres:5432/tournament_db?sslmode=disable
       ACCOUNT_GRPC_ADDR: account:9091
+      MONGO_URI: mongodb://${MONGO_USER:-admin}:${MONGO_PASSWORD:-password123}@mongodb:27017/tournament_db?authSource=admin
+      MONGO_DB_NAME: tournament_db
     ports:
       - "127.0.0.1:8082:8082"
     healthcheck:
@@ -139,6 +157,8 @@ services:
       start_period: 120s
     depends_on:
       postgres:
+        condition: service_healthy
+      mongodb:
         condition: service_healthy
       tournament-migrate:
         condition: service_completed_successfully
@@ -183,6 +203,7 @@ networks:
 
 volumes:
   postgres_data:
+  mongo_data:
   go_mod_cache:
   go_build_cache:
   frontend_node_modules:

@@ -1,13 +1,16 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/moomaideng/eventory/internal/database"
 	"github.com/moomaideng/eventory/services/tournament/config"
 	"github.com/moomaideng/eventory/services/tournament/server"
+	"go.mongodb.org/mongo-driver/v2/mongo"
 )
 
 func main() {
@@ -22,7 +25,27 @@ func main() {
 	}
 	log.Println("Database connection established successfully.")
 
-	app := server.NewApp(db, appConfig)
+	var mongoDB *mongo.Database
+	if appConfig.MongoURI != "" {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+
+		mongoClient, err := database.ConnectMongo(ctx, appConfig.MongoURI)
+		if err != nil {
+			log.Fatalf("failed to connect to mongodb: %v", err)
+		}
+		defer func() {
+			_ = mongoClient.Disconnect(context.Background())
+		}()
+		log.Println("MongoDB connection established successfully.")
+		dbName := appConfig.MongoDBName
+		if dbName == "" {
+			dbName = "tournament_db"
+		}
+		mongoDB = mongoClient.Database(dbName)
+	}
+
+	app := server.NewApp(db, mongoDB, appConfig)
 
 	fmt.Printf("Tournament service starting on HTTP port %s (env: %s)...\n", appConfig.HTTPPort, appConfig.Environment)
 	fmt.Printf("API Documentation available at http://localhost:%s/docs\n", appConfig.HTTPPort)

@@ -133,6 +133,7 @@ jobs:
           ORACLE_SSH_KEY: ${{ secrets.ORACLE_SSH_KEY }}
           ORACLE_KNOWN_HOSTS: ${{ secrets.ORACLE_KNOWN_HOSTS }}
           PROD_POSTGRES_PASSWORD: ${{ secrets.PROD_POSTGRES_PASSWORD }}
+          PROD_MONGO_PASSWORD: ${{ secrets.PROD_MONGO_PASSWORD }}
           PROD_API_URL: ${{ secrets.PROD_API_URL }}
           PROD_ACME_EMAIL: ${{ secrets.PROD_ACME_EMAIL }}
         run: |
@@ -141,6 +142,7 @@ jobs:
           test -n "$ORACLE_SSH_KEY" || (echo "::error::Missing ORACLE_SSH_KEY" && exit 1)
           test -n "$ORACLE_KNOWN_HOSTS" || (echo "::error::Missing ORACLE_KNOWN_HOSTS" && exit 1)
           test -n "$PROD_POSTGRES_PASSWORD" || (echo "::error::Missing PROD_POSTGRES_PASSWORD" && exit 1)
+          test -n "$PROD_MONGO_PASSWORD" || (echo "::error::Missing PROD_MONGO_PASSWORD" && exit 1)
           test -n "$PROD_API_URL" || (echo "::error::Missing PROD_API_URL" && exit 1)
           test -n "$PROD_ACME_EMAIL" || (echo "::error::Missing PROD_ACME_EMAIL" && exit 1)
 
@@ -170,6 +172,7 @@ jobs:
         env:
           IMAGE_TAG: ${{ github.sha }}
           PROD_POSTGRES_PASSWORD: ${{ secrets.PROD_POSTGRES_PASSWORD }}
+          PROD_MONGO_PASSWORD: ${{ secrets.PROD_MONGO_PASSWORD }}
           PROD_SUPABASE_URL: ${{ secrets.PROD_SUPABASE_URL }}
           PROD_API_URL: ${{ secrets.PROD_API_URL }}
           PROD_ACME_EMAIL: ${{ secrets.PROD_ACME_EMAIL }}
@@ -179,6 +182,7 @@ jobs:
           {
             printf 'IMAGE_TAG=%s\n' "$IMAGE_TAG"
             printf 'POSTGRES_PASSWORD=%s\n' "$PROD_POSTGRES_PASSWORD"
+            printf 'MONGO_PASSWORD=%s\n' "$PROD_MONGO_PASSWORD"
             printf 'SUPABASE_URL=%s\n' "$PROD_SUPABASE_URL"
             printf 'CORS_ALLOWED_ORIGINS=%s\n' "$PROD_API_URL"
             printf 'ACME_EMAIL=%s\n' "$PROD_ACME_EMAIL"
@@ -202,10 +206,10 @@ jobs:
             set -eu
             cd /opt/eventory
             sudo docker compose --env-file .env -f docker-compose.yml pull
-            sudo docker compose --env-file .env -f docker-compose.yml up -d --wait postgres
+            sudo docker compose --env-file .env -f docker-compose.yml up -d --wait postgres mongodb
             sudo docker compose --env-file .env -f docker-compose.yml run --rm account-migrate
             sudo docker compose --env-file .env -f docker-compose.yml run --rm tournament-migrate
-            sudo docker compose --env-file .env -f docker-compose.yml up -d --remove-orphans postgres account tournament traefik frontend
+            sudo docker compose --env-file .env -f docker-compose.yml up -d --remove-orphans postgres mongodb account tournament traefik frontend
           '
 
       - name: Verify deployment

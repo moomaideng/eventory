@@ -71,10 +71,10 @@ tasks:
       - go -C backend run ./services/tournament/cmd/seed
 
   db:reset:
-    desc: Stop the stack and delete the local Postgres volume
+    desc: Stop the stack and delete the local Postgres and Mongodb volume
     cmds:
       - "{{.COMPOSE_ALL}} down --remove-orphans"
-      - docker volume rm -f eventory_postgres_data
+      - docker volume rm -f eventory_postgres_data eventory_mongo_data
 
   gen-proto:
     desc: Lint and regenerate gRPC code
