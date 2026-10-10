@@ -7,3 +7,6 @@ temp/
 
 # Taskfile
 /.task/
+
+# Local browser screenshots; do not include them in commits.
+/docs/screenshots/
