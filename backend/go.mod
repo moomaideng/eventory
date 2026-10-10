@@ -13,7 +13,6 @@ require (
 	github.com/spf13/viper v1.21.0
 	github.com/testcontainers/testcontainers-go v0.44.0
 	github.com/testcontainers/testcontainers-go/modules/postgres v0.44.0
-	go.mongodb.org/mongo-driver v1.17.10
 	go.mongodb.org/mongo-driver/v2 v2.9.2
 	google.golang.org/grpc v1.84.0
 	google.golang.org/protobuf v1.36.12
