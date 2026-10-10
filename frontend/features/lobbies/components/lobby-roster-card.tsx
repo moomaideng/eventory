@@ -22,6 +22,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { formatDate, type Lobby } from "../utils";
+import { registrationUnavailableReason } from "@/features/registration/utils";
 
 interface LobbyRosterCardProps {
   lobby: Lobby;
@@ -42,6 +43,9 @@ export function LobbyRosterCard({
   const isForming = lobby.status === "FORMING";
   const rosterReady = members.length >= lobby.tournament.minTeamSize;
   const rosterFull = members.length >= lobby.tournament.maxTeamSize;
+  const registrationUnavailable = registrationUnavailableReason(
+    lobby.tournament
+  );
 
   return (
     <Card>
@@ -50,8 +54,8 @@ export function LobbyRosterCard({
           <div className="flex flex-col gap-1">
             <CardTitle>Team roster</CardTitle>
             <CardDescription>
-              {members.length} of {lobby.tournament.maxTeamSize} players · Minimum{" "}
-              {lobby.tournament.minTeamSize}
+              {members.length} of {lobby.tournament.maxTeamSize} players ·
+              Minimum {lobby.tournament.minTeamSize}
             </CardDescription>
           </div>
           <Badge variant={rosterReady ? "secondary" : "outline"}>
@@ -119,12 +123,18 @@ export function LobbyRosterCard({
       {isInvitee ? (
         <CardFooter className="flex flex-wrap items-center justify-between gap-3">
           <p className="text-muted-foreground text-sm">
-            {isForming && !rosterFull
-              ? "Join this roster to compete with the team."
-              : "This roster cannot accept new members."}
+            {registrationUnavailable ||
+              (isForming && !rosterFull
+                ? "Join this roster to compete with the team."
+                : "This roster cannot accept new members.")}
           </p>
           <Button
-            disabled={!isForming || rosterFull || pendingAction === "join"}
+            disabled={
+              Boolean(registrationUnavailable) ||
+              !isForming ||
+              rosterFull ||
+              pendingAction === "join"
+            }
             onClick={onJoinLobby}
           >
             {pendingAction === "join" ? (

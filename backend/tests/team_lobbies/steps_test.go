@@ -134,7 +134,7 @@ func (s *teamLobbyScenarioContext) createLobby(user *apptest.TestUser, name stri
 	resp, err := s.client.Do(
 		http.MethodPost,
 		fmt.Sprintf("/tournaments/%s/lobbies", s.tournament.ID),
-		handlers.CreateTeamLobbyRequest{Name: name},
+		handlers.CreateTeamLobbyRequest{Name: name, Registration: models.RegistrationSubmission{Answers: []models.RegistrationAnswer{}, Consent: true}},
 		user.AuthHeaders(),
 	)
 	if err != nil {
@@ -153,7 +153,7 @@ func (s *teamLobbyScenarioContext) theOtherCompetitorJoinsUsingTheValidInviteCod
 	resp, err := s.client.Do(
 		http.MethodPost,
 		fmt.Sprintf("/lobbies/%s/join", s.lobby.InviteCode),
-		nil,
+		models.RegistrationSubmission{Answers: []models.RegistrationAnswer{}, Consent: true},
 		s.otherCompetitor.AuthHeaders(),
 	)
 	if err != nil {
@@ -169,7 +169,7 @@ func (s *teamLobbyScenarioContext) theOtherCompetitorJoinsUsingTheValidInviteCod
 }
 
 func (s *teamLobbyScenarioContext) theCompetitorTriesToJoinWithAnInvalidInviteCode() error {
-	resp, err := s.client.Do(http.MethodPost, "/lobbies/ZZZZZZ/join", nil, s.actor.AuthHeaders())
+	resp, err := s.client.Do(http.MethodPost, "/lobbies/ZZZZZZ/join", models.RegistrationSubmission{Answers: []models.RegistrationAnswer{}, Consent: true}, s.actor.AuthHeaders())
 	if err != nil {
 		return err
 	}

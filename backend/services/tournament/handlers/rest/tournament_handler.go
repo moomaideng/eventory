@@ -9,6 +9,7 @@ import (
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/google/uuid"
 	"github.com/moomaideng/eventory/services/tournament/internal/middlewares"
+	"github.com/moomaideng/eventory/services/tournament/internal/registration"
 	"github.com/moomaideng/eventory/services/tournament/internal/usecases"
 	"github.com/moomaideng/eventory/services/tournament/models"
 )
@@ -18,18 +19,19 @@ type TournamentOutput struct {
 }
 
 type CreateTournamentRequest struct {
-	Name                 string    `json:"name" minLength:"1" maxLength:"160" doc:"Tournament name"`
-	Description          string    `json:"description" doc:"Tournament description or rules"`
-	Game                 string    `json:"game" minLength:"1" maxLength:"80" doc:"Game title"`
-	Location             string    `json:"location" minLength:"1" maxLength:"160" doc:"Location or 'Online'"`
-	StartAt              time.Time `json:"startAt" doc:"Tournament start timestamp (RFC 3339)"`
-	EndAt                time.Time `json:"endAt" doc:"Tournament end timestamp (RFC 3339)"`
-	RegistrationDeadline time.Time `json:"registrationDeadline" doc:"Registration deadline timestamp (RFC 3339)"`
-	EntryFee             int64     `json:"entryFee" minimum:"0" default:"0" doc:"Entry fee in whole currency units"`
-	RegistrationMode     string    `json:"registrationMode" enum:"SOLO,TEAM" doc:"Registration mode: SOLO or TEAM"`
-	MinTeamSize          int       `json:"minTeamSize" minimum:"1" default:"1" doc:"Minimum team size (coerced to 1 for SOLO)"`
-	MaxTeamSize          int       `json:"maxTeamSize" minimum:"1" default:"1" doc:"Maximum team size (coerced to 1 for SOLO)"`
-	Capacity             int       `json:"capacity" minimum:"1" doc:"Maximum participant or team capacity"`
+	Name                 string                         `json:"name" minLength:"1" maxLength:"160" doc:"Tournament name"`
+	Description          string                         `json:"description" doc:"Tournament description or rules"`
+	Game                 string                         `json:"game" minLength:"1" maxLength:"80" doc:"Game title"`
+	Location             string                         `json:"location" minLength:"1" maxLength:"160" doc:"Location or 'Online'"`
+	StartAt              time.Time                      `json:"startAt" doc:"Tournament start timestamp (RFC 3339)"`
+	EndAt                time.Time                      `json:"endAt" doc:"Tournament end timestamp (RFC 3339)"`
+	RegistrationDeadline time.Time                      `json:"registrationDeadline" doc:"Registration deadline timestamp (RFC 3339)"`
+	EntryFee             int64                          `json:"entryFee" minimum:"0" default:"0" doc:"Entry fee in whole currency units"`
+	RegistrationMode     string                         `json:"registrationMode" enum:"SOLO,TEAM" doc:"Registration mode: SOLO or TEAM"`
+	MinTeamSize          int                            `json:"minTeamSize" minimum:"1" default:"1" doc:"Minimum team size (coerced to 1 for SOLO)"`
+	MaxTeamSize          int                            `json:"maxTeamSize" minimum:"1" default:"1" doc:"Maximum team size (coerced to 1 for SOLO)"`
+	Capacity             int                            `json:"capacity" minimum:"1" doc:"Maximum participant or team capacity"`
+	RegistrationForm     *models.RegistrationFormConfig `json:"registrationForm,omitempty"`
 }
 
 type CreateTournamentInput struct {
@@ -240,6 +242,7 @@ func RegisterTournamentRoutes(api huma.API, organizerGroup huma.API, tournamentU
 			MinTeamSize:          input.Body.MinTeamSize,
 			MaxTeamSize:          input.Body.MaxTeamSize,
 			Capacity:             input.Body.Capacity,
+			RegistrationForm:     input.Body.RegistrationForm,
 		})
 		if err != nil {
 			return nil, tournamentHTTPError(err)
@@ -301,6 +304,8 @@ func tournamentHTTPError(err error) error {
 		return mapped
 	}
 	switch {
+	case errors.Is(err, registration.ErrInvalid):
+		return huma.Error422UnprocessableEntity(err.Error())
 	case errors.Is(err, usecases.ErrTournamentNotFound):
 		return huma.Error404NotFound("Tournament not found", err)
 	case errors.Is(err, usecases.ErrNotTournamentOwner):

@@ -49,7 +49,8 @@ type EmptyTeamLobbyOutput struct {
 }
 
 type CreateTeamLobbyRequest struct {
-	Name string `json:"name" minLength:"1" maxLength:"120" doc:"Team name"`
+	Name         string                        `json:"name" minLength:"1" maxLength:"120" doc:"Team name"`
+	Registration models.RegistrationSubmission `json:"registration"`
 }
 
 type CreateTeamLobbyInput struct {
@@ -63,6 +64,11 @@ type MyTournamentTeamInput struct {
 
 type InviteCodeInput struct {
 	InviteCode string `path:"inviteCode" pattern:"^[A-Za-z0-9]{6}$" doc:"Six-character team invite code"`
+}
+
+type JoinTeamLobbyInput struct {
+	InviteCode string `path:"inviteCode" pattern:"^[A-Za-z0-9]{6}$"`
+	Body       models.RegistrationSubmission
 }
 
 type LobbyIDInput struct {
@@ -95,21 +101,22 @@ func RegisterTeamLobbyRoutes(api huma.API, lobbyUseCase *usecases.TeamLobbyUseCa
 	})
 
 	huma.Register(api, huma.Operation{
-		OperationID: "create-team-lobby",
-		Method:      http.MethodPost,
-		Path:        "/tournaments/{tournamentId}/lobbies",
-		Summary:     "Create a team lobby",
-		Description: "Creates a forming team and makes the authenticated account its captain.",
-		Tags:        []string{"Team lobbies"},
-		Security:    []map[string][]string{{"bearer": {}}},
+		OperationID:  "create-team-lobby",
+		MaxBodyBytes: 16 * 1024 * 1024,
+		Method:       http.MethodPost,
+		Path:         "/tournaments/{tournamentId}/lobbies",
+		Summary:      "Create a team lobby",
+		Description:  "Creates a forming team and makes the authenticated account its captain.",
+		Tags:         []string{"Team lobbies"},
+		Security:     []map[string][]string{{"bearer": {}}},
 	}, func(ctx context.Context, input *CreateTeamLobbyInput) (*CreateTeamLobbyOutput, error) {
 		accountID, err := authenticatedAccountID(ctx)
 		if err != nil {
 			return nil, err
 		}
-		view, err := lobbyUseCase.Create(ctx, input.TournamentID, accountID, input.Body.Name)
+		view, err := lobbyUseCase.Create(ctx, input.TournamentID, accountID, input.Body.Name, input.Body.Registration)
 		if err != nil {
-			return nil, teamLobbyHTTPError(err)
+			return nil, registrationHTTPError(err)
 		}
 		return &CreateTeamLobbyOutput{Status: http.StatusCreated, Body: toTeamLobbyResponse(view, accountID)}, nil
 	})
@@ -134,20 +141,21 @@ func RegisterTeamLobbyRoutes(api huma.API, lobbyUseCase *usecases.TeamLobbyUseCa
 	})
 
 	huma.Register(api, huma.Operation{
-		OperationID: "join-team-lobby",
-		Method:      http.MethodPost,
-		Path:        "/lobbies/{inviteCode}/join",
-		Summary:     "Join a team lobby",
-		Tags:        []string{"Team lobbies"},
-		Security:    []map[string][]string{{"bearer": {}}},
-	}, func(ctx context.Context, input *InviteCodeInput) (*TeamLobbyOutput, error) {
+		OperationID:  "join-team-lobby",
+		MaxBodyBytes: 16 * 1024 * 1024,
+		Method:       http.MethodPost,
+		Path:         "/lobbies/{inviteCode}/join",
+		Summary:      "Join a team lobby",
+		Tags:         []string{"Team lobbies"},
+		Security:     []map[string][]string{{"bearer": {}}},
+	}, func(ctx context.Context, input *JoinTeamLobbyInput) (*TeamLobbyOutput, error) {
 		accountID, err := authenticatedAccountID(ctx)
 		if err != nil {
 			return nil, err
 		}
-		view, err := lobbyUseCase.Join(ctx, input.InviteCode, accountID)
+		view, err := lobbyUseCase.Join(ctx, input.InviteCode, accountID, input.Body)
 		if err != nil {
-			return nil, teamLobbyHTTPError(err)
+			return nil, registrationHTTPError(err)
 		}
 		return &TeamLobbyOutput{Body: toTeamLobbyResponse(view, accountID)}, nil
 	})
@@ -233,12 +241,14 @@ func teamLobbyHTTPError(err error) error {
 		return huma.Error403Forbidden("Only the team captain can perform this action", err)
 	case errors.Is(err, repositories.ErrAlreadyInTournamentLobby):
 		return huma.Error409Conflict("You are already in a team for this tournament", err)
+	case errors.Is(err, repositories.ErrRegistrationDeadlinePassed):
+		return huma.Error409Conflict("The registration deadline has passed. Ask the organizer to update it before registering.", err)
+	case errors.Is(err, usecases.ErrRegistrationNotOpen), errors.Is(err, repositories.ErrTournamentRegistrationClosed):
+		return huma.Error409Conflict("Registration is not currently open for this tournament", err)
 	case errors.Is(err, usecases.ErrTeamsNotAllowed),
-		errors.Is(err, usecases.ErrRegistrationNotOpen),
 		errors.Is(err, repositories.ErrTeamLobbyNotForming),
 		errors.Is(err, repositories.ErrTeamLobbyFull),
 		errors.Is(err, repositories.ErrRosterBelowMinimum),
-		errors.Is(err, repositories.ErrTournamentRegistrationClosed),
 		errors.Is(err, repositories.ErrCannotRemoveCaptain),
 		errors.Is(err, repositories.ErrCannotDisbandLobby):
 		return huma.Error409Conflict("Team lobby state does not allow this action", err)

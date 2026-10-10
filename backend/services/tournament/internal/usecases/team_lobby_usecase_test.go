@@ -42,7 +42,7 @@ func (s *teamLobbyRepositoryStub) Create(_ context.Context, team *models.Tournam
 	s.created, s.captain = team, captain
 	return team, nil
 }
-func (s *teamLobbyRepositoryStub) Join(_ context.Context, _ uuid.UUID, _ uuid.UUID) (*models.TournamentTeam, error) {
+func (s *teamLobbyRepositoryStub) Join(_ context.Context, _ uuid.UUID, _ uuid.UUID, _ string, _ ...models.RegistrationSubmission) (*models.TournamentTeam, error) {
 	return s.team, nil
 }
 func (s *teamLobbyRepositoryStub) RegenerateInvite(_ context.Context, _ uuid.UUID, _ string) (*models.TournamentTeam, error) {

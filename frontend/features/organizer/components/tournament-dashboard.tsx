@@ -15,6 +15,7 @@ import { DashboardOverview } from "@/features/organizer/components/dashboard-ove
 import { RegistrationTable } from "@/features/organizer/components/registration-table";
 import { StatusControlDialog } from "@/features/organizer/components/status-control-dialog";
 import { dashboardQueryOptions, statusLabel } from "@/features/organizer/utils";
+import { RegistrationFormManager } from "@/features/registration/components/registration-form-manager";
 
 export function TournamentDashboard({
   tournamentId,
@@ -99,10 +100,15 @@ export function TournamentDashboard({
             </div>
           </header>
           <DashboardOverview summary={data.summary} />
+          <RegistrationFormManager
+            tournamentId={tournamentId}
+            authorizationHeader={authorizationHeader ?? ""}
+          />
           <RegistrationTable
             key={tournamentId}
             entries={data.entries ?? []}
             metrics={data.summary.metrics}
+            authorizationHeader={authorizationHeader ?? ""}
           />
         </div>
       )}

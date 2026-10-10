@@ -1,9 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { ClipboardList } from "lucide-react";
+import { ClipboardList, FileText } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  SubmissionDialog,
+  type SubmissionParticipant,
+} from "@/features/registration/components/submission-dialog";
 import {
   Empty,
   EmptyHeader,
@@ -32,11 +37,15 @@ import { formatDate, initials } from "@/features/tournaments/utils";
 export function RegistrationTable({
   entries,
   metrics,
+  authorizationHeader,
 }: {
   entries: DashboardEntry[];
   metrics: OrganizerSummary["metrics"];
+  authorizationHeader: string;
 }) {
   const [requestedPage, setPage] = useState(1);
+  const [selectedParticipant, setSelectedParticipant] =
+    useState<SubmissionParticipant | null>(null);
   const pages = Math.max(1, Math.ceil(entries.length / 10));
   const page = Math.min(requestedPage, pages);
   const visible = entries.slice((page - 1) * 10, page * 10);
@@ -57,14 +66,14 @@ export function RegistrationTable({
           id="registrations"
           className="flex items-center gap-2 text-base font-semibold"
         >
-          <ClipboardList className="size-4 text-muted-foreground" />
+          <ClipboardList className="text-muted-foreground size-4" />
           Registrations
         </h2>
         <Badge variant="secondary" className="rounded-full px-2.5">
           {entries.length} {entries.length === 1 ? "entry" : "entries"}
         </Badge>
       </div>
-      <dl className="grid grid-cols-2 gap-4 border-y border-border/40 py-3 sm:grid-cols-5">
+      <dl className="border-border/40 grid grid-cols-2 gap-4 border-y py-3 sm:grid-cols-5">
         {counts.map(([label, count]) => (
           <div key={label}>
             <dt className="text-muted-foreground text-xs">{label}</dt>
@@ -82,7 +91,7 @@ export function RegistrationTable({
           </EmptyHeader>
         </Empty>
       ) : (
-        <div className="overflow-hidden rounded-xl border border-border/40">
+        <div className="border-border/40 overflow-hidden rounded-xl border">
           <Table className="table-fixed">
             <TableCaption className="sr-only">
               Tournament entries, status, and participant rosters
@@ -93,7 +102,7 @@ export function RegistrationTable({
                 <TableHead className="hidden w-32 sm:table-cell">
                   Status
                 </TableHead>
-                <TableHead>Participants</TableHead>
+                <TableHead>Participants &amp; forms</TableHead>
                 <TableHead className="hidden w-32 lg:table-cell">
                   Created
                 </TableHead>
@@ -121,21 +130,48 @@ export function RegistrationTable({
                     <DashboardStatus status={entry.status} />
                   </TableCell>
                   <TableCell className="align-top whitespace-normal">
-                    <ul className="flex flex-col gap-2 py-1">
+                    <ul className="flex flex-col gap-3 py-1">
                       {entry.members?.length ? (
                         entry.members.map((member) => (
-                          <li key={member.id} className="min-w-0">
-                            <p className="font-medium wrap-anywhere">
-                              {member.displayName || member.handle}
-                              {member.role === "CAPTAIN" ? (
-                                <span className="text-muted-foreground ml-2 text-xs font-normal">
-                                  Captain
-                                </span>
-                              ) : null}
-                            </p>
-                            <p className="text-muted-foreground text-xs wrap-anywhere">
-                              @{member.handle}
-                            </p>
+                          <li
+                            key={member.id}
+                            className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-3"
+                          >
+                            <div className="flex min-w-0 flex-col gap-1">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <p className="min-w-0 font-medium wrap-anywhere">
+                                  {member.displayName || member.handle}
+                                </p>
+                                {member.role === "CAPTAIN" ? (
+                                  <Badge variant="outline">Captain</Badge>
+                                ) : null}
+                              </div>
+                              <p className="text-muted-foreground text-xs wrap-anywhere">
+                                @{member.handle}
+                              </p>
+                            </div>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="shrink-0"
+                              title={`View submitted form for ${member.displayName || member.handle}`}
+                              aria-label={`View submission for ${member.displayName || member.handle}`}
+                              onClick={() =>
+                                setSelectedParticipant({
+                                  id: member.id,
+                                  name: member.displayName || member.handle,
+                                })
+                              }
+                            >
+                              <FileText
+                                data-icon="inline-start"
+                                aria-hidden="true"
+                              />
+                              <span className="hidden sm:inline">
+                                View form
+                              </span>
+                            </Button>
                           </li>
                         ))
                       ) : (
@@ -153,6 +189,11 @@ export function RegistrationTable({
         </div>
       )}
       <DashboardPagination page={page} pages={pages} onPage={setPage} />
+      <SubmissionDialog
+        participant={selectedParticipant}
+        authorizationHeader={authorizationHeader}
+        onClose={() => setSelectedParticipant(null)}
+      />
     </section>
   );
 }

@@ -96,23 +96,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/tournaments/mine": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List the current organizer's tournaments */
-        get: operations["list-my-tournaments"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/accounts/{id}": {
         parameters: {
             query?: never;
@@ -125,6 +108,39 @@ export interface paths {
          * @description Retrieves public account details for a given internal user UUID.
          */
         get: operations["get-account-by-id"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/health": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Health Check */
+        get: operations["health-check"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/lobbies/members/{memberId}/registration": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["get-member-registration"];
         put?: never;
         post?: never;
         delete?: never;
@@ -266,6 +282,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/tournaments/mine": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List the current organizer's tournaments */
+        get: operations["list-my-tournaments"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/tournaments/{id}/dashboard": {
         parameters: {
             query?: never;
@@ -392,19 +425,15 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/health": {
+    "/api/v1/tournaments/{tournamentId}/registration-form": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /**
-         * Health Check
-         * @description Returns a 204 No Content status if the server is running.
-         */
-        get: operations["health-check"];
-        put?: never;
+        get: operations["get-registration-form"];
+        put: operations["save-registration-form"];
         post?: never;
         delete?: never;
         options?: never;
@@ -446,6 +475,145 @@ export interface components {
              */
             status: "ONBOARDING" | "ACTIVE" | "SUSPENDED";
         };
+        ErrorDetail: {
+            /** @description Where the error occurred, e.g. 'body.items[3].tags' or 'path.thing-id' */
+            location?: string;
+            /** @description Error message text */
+            message?: string;
+            /** @description The value at the given location */
+            value?: unknown;
+        };
+        ErrorModel: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/ErrorModel.json
+             */
+            readonly $schema?: string;
+            /**
+             * @description A human-readable explanation specific to this occurrence of the problem.
+             * @example Property foo is required but is missing.
+             */
+            detail?: string;
+            /** @description Optional list of individual error details */
+            errors?: components["schemas"]["ErrorDetail"][] | null;
+            /**
+             * Format: uri
+             * @description A URI reference that identifies the specific occurrence of the problem.
+             * @example https://example.com/error-log/abc123
+             */
+            instance?: string;
+            /**
+             * Format: int64
+             * @description HTTP status code
+             * @example 400
+             */
+            status?: number;
+            /**
+             * @description A short, human-readable summary of the problem type. This value should not change between occurrences of the error.
+             * @example Bad Request
+             */
+            title?: string;
+            /**
+             * Format: uri
+             * @description A URI reference to human-readable documentation for the error.
+             * @default about:blank
+             * @example https://example.com/errors/example
+             */
+            type: string;
+        };
+        OrganizerProfileResponse: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/OrganizerProfileResponse.json
+             */
+            readonly $schema?: string;
+            /** @description Associated account UUID */
+            accountId: string;
+            /**
+             * Format: date-time
+             * @description Timestamp of profile creation
+             */
+            createdAt: string;
+            /** @description Organizer profile UUID */
+            id: string;
+            /** @description Contact email for organizer */
+            organizerEmail: string;
+            /** @description Organizer organization or brand name */
+            organizerName: string;
+            /**
+             * Format: date-time
+             * @description Timestamp of last profile update
+             */
+            updatedAt: string;
+        };
+        SponsorProfileResponse: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/SponsorProfileResponse.json
+             */
+            readonly $schema?: string;
+            /** @description Associated account UUID */
+            accountId: string;
+            /**
+             * Format: date-time
+             * @description Timestamp of profile creation
+             */
+            createdAt: string;
+            /** @description Sponsor profile UUID */
+            id: string;
+            /** @description Contact email for sponsorship communications */
+            sponsorEmail: string;
+            /** @description Sponsor company or organization name */
+            sponsorName: string;
+            /**
+             * Format: date-time
+             * @description Timestamp of last profile update
+             */
+            updatedAt: string;
+        };
+        UpdateAccountRequest: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/UpdateAccountRequest.json
+             */
+            readonly $schema?: string;
+            /** @description New avatar URL */
+            avatarUrl?: string;
+            /** @description New display name */
+            displayName?: string;
+            /** @description New unique handle */
+            handle?: string;
+            /** @description New contact phone */
+            phone?: string;
+        };
+        UpsertOrganizerProfileRequest: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/UpsertOrganizerProfileRequest.json
+             */
+            readonly $schema?: string;
+            /** @description Contact email for organizer */
+            organizerEmail?: string;
+            /** @description Organizer organization or brand name */
+            organizerName: string;
+        };
+        UpsertSponsorProfileRequest: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/UpsertSponsorProfileRequest.json
+             */
+            readonly $schema?: string;
+            /** @description Contact email for sponsorship communications */
+            sponsorEmail?: string;
+            /** @description Sponsor company or organization name */
+            sponsorName: string;
+        };
         CreateTeamLobbyRequest: {
             /**
              * Format: uri
@@ -455,6 +623,7 @@ export interface components {
             readonly $schema?: string;
             /** @description Team name */
             name: string;
+            registration: components["schemas"]["RegistrationSubmission"];
         };
         CreateTournamentRequest: {
             /**
@@ -504,6 +673,7 @@ export interface components {
              * @description Registration deadline timestamp (RFC 3339)
              */
             registrationDeadline: string;
+            registrationForm?: components["schemas"]["RegistrationFormConfig"];
             /**
              * @description Registration mode: SOLO or TEAM
              * @enum {string}
@@ -515,52 +685,18 @@ export interface components {
              */
             startAt: string;
         };
-        ErrorDetail: {
-            /** @description Where the error occurred, e.g. 'body.items[3].tags' or 'path.thing-id' */
-            location?: string;
-            /** @description Error message text */
-            message?: string;
-            /** @description The value at the given location */
-            value?: unknown;
-        };
-        ErrorModel: {
+        MemberAnswersOutputBody: {
             /**
              * Format: uri
              * @description A URL to the JSON Schema for this object.
-             * @example https://example.com/schemas/ErrorModel.json
+             * @example https://example.com/schemas/MemberAnswersOutputBody.json
              */
             readonly $schema?: string;
-            /**
-             * @description A human-readable explanation specific to this occurrence of the problem.
-             * @example Property foo is required but is missing.
-             */
-            detail?: string;
-            /** @description Optional list of individual error details */
-            errors?: components["schemas"]["ErrorDetail"][] | null;
-            /**
-             * Format: uri
-             * @description A URI reference that identifies the specific occurrence of the problem.
-             * @example https://example.com/error-log/abc123
-             */
-            instance?: string;
-            /**
-             * Format: int64
-             * @description HTTP status code
-             * @example 400
-             */
-            status?: number;
-            /**
-             * @description A short, human-readable summary of the problem type. This value should not change between occurrences of the error.
-             * @example Bad Request
-             */
-            title?: string;
-            /**
-             * Format: uri
-             * @description A URI reference to human-readable documentation for the error.
-             * @default about:blank
-             * @example https://example.com/errors/example
-             */
-            type: string;
+            answers: components["schemas"]["RegistrationAnswer"][] | null;
+            consentNotice: string;
+            /** Format: int64 */
+            formVersion: number;
+            questions: components["schemas"]["RegistrationQuestion"][] | null;
         };
         OrganizerDashboardEntry: {
             /** Format: date-time */
@@ -601,32 +737,6 @@ export interface components {
             readonly $schema?: string;
             entries: components["schemas"]["OrganizerDashboardEntry"][] | null;
             summary: components["schemas"]["OrganizerTournamentSummary"];
-        };
-        OrganizerProfileResponse: {
-            /**
-             * Format: uri
-             * @description A URL to the JSON Schema for this object.
-             * @example https://example.com/schemas/OrganizerProfileResponse.json
-             */
-            readonly $schema?: string;
-            /** @description Associated account UUID */
-            accountId: string;
-            /**
-             * Format: date-time
-             * @description Timestamp of profile creation
-             */
-            createdAt: string;
-            /** @description Organizer profile UUID */
-            id: string;
-            /** @description Contact email for organizer */
-            organizerEmail: string;
-            /** @description Organizer organization or brand name */
-            organizerName: string;
-            /**
-             * Format: date-time
-             * @description Timestamp of last profile update
-             */
-            updatedAt: string;
         };
         OrganizerTournamentListOutputBody: {
             /**
@@ -675,31 +785,62 @@ export interface components {
             status: string;
             tournamentId: string;
         };
-        SponsorProfileResponse: {
+        RegistrationAnswer: {
+            file?: components["schemas"]["RegistrationFile"];
+            questionId: string;
+            value: string;
+        };
+        RegistrationFile: {
+            /** @description Base64-encoded PDF, JPEG or PNG file */
+            data: string;
+            name: string;
+        };
+        RegistrationForm: {
             /**
              * Format: uri
              * @description A URL to the JSON Schema for this object.
-             * @example https://example.com/schemas/SponsorProfileResponse.json
+             * @example https://example.com/schemas/RegistrationForm.json
              */
             readonly $schema?: string;
-            /** @description Associated account UUID */
-            accountId: string;
+            consentNotice: string;
+            questions: components["schemas"]["RegistrationQuestion"][] | null;
+            /** Format: int64 */
+            version: number;
+        };
+        RegistrationFormConfig: {
             /**
-             * Format: date-time
-             * @description Timestamp of profile creation
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/RegistrationFormConfig.json
              */
-            createdAt: string;
-            /** @description Sponsor profile UUID */
+            readonly $schema?: string;
+            consentNotice: string;
+            questions: components["schemas"]["RegistrationQuestion"][] | null;
+        };
+        RegistrationQuestion: {
+            allowedTypes: string[] | null;
+            helpText: string;
             id: string;
-            /** @description Contact email for sponsorship communications */
-            sponsorEmail: string;
-            /** @description Sponsor company or organization name */
-            sponsorName: string;
+            label: string;
+            /** Format: int64 */
+            maxFileBytes: number;
+            options: string[] | null;
+            pattern: string;
+            required: boolean;
+            /** @enum {string} */
+            type: "TEXT" | "DROPDOWN" | "FILE";
+        };
+        RegistrationSubmission: {
             /**
-             * Format: date-time
-             * @description Timestamp of last profile update
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/RegistrationSubmission.json
              */
-            updatedAt: string;
+            readonly $schema?: string;
+            answers: components["schemas"]["RegistrationAnswer"][] | null;
+            consent: boolean;
+            /** Format: int64 */
+            formVersion: number;
         };
         TeamLobbyMemberResponse: {
             accountId: string;
@@ -851,22 +992,6 @@ export interface components {
             memberCount: number;
             name: string;
         };
-        UpdateAccountRequest: {
-            /**
-             * Format: uri
-             * @description A URL to the JSON Schema for this object.
-             * @example https://example.com/schemas/UpdateAccountRequest.json
-             */
-            readonly $schema?: string;
-            /** @description New avatar URL */
-            avatarUrl?: string;
-            /** @description New display name */
-            displayName?: string;
-            /** @description New unique handle */
-            handle?: string;
-            /** @description New contact phone */
-            phone?: string;
-        };
         UpdateTournamentRequest: {
             /**
              * Format: uri
@@ -922,30 +1047,6 @@ export interface components {
              * @description New start timestamp
              */
             startAt?: string;
-        };
-        UpsertOrganizerProfileRequest: {
-            /**
-             * Format: uri
-             * @description A URL to the JSON Schema for this object.
-             * @example https://example.com/schemas/UpsertOrganizerProfileRequest.json
-             */
-            readonly $schema?: string;
-            /** @description Contact email for organizer */
-            organizerEmail?: string;
-            /** @description Organizer organization or brand name */
-            organizerName: string;
-        };
-        UpsertSponsorProfileRequest: {
-            /**
-             * Format: uri
-             * @description A URL to the JSON Schema for this object.
-             * @example https://example.com/schemas/UpsertSponsorProfileRequest.json
-             */
-            readonly $schema?: string;
-            /** @description Contact email for sponsorship communications */
-            sponsorEmail?: string;
-            /** @description Sponsor company or organization name */
-            sponsorName: string;
         };
     };
     responses: never;
@@ -1171,38 +1272,6 @@ export interface operations {
             };
         };
     };
-    "list-my-tournaments": {
-        parameters: {
-            query?: {
-                page?: number;
-                pageSize?: number;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OrganizerTournamentListOutputBody"];
-                };
-            };
-            /** @description Error */
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["ErrorModel"];
-                };
-            };
-        };
-    };
     "get-account-by-id": {
         parameters: {
             query?: never;
@@ -1222,6 +1291,64 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AccountResponse"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "health-check": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "get-member-registration": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                memberId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MemberAnswersOutputBody"];
                 };
             };
             /** @description Error */
@@ -1400,12 +1527,15 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description Six-character team invite code */
                 inviteCode: string;
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RegistrationSubmission"];
+            };
+        };
         responses: {
             /** @description OK */
             200: {
@@ -1491,6 +1621,38 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TournamentResponse"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "list-my-tournaments": {
+        parameters: {
+            query?: {
+                page?: number;
+                pageSize?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrganizerTournamentListOutputBody"];
                 };
             };
             /** @description Error */
@@ -1739,21 +1901,60 @@ export interface operations {
             };
         };
     };
-    "health-check": {
+    "get-registration-form": {
         parameters: {
             query?: never;
             header?: never;
-            path?: never;
+            path: {
+                tournamentId: string;
+            };
             cookie?: never;
         };
         requestBody?: never;
         responses: {
-            /** @description No Content */
-            204: {
+            /** @description OK */
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["RegistrationForm"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "save-registration-form": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tournamentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RegistrationFormConfig"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RegistrationForm"];
+                };
             };
             /** @description Error */
             default: {

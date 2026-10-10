@@ -21,6 +21,7 @@ import { TournamentAboutCard } from "./tournament-about-card";
 import { TournamentDetailsSkeleton } from "./tournament-details-skeleton";
 import { TournamentFundingCard } from "./tournament-funding-card";
 import { TournamentRegisteredTeamsCard } from "./tournament-registered-teams-card";
+import { registrationUnavailableReason } from "@/features/registration/utils";
 
 export function TournamentDetails({ tournamentId }: { tournamentId: string }) {
   const { authorizationHeader } = useAuth();
@@ -79,9 +80,10 @@ export function TournamentDetails({ tournamentId }: { tournamentId: string }) {
   );
   const status = formatTournamentStatus(tournament.status);
   const registrationType = formatRegistrationType(tournament.registrationMode);
+  const registrationUnavailable = registrationUnavailableReason(tournament);
   const canCreateTeam =
     tournament.registrationMode === "TEAM" &&
-    tournament.status === "REGISTRATION_OPEN" &&
+    !registrationUnavailable &&
     !isMyTeamLoading &&
     !myTeam;
 
@@ -125,6 +127,13 @@ export function TournamentDetails({ tournamentId }: { tournamentId: string }) {
         ) : null}
       </header>
 
+      {tournament.status === "REGISTRATION_OPEN" && registrationUnavailable ? (
+        <Alert>
+          <AlertTitle>Registration unavailable</AlertTitle>
+          <AlertDescription>{registrationUnavailable}</AlertDescription>
+        </Alert>
+      ) : null}
+
       <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
         <div className="flex flex-col gap-6">
           <TournamentAboutCard
@@ -152,7 +161,8 @@ export function TournamentDetails({ tournamentId }: { tournamentId: string }) {
                   </Badge>
                 </div>
                 <p className="text-muted-foreground text-sm">
-                  {myTeam.members?.length ?? 0} of {tournament.maxTeamSize} players
+                  {myTeam.members?.length ?? 0} of {tournament.maxTeamSize}{" "}
+                  players
                 </p>
               </CardContent>
               <CardFooter>

@@ -66,6 +66,7 @@ type Tournament struct {
 	Published            bool                       `gorm:"not null;default:false;index:idx_tournaments_public_start,priority:1"`
 	Teams                []TournamentTeam           `gorm:"foreignKey:TournamentID;constraint:OnDelete:CASCADE;"`
 	Funding              *TournamentFunding         `gorm:"foreignKey:TournamentID;constraint:OnDelete:CASCADE;"`
+	RegistrationForm     *RegistrationForm          `gorm:"foreignKey:TournamentID;constraint:OnDelete:CASCADE;"`
 	CreatedAt            time.Time
 	UpdatedAt            time.Time
 }
@@ -85,11 +86,16 @@ type TournamentTeam struct {
 }
 
 type TournamentTeamMember struct {
-	ID               uuid.UUID                `gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
-	TournamentTeamID uuid.UUID                `gorm:"type:uuid;not null;index;uniqueIndex:idx_tournament_team_member"`
-	AccountID        uuid.UUID                `gorm:"type:uuid;not null;index;uniqueIndex:idx_tournament_team_member"`
-	Role             TournamentTeamMemberRole `gorm:"type:varchar(16);not null"`
-	JoinedAt         time.Time                `gorm:"not null;autoCreateTime"`
+	ID                    uuid.UUID                `gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
+	TournamentTeamID      uuid.UUID                `gorm:"type:uuid;not null;index;uniqueIndex:idx_tournament_team_member"`
+	AccountID             uuid.UUID                `gorm:"type:uuid;not null;index;uniqueIndex:idx_tournament_team_member"`
+	Role                  TournamentTeamMemberRole `gorm:"type:varchar(16);not null"`
+	JoinedAt              time.Time                `gorm:"not null;autoCreateTime"`
+	FormVersion           int
+	RegistrationAnswers   []RegistrationAnswer   `gorm:"serializer:json;type:jsonb"`
+	RegistrationQuestions []RegistrationQuestion `gorm:"serializer:json;type:jsonb"`
+	ConsentNotice         string                 `gorm:"type:text"`
+	ConsentedAt           *time.Time
 }
 
 type TournamentFunding struct {

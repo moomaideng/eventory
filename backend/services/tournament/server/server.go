@@ -113,6 +113,7 @@ func newHTTPRouter(db *gorm.DB, cfg config.Config, accountSvc ports.AccountServi
 	organizerTournamentGroup.UseMiddleware(authMiddleware.HumaMiddleware(), organizerMiddleware.HumaMiddleware())
 
 	resthandlers.RegisterTeamLobbyRoutes(teamLobbyGroup, teamLobbyUseCase)
+	resthandlers.RegisterRegistrationRoutes(teamLobbyGroup, usecases.NewRegistrationUseCase(teamLobbyRepo, tournamentRepo, accountSvc))
 	resthandlers.RegisterOrganizerDashboardRoutes(organizerGroup, dashboardUseCase)
 	resthandlers.RegisterTournamentStatusRoutes(organizerGroup, statusUseCase)
 	resthandlers.RegisterTournamentRoutes(api, organizerTournamentGroup, tournamentUseCase)
