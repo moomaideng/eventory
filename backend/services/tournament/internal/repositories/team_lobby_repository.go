@@ -31,7 +31,7 @@ type TeamLobbyRepository interface {
 	FindByInviteCode(ctx context.Context, inviteCode string) (*models.TournamentTeam, error)
 	FindActiveByTournamentAndAccount(ctx context.Context, tournamentID, accountID uuid.UUID) (*models.TournamentTeam, error)
 	Create(ctx context.Context, team *models.TournamentTeam, captain *models.TournamentTeamMember) (*models.TournamentTeam, error)
-	Join(ctx context.Context, teamID, accountID uuid.UUID, inviteCode string, submission ...models.RegistrationSubmission) (*models.TournamentTeam, error)
+	Join(ctx context.Context, teamID, accountID uuid.UUID, inviteCode string, submission models.RegistrationSubmission) (*models.TournamentTeam, error)
 	FindRegistrationForm(ctx context.Context, id uuid.UUID) (*models.RegistrationForm, error)
 	SaveRegistrationForm(ctx context.Context, id, organizerID uuid.UUID, form *models.RegistrationForm) error
 	FindMemberRegistration(ctx context.Context, memberID, viewerID, organizerID uuid.UUID) (*models.TournamentTeamMember, error)
@@ -130,11 +130,7 @@ func (r *teamLobbyRepository) Create(ctx context.Context, team *models.Tournamen
 	return r.FindByID(ctx, team.ID)
 }
 
-func (r *teamLobbyRepository) Join(ctx context.Context, teamID, accountID uuid.UUID, inviteCode string, submission ...models.RegistrationSubmission) (*models.TournamentTeam, error) {
-	input := models.RegistrationSubmission{}
-	if len(submission) > 0 {
-		input = submission[0]
-	}
+func (r *teamLobbyRepository) Join(ctx context.Context, teamID, accountID uuid.UUID, inviteCode string, submission models.RegistrationSubmission) (*models.TournamentTeam, error) {
 	err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		var initial models.TournamentTeam
 		if err := tx.First(&initial, "id = ?", teamID).Error; err != nil {
@@ -172,7 +168,7 @@ func (r *teamLobbyRepository) Join(ctx context.Context, teamID, accountID uuid.U
 			Role:             models.TournamentTeamMemberRoleMember,
 			JoinedAt:         time.Now().UTC(),
 		}
-		if err := saveMemberRegistration(tx, team.TournamentID, member, input); err != nil {
+		if err := saveMemberRegistration(tx, team.TournamentID, member, submission); err != nil {
 			return err
 		}
 		return tx.Create(member).Error

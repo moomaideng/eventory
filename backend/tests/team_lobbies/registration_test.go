@@ -59,6 +59,7 @@ func TestRegistrationJoin(t *testing.T) {
 	// Creation includes the form atomically, so a published tournament never
 	// briefly accepts participants with an unintended empty questionnaire.
 	createTournament := handlers.CreateTournamentRequest{Name: "Tournament with form", Game: "Test", Location: "Online", StartAt: tournament.StartsAt, EndAt: tournament.EndsAt, RegistrationDeadline: tournament.RegistrationDeadline, RegistrationMode: "TEAM", MinTeamSize: 2, MaxTeamSize: 3, Capacity: 16, RegistrationForm: &models.RegistrationFormConfig{Questions: form.Questions, ConsentNotice: form.ConsentNotice}}
+	createTournament.RegistrationForm.ConsentNotice = strings.Repeat("ก", 700)
 	createdResp := request("POST", "/tournaments", createTournament, owner, 201)
 	var created handlers.TournamentResponse
 	if err := createdResp.JSON(&created); err != nil {
@@ -68,7 +69,7 @@ func TestRegistrationJoin(t *testing.T) {
 	if err := a.DB.First(&createdForm, "tournament_id = ?", created.ID).Error; err != nil {
 		t.Fatal(err)
 	}
-	if createdForm.Version != 1 || len(createdForm.Questions) != 3 {
+	if createdForm.Version != 1 || len(createdForm.Questions) != 3 || createdForm.ConsentNotice != createTournament.RegistrationForm.ConsentNotice {
 		t.Fatal("creation did not save the configured form")
 	}
 	createTournament.Name = "Invalid form must not publish"

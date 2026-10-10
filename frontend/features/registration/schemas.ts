@@ -16,7 +16,9 @@ const questionConfigSchema = z
     label: z.string().trim().min(1, "Enter a question.").max(160),
     type: z.enum(["TEXT", "DROPDOWN", "FILE"]),
     required: z.boolean(),
-    options: z.array(z.string()).max(100),
+    options: z
+      .array(z.string().max(2000, "Use at most 2000 characters per option."))
+      .max(100),
     pattern: z.string().max(256),
     helpText: z.string().max(500),
     allowedTypes: z.array(
@@ -27,14 +29,14 @@ const questionConfigSchema = z
   .superRefine((q, ctx) => {
     if (
       q.type === "DROPDOWN" &&
-      (!q.options.length ||
+      (q.options.length < 2 ||
         q.options.some((o) => !o.trim()) ||
         new Set(q.options).size !== q.options.length)
     ) {
       ctx.addIssue({
         code: "custom",
         path: ["options"],
-        message: "Add unique options, one per line.",
+        message: "Add at least two unique options, one per line.",
       });
     }
     if (q.type === "FILE" && !q.allowedTypes.length) {

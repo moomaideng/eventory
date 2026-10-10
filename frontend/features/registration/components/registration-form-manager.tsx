@@ -66,7 +66,6 @@ export function RegistrationFormManager({
     await queryClient.invalidateQueries({
       queryKey: ["get", "/api/v1/tournaments/{tournamentId}/registration-form"],
     });
-    await query.refetch();
     setSaved(true);
   }
   return (

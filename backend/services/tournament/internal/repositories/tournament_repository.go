@@ -150,7 +150,9 @@ func (r *tournamentRepositoryImpl) GetPublishedByID(
 		Preload("Teams", func(db *gorm.DB) *gorm.DB {
 			return db.Where("status = ?", models.TournamentTeamStatusAccepted).Order("name ASC")
 		}).
-		Preload("Teams.Members").
+		Preload("Teams.Members", func(db *gorm.DB) *gorm.DB {
+			return db.Omit("RegistrationAnswers", "RegistrationQuestions", "ConsentNotice")
+		}).
 		Preload("Funding").
 		First(&tournament).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {

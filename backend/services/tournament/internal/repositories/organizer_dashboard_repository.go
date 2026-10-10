@@ -34,7 +34,9 @@ func (r *organizerDashboardRepository) ListOwned(ctx context.Context, organizerI
 	}
 	tournaments := make([]models.Tournament, 0)
 	err := r.owned(ctx, organizerID).
-		Preload("Teams.Members").Preload("Funding").
+		Preload("Teams.Members", func(db *gorm.DB) *gorm.DB {
+			return db.Omit("RegistrationAnswers", "RegistrationQuestions", "ConsentNotice")
+		}).Preload("Funding").
 		Order("start_at DESC, id ASC").
 		Limit(pageSize).Offset((page - 1) * pageSize).Find(&tournaments).Error
 	return tournaments, total, err
@@ -46,7 +48,9 @@ func (r *organizerDashboardRepository) GetOwned(ctx context.Context, organizerID
 		Where("id = ?", tournamentID).
 		Preload("Funding").
 		Preload("Teams", func(db *gorm.DB) *gorm.DB { return db.Order("created_at DESC, id ASC") }).
-		Preload("Teams.Members", func(db *gorm.DB) *gorm.DB { return db.Order("joined_at ASC, id ASC") }).
+		Preload("Teams.Members", func(db *gorm.DB) *gorm.DB {
+			return db.Omit("RegistrationAnswers", "RegistrationQuestions", "ConsentNotice").Order("joined_at ASC, id ASC")
+		}).
 		First(&tournament).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, ErrTournamentNotFound

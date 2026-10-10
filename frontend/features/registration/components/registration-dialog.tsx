@@ -25,6 +25,7 @@ import { RegistrationQuestion } from "@/features/registration/components/registr
 import {
   answerSchema,
   readRegistrationFile,
+  type RegistrationForm,
   type RegistrationSubmission,
 } from "@/features/registration/schemas";
 
@@ -76,31 +77,26 @@ export function RegistrationDialog({
   );
 }
 
-function RegistrationDialogForm({
-  tournamentId,
-  authorizationHeader,
-  onSubmit,
-  submitLabel,
-  onClose,
-  onBusyChange,
-}: {
-  tournamentId: string;
-  authorizationHeader: string;
+type RegistrationActions = {
   submitLabel: string;
   onSubmit: (submission: RegistrationSubmission) => Promise<void>;
   onClose: () => void;
   onBusyChange: (busy: boolean) => void;
+};
+
+function RegistrationDialogForm({
+  tournamentId,
+  authorizationHeader,
+  ...actions
+}: RegistrationActions & {
+  tournamentId: string;
+  authorizationHeader: string;
 }) {
-  const [values, setValues] = React.useState<Record<string, string>>({});
-  const [files, setFiles] = React.useState<Record<string, File>>({});
-  const [consent, setConsent] = React.useState(false);
-  const [errors, setErrors] = React.useState<Record<string, string>>({});
-  const [failure, setFailure] = React.useState("");
-  const [pending, setPending] = React.useState(false);
   const {
     data: form,
     error,
     isLoading,
+    isFetchedAfterMount,
     refetch,
   } = $api.useQuery(
     "get",
@@ -109,12 +105,49 @@ function RegistrationDialogForm({
       params: { path: { tournamentId } },
       headers: { Authorization: authorizationHeader },
     },
-    { staleTime: 0, retry: false }
+    {
+      staleTime: 0,
+      retry: false,
+      refetchOnMount: "always",
+      refetchOnReconnect: false,
+    }
   );
+
+  if (isLoading || !isFetchedAfterMount)
+    return <Skeleton className="h-48 w-full" />;
+  if (error || !form)
+    return (
+      <Alert variant="destructive">
+        <AlertDescription>
+          Could not load registration questions.{" "}
+          <Button variant="outline" onClick={() => void refetch()}>
+            Try again
+          </Button>
+        </AlertDescription>
+      </Alert>
+    );
+  return <RegistrationAnswersForm initial={form} {...actions} />;
+}
+
+function RegistrationAnswersForm({
+  initial,
+  onSubmit,
+  submitLabel,
+  onClose,
+  onBusyChange,
+}: RegistrationActions & { initial: RegistrationForm }) {
+  // Keep answers and consent tied to the same form until the popup is reopened.
+  const [form] = React.useState(initial);
+  const [values, setValues] = React.useState<Record<string, string>>({});
+  const [files, setFiles] = React.useState<Record<string, File>>({});
+  const [consent, setConsent] = React.useState(false);
+  const [errors, setErrors] = React.useState<Record<string, string>>({});
+  const [failure, setFailure] = React.useState("");
+  const [pending, setPending] = React.useState(false);
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
-    if (!form || pending) return;
+    if (pending) return;
     const result = answerSchema(form.questions ?? []).safeParse({
       values,
       files,
@@ -164,18 +197,6 @@ function RegistrationDialogForm({
     }
   }
 
-  if (isLoading) return <Skeleton className="h-48 w-full" />;
-  if (error || !form)
-    return (
-      <Alert variant="destructive">
-        <AlertDescription>
-          Could not load registration questions.{" "}
-          <Button variant="outline" onClick={() => void refetch()}>
-            Try again
-          </Button>
-        </AlertDescription>
-      </Alert>
-    );
   return (
     <form onSubmit={submit} className="flex flex-col gap-6" noValidate>
       <fieldset disabled={pending} className="min-w-0">

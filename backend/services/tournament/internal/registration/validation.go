@@ -7,6 +7,7 @@ import (
 	"regexp"
 	"slices"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/moomaideng/eventory/services/tournament/models"
 )
@@ -20,7 +21,7 @@ const MaxTotalFileBytes = 10 * 1024 * 1024
 func invalid(message string) error { return fmt.Errorf("%w: %s", ErrInvalid, message) }
 
 func ValidateForm(form *models.RegistrationForm) error {
-	if strings.TrimSpace(form.ConsentNotice) == "" || len(form.ConsentNotice) > 2000 {
+	if strings.TrimSpace(form.ConsentNotice) == "" || utf8.RuneCountInString(form.ConsentNotice) > 2000 {
 		return invalid("a consent notice of up to 2000 characters is required")
 	}
 	if len(form.Questions) > 30 {
@@ -38,11 +39,14 @@ func ValidateForm(form *models.RegistrationForm) error {
 				return invalid(q.Label + ": invalid text pattern")
 			}
 		case "DROPDOWN":
-			if len(q.Options) == 0 || len(q.Options) > 100 {
-				return invalid(q.Label + ": provide dropdown options")
+			if len(q.Options) < 2 || len(q.Options) > 100 {
+				return invalid(q.Label + ": provide between 2 and 100 dropdown options")
 			}
 			seen := map[string]bool{}
 			for _, option := range q.Options {
+				if utf8.RuneCountInString(option) > 2000 {
+					return invalid(q.Label + ": options must be at most 2000 characters")
+				}
 				if strings.TrimSpace(option) == "" || seen[option] {
 					return invalid(q.Label + ": options must be nonblank and unique")
 				}

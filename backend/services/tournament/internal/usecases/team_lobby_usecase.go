@@ -33,7 +33,7 @@ type TeamLobbyRepository interface {
 	FindByInviteCode(ctx context.Context, inviteCode string) (*models.TournamentTeam, error)
 	FindActiveByTournamentAndAccount(ctx context.Context, tournamentID, accountID uuid.UUID) (*models.TournamentTeam, error)
 	Create(ctx context.Context, team *models.TournamentTeam, captain *models.TournamentTeamMember) (*models.TournamentTeam, error)
-	Join(ctx context.Context, teamID, accountID uuid.UUID, inviteCode string, submission ...models.RegistrationSubmission) (*models.TournamentTeam, error)
+	Join(ctx context.Context, teamID, accountID uuid.UUID, inviteCode string, submission models.RegistrationSubmission) (*models.TournamentTeam, error)
 	RegenerateInvite(ctx context.Context, teamID uuid.UUID, inviteCode string) (*models.TournamentTeam, error)
 	Lock(ctx context.Context, teamID uuid.UUID) (*models.TournamentTeam, error)
 	RemoveMember(ctx context.Context, teamID, memberID uuid.UUID) (*models.TournamentTeam, error)
@@ -63,7 +63,7 @@ func (u *TeamLobbyUseCase) ensureActiveAccount(ctx context.Context, accountID uu
 	return err
 }
 
-func (u *TeamLobbyUseCase) Create(ctx context.Context, tournamentID, captainAccountID uuid.UUID, name string, submission ...models.RegistrationSubmission) (*TeamLobbyView, error) {
+func (u *TeamLobbyUseCase) Create(ctx context.Context, tournamentID, captainAccountID uuid.UUID, name string, submission models.RegistrationSubmission) (*TeamLobbyView, error) {
 	if err := u.ensureActiveAccount(ctx, captainAccountID); err != nil {
 		return nil, err
 	}
@@ -98,12 +98,10 @@ func (u *TeamLobbyUseCase) Create(ctx context.Context, tournamentID, captainAcco
 		ID: uuid.New(), AccountID: captainAccountID,
 		Role: models.TournamentTeamMemberRoleCaptain, JoinedAt: now,
 	}
-	if len(submission) > 0 {
-		captainMember.FormVersion = submission[0].FormVersion
-		captainMember.RegistrationAnswers = submission[0].Answers
-		if submission[0].Consent {
-			captainMember.ConsentedAt = &now
-		}
+	captainMember.FormVersion = submission.FormVersion
+	captainMember.RegistrationAnswers = submission.Answers
+	if submission.Consent {
+		captainMember.ConsentedAt = &now
 	}
 	created, err := u.repo.Create(ctx, team, captainMember)
 	if err != nil {
@@ -134,7 +132,7 @@ func (u *TeamLobbyUseCase) GetActiveForTournament(ctx context.Context, tournamen
 	return u.toView(ctx, team)
 }
 
-func (u *TeamLobbyUseCase) Join(ctx context.Context, inviteCode string, memberAccountID uuid.UUID, submission ...models.RegistrationSubmission) (*TeamLobbyView, error) {
+func (u *TeamLobbyUseCase) Join(ctx context.Context, inviteCode string, memberAccountID uuid.UUID, submission models.RegistrationSubmission) (*TeamLobbyView, error) {
 	if err := u.ensureActiveAccount(ctx, memberAccountID); err != nil {
 		return nil, err
 	}
@@ -142,7 +140,7 @@ func (u *TeamLobbyUseCase) Join(ctx context.Context, inviteCode string, memberAc
 	if err != nil {
 		return nil, err
 	}
-	joined, err := u.repo.Join(ctx, team.ID, memberAccountID, normalizeInviteCode(inviteCode), submission...)
+	joined, err := u.repo.Join(ctx, team.ID, memberAccountID, normalizeInviteCode(inviteCode), submission)
 	if err != nil {
 		return nil, err
 	}
