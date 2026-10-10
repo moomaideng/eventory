@@ -180,6 +180,10 @@ test("organizer reads original submissions and downloads files privately", async
   await expect(dialog.getByText("Edited game ID", { exact: true })).toHaveCount(
     0
   );
+  await dialog.screenshot({
+    path: testInfo.outputPath("submission-viewer.png"),
+    animations: "disabled",
+  });
   const downloadEvent = page.waitForEvent("download");
   await dialog
     .getByRole("button", { name: "Download file", exact: true })
