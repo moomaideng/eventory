@@ -37,17 +37,17 @@ import { problemMessage } from "../utils";
 import { createTeamLobbySchema } from "../schemas";
 import { TeamCreateSkeleton } from "./team-create-skeleton";
 import { TournamentSummaryCard } from "./tournament-summary-card";
+import { RegistrationDialog } from "@/features/registration/components/registration-dialog";
+import type { RegistrationSubmission } from "@/features/registration/schemas";
+import { registrationUnavailableReason } from "@/features/registration/utils";
 
 export function TeamLobbyCreate({ tournamentId }: { tournamentId: string }) {
   const router = useRouter();
-  const {
-    user,
-    isLoading: isAuthLoading,
-    authorizationHeader,
-  } = useAuth();
+  const { user, isLoading: isAuthLoading, authorizationHeader } = useAuth();
   const [teamName, setTeamName] = React.useState("");
   const [formError, setFormError] = React.useState("");
   const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const [dialogOpen, setRegistrationOpen] = React.useState(false);
 
   const {
     data: details,
@@ -60,8 +60,14 @@ export function TeamLobbyCreate({ tournamentId }: { tournamentId: string }) {
     { staleTime: 30_000 }
   );
 
-  async function createLobby(event: React.FormEvent<HTMLFormElement>) {
+  function openRegistration(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!details) return;
+    const unavailable = registrationUnavailableReason(details.tournament);
+    if (unavailable) {
+      setFormError(unavailable);
+      return;
+    }
     const result = createTeamLobbySchema.safeParse({ name: teamName });
     if (!result.success) {
       setFormError(result.error.issues[0]?.message ?? "Invalid team name.");
@@ -73,6 +79,11 @@ export function TeamLobbyCreate({ tournamentId }: { tournamentId: string }) {
     }
 
     setFormError("");
+    setRegistrationOpen(true);
+  }
+
+  async function createLobby(registration: RegistrationSubmission) {
+    if (!authorizationHeader) throw new Error("Sign in to create a team.");
     setIsSubmitting(true);
     try {
       const { data, error: createError } = await apiClient.POST(
@@ -80,18 +91,15 @@ export function TeamLobbyCreate({ tournamentId }: { tournamentId: string }) {
         {
           params: { path: { tournamentId } },
           headers: { Authorization: authorizationHeader },
-          body: { name: result.data.name },
+          body: { name: teamName.trim(), registration },
         }
       );
       if (createError || !data) {
-        setFormError(
+        throw new Error(
           problemMessage(createError, "We could not create this team lobby.")
         );
-        return;
       }
       router.push(`/lobbies/${data.inviteCode}`);
-    } catch {
-      setFormError("Connection error. Please check your network and try again.");
     } finally {
       setIsSubmitting(false);
     }
@@ -121,7 +129,7 @@ export function TeamLobbyCreate({ tournamentId }: { tournamentId: string }) {
 
   const { tournament } = details;
   const supportsTeams = tournament.registrationMode === "TEAM";
-  const registrationOpen = tournament.status === "REGISTRATION_OPEN";
+  const registrationUnavailable = registrationUnavailableReason(tournament);
 
   return (
     <div className="container mx-auto flex w-full max-w-4xl flex-1 flex-col gap-6 px-4 py-12 sm:px-8">
@@ -137,7 +145,9 @@ export function TeamLobbyCreate({ tournamentId }: { tournamentId: string }) {
       </Button>
 
       <div className="flex flex-col gap-3">
-        <Badge variant="secondary" className="w-fit">Team registration</Badge>
+        <Badge variant="secondary" className="w-fit">
+          Team registration
+        </Badge>
         <div className="flex flex-col gap-2">
           <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
             Create your team
@@ -151,14 +161,14 @@ export function TeamLobbyCreate({ tournamentId }: { tournamentId: string }) {
 
       <TournamentSummaryCard tournament={tournament} />
 
-      {!supportsTeams || !registrationOpen ? (
+      {!supportsTeams || registrationUnavailable ? (
         <Alert variant="destructive">
           <ShieldAlert />
           <AlertTitle>Team registration is unavailable</AlertTitle>
           <AlertDescription>
             {!supportsTeams
               ? "This tournament only accepts solo entries."
-              : "Registration is not currently open for this tournament."}
+              : registrationUnavailable}
           </AlertDescription>
         </Alert>
       ) : isAuthLoading || !user ? (
@@ -171,7 +181,7 @@ export function TeamLobbyCreate({ tournamentId }: { tournamentId: string }) {
               Teammates will see this name when they open your invite link.
             </CardDescription>
           </CardHeader>
-          <form onSubmit={createLobby}>
+          <form onSubmit={openRegistration}>
             <CardContent>
               <FieldGroup>
                 <Field data-invalid={Boolean(formError)}>
@@ -208,6 +218,17 @@ export function TeamLobbyCreate({ tournamentId }: { tournamentId: string }) {
           </form>
         </Card>
       )}
+      <RegistrationDialog
+        open={dialogOpen}
+        onOpenChange={(open) => {
+          if (!isSubmitting) setRegistrationOpen(open);
+        }}
+        tournamentId={tournamentId}
+        authorizationHeader={authorizationHeader ?? ""}
+        title="Your captain registration"
+        submitLabel="Submit and create team"
+        onSubmit={createLobby}
+      />
     </div>
   );
 }

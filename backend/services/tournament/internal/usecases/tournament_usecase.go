@@ -8,6 +8,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/moomaideng/eventory/services/tournament/internal/ports"
+	"github.com/moomaideng/eventory/services/tournament/internal/registration"
 	"github.com/moomaideng/eventory/services/tournament/internal/repositories"
 	"github.com/moomaideng/eventory/services/tournament/models"
 )
@@ -42,6 +43,7 @@ type CreateTournamentInput struct {
 	MinTeamSize          int
 	MaxTeamSize          int
 	Capacity             int
+	RegistrationForm     *models.RegistrationFormConfig
 }
 
 type UpdateTournamentInput struct {
@@ -307,6 +309,14 @@ func (u *TournamentUseCase) CreateTournament(
 		Published:            true,
 	}
 
+	if input.RegistrationForm != nil {
+		form := &models.RegistrationForm{Version: 1, Questions: input.RegistrationForm.Questions, ConsentNotice: input.RegistrationForm.ConsentNotice}
+		if err := registration.ValidateForm(form); err != nil {
+			return nil, err
+		}
+		tournament.RegistrationForm = form
+	}
+	// GORM saves the form association in the same transaction as the tournament.
 	if err := u.tournamentRepo.Create(ctx, tournament, funding); err != nil {
 		return nil, err
 	}

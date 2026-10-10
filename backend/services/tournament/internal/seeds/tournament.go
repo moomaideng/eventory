@@ -98,6 +98,18 @@ func SeedTournaments(db *gorm.DB) error {
 		return err
 	}
 
+	// The empty-roster Dev Arena fixture demonstrates configurable questions.
+	form := models.RegistrationForm{TournamentID: tournaments[5].ID, Version: 1,
+		ConsentNotice: models.DefaultConsentNotice,
+		Questions: []models.RegistrationQuestion{
+			{ID: "game_id", Label: "In-game ID", Type: "TEXT", Required: true, Pattern: `^.{2,80}$`, HelpText: "Enter the ID you will use during the tournament (2–80 characters)."},
+			{ID: "rank", Label: "Current rank", Type: "DROPDOWN", Required: true, Options: []string{"Bronze", "Silver", "Gold", "Platinum", "Diamond", "Master"}},
+			{ID: "proof", Label: "Rank screenshot", Type: "FILE", AllowedTypes: []string{"image/png", "image/jpeg", "application/pdf"}, MaxFileBytes: 5 * 1024 * 1024},
+		}}
+	if err := db.Clauses(clause.OnConflict{Columns: []clause.Column{{Name: "tournament_id"}}, DoNothing: true}).Create(&form).Error; err != nil {
+		return err
+	}
+
 	teams := []models.TournamentTeam{
 		{ID: uuid.MustParse("44444444-0000-4000-8000-000000000001"), TournamentID: tournaments[0].ID, Name: "Neon Tigers", InviteCode: "VAL-NEON-001", Status: models.TournamentTeamStatusAccepted, LockedAt: &lockedAt},
 		{ID: uuid.MustParse("44444444-0000-4000-8000-000000000002"), TournamentID: tournaments[0].ID, Name: "Bangkok Byte", InviteCode: "VAL-BYTE-002", Status: models.TournamentTeamStatusAccepted, LockedAt: &lockedAt},

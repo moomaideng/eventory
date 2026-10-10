@@ -21,16 +21,14 @@ import { LobbyWorkspaceSkeleton } from "./lobby-skeleton";
 import { LobbyRosterCard } from "./lobby-roster-card";
 import { LobbyInviteCard } from "./lobby-invite-card";
 import { LobbyDetailsCard } from "./lobby-details-card";
+import { RegistrationDialog } from "@/features/registration/components/registration-dialog";
 
 export function TeamLobbyWorkspace({ inviteCode }: { inviteCode: string }) {
-  const {
-    user,
-    isLoading: isAuthLoading,
-    authorizationHeader,
-  } = useAuth();
+  const { user, isLoading: isAuthLoading, authorizationHeader } = useAuth();
   const [copied, setCopied] = React.useState(false);
   const [copyError, setCopyError] = React.useState("");
   const [confirmDisband, setConfirmDisband] = React.useState(false);
+  const [registrationOpen, setRegistrationOpen] = React.useState(false);
   const normalizedInviteCode = inviteCode.trim().toUpperCase();
 
   const {
@@ -93,7 +91,8 @@ export function TeamLobbyWorkspace({ inviteCode }: { inviteCode: string }) {
             </EmptyMedia>
             <EmptyTitle>Lobby unavailable</EmptyTitle>
             <EmptyDescription>
-              This invite may be invalid, revoked, or linked to a disbanded lobby.
+              This invite may be invalid, revoked, or linked to a disbanded
+              lobby.
             </EmptyDescription>
           </EmptyHeader>
         </Empty>
@@ -157,7 +156,7 @@ export function TeamLobbyWorkspace({ inviteCode }: { inviteCode: string }) {
         <LobbyRosterCard
           lobby={lobby}
           pendingAction={pendingAction}
-          onJoinLobby={joinLobby}
+          onJoinLobby={() => setRegistrationOpen(true)}
           onRemoveMember={removeMember}
         />
 
@@ -180,6 +179,16 @@ export function TeamLobbyWorkspace({ inviteCode }: { inviteCode: string }) {
           />
         </div>
       </div>
+      <RegistrationDialog
+        open={registrationOpen}
+        onOpenChange={(open) => {
+          if (pendingAction !== "join") setRegistrationOpen(open);
+        }}
+        tournamentId={lobby.tournament.id}
+        authorizationHeader={authorizationHeader ?? ""}
+        title={`Join ${lobby.name}`}
+        onSubmit={joinLobby}
+      />
     </div>
   );
 }

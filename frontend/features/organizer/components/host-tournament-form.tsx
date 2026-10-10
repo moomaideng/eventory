@@ -15,6 +15,8 @@ import {
 import { HostTournamentGeneralCard } from "./host-tournament-general-card";
 import { HostTournamentFormatCard } from "./host-tournament-format-card";
 import { HostTournamentScheduleCard } from "./host-tournament-schedule-card";
+import { RegistrationDraftCard } from "@/features/registration/components/registration-draft-card";
+import type { RegistrationConfig } from "@/features/registration/schemas";
 
 export interface HostTournamentFormProps {
   organizerName?: string;
@@ -48,11 +50,11 @@ export function HostTournamentForm({
   const [fieldErrors, setFieldErrors] = useState<FormErrors>({});
   const [apiError, setApiError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [registrationForm, setRegistrationForm] =
+    useState<RegistrationConfig | null>(null);
 
   // Sync draft values up to parent workspace for the live preview card
-  function updateAndNotify(
-    overrides: Partial<CreateTournamentFormInput> = {}
-  ) {
+  function updateAndNotify(overrides: Partial<CreateTournamentFormInput> = {}) {
     const updated: CreateTournamentFormInput = {
       name,
       game,
@@ -144,6 +146,7 @@ export function HostTournamentForm({
           ).toISOString(),
           startAt: new Date(result.data.startAt).toISOString(),
           endAt: new Date(result.data.endAt).toISOString(),
+          ...(registrationForm ? { registrationForm } : {}),
         },
       });
 
@@ -167,7 +170,7 @@ export function HostTournamentForm({
       {apiError ? (
         <div
           role="alert"
-          className="bg-destructive/10 text-destructive flex items-center gap-3 rounded-lg border border-destructive/20 p-3 text-sm"
+          className="bg-destructive/10 text-destructive border-destructive/20 flex items-center gap-3 rounded-lg border p-3 text-sm"
         >
           <AlertCircle className="size-4 shrink-0" />
           <span>{apiError}</span>
@@ -262,6 +265,11 @@ export function HostTournamentForm({
       />
 
       {/* Form Submission Actions */}
+      <RegistrationDraftCard
+        value={registrationForm}
+        onChange={setRegistrationForm}
+        disabled={isSubmitting}
+      />
       <div className="flex flex-col-reverse gap-3 pt-2 sm:flex-row sm:items-center sm:justify-end">
         <Button
           type="button"

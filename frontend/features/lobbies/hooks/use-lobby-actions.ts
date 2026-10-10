@@ -4,6 +4,7 @@ import React from "react";
 import { useRouter } from "next/navigation";
 import { apiClient } from "@/lib/api/client";
 import { problemMessage, type Lobby } from "../utils";
+import type { RegistrationSubmission } from "@/features/registration/schemas";
 
 export function useLobbyActions({
   lobby,
@@ -40,21 +41,33 @@ export function useLobbyActions({
         await refetch();
       }
     } catch {
-      setActionError("Connection error. Please check your network and try again.");
+      setActionError(
+        "Connection error. Please check your network and try again."
+      );
     } finally {
       setPendingAction(null);
     }
   }
 
-  function joinLobby() {
-    if (!authorizationHeader) return;
-    void runAction(
-      "join",
-      apiClient.POST("/api/v1/lobbies/{inviteCode}/join", {
-        params: { path: { inviteCode: normalizedInviteCode } },
-        headers: { Authorization: authorizationHeader },
-      })
-    );
+  async function joinLobby(submission: RegistrationSubmission) {
+    if (!authorizationHeader) throw new Error("Sign in to join the team.");
+    setPendingAction("join");
+    setActionError("");
+    try {
+      const { error } = await apiClient.POST(
+        "/api/v1/lobbies/{inviteCode}/join",
+        {
+          params: { path: { inviteCode: normalizedInviteCode } },
+          headers: { Authorization: authorizationHeader },
+          body: submission,
+        }
+      );
+      if (error)
+        throw new Error(problemMessage(error, "Could not join this team."));
+      await refetch();
+    } finally {
+      setPendingAction(null);
+    }
   }
 
   function regenerateInvite() {

@@ -42,7 +42,7 @@ func (s *teamLobbyRepositoryStub) Create(_ context.Context, team *models.Tournam
 	s.created, s.captain = team, captain
 	return team, nil
 }
-func (s *teamLobbyRepositoryStub) Join(_ context.Context, _ uuid.UUID, _ uuid.UUID) (*models.TournamentTeam, error) {
+func (s *teamLobbyRepositoryStub) Join(_ context.Context, _ uuid.UUID, _ uuid.UUID, _ string, _ models.RegistrationSubmission) (*models.TournamentTeam, error) {
 	return s.team, nil
 }
 func (s *teamLobbyRepositoryStub) RegenerateInvite(_ context.Context, _ uuid.UUID, _ string) (*models.TournamentTeam, error) {
@@ -65,7 +65,8 @@ func TestCreateTeamLobby_InitializesCaptainAndInvite(t *testing.T) {
 	}}
 	useCase := usecases.NewTeamLobbyUseCase(repo, newStubAccountService().withAccount(captainID, "captain", "Captain"))
 
-	team, err := useCase.Create(context.Background(), tournamentID, captainID, "  Night Owls  ")
+	submission := models.RegistrationSubmission{FormVersion: 1, Consent: true, Answers: []models.RegistrationAnswer{{QuestionID: "game_id", Value: "captain"}}}
+	team, err := useCase.Create(context.Background(), tournamentID, captainID, "  Night Owls  ", submission)
 	if err != nil {
 		t.Fatalf("Create() error = %v", err)
 	}
@@ -74,6 +75,9 @@ func TestCreateTeamLobby_InitializesCaptainAndInvite(t *testing.T) {
 	}
 	if repo.captain == nil || repo.captain.AccountID != captainID || repo.captain.TournamentTeamID != team.Team.ID || repo.captain.Role != models.TournamentTeamMemberRoleCaptain {
 		t.Fatalf("captain membership was not initialized: %+v", repo.captain)
+	}
+	if repo.captain.FormVersion != submission.FormVersion || repo.captain.ConsentedAt == nil || len(repo.captain.RegistrationAnswers) != 1 || repo.captain.RegistrationAnswers[0].Value != "captain" {
+		t.Fatal("captain registration was not forwarded")
 	}
 }
 
@@ -95,7 +99,7 @@ func TestCreateTeamLobby_RejectsUnavailableTournamentState(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			useCase := usecases.NewTeamLobbyUseCase(&teamLobbyRepositoryStub{tournament: test.tournament}, newStubAccountService().withAccount(captainID, "captain", "Captain"))
-			_, err := useCase.Create(context.Background(), tournamentID, captainID, "Night Owls")
+			_, err := useCase.Create(context.Background(), tournamentID, captainID, "Night Owls", models.RegistrationSubmission{Consent: true})
 			if !errors.Is(err, test.want) {
 				t.Fatalf("Create() error = %v, want %v", err, test.want)
 			}

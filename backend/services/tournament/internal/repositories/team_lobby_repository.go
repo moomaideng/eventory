@@ -18,6 +18,7 @@ var (
 	ErrRosterBelowMinimum           = errors.New("roster does not meet the tournament minimum")
 	ErrAlreadyInTournamentLobby     = errors.New("account is already in a team for this tournament")
 	ErrTournamentRegistrationClosed = errors.New("tournament registration is not open")
+	ErrRegistrationDeadlinePassed   = errors.New("the tournament registration deadline has passed")
 	ErrCannotRemoveCaptain          = errors.New("captain cannot be removed")
 	ErrCannotDisbandLobby           = errors.New("only a forming team can be disbanded")
 )
@@ -30,7 +31,10 @@ type TeamLobbyRepository interface {
 	FindByInviteCode(ctx context.Context, inviteCode string) (*models.TournamentTeam, error)
 	FindActiveByTournamentAndAccount(ctx context.Context, tournamentID, accountID uuid.UUID) (*models.TournamentTeam, error)
 	Create(ctx context.Context, team *models.TournamentTeam, captain *models.TournamentTeamMember) (*models.TournamentTeam, error)
-	Join(ctx context.Context, teamID, accountID uuid.UUID) (*models.TournamentTeam, error)
+	Join(ctx context.Context, teamID, accountID uuid.UUID, inviteCode string, submission models.RegistrationSubmission) (*models.TournamentTeam, error)
+	FindRegistrationForm(ctx context.Context, id uuid.UUID) (*models.RegistrationForm, error)
+	SaveRegistrationForm(ctx context.Context, id, organizerID uuid.UUID, form *models.RegistrationForm) error
+	FindMemberRegistration(ctx context.Context, memberID, viewerID, organizerID uuid.UUID) (*models.TournamentTeamMember, error)
 	RegenerateInvite(ctx context.Context, teamID uuid.UUID, inviteCode string) (*models.TournamentTeam, error)
 	Lock(ctx context.Context, teamID uuid.UUID) (*models.TournamentTeam, error)
 	RemoveMember(ctx context.Context, teamID, memberID uuid.UUID) (*models.TournamentTeam, error)
@@ -83,7 +87,9 @@ func (r *teamLobbyRepository) find(ctx context.Context, query *gorm.DB) (*models
 	var team models.TournamentTeam
 	err := query.
 		Preload("Tournament").
-		Preload("Members", func(db *gorm.DB) *gorm.DB { return db.Order("joined_at ASC") }).
+		Preload("Members", func(db *gorm.DB) *gorm.DB {
+			return db.Omit("RegistrationAnswers", "RegistrationQuestions", "ConsentNotice").Order("joined_at ASC")
+		}).
 		First(&team).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, ErrTeamLobbyNotFound
@@ -96,6 +102,19 @@ func (r *teamLobbyRepository) find(ctx context.Context, query *gorm.DB) (*models
 
 func (r *teamLobbyRepository) Create(ctx context.Context, team *models.TournamentTeam, captain *models.TournamentTeamMember) (*models.TournamentTeam, error) {
 	err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		tournament, err := lockRegistrationTournament(tx, team.TournamentID)
+		if err != nil {
+			return err
+		}
+		if tournament.Status != models.TournamentStatusRegistrationOpen {
+			return ErrTournamentRegistrationClosed
+		}
+		if !time.Now().Before(tournament.RegistrationDeadline) {
+			return ErrRegistrationDeadlinePassed
+		}
+		if err := saveMemberRegistration(tx, team.TournamentID, captain, models.RegistrationSubmission{FormVersion: captain.FormVersion, Answers: captain.RegistrationAnswers, Consent: captain.ConsentedAt != nil}); err != nil {
+			return err
+		}
 		if err := accountHasActiveTournamentTeam(tx, team.TournamentID, captain.AccountID); err != nil {
 			return err
 		}
@@ -111,11 +130,21 @@ func (r *teamLobbyRepository) Create(ctx context.Context, team *models.Tournamen
 	return r.FindByID(ctx, team.ID)
 }
 
-func (r *teamLobbyRepository) Join(ctx context.Context, teamID, accountID uuid.UUID) (*models.TournamentTeam, error) {
+func (r *teamLobbyRepository) Join(ctx context.Context, teamID, accountID uuid.UUID, inviteCode string, submission models.RegistrationSubmission) (*models.TournamentTeam, error) {
 	err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		var initial models.TournamentTeam
+		if err := tx.First(&initial, "id = ?", teamID).Error; err != nil {
+			return err
+		}
+		if _, err := lockRegistrationTournament(tx, initial.TournamentID); err != nil {
+			return err
+		}
 		team, err := r.lockTeam(tx, teamID)
 		if err != nil {
 			return err
+		}
+		if team.InviteCode != inviteCode {
+			return ErrTeamLobbyNotFound
 		}
 		if team.Status != models.TournamentTeamStatusForming {
 			return ErrTeamLobbyNotForming
@@ -123,19 +152,26 @@ func (r *teamLobbyRepository) Join(ctx context.Context, teamID, accountID uuid.U
 		if team.Tournament.Status != models.TournamentStatusRegistrationOpen {
 			return ErrTournamentRegistrationClosed
 		}
+		if !time.Now().Before(team.Tournament.RegistrationDeadline) {
+			return ErrRegistrationDeadlinePassed
+		}
 		if len(team.Members) >= team.Tournament.MaxTeamSize {
 			return ErrTeamLobbyFull
 		}
 		if err := accountHasActiveTournamentTeam(tx, team.TournamentID, accountID); err != nil {
 			return err
 		}
-		return tx.Create(&models.TournamentTeamMember{
+		member := &models.TournamentTeamMember{
 			ID:               uuid.New(),
 			TournamentTeamID: team.ID,
 			AccountID:        accountID,
 			Role:             models.TournamentTeamMemberRoleMember,
 			JoinedAt:         time.Now().UTC(),
-		}).Error
+		}
+		if err := saveMemberRegistration(tx, team.TournamentID, member, submission); err != nil {
+			return err
+		}
+		return tx.Create(member).Error
 	})
 	if err != nil {
 		return nil, err
@@ -236,7 +272,9 @@ func (r *teamLobbyRepository) lockTeam(tx *gorm.DB, teamID uuid.UUID) (*models.T
 	var team models.TournamentTeam
 	err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
 		Preload("Tournament").
-		Preload("Members").
+		Preload("Members", func(db *gorm.DB) *gorm.DB {
+			return db.Omit("RegistrationAnswers", "RegistrationQuestions", "ConsentNotice")
+		}).
 		First(&team, "id = ?", teamID).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, ErrTeamLobbyNotFound

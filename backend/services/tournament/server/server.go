@@ -123,6 +123,7 @@ func newHTTPRouter(db *gorm.DB, mongoDB *mongo.Database, cfg config.Config, acco
 	organizerTournamentGroup.UseMiddleware(authMiddleware.HumaMiddleware(), organizerMiddleware.HumaMiddleware())
 
 	resthandlers.RegisterTeamLobbyRoutes(teamLobbyGroup, teamLobbyUseCase)
+	resthandlers.RegisterRegistrationRoutes(teamLobbyGroup, usecases.NewRegistrationUseCase(teamLobbyRepo, tournamentRepo, accountSvc))
 	resthandlers.RegisterOrganizerDashboardRoutes(organizerGroup, dashboardUseCase)
 	resthandlers.RegisterTournamentStatusRoutes(organizerGroup, statusUseCase)
 	resthandlers.RegisterTournamentRoutes(api, organizerTournamentGroup, tournamentUseCase)
