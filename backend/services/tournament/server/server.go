@@ -16,8 +16,11 @@ import (
 	"github.com/moomaideng/eventory/services/tournament/internal/adapters/accountgrpc"
 	tournamentmiddlewares "github.com/moomaideng/eventory/services/tournament/internal/middlewares"
 	"github.com/moomaideng/eventory/services/tournament/internal/ports"
+	"time"
+
 	"github.com/moomaideng/eventory/services/tournament/internal/repositories"
 	"github.com/moomaideng/eventory/services/tournament/internal/usecases"
+	"go.mongodb.org/mongo-driver/v2/mongo"
 	"google.golang.org/grpc"
 	"gorm.io/gorm"
 )
@@ -26,24 +29,24 @@ type App struct {
 	HTTP http.Handler
 }
 
-func NewApp(db *gorm.DB, cfg config.Config) *App {
+func NewApp(db *gorm.DB, mongoDB *mongo.Database, cfg config.Config) *App {
 	accountSvc, err := accountgrpc.NewAccountClient(cfg.AccountGRPCAddr)
 	if err != nil {
 		log.Fatalf("failed to create account gRPC client: %v", err)
 	}
-	return newApp(db, cfg, accountSvc)
+	return newApp(db, mongoDB, cfg, accountSvc)
 }
 
 // NewAppWithAccountConn wires the HTTP API using an existing Account gRPC connection (tests).
-func NewAppWithAccountConn(db *gorm.DB, cfg config.Config, conn grpc.ClientConnInterface) *App {
-	return newApp(db, cfg, accountgrpc.NewAccountClientFromConn(conn))
+func NewAppWithAccountConn(db *gorm.DB, mongoDB *mongo.Database, cfg config.Config, conn grpc.ClientConnInterface) *App {
+	return newApp(db, mongoDB, cfg, accountgrpc.NewAccountClientFromConn(conn))
 }
 
-func newApp(db *gorm.DB, cfg config.Config, accountSvc ports.AccountService) *App {
-	return &App{HTTP: newHTTPRouter(db, cfg, accountSvc)}
+func newApp(db *gorm.DB, mongoDB *mongo.Database, cfg config.Config, accountSvc ports.AccountService) *App {
+	return &App{HTTP: newHTTPRouter(db, mongoDB, cfg, accountSvc)}
 }
 
-func newHTTPRouter(db *gorm.DB, cfg config.Config, accountSvc ports.AccountService) http.Handler {
+func newHTTPRouter(db *gorm.DB, mongoDB *mongo.Database, cfg config.Config, accountSvc ports.AccountService) http.Handler {
 	router := chi.NewMux()
 	router.Use(middleware.Logger)
 	router.Use(middleware.Recoverer)
@@ -85,7 +88,14 @@ func newHTTPRouter(db *gorm.DB, cfg config.Config, accountSvc ports.AccountServi
 	}, func(ctx context.Context, input *struct{}) (*struct{}, error) {
 		sqlDB, err := db.DB()
 		if err != nil || sqlDB.PingContext(ctx) != nil {
-			return nil, huma.Error500InternalServerError("Database unreachable", err)
+			return nil, huma.Error500InternalServerError("Postgres database unreachable", err)
+		}
+		if mongoDB != nil {
+			pingCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
+			defer cancel()
+			if err := mongoDB.Client().Ping(pingCtx, nil); err != nil {
+				return nil, huma.Error500InternalServerError("MongoDB unreachable", err)
+			}
 		}
 		return nil, nil
 	})
@@ -117,6 +127,12 @@ func newHTTPRouter(db *gorm.DB, cfg config.Config, accountSvc ports.AccountServi
 	resthandlers.RegisterOrganizerDashboardRoutes(organizerGroup, dashboardUseCase)
 	resthandlers.RegisterTournamentStatusRoutes(organizerGroup, statusUseCase)
 	resthandlers.RegisterTournamentRoutes(api, organizerTournamentGroup, tournamentUseCase)
+
+	if mongoDB != nil {
+		dummyRepo := repositories.NewDummyRepository(mongoDB)
+		dummyUseCase := usecases.NewDummyUseCase(dummyRepo)
+		resthandlers.RegisterDummyRoutes(api, dummyUseCase)
+	}
 
 	return router
 }

@@ -12,6 +12,8 @@ type Config struct {
 	Environment     string   `mapstructure:"environment"`
 	CORSOrigins     []string `mapstructure:"cors_allowed_origins"`
 	AccountGRPCAddr string   `mapstructure:"account_grpc_addr"`
+	MongoURI        string   `mapstructure:"mongo_uri"`
+	MongoDBName     string   `mapstructure:"mongo_db_name"`
 }
 
 // Load reads services/tournament/.env.default, then .env, then process env.

@@ -54,6 +54,7 @@ Set once, in the repository settings. Without these, deployment fails.
 | `PROD_API_URL` | Public origin `https://eventory.ddns.net`, also written as the CORS origin |
 | `PROD_ACME_EMAIL` | Contact email for the Let's Encrypt account |
 | `PROD_POSTGRES_PASSWORD` | Password for the Postgres container. User is `admin` |
+| `PROD_MONGO_PASSWORD` | Password for the MongoDB container. User is `admin` |
 | `ORACLE_HOST` | Server address |
 | `ORACLE_USER` | Server login name |
 | `ORACLE_SSH_KEY` | Server login key |

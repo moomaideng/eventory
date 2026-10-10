@@ -64,7 +64,7 @@ func NewApp(tb testing.TB, dsn string) *App {
 	accountTS := httptest.NewServer(accountApp.HTTP)
 	tb.Cleanup(accountTS.Close)
 
-	tournamentApp := tournamentserver.NewAppWithAccountConn(db, tournamentconfig.Config{
+	tournamentApp := tournamentserver.NewAppWithAccountConn(db, nil, tournamentconfig.Config{
 		Environment: "development",
 		SupabaseURL: jwksServer.URL(),
 	}, conn)
