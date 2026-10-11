@@ -885,35 +885,14 @@ export interface components {
             value: unknown;
         };
         FormField: {
-            config?: components["schemas"]["FormFieldConfig"];
+            config?: unknown;
             description?: string;
             id: string;
             label: string;
             /** Format: int64 */
             order: number;
             required: boolean;
-            /** @enum {string} */
-            type: "SHORT_TEXT" | "LONG_TEXT" | "NUMBER" | "SELECT_ONE" | "SELECT_MULTIPLE";
-        };
-        FormFieldConfig: {
-            allowDecimals?: boolean;
-            /** Format: double */
-            max?: number;
-            /** Format: int64 */
-            maxLength?: number;
-            /** Format: int64 */
-            maxSelections?: number;
-            /** Format: double */
-            min?: number;
-            /** Format: int64 */
-            minLength?: number;
-            /** Format: int64 */
-            minSelections?: number;
-            options?: components["schemas"]["FormFieldOption"][] | null;
-        };
-        FormFieldOption: {
-            id: string;
-            label: string;
+            type: string;
         };
         FormResponseItem: {
             /**

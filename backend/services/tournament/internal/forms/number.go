@@ -7,6 +7,12 @@ import (
 	"github.com/moomaideng/eventory/services/tournament/models"
 )
 
+type NumberConfig struct {
+	Min           *float64 `json:"min" bson:"min"`
+	Max           *float64 `json:"max" bson:"max"`
+	AllowDecimals *bool    `json:"allowDecimals" bson:"allow_decimals"`
+}
+
 type NumberHandler struct{}
 
 func (h *NumberHandler) Type() models.FieldType {
@@ -14,7 +20,10 @@ func (h *NumberHandler) Type() models.FieldType {
 }
 
 func (h *NumberHandler) ValidateConfig(field models.FormField) error {
-	cfg := field.Config
+	cfg, err := decodeConfig[NumberConfig](field.Config)
+	if err != nil {
+		return fmt.Errorf("%w: %w", ErrInvalidFieldConfig, err)
+	}
 	if cfg.Min != nil && cfg.Max != nil && *cfg.Min > *cfg.Max {
 		return fmt.Errorf("%w: min cannot exceed max", ErrInvalidFieldConfig)
 	}
@@ -45,7 +54,7 @@ func (h *NumberHandler) ValidateAnswer(field models.FormField, val any) error {
 		return fmt.Errorf("%w: expected number", ErrInvalidFieldValue)
 	}
 
-	cfg := field.Config
+	cfg, _ := decodeConfig[NumberConfig](field.Config)
 	if cfg.AllowDecimals != nil && !*cfg.AllowDecimals {
 		if num != math.Trunc(num) {
 			return fmt.Errorf("%w: decimals are not allowed for this field", ErrInvalidFieldValue)

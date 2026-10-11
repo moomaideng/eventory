@@ -7,6 +7,11 @@ import (
 	"github.com/moomaideng/eventory/services/tournament/models"
 )
 
+type ShortTextConfig struct {
+	MinLength *int `json:"minLength" bson:"min_length"`
+	MaxLength *int `json:"maxLength" bson:"max_length"`
+}
+
 type ShortTextHandler struct{}
 
 func (h *ShortTextHandler) Type() models.FieldType {
@@ -14,7 +19,10 @@ func (h *ShortTextHandler) Type() models.FieldType {
 }
 
 func (h *ShortTextHandler) ValidateConfig(field models.FormField) error {
-	cfg := field.Config
+	cfg, err := decodeConfig[ShortTextConfig](field.Config)
+	if err != nil {
+		return fmt.Errorf("%w: %w", ErrInvalidFieldConfig, err)
+	}
 	if cfg.MinLength != nil && *cfg.MinLength < 0 {
 		return fmt.Errorf("%w: min_length cannot be negative", ErrInvalidFieldConfig)
 	}
@@ -47,8 +55,8 @@ func (h *ShortTextHandler) ValidateAnswer(field models.FormField, val any) error
 		return nil
 	}
 
+	cfg, _ := decodeConfig[ShortTextConfig](field.Config)
 	length := utf8.RuneCountInString(strVal)
-	cfg := field.Config
 	if cfg.MinLength != nil && length < *cfg.MinLength {
 		return fmt.Errorf("%w: text length (%d) is less than minimum (%d)", ErrInvalidFieldValue, length, *cfg.MinLength)
 	}

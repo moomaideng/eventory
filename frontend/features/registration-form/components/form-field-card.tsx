@@ -26,7 +26,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { FormFieldOptions } from "@/features/registration-form/components/form-field-options";
-import type { FieldType, FormField } from "@/features/registration-form/schemas";
+import type { FieldType, FormField, FormFieldOption } from "@/features/registration-form/schemas";
 
 const FIELD_TYPE_OPTIONS = [
   { value: "SHORT_TEXT", label: "Short text" },
@@ -57,18 +57,61 @@ export function FormFieldCard({
 }: FormFieldCardProps) {
   const [isEditingLabel, setIsEditingLabel] = useState(!field.label);
 
-  const handleTypeChange = (type: FieldType) => {
-    const nextConfig = { ...field.config };
-    if (
-      (type === "SELECT_ONE" || type === "SELECT_MULTIPLE") &&
-      (!nextConfig.options || nextConfig.options.length === 0)
-    ) {
-      nextConfig.options = [
-        { id: `opt_${Date.now()}_1`, label: "Option 1" },
-        { id: `opt_${Date.now()}_2`, label: "Option 2" },
-      ];
+  const handleTypeChange = (nextType: FieldType) => {
+    const existingOptions =
+      "options" in field.config && Array.isArray(field.config.options)
+        ? (field.config.options as FormFieldOption[])
+        : [];
+    const defaultOptions =
+      existingOptions.length > 0
+        ? existingOptions
+        : [
+            { id: `opt_${Date.now()}_1`, label: "Option 1" },
+            { id: `opt_${Date.now()}_2`, label: "Option 2" },
+          ];
+
+    let newField: FormField;
+    switch (nextType) {
+      case "SHORT_TEXT":
+      case "LONG_TEXT":
+        newField = {
+          ...field,
+          type: nextType,
+          config:
+            field.type === "SHORT_TEXT" || field.type === "LONG_TEXT"
+              ? field.config
+              : {},
+        };
+        break;
+      case "NUMBER":
+        newField = {
+          ...field,
+          type: "NUMBER",
+          config: field.type === "NUMBER" ? field.config : {},
+        };
+        break;
+      case "SELECT_ONE":
+        newField = {
+          ...field,
+          type: "SELECT_ONE",
+          config: { options: defaultOptions },
+        };
+        break;
+      case "SELECT_MULTIPLE":
+        newField = {
+          ...field,
+          type: "SELECT_MULTIPLE",
+          config: {
+            options: defaultOptions,
+            minSelections:
+              field.type === "SELECT_MULTIPLE" ? field.config.minSelections : undefined,
+            maxSelections:
+              field.type === "SELECT_MULTIPLE" ? field.config.maxSelections : undefined,
+          },
+        };
+        break;
     }
-    onUpdate({ ...field, type, config: nextConfig });
+    onUpdate(newField);
   };
 
   return (
@@ -238,7 +281,7 @@ export function FormFieldCard({
                 <Input
                   id={`min-${field.id}`}
                   type="number"
-                  value={field.config?.min ?? ""}
+                  value={field.config.min ?? ""}
                   onChange={(e) =>
                     onUpdate({
                       ...field,
@@ -256,7 +299,7 @@ export function FormFieldCard({
                 <Input
                   id={`max-${field.id}`}
                   type="number"
-                  value={field.config?.max ?? ""}
+                  value={field.config.max ?? ""}
                   onChange={(e) =>
                     onUpdate({
                       ...field,
@@ -273,7 +316,7 @@ export function FormFieldCard({
                 <input
                   type="checkbox"
                   id={`dec-${field.id}`}
-                  checked={field.config?.allowDecimals ?? false}
+                  checked={field.config.allowDecimals ?? false}
                   onChange={(e) =>
                     onUpdate({
                       ...field,
@@ -298,7 +341,7 @@ export function FormFieldCard({
                   id={`min-len-${field.id}`}
                   type="number"
                   min={0}
-                  value={field.config?.minLength ?? ""}
+                  value={field.config.minLength ?? ""}
                   onChange={(e) =>
                     onUpdate({
                       ...field,
@@ -317,7 +360,7 @@ export function FormFieldCard({
                   id={`max-len-${field.id}`}
                   type="number"
                   min={0}
-                  value={field.config?.maxLength ?? ""}
+                  value={field.config.maxLength ?? ""}
                   onChange={(e) =>
                     onUpdate({
                       ...field,

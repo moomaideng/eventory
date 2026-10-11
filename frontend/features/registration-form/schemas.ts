@@ -20,43 +20,60 @@ export const formFieldOptionSchema = z.object({
 
 export type FormFieldOption = z.infer<typeof formFieldOptionSchema>;
 
-export const formFieldConfigSchema = z.object({
+export const textConfigSchema = z.object({
   minLength: z.coerce.number().int().min(0).optional(),
   maxLength: z.coerce.number().int().min(0).optional(),
+});
+export type TextConfig = z.infer<typeof textConfigSchema>;
+
+export const numberConfigSchema = z.object({
   min: z.coerce.number().optional(),
   max: z.coerce.number().optional(),
   allowDecimals: z.boolean().optional(),
-  options: z.array(formFieldOptionSchema).optional(),
+});
+export type NumberConfig = z.infer<typeof numberConfigSchema>;
+
+export const selectOneConfigSchema = z.object({
+  options: z.array(formFieldOptionSchema).default([]),
+});
+export type SelectOneConfig = z.infer<typeof selectOneConfigSchema>;
+
+export const selectMultipleConfigSchema = z.object({
+  options: z.array(formFieldOptionSchema).default([]),
   minSelections: z.coerce.number().int().min(0).optional(),
   maxSelections: z.coerce.number().int().min(0).optional(),
 });
+export type SelectMultipleConfig = z.infer<typeof selectMultipleConfigSchema>;
 
-export type FormFieldConfig = z.infer<typeof formFieldConfigSchema>;
-
-export const formFieldSchema = z.object({
+const baseFormFieldSchema = z.object({
   id: z.string().min(1),
-  type: fieldTypeSchema,
   label: z.string().trim().min(1, "Field label is required."),
   description: z.string().trim().optional(),
   required: z.boolean().default(false),
   order: z.number().int().default(1),
-  config: formFieldConfigSchema.default({}),
 });
+
+export const formFieldSchema = z.discriminatedUnion("type", [
+  baseFormFieldSchema.extend({
+    type: z.literal("SHORT_TEXT"),
+    config: textConfigSchema.default({}),
+  }),
+  baseFormFieldSchema.extend({
+    type: z.literal("LONG_TEXT"),
+    config: textConfigSchema.default({}),
+  }),
+  baseFormFieldSchema.extend({
+    type: z.literal("NUMBER"),
+    config: numberConfigSchema.default({}),
+  }),
+  baseFormFieldSchema.extend({
+    type: z.literal("SELECT_ONE"),
+    config: selectOneConfigSchema.default({ options: [] }),
+  }),
+  baseFormFieldSchema.extend({
+    type: z.literal("SELECT_MULTIPLE"),
+    config: selectMultipleConfigSchema.default({ options: [] }),
+  }),
+]);
 
 export type FormField = z.infer<typeof formFieldSchema>;
-
-export const registrationFormSchema = z.object({
-  title: z
-    .string()
-    .trim()
-    .min(1, "Form title is required.")
-    .max(160, "Form title must be 160 characters or fewer."),
-  description: z
-    .string()
-    .trim()
-    .max(2000, "Description must be 2,000 characters or fewer.")
-    .optional(),
-  fields: z.array(formFieldSchema),
-});
-
-export type RegistrationFormValues = z.infer<typeof registrationFormSchema>;

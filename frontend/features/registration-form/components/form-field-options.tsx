@@ -122,7 +122,7 @@ export function ChoiceRow({
 }
 
 export interface FormFieldOptionsProps {
-  field: FormField;
+  field: Extract<FormField, { type: "SELECT_ONE" | "SELECT_MULTIPLE" }>;
   onUpdate: (updated: FormField) => void;
 }
 
@@ -130,7 +130,7 @@ export function FormFieldOptions({ field, onUpdate }: FormFieldOptionsProps) {
   const [autoEditId, setAutoEditId] = useState<string | null>(null);
 
   const handleAddOption = (autoEdit = false) => {
-    const currentOptions = field.config?.options ?? [];
+    const currentOptions = field.config.options;
     const newId = `opt_${Date.now()}`;
     const newOption: FormFieldOption = {
       id: newId,
@@ -146,7 +146,7 @@ export function FormFieldOptions({ field, onUpdate }: FormFieldOptionsProps) {
   };
 
   const handleUpdateOption = (optIndex: number, label: string) => {
-    const currentOptions = [...(field.config?.options ?? [])];
+    const currentOptions = [...field.config.options];
     if (currentOptions[optIndex]) {
       currentOptions[optIndex] = { ...currentOptions[optIndex], label };
       onUpdate({
@@ -157,26 +157,28 @@ export function FormFieldOptions({ field, onUpdate }: FormFieldOptionsProps) {
   };
 
   const handleDeleteOption = (optIndex: number) => {
-    const currentOptions = (field.config?.options ?? []).filter((_, i) => i !== optIndex);
+    const currentOptions = field.config.options.filter((_, i) => i !== optIndex);
     onUpdate({
       ...field,
       config: { ...field.config, options: currentOptions },
     });
   };
 
+  const options = field.config.options;
+
   return (
     <div className="flex flex-col gap-3 rounded-lg border border-border/70 bg-muted/20 p-4">
       <div className="text-sm font-medium">Choices</div>
       <div className="flex flex-col gap-2">
-        {(field.config?.options ?? []).map((opt, optIdx) => {
-          const isLast = optIdx === (field.config?.options?.length ?? 0) - 1;
+        {options.map((opt, optIdx) => {
+          const isLast = optIdx === options.length - 1;
           return (
             <ChoiceRow
               key={opt.id}
               option={opt}
               index={optIdx}
-              fieldType={field.type as "SELECT_ONE" | "SELECT_MULTIPLE"}
-              canDelete={(field.config?.options?.length ?? 0) > 1}
+              fieldType={field.type}
+              canDelete={options.length > 1}
               isLast={isLast}
               initialEditing={autoEditId === opt.id}
               onUpdate={(label) => handleUpdateOption(optIdx, label)}
@@ -206,7 +208,7 @@ export function FormFieldOptions({ field, onUpdate }: FormFieldOptionsProps) {
               id={`min-sel-${field.id}`}
               type="number"
               min={0}
-              value={field.config?.minSelections ?? ""}
+              value={field.config.minSelections ?? ""}
               onChange={(e) =>
                 onUpdate({
                   ...field,
@@ -225,7 +227,7 @@ export function FormFieldOptions({ field, onUpdate }: FormFieldOptionsProps) {
               id={`max-sel-${field.id}`}
               type="number"
               min={0}
-              value={field.config?.maxSelections ?? ""}
+              value={field.config.maxSelections ?? ""}
               onChange={(e) =>
                 onUpdate({
                   ...field,

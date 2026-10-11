@@ -28,17 +28,23 @@ func TestShortTextHandler(t *testing.T) {
 		assert.NoError(t, h.ValidateConfig(models.FormField{}))
 
 		field := models.FormField{
-			Config: models.FormFieldConfig{MinLength: intPtr(-1)},
+			Config: ShortTextConfig{MinLength: intPtr(-1)},
 		}
 		assert.ErrorIs(t, h.ValidateConfig(field), ErrInvalidFieldConfig)
 
 		field = models.FormField{
-			Config: models.FormFieldConfig{MinLength: intPtr(10), MaxLength: intPtr(5)},
+			Config: ShortTextConfig{MinLength: intPtr(10), MaxLength: intPtr(5)},
 		}
 		assert.ErrorIs(t, h.ValidateConfig(field), ErrInvalidFieldConfig)
 
 		field = models.FormField{
-			Config: models.FormFieldConfig{MinLength: intPtr(2), MaxLength: intPtr(10)},
+			Config: ShortTextConfig{MinLength: intPtr(2), MaxLength: intPtr(10)},
+		}
+		assert.NoError(t, h.ValidateConfig(field))
+
+		// raw map config (from JSON)
+		field = models.FormField{
+			Config: map[string]any{"minLength": 2, "maxLength": 10},
 		}
 		assert.NoError(t, h.ValidateConfig(field))
 	})
@@ -46,7 +52,7 @@ func TestShortTextHandler(t *testing.T) {
 	t.Run("answer validation", func(t *testing.T) {
 		field := models.FormField{
 			Required: true,
-			Config:   models.FormFieldConfig{MinLength: intPtr(3), MaxLength: intPtr(8)},
+			Config:   ShortTextConfig{MinLength: intPtr(3), MaxLength: intPtr(8)},
 		}
 
 		assert.ErrorIs(t, h.ValidateAnswer(field, nil), ErrFieldRequired)
@@ -67,12 +73,18 @@ func TestNumberHandler(t *testing.T) {
 
 	t.Run("config validation", func(t *testing.T) {
 		field := models.FormField{
-			Config: models.FormFieldConfig{Min: floatPtr(50), Max: floatPtr(10)},
+			Config: NumberConfig{Min: floatPtr(50), Max: floatPtr(10)},
 		}
 		assert.ErrorIs(t, h.ValidateConfig(field), ErrInvalidFieldConfig)
 
 		field = models.FormField{
-			Config: models.FormFieldConfig{Min: floatPtr(10), Max: floatPtr(50)},
+			Config: NumberConfig{Min: floatPtr(10), Max: floatPtr(50)},
+		}
+		assert.NoError(t, h.ValidateConfig(field))
+
+		// raw map config (from JSON)
+		field = models.FormField{
+			Config: map[string]any{"min": 10.0, "max": 50.0},
 		}
 		assert.NoError(t, h.ValidateConfig(field))
 	})
@@ -80,7 +92,7 @@ func TestNumberHandler(t *testing.T) {
 	t.Run("answer validation", func(t *testing.T) {
 		field := models.FormField{
 			Required: true,
-			Config: models.FormFieldConfig{
+			Config: NumberConfig{
 				Min:           floatPtr(18),
 				Max:           floatPtr(99),
 				AllowDecimals: boolPtr(false),
@@ -105,7 +117,7 @@ func TestSelectOneHandler(t *testing.T) {
 		assert.ErrorIs(t, h.ValidateConfig(models.FormField{}), ErrInvalidFieldConfig)
 
 		field := models.FormField{
-			Config: models.FormFieldConfig{
+			Config: SelectOneConfig{
 				Options: []models.FormFieldOption{
 					{ID: "opt_1", Label: "Option 1"},
 					{ID: "opt_1", Label: "Option 2"},
@@ -115,7 +127,7 @@ func TestSelectOneHandler(t *testing.T) {
 		assert.ErrorIs(t, h.ValidateConfig(field), ErrInvalidFieldConfig)
 
 		field = models.FormField{
-			Config: models.FormFieldConfig{
+			Config: SelectOneConfig{
 				Options: []models.FormFieldOption{
 					{ID: "opt_1", Label: "Option 1"},
 					{ID: "opt_2", Label: "Option 2"},
@@ -128,7 +140,7 @@ func TestSelectOneHandler(t *testing.T) {
 	t.Run("answer validation", func(t *testing.T) {
 		field := models.FormField{
 			Required: true,
-			Config: models.FormFieldConfig{
+			Config: SelectOneConfig{
 				Options: []models.FormFieldOption{
 					{ID: "opt_s", Label: "Small"},
 					{ID: "opt_m", Label: "Medium"},
@@ -149,7 +161,7 @@ func TestSelectMultipleHandler(t *testing.T) {
 
 	t.Run("config validation", func(t *testing.T) {
 		field := models.FormField{
-			Config: models.FormFieldConfig{
+			Config: SelectMultipleConfig{
 				Options: []models.FormFieldOption{
 					{ID: "opt_1", Label: "Option 1"},
 				},
@@ -160,7 +172,7 @@ func TestSelectMultipleHandler(t *testing.T) {
 		assert.ErrorIs(t, h.ValidateConfig(field), ErrInvalidFieldConfig)
 
 		field = models.FormField{
-			Config: models.FormFieldConfig{
+			Config: SelectMultipleConfig{
 				Options: []models.FormFieldOption{
 					{ID: "opt_1", Label: "Option 1"},
 				},
@@ -173,7 +185,7 @@ func TestSelectMultipleHandler(t *testing.T) {
 	t.Run("answer validation", func(t *testing.T) {
 		field := models.FormField{
 			Required: true,
-			Config: models.FormFieldConfig{
+			Config: SelectMultipleConfig{
 				Options: []models.FormFieldOption{
 					{ID: "opt_1", Label: "Option 1"},
 					{ID: "opt_2", Label: "Option 2"},

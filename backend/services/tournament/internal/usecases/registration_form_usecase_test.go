@@ -161,7 +161,7 @@ func TestRegistrationFormUseCase_SaveForm(t *testing.T) {
 				ID:    "size",
 				Label: "T-Shirt Size",
 				Type:  models.FieldTypeSelectOne,
-				Config: models.FormFieldConfig{
+				Config: forms.SelectOneConfig{
 					Options: []models.FormFieldOption{
 						{ID: "s", Label: "Small"},
 						{ID: "m", Label: "Medium"},

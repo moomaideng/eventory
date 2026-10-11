@@ -7,6 +7,12 @@ import (
 	"github.com/moomaideng/eventory/services/tournament/models"
 )
 
+type SelectMultipleConfig struct {
+	Options       []models.FormFieldOption `json:"options" bson:"options"`
+	MinSelections *int                     `json:"minSelections" bson:"min_selections"`
+	MaxSelections *int                     `json:"maxSelections" bson:"max_selections"`
+}
+
 type SelectMultipleHandler struct{}
 
 func (h *SelectMultipleHandler) Type() models.FieldType {
@@ -14,7 +20,11 @@ func (h *SelectMultipleHandler) Type() models.FieldType {
 }
 
 func (h *SelectMultipleHandler) ValidateConfig(field models.FormField) error {
-	options := field.Config.Options
+	cfg, err := decodeConfig[SelectMultipleConfig](field.Config)
+	if err != nil {
+		return fmt.Errorf("%w: %w", ErrInvalidFieldConfig, err)
+	}
+	options := cfg.Options
 	if len(options) == 0 {
 		return fmt.Errorf("%w: select_multiple field must have at least one option", ErrInvalidFieldConfig)
 	}
@@ -34,7 +44,6 @@ func (h *SelectMultipleHandler) ValidateConfig(field models.FormField) error {
 		seenIDs[id] = struct{}{}
 	}
 
-	cfg := field.Config
 	if cfg.MinSelections != nil && *cfg.MinSelections < 0 {
 		return fmt.Errorf("%w: min_selections cannot be negative", ErrInvalidFieldConfig)
 	}
@@ -79,8 +88,9 @@ func (h *SelectMultipleHandler) ValidateAnswer(field models.FormField, val any) 
 		return nil
 	}
 
-	validOptions := make(map[string]struct{}, len(field.Config.Options))
-	for _, opt := range field.Config.Options {
+	cfg, _ := decodeConfig[SelectMultipleConfig](field.Config)
+	validOptions := make(map[string]struct{}, len(cfg.Options))
+	for _, opt := range cfg.Options {
 		validOptions[opt.ID] = struct{}{}
 	}
 
@@ -99,7 +109,6 @@ func (h *SelectMultipleHandler) ValidateAnswer(field models.FormField, val any) 
 		seenSelections[str] = struct{}{}
 	}
 
-	cfg := field.Config
 	count := len(rawItems)
 	if cfg.MinSelections != nil && count < *cfg.MinSelections {
 		return fmt.Errorf("%w: selected items count (%d) is less than minimum (%d)", ErrInvalidFieldValue, count, *cfg.MinSelections)

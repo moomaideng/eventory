@@ -7,6 +7,10 @@ import (
 	"github.com/moomaideng/eventory/services/tournament/models"
 )
 
+type SelectOneConfig struct {
+	Options []models.FormFieldOption `json:"options" bson:"options"`
+}
+
 type SelectOneHandler struct{}
 
 func (h *SelectOneHandler) Type() models.FieldType {
@@ -14,7 +18,11 @@ func (h *SelectOneHandler) Type() models.FieldType {
 }
 
 func (h *SelectOneHandler) ValidateConfig(field models.FormField) error {
-	options := field.Config.Options
+	cfg, err := decodeConfig[SelectOneConfig](field.Config)
+	if err != nil {
+		return fmt.Errorf("%w: %w", ErrInvalidFieldConfig, err)
+	}
+	options := cfg.Options
 	if len(options) == 0 {
 		return fmt.Errorf("%w: select_one field must have at least one option", ErrInvalidFieldConfig)
 	}
@@ -56,7 +64,8 @@ func (h *SelectOneHandler) ValidateAnswer(field models.FormField, val any) error
 		return nil
 	}
 
-	for _, opt := range field.Config.Options {
+	cfg, _ := decodeConfig[SelectOneConfig](field.Config)
+	for _, opt := range cfg.Options {
 		if opt.ID == strVal {
 			return nil
 		}

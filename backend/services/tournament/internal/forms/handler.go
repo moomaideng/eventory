@@ -1,6 +1,7 @@
 package forms
 
 import (
+	"encoding/json"
 	"errors"
 
 	"github.com/moomaideng/eventory/services/tournament/models"
@@ -18,4 +19,28 @@ type FieldHandler interface {
 	Type() models.FieldType
 	ValidateConfig(field models.FormField) error
 	ValidateAnswer(field models.FormField, val any) error
+}
+
+func decodeConfig[T any](cfg any) (T, error) {
+	var target T
+	if cfg == nil {
+		return target, nil
+	}
+	switch v := cfg.(type) {
+	case T:
+		return v, nil
+	case *T:
+		if v != nil {
+			return *v, nil
+		}
+		return target, nil
+	}
+	data, err := json.Marshal(cfg)
+	if err != nil {
+		return target, err
+	}
+	if err := json.Unmarshal(data, &target); err != nil {
+		return target, err
+	}
+	return target, nil
 }

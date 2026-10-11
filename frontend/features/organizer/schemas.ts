@@ -136,17 +136,3 @@ export const createTournamentFormSchema = z
 export type CreateTournamentFormInput = z.infer<
   typeof createTournamentFormSchema
 >;
-
-export {
-  fieldTypeSchema,
-  type FieldType,
-  formFieldOptionSchema,
-  type FormFieldOption,
-  formFieldConfigSchema,
-  type FormFieldConfig,
-  formFieldSchema,
-  type FormField,
-  registrationFormSchema,
-  type RegistrationFormValues,
-} from "@/features/registration-form/schemas";
-

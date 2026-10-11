@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { FormFieldCard } from "@/features/registration-form/components/form-field-card";
 import { FormHeaderCard } from "@/features/registration-form/components/form-header-card";
-import type { FormField } from "@/features/registration-form/schemas";
+import { formFieldSchema, type FormField } from "@/features/registration-form/schemas";
 import type { components } from "@/lib/api/schema";
 
 type RegistrationFormResponse = components["schemas"]["RegistrationFormResponse"];
@@ -27,24 +27,29 @@ function RegistrationFormEditor({
   const [description, setDescription] = useState(initialData?.description ?? "");
   const [fields, setFields] = useState<FormField[]>(() => {
     if (initialData?.fields && initialData.fields.length > 0) {
-      return initialData.fields.map((f, i) => ({
-        id: f.id,
-        type: f.type,
-        label: f.label,
-        description: f.description ?? "",
-        required: f.required ?? false,
-        order: f.order ?? i + 1,
-        config: {
-          minLength: f.config?.minLength ?? undefined,
-          maxLength: f.config?.maxLength ?? undefined,
-          min: f.config?.min ?? undefined,
-          max: f.config?.max ?? undefined,
-          allowDecimals: f.config?.allowDecimals ?? undefined,
-          options: f.config?.options ?? undefined,
-          minSelections: f.config?.minSelections ?? undefined,
-          maxSelections: f.config?.maxSelections ?? undefined,
-        },
-      }));
+      return initialData.fields.map((f, i) => {
+        const parsed = formFieldSchema.safeParse({
+          id: f.id,
+          type: f.type,
+          label: f.label,
+          description: f.description ?? "",
+          required: f.required ?? false,
+          order: f.order ?? i + 1,
+          config: typeof f.config === "object" && f.config !== null ? f.config : {},
+        });
+        if (parsed.success) {
+          return parsed.data;
+        }
+        return {
+          id: f.id,
+          type: "SHORT_TEXT",
+          label: f.label,
+          description: f.description ?? "",
+          required: f.required ?? false,
+          order: f.order ?? i + 1,
+          config: {},
+        } satisfies FormField;
+      });
     }
     return [];
   });
@@ -104,15 +109,16 @@ function RegistrationFormEditor({
     }
 
     for (let i = 0; i < fields.length; i++) {
-      if (!fields[i].label.trim()) {
+      const field = fields[i];
+      if (!field.label.trim()) {
         setErrorMessage(`Field #${i + 1} must have a label.`);
         return;
       }
       if (
-        (fields[i].type === "SELECT_ONE" || fields[i].type === "SELECT_MULTIPLE") &&
-        (!fields[i].config?.options || (fields[i].config?.options?.length ?? 0) === 0)
+        (field.type === "SELECT_ONE" || field.type === "SELECT_MULTIPLE") &&
+        field.config.options.length === 0
       ) {
-        setErrorMessage(`Field #${i + 1} (${fields[i].label}) must have at least one choice.`);
+        setErrorMessage(`Field #${i + 1} (${field.label}) must have at least one choice.`);
         return;
       }
     }
