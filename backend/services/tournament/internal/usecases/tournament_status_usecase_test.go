@@ -30,15 +30,14 @@ type statusRepositoryStub struct {
 
 func (r *statusRepositoryStub) ApplyOverride(
 	_ context.Context,
-	organizerID, actorAccountID uuid.UUID,
+	accountID uuid.UUID,
 	_ string,
 	tournamentID uuid.UUID,
 	reason string,
 	mutate func(current *models.Tournament) (models.TournamentStatus, error),
 ) (*models.TournamentStatusChange, error) {
 	r.called = true
-	r.gotAccountID, r.gotTournament, r.gotReason = organizerID, tournamentID, reason
-	_ = actorAccountID
+	r.gotAccountID, r.gotTournament, r.gotReason = accountID, tournamentID, reason
 	if r.err != nil {
 		return nil, r.err
 	}
@@ -52,7 +51,7 @@ func (r *statusRepositoryStub) ApplyOverride(
 
 	return &models.TournamentStatusChange{
 		TournamentID: tournamentID, FromStatus: r.current, ToStatus: to,
-		Reason: reason, ActorAccountID: actorAccountID,
+		Reason: reason, ActorAccountID: accountID,
 	}, nil
 }
 
@@ -89,7 +88,7 @@ func TestOverrideAllowsPermittedTransitions(t *testing.T) {
 			accountID, tournamentID := uuid.New(), uuid.New()
 
 			result, err := usecases.NewTournamentStatusUseCase(repo, newStubAccountService()).
-				Override(context.Background(), accountID, accountID, tournamentID, string(test.to), validReason)
+				Override(context.Background(), accountID, tournamentID, string(test.to), validReason)
 			if err != nil {
 				t.Fatalf("expected transition to be allowed, got %v", err)
 			}
@@ -127,9 +126,9 @@ func TestOverrideRejectsForbiddenTransitions(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			repo := &statusRepositoryStub{current: test.from}
 
-			organizerID, actorID, tournamentID := uuid.New(), uuid.New(), uuid.New()
+			accountID, tournamentID := uuid.New(), uuid.New()
 			_, err := usecases.NewTournamentStatusUseCase(repo, newStubAccountService()).
-				Override(context.Background(), organizerID, actorID, tournamentID, string(test.to), validReason)
+				Override(context.Background(), accountID, tournamentID, string(test.to), validReason)
 			if !errors.Is(err, usecases.ErrInvalidStatusTransition) {
 				t.Fatalf("expected invalid transition error, got %v", err)
 			}
@@ -143,9 +142,9 @@ func TestOverrideRejectsForbiddenTransitions(t *testing.T) {
 func TestOverrideRejectsNoOpChange(t *testing.T) {
 	repo := &statusRepositoryStub{current: models.TournamentStatusOngoing}
 
-	organizerID, actorID, tournamentID := uuid.New(), uuid.New(), uuid.New()
+	accountID, tournamentID := uuid.New(), uuid.New()
 	_, err := usecases.NewTournamentStatusUseCase(repo, newStubAccountService()).
-		Override(context.Background(), organizerID, actorID, tournamentID, "ONGOING", validReason)
+		Override(context.Background(), accountID, tournamentID, "ONGOING", validReason)
 	if !errors.Is(err, usecases.ErrStatusUnchanged) {
 		t.Fatalf("expected unchanged-status error, got %v", err)
 	}
@@ -170,9 +169,9 @@ func TestOverrideRequiresAReason(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			repo := &statusRepositoryStub{current: models.TournamentStatusRegistrationOpen}
 
-			organizerID, actorID, tournamentID := uuid.New(), uuid.New(), uuid.New()
+			accountID, tournamentID := uuid.New(), uuid.New()
 			_, err := usecases.NewTournamentStatusUseCase(repo, newStubAccountService()).
-				Override(context.Background(), organizerID, actorID, tournamentID, "ONGOING", test.reason)
+				Override(context.Background(), accountID, tournamentID, "ONGOING", test.reason)
 			if !errors.Is(err, usecases.ErrOverrideReasonRequired) {
 				t.Fatalf("expected reason-required error, got %v", err)
 			}
@@ -186,9 +185,9 @@ func TestOverrideRequiresAReason(t *testing.T) {
 func TestOverrideStoresTrimmedReason(t *testing.T) {
 	repo := &statusRepositoryStub{current: models.TournamentStatusRegistrationOpen}
 
-	organizerID, actorID, tournamentID := uuid.New(), uuid.New(), uuid.New()
+	accountID, tournamentID := uuid.New(), uuid.New()
 	result, err := usecases.NewTournamentStatusUseCase(repo, newStubAccountService()).
-		Override(context.Background(), organizerID, actorID, tournamentID, "ONGOING", "   "+validReason+"   ")
+		Override(context.Background(), accountID, tournamentID, "ONGOING", "   "+validReason+"   ")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -200,9 +199,9 @@ func TestOverrideStoresTrimmedReason(t *testing.T) {
 func TestOverrideNormalisesAndValidatesStatusInput(t *testing.T) {
 	t.Run("accepts lowercase and padding", func(t *testing.T) {
 		repo := &statusRepositoryStub{current: models.TournamentStatusRegistrationOpen}
-		organizerID, actorID, tournamentID := uuid.New(), uuid.New(), uuid.New()
+		accountID, tournamentID := uuid.New(), uuid.New()
 		if _, err := usecases.NewTournamentStatusUseCase(repo, newStubAccountService()).
-			Override(context.Background(), organizerID, actorID, tournamentID, "  ongoing  ", validReason); err != nil {
+			Override(context.Background(), accountID, tournamentID, "  ongoing  ", validReason); err != nil {
 			t.Fatalf("expected normalised status to be accepted, got %v", err)
 		}
 		if repo.persistedTo != models.TournamentStatusOngoing {
@@ -212,9 +211,9 @@ func TestOverrideNormalisesAndValidatesStatusInput(t *testing.T) {
 
 	t.Run("rejects an unknown status", func(t *testing.T) {
 		repo := &statusRepositoryStub{current: models.TournamentStatusRegistrationOpen}
-		organizerID, actorID, tournamentID := uuid.New(), uuid.New(), uuid.New()
+		accountID, tournamentID := uuid.New(), uuid.New()
 		_, err := usecases.NewTournamentStatusUseCase(repo, newStubAccountService()).
-			Override(context.Background(), organizerID, actorID, tournamentID, "BANANA", validReason)
+			Override(context.Background(), accountID, tournamentID, "BANANA", validReason)
 		if !errors.Is(err, usecases.ErrUnknownStatus) {
 			t.Fatalf("expected unknown-status error, got %v", err)
 		}
@@ -233,9 +232,9 @@ func TestOverrideTranslatesOwnershipFailureToNotFound(t *testing.T) {
 		err:     repositories.ErrTournamentNotFound,
 	}
 
-	organizerID, actorID, tournamentID := uuid.New(), uuid.New(), uuid.New()
+	accountID, tournamentID := uuid.New(), uuid.New()
 	_, err := usecases.NewTournamentStatusUseCase(repo, newStubAccountService()).
-		Override(context.Background(), organizerID, actorID, tournamentID, "ONGOING", validReason)
+		Override(context.Background(), accountID, tournamentID, "ONGOING", validReason)
 	if !errors.Is(err, usecases.ErrTournamentNotFound) {
 		t.Fatalf("expected tournament-not-found error, got %v", err)
 	}

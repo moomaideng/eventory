@@ -69,12 +69,11 @@ func RegisterTournamentStatusRoutes(api huma.API, statuses *usecases.TournamentS
 		if err != nil {
 			return nil, err
 		}
-		profile, err := middlewares.GetOrganizerProfile(ctx)
-		if err != nil {
+		if _, err := middlewares.GetOrganizerProfile(ctx); err != nil {
 			return nil, tournamentStatusHTTPError(err)
 		}
 
-		result, err := statuses.Override(ctx, profile.AccountID, accountID, input.TournamentID, input.Body.Status, input.Body.Reason)
+		result, err := statuses.Override(ctx, accountID, input.TournamentID, input.Body.Status, input.Body.Reason)
 		if err != nil {
 			return nil, tournamentStatusHTTPError(err)
 		}

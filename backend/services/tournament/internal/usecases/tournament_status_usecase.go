@@ -100,8 +100,7 @@ func NewTournamentStatusUseCase(repo repositories.TournamentStatusRepository, ac
 // final" confirmation instead.
 func (u *TournamentStatusUseCase) Override(
 	ctx context.Context,
-	organizerID, actorAccountID uuid.UUID,
-	tournamentID uuid.UUID,
+	accountID, tournamentID uuid.UUID,
 	rawStatus, rawReason string,
 ) (*TournamentStatusOverride, error) {
 	to := models.TournamentStatus(strings.ToUpper(strings.TrimSpace(rawStatus)))
@@ -114,14 +113,14 @@ func (u *TournamentStatusUseCase) Override(
 		return nil, ErrOverrideReasonRequired
 	}
 
-	actor, err := u.accountSvc.GetAccount(ctx, actorAccountID)
+	actor, err := u.accountSvc.GetAccount(ctx, accountID)
 	if err != nil {
 		return nil, err
 	}
 	actorDisplayName := actor.DisplayName
 
 	var from models.TournamentStatus
-	change, err := u.repo.ApplyOverride(ctx, organizerID, actorAccountID, actorDisplayName, tournamentID, reason,
+	change, err := u.repo.ApplyOverride(ctx, accountID, actorDisplayName, tournamentID, reason,
 		func(current *models.Tournament) (models.TournamentStatus, error) {
 			from = current.Status
 			if current.Status == to {
@@ -160,9 +159,9 @@ type TournamentStatusDetail struct {
 // moved to, and its override trail, newest first.
 func (u *TournamentStatusUseCase) History(
 	ctx context.Context,
-	organizerID, tournamentID uuid.UUID,
+	accountID, tournamentID uuid.UUID,
 ) (*TournamentStatusDetail, error) {
-	history, err := u.repo.ListHistory(ctx, organizerID, tournamentID)
+	history, err := u.repo.ListHistory(ctx, accountID, tournamentID)
 	if err != nil {
 		if errors.Is(err, repositories.ErrTournamentNotFound) {
 			return nil, ErrTournamentNotFound
