@@ -62,9 +62,14 @@ func ptr[T any](v T) *T { return &v }
 func baseTournament(ownerID uuid.UUID) *models.Tournament {
 	now := time.Now()
 	return &models.Tournament{
-		ID:                   uuid.New(),
-		OrganizerID:          ownerID,
-		Name:                 "Original Name",
+		ID: uuid.New(),
+		Staff: []models.TournamentStaff{
+			{
+				AccountID: ownerID,
+				Role:      models.TournamentStaffRoleOwner,
+			},
+		},
+		Name:        "Original Name",
 		Description:          "Original Description",
 		Game:                 "Original Game",
 		Location:             "Original Location",
@@ -225,7 +230,7 @@ func TestCreateTournament_Success(t *testing.T) {
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if got.OrganizerID != organizerID || got.Currency != "THB" || !got.Published ||
+		if len(got.Staff) != 1 || got.Staff[0].AccountID != organizerID || got.Staff[0].Role != models.TournamentStaffRoleOwner || got.Currency != "THB" || !got.Published ||
 			got.Status != models.TournamentStatusRegistrationOpen ||
 			got.MinTeamSize != 1 || got.MaxTeamSize != 1 ||
 			repo.createdFunding == nil || repo.createdFunding.GoalAmount != 1000 {

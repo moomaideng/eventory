@@ -82,6 +82,7 @@ func (r *teamLobbyRepository) FindActiveByTournamentAndAccount(ctx context.Conte
 func (r *teamLobbyRepository) find(ctx context.Context, query *gorm.DB) (*models.TournamentTeam, error) {
 	var team models.TournamentTeam
 	err := query.
+		Preload("Tournament.Staff").
 		Preload("Tournament").
 		Preload("Members", func(db *gorm.DB) *gorm.DB { return db.Order("joined_at ASC") }).
 		First(&team).Error

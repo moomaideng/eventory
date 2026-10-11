@@ -12,16 +12,16 @@ import (
 func SeedTournaments(db *gorm.DB) error {
 	now := time.Now().UTC().Truncate(24 * time.Hour)
 	lockedAt := now.Add(-24 * time.Hour)
-	aliceOrganizerID := uuid.MustParse("11111111-0000-4000-8000-000000000001")
-	devOrganizerID := uuid.MustParse("99999999-0000-4000-8000-000000000002")
-	mayaOrganizerID := uuid.MustParse("11111111-0000-4000-8000-000000000003")
+	aliceAccountID := uuid.MustParse("00000000-0000-4000-8000-000000000001")
+	devAccountID := uuid.MustParse("99999999-0000-4000-8000-000000000001")
+	mayaAccountID := uuid.MustParse("00000000-0000-4000-8000-000000000003")
 
 	// Alice keeps the original sample tournaments while Alex has two dedicated
 	// dev-owned tournaments for exercising the organizer dashboard.
 	tournaments := []models.Tournament{
 		{
 			ID:          uuid.MustParse("33333333-0000-4000-8000-000000000001"),
-			OrganizerID: aliceOrganizerID, Name: "Bangkok Valorant Open",
+			Name:        "Bangkok Valorant Open",
 			Description: "A free community tournament for new and experienced Valorant teams.",
 			Game:        "Valorant", Location: "Online", StartsAt: now.AddDate(0, 0, 3).Add(12 * time.Hour),
 			EndsAt: now.AddDate(0, 0, 3).Add(20 * time.Hour), RegistrationDeadline: now.AddDate(0, 0, 2),
@@ -31,7 +31,7 @@ func SeedTournaments(db *gorm.DB) error {
 		},
 		{
 			ID:          uuid.MustParse("33333333-0000-4000-8000-000000000002"),
-			OrganizerID: mayaOrganizerID, Name: "Chula Mobile Legends Cup",
+			Name:        "Chula Mobile Legends Cup",
 			Description: "A weekend Mobile Legends competition for university squads.",
 			Game:        "Mobile Legends", Location: "Chulalongkorn University", StartsAt: now.AddDate(0, 0, 10).Add(9 * time.Hour),
 			EndsAt: now.AddDate(0, 0, 11).Add(18 * time.Hour), RegistrationDeadline: now.AddDate(0, 0, 7),
@@ -41,7 +41,7 @@ func SeedTournaments(db *gorm.DB) error {
 		},
 		{
 			ID:          uuid.MustParse("33333333-0000-4000-8000-000000000003"),
-			OrganizerID: aliceOrganizerID, Name: "SEA Tekken Challenger",
+			Name:        "SEA Tekken Challenger",
 			Description: "An offline fighting-game bracket for challengers across Southeast Asia.",
 			Game:        "Tekken 8", Location: "Siam Paragon, Bangkok", StartsAt: now.AddDate(0, 0, 21).Add(6 * time.Hour),
 			EndsAt: now.AddDate(0, 0, 21).Add(14 * time.Hour), RegistrationDeadline: now.AddDate(0, 0, 17),
@@ -51,7 +51,7 @@ func SeedTournaments(db *gorm.DB) error {
 		},
 		{
 			ID:          uuid.MustParse("33333333-0000-4000-8000-000000000004"),
-			OrganizerID: mayaOrganizerID, Name: "Weekend Chess Blitz",
+			Name:        "Weekend Chess Blitz",
 			Description: "Fast-paced Swiss-system chess for players of every rating.",
 			Game:        "Chess", Location: "Maya Works Studio", StartsAt: now.AddDate(0, 0, 6).Add(7 * time.Hour),
 			EndsAt: now.AddDate(0, 0, 6).Add(12 * time.Hour), RegistrationDeadline: now.AddDate(0, 0, -1),
@@ -61,7 +61,7 @@ func SeedTournaments(db *gorm.DB) error {
 		},
 		{
 			ID:          uuid.MustParse("33333333-0000-4000-8000-000000000005"),
-			OrganizerID: aliceOrganizerID, Name: "Eventory Invitational",
+			Name:        "Eventory Invitational",
 			Description: "A premium multi-day invitational featuring Thailand's top esports teams.",
 			Game:        "Counter-Strike 2", Location: "Queen Sirikit Convention Center", StartsAt: now.AddDate(0, 0, 45).Add(4 * time.Hour),
 			EndsAt: now.AddDate(0, 0, 47).Add(14 * time.Hour), RegistrationDeadline: now.AddDate(0, 0, 35),
@@ -71,7 +71,7 @@ func SeedTournaments(db *gorm.DB) error {
 		},
 		{
 			ID:          uuid.MustParse("33333333-0000-4000-8000-000000000006"),
-			OrganizerID: devOrganizerID, Name: "Dev Arena Clash",
+			Name:        "Dev Arena Clash",
 			Description: "A local development tournament for testing team registration and organizer workflows.",
 			Game:        "Apex Legends", Location: "Online", StartsAt: now.AddDate(0, 0, 14).Add(11 * time.Hour),
 			EndsAt: now.AddDate(0, 0, 14).Add(19 * time.Hour), RegistrationDeadline: now.AddDate(0, 0, 11),
@@ -81,7 +81,7 @@ func SeedTournaments(db *gorm.DB) error {
 		},
 		{
 			ID:          uuid.MustParse("33333333-0000-4000-8000-000000000007"),
-			OrganizerID: devOrganizerID, Name: "Alex's Strategy Cup",
+			Name:        "Alex's Strategy Cup",
 			Description: "A development sample for an upcoming solo strategy tournament.",
 			Game:        "Teamfight Tactics", Location: "Bangkok", StartsAt: now.AddDate(0, 0, 28).Add(10 * time.Hour),
 			EndsAt: now.AddDate(0, 0, 28).Add(17 * time.Hour), RegistrationDeadline: now.AddDate(0, 0, 24),
@@ -95,6 +95,22 @@ func SeedTournaments(db *gorm.DB) error {
 		Columns:   []clause.Column{{Name: "id"}},
 		UpdateAll: true,
 	}).Create(&tournaments).Error; err != nil {
+		return err
+	}
+
+	staff := []models.TournamentStaff{
+		{TournamentID: tournaments[0].ID, AccountID: aliceAccountID, Role: models.TournamentStaffRoleOwner},
+		{TournamentID: tournaments[1].ID, AccountID: mayaAccountID, Role: models.TournamentStaffRoleOwner},
+		{TournamentID: tournaments[2].ID, AccountID: aliceAccountID, Role: models.TournamentStaffRoleOwner},
+		{TournamentID: tournaments[3].ID, AccountID: mayaAccountID, Role: models.TournamentStaffRoleOwner},
+		{TournamentID: tournaments[4].ID, AccountID: aliceAccountID, Role: models.TournamentStaffRoleOwner},
+		{TournamentID: tournaments[5].ID, AccountID: devAccountID, Role: models.TournamentStaffRoleOwner},
+		{TournamentID: tournaments[6].ID, AccountID: devAccountID, Role: models.TournamentStaffRoleOwner},
+	}
+	if err := db.Clauses(clause.OnConflict{
+		Columns:   []clause.Column{{Name: "tournament_id"}, {Name: "account_id"}},
+		UpdateAll: true,
+	}).Create(&staff).Error; err != nil {
 		return err
 	}
 

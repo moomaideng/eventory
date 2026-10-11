@@ -47,10 +47,11 @@ func NewTournamentStatusRepository(db *gorm.DB) TournamentStatusRepository {
 	return &tournamentStatusRepository{db: db}
 }
 
-// ownedTournaments scopes queries to tournaments owned by the given
-// organizer profile (tournaments.organizer_id).
-func ownedTournaments(tx *gorm.DB, organizerID uuid.UUID) *gorm.DB {
-	return tx.Model(&models.Tournament{}).Where("organizer_id = ?", organizerID)
+// ownedTournaments scopes queries to tournaments where the user is an owner or admin.
+func ownedTournaments(tx *gorm.DB, accountID uuid.UUID) *gorm.DB {
+	return tx.Model(&models.Tournament{}).
+		Joins("JOIN tournament_staff ON tournament_staff.tournament_id = tournaments.id").
+		Where("tournament_staff.account_id = ? AND tournament_staff.role IN ?", accountID, []models.TournamentStaffRole{models.TournamentStaffRoleOwner, models.TournamentStaffRoleAdmin})
 }
 
 func (r *tournamentStatusRepository) ApplyOverride(

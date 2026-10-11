@@ -48,7 +48,6 @@ const (
 
 type Tournament struct {
 	ID                   uuid.UUID                  `gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
-	OrganizerID          uuid.UUID                  `gorm:"type:uuid;not null;index"`
 	Name                 string                     `gorm:"type:varchar(160);not null"`
 	Description          string                     `gorm:"type:text;not null"`
 	Game                 string                     `gorm:"type:varchar(80);not null"`
@@ -64,6 +63,7 @@ type Tournament struct {
 	Capacity             int                        `gorm:"not null"`
 	Status               TournamentStatus           `gorm:"type:varchar(32);not null;index:idx_tournaments_public_start,priority:2"`
 	Published            bool                       `gorm:"not null;default:false;index:idx_tournaments_public_start,priority:1"`
+	Staff                []TournamentStaff          `gorm:"foreignKey:TournamentID;constraint:OnDelete:CASCADE;"`
 	Teams                []TournamentTeam           `gorm:"foreignKey:TournamentID;constraint:OnDelete:CASCADE;"`
 	Funding              *TournamentFunding         `gorm:"foreignKey:TournamentID;constraint:OnDelete:CASCADE;"`
 	CreatedAt            time.Time

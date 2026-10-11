@@ -121,7 +121,7 @@ func toAccountResponse(acc *models.Account) AccountResponse {
 
 func toOrganizerProfileResponse(p *models.OrganizerProfile) OrganizerProfileResponse {
 	return OrganizerProfileResponse{
-		ID:             p.ID,
+		ID:             p.AccountID,
 		AccountID:      p.AccountID,
 		OrganizerName:  p.OrganizerName,
 		OrganizerEmail: p.OrganizerEmail,
@@ -132,7 +132,7 @@ func toOrganizerProfileResponse(p *models.OrganizerProfile) OrganizerProfileResp
 
 func toSponsorProfileResponse(p *models.SponsorProfile) SponsorProfileResponse {
 	return SponsorProfileResponse{
-		ID:           p.ID,
+		ID:           p.AccountID,
 		AccountID:    p.AccountID,
 		SponsorName:  p.SponsorName,
 		SponsorEmail: p.SponsorEmail,

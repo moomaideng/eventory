@@ -109,13 +109,13 @@ func (r *accountRepositoryImpl) FindOrganizerProfileByAccountID(ctx context.Cont
 	return &profile, nil
 }
 
-// FindOrganizerProfilesByIDs retrieves organizer profiles matching the given profile UUIDs.
+// FindOrganizerProfilesByIDs retrieves organizer profiles matching the given profile UUIDs (account IDs).
 func (r *accountRepositoryImpl) FindOrganizerProfilesByIDs(ctx context.Context, ids []uuid.UUID) ([]models.OrganizerProfile, error) {
 	if len(ids) == 0 {
 		return nil, nil
 	}
 	var profiles []models.OrganizerProfile
-	if err := r.db.WithContext(ctx).Where("id IN ?", ids).Find(&profiles).Error; err != nil {
+	if err := r.db.WithContext(ctx).Where("account_id IN ?", ids).Find(&profiles).Error; err != nil {
 		return nil, err
 	}
 	return profiles, nil
@@ -127,9 +127,6 @@ func (r *accountRepositoryImpl) UpsertOrganizerProfile(ctx context.Context, prof
 	err := r.db.WithContext(ctx).Where("account_id = ?", profile.AccountID).First(&existing).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			if profile.ID == uuid.Nil {
-				profile.ID = uuid.New()
-			}
 			if err := r.db.WithContext(ctx).Create(profile).Error; err != nil {
 				// Retry in case of concurrent insert
 				var fallback models.OrganizerProfile
@@ -175,9 +172,6 @@ func (r *accountRepositoryImpl) UpsertSponsorProfile(ctx context.Context, profil
 	err := r.db.WithContext(ctx).Where("account_id = ?", profile.AccountID).First(&existing).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			if profile.ID == uuid.Nil {
-				profile.ID = uuid.New()
-			}
 			if err := r.db.WithContext(ctx).Create(profile).Error; err != nil {
 				// Retry in case of concurrent insert
 				var fallback models.SponsorProfile

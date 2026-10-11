@@ -40,8 +40,7 @@ func (account *Account) BeforeSave(_ *gorm.DB) error {
 }
 
 type OrganizerProfile struct {
-	ID             uuid.UUID `gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
-	AccountID      uuid.UUID `gorm:"type:uuid;not null;uniqueIndex"`
+	AccountID      uuid.UUID `gorm:"type:uuid;primaryKey"`
 	OrganizerName  string    `gorm:"type:varchar(150);not null"`
 	OrganizerEmail string    `gorm:"type:varchar(255)"`
 	CreatedAt      time.Time
@@ -55,8 +54,7 @@ func (profile *OrganizerProfile) BeforeSave(_ *gorm.DB) error {
 }
 
 type SponsorProfile struct {
-	ID           uuid.UUID `gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
-	AccountID    uuid.UUID `gorm:"type:uuid;not null;uniqueIndex"`
+	AccountID    uuid.UUID `gorm:"type:uuid;primaryKey"`
 	SponsorName  string    `gorm:"type:varchar(150);not null"`
 	SponsorEmail string    `gorm:"type:varchar(255)"`
 	CreatedAt    time.Time
