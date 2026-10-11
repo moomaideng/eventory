@@ -4,24 +4,11 @@ import React, { useState } from "react";
 import { Plus, Save } from "lucide-react";
 import { useAuth } from "@/context/auth-context";
 import { $api } from "@/lib/api/client";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
-  Field,
-  FieldGroup,
-  FieldLabel,
-} from "@/components/ui/field";
-import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
-import { Textarea } from "@/components/ui/textarea";
-import { FormFieldCard } from "@/features/organizer/components/form-field-card";
-import type { FormField } from "@/features/organizer/schemas";
+import { FormFieldCard } from "@/features/registration-form/components/form-field-card";
+import { FormHeaderCard } from "@/features/registration-form/components/form-header-card";
+import type { FormField } from "@/features/registration-form/schemas";
 import type { components } from "@/lib/api/schema";
 
 type RegistrationFormResponse = components["schemas"]["RegistrationFormResponse"];
@@ -76,7 +63,7 @@ function RegistrationFormEditor({
       type: "SHORT_TEXT",
       label: "",
       description: "",
-      required: false,
+      required: true,
       order: fields.length + 1,
       config: {},
     };
@@ -159,34 +146,12 @@ function RegistrationFormEditor({
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-4 py-8">
       {/* Form Title & Description Card */}
-      <Card className="border-border">
-        <CardHeader>
-          <CardTitle className="text-lg">Registration Form Details</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <FieldGroup>
-            <Field>
-              <FieldLabel htmlFor="form-title">Form Title</FieldLabel>
-              <Input
-                id="form-title"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="e.g. Tournament Registration Form"
-              />
-            </Field>
-            <Field>
-              <FieldLabel htmlFor="form-description">Description</FieldLabel>
-              <Textarea
-                id="form-description"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="Guidelines or instructions for applicants..."
-                rows={3}
-              />
-            </Field>
-          </FieldGroup>
-        </CardContent>
-      </Card>
+      <FormHeaderCard
+        title={title}
+        description={description}
+        onTitleChange={setTitle}
+        onDescriptionChange={setDescription}
+      />
 
       {/* Field Cards List */}
       <div className="flex flex-col gap-4">
@@ -205,30 +170,28 @@ function RegistrationFormEditor({
       </div>
 
       {/* Actions */}
-      <div className="flex flex-col gap-4">
-        {saveSuccess && (
-          <Alert className="border-emerald-500/40 bg-emerald-500/10 text-emerald-900 dark:text-emerald-200">
-            <AlertTitle>Success</AlertTitle>
-            <AlertDescription>Form has been saved successfully.</AlertDescription>
-          </Alert>
-        )}
+      <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
+        <Button
+          type="button"
+          variant="outline"
+          onClick={handleAddField}
+        >
+          <Plus data-icon="inline-start" />
+          Add Question
+        </Button>
 
-        {errorMessage && (
-          <Alert variant="destructive">
-            <AlertTitle>Error</AlertTitle>
-            <AlertDescription>{errorMessage}</AlertDescription>
-          </Alert>
-        )}
+        <div className="flex items-center gap-3">
+          {saveSuccess && (
+            <span className="text-sm font-medium text-primary">
+              Form saved successfully.
+            </span>
+          )}
 
-        <div className="flex items-center justify-between gap-3 pt-2">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={handleAddField}
-          >
-            <Plus data-icon="inline-start" />
-            Add Field
-          </Button>
+          {errorMessage && (
+            <span className="text-sm font-medium text-destructive">
+              {errorMessage}
+            </span>
+          )}
 
           <Button
             type="button"

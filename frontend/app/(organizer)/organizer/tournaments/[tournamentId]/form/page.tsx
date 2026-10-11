@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { RegistrationFormBuilder } from "@/features/organizer/components/registration-form-builder";
+import { RegistrationFormBuilder } from "@/features/registration-form/components/registration-form-builder";
 import { tournamentIdParamSchema } from "@/features/tournaments/schemas";
 
 export const metadata: Metadata = {
