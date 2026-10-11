@@ -31,7 +31,7 @@ func Generate(invoice *models.Invoice) ([]byte, error) {
 	if err := pdf.AddTTFFontData("SarabunBold", boldFont); err != nil {
 		return nil, err
 	}
-	pdf.SetInfo(gopdf.PdfInfo{Title: "Eventory receipt", Author: "Eventory", Subject: "Course-project demonstration receipt"})
+	pdf.SetInfo(gopdf.PdfInfo{Title: "Eventory receipt", Author: "Eventory", Subject: "Payment confirmation"})
 	var drawErr error
 	// Keep wrapping and PDF errors in one place; positions are A4 points.
 	write := func(text string, x, y, width float64, size float64, bold bool) float64 {
@@ -119,7 +119,7 @@ func Generate(invoice *models.Invoice) ([]byte, error) {
 	}
 	pdf.Line(44, 790, 551, 790)
 	pdf.SetTextColor(104, 116, 107)
-	write("Course-project demo · No money transferred · Not proof of payment", 44, 811, 507, 9, false)
+	write("Eventory · Payment receipt", 44, 811, 507, 9, false)
 	if drawErr != nil {
 		return nil, drawErr
 	}
