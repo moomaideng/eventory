@@ -80,7 +80,7 @@ func (m *mockAccountRepository) FindOrganizerProfilesByIDs(ctx context.Context, 
 	out := make([]models.OrganizerProfile, 0, len(ids))
 	for _, profile := range m.organizerProfiles {
 		for _, id := range ids {
-			if profile.ID == id {
+			if profile.AccountID == id {
 				out = append(out, *profile)
 				break
 			}
@@ -94,9 +94,6 @@ func (m *mockAccountRepository) UpsertOrganizerProfile(ctx context.Context, prof
 		existing.OrganizerName = profile.OrganizerName
 		existing.OrganizerEmail = profile.OrganizerEmail
 		return existing, nil
-	}
-	if profile.ID == uuid.Nil {
-		profile.ID = uuid.New()
 	}
 	m.organizerProfiles[profile.AccountID] = profile
 	return profile, nil
@@ -114,9 +111,6 @@ func (m *mockAccountRepository) UpsertSponsorProfile(ctx context.Context, profil
 		existing.SponsorName = profile.SponsorName
 		existing.SponsorEmail = profile.SponsorEmail
 		return existing, nil
-	}
-	if profile.ID == uuid.Nil {
-		profile.ID = uuid.New()
 	}
 	m.sponsorProfiles[profile.AccountID] = profile
 	return profile, nil

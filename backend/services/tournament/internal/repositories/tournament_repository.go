@@ -97,6 +97,7 @@ func (r *tournamentRepositoryImpl) Search(
 	var tournaments []models.Tournament
 	offset := (filters.Page - 1) * filters.PageSize
 	if err := query.Session(&gorm.Session{}).
+		Preload("Staff").
 		Order(orderBy).
 		Limit(filters.PageSize).
 		Offset(offset).
@@ -147,6 +148,7 @@ func (r *tournamentRepositoryImpl) GetPublishedByID(
 	var tournament models.Tournament
 	err := r.db.WithContext(ctx).
 		Where("id = ? AND published = ?", id, true).
+		Preload("Staff").
 		Preload("Teams", func(db *gorm.DB) *gorm.DB {
 			return db.Where("status = ?", models.TournamentTeamStatusAccepted).Order("name ASC")
 		}).
@@ -170,6 +172,7 @@ func (r *tournamentRepositoryImpl) GetByID(
 	var tournament models.Tournament
 	err := r.db.WithContext(ctx).
 		Where("id = ?", id).
+		Preload("Staff").
 		Preload("Funding").
 		First(&tournament).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {

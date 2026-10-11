@@ -47,7 +47,14 @@ func TestOrganizerDashboardOwnershipPostgres(t *testing.T) {
 	organizerID := uuid.New()
 	otherOrganizerID := uuid.New()
 	tournament := models.Tournament{
-		ID: uuid.New(), OrganizerID: organizerID, Name: "Private draft", Game: "Chess",
+		ID: uuid.New(),
+		Staff: []models.TournamentStaff{
+			{
+				AccountID: organizerID,
+				Role:      models.TournamentStaffRoleOwner,
+			},
+		},
+		Name: "Private draft", Game: "Chess",
 		StartsAt: time.Now(), EndsAt: time.Now().Add(time.Hour), RegistrationDeadline: time.Now(),
 		Capacity: 8, Status: models.TournamentStatusRegistrationOpen, Published: false,
 	}

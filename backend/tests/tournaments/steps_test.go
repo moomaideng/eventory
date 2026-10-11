@@ -45,7 +45,7 @@ func (s *discoveryScenario) fixtures() error {
 	if err != nil {
 		return err
 	}
-	org := accountmodels.OrganizerProfile{ID: uuid.New(), AccountID: a.ID, OrganizerName: "Discovery Host", OrganizerEmail: "private-host@test.eventory.gg"}
+	org := accountmodels.OrganizerProfile{AccountID: a.ID, OrganizerName: "Discovery Host", OrganizerEmail: "private-host@test.eventory.gg"}
 	if err := s.app.DB.Create(&org).Error; err != nil {
 		return err
 	}
@@ -68,7 +68,14 @@ func (s *discoveryScenario) fixtures() error {
 			return err
 		}
 		tournament := models.Tournament{
-			ID: uuid.New(), OrganizerID: org.ID, Name: row.name,
+			ID: uuid.New(),
+			Staff: []models.TournamentStaff{
+				{
+					AccountID: a.ID,
+					Role:      models.TournamentStaffRoleOwner,
+				},
+			},
+			Name: row.name,
 			Description: "Rules: best of three; no cheating.", Game: "Valorant", Location: "Online",
 			StartsAt: starts, EndsAt: starts.Add(2 * time.Hour), RegistrationDeadline: starts.Add(-24 * time.Hour),
 			EntryFee: row.fee, Currency: "THB", Capacity: 16, RegistrationMode: models.TournamentRegistrationModeTeam,
@@ -92,6 +99,9 @@ func (s *discoveryScenario) cleanup() error {
 		ids = append(ids, tournament.ID)
 	}
 	if len(ids) > 0 {
+		if err := s.app.DB.Where("tournament_id IN ?", ids).Delete(&models.TournamentStaff{}).Error; err != nil {
+			return err
+		}
 		if err := s.app.DB.Where("id IN ?", ids).Delete(&models.Tournament{}).Error; err != nil {
 			return err
 		}

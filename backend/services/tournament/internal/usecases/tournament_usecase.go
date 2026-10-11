@@ -221,7 +221,7 @@ func (u *TournamentUseCase) GetDetails(
 	}
 
 	return &TournamentDetailsResult{
-		TournamentView:  NewTournamentView(*tournament, names[tournament.OrganizerID]),
+		TournamentView:  NewTournamentView(*tournament, names[tournament.ID]),
 		RegisteredCount: len(acceptedTeams),
 		Funding:         NewFundingStats(tournament.Funding),
 	}, nil
@@ -289,7 +289,12 @@ func (u *TournamentUseCase) CreateTournament(
 	}
 
 	tournament := &models.Tournament{
-		OrganizerID:          organizerID,
+		Staff: []models.TournamentStaff{
+			{
+				AccountID: organizerID,
+				Role:      models.TournamentStaffRoleOwner,
+			},
+		},
 		Name:                 name,
 		Description:          description,
 		Game:                 game,
@@ -328,7 +333,14 @@ func (u *TournamentUseCase) UpdateTournament(
 		return nil, err
 	}
 
-	if tournament.OrganizerID != organizerID {
+	isStaff := false
+	for _, staff := range tournament.Staff {
+		if staff.AccountID == organizerID && (staff.Role == models.TournamentStaffRoleOwner || staff.Role == models.TournamentStaffRoleAdmin) {
+			isStaff = true
+			break
+		}
+	}
+	if !isStaff {
 		return nil, ErrNotTournamentOwner
 	}
 

@@ -320,7 +320,7 @@ func (u *AccountUseCase) BatchGetOrganizerProfiles(ctx context.Context, ids []uu
 	}
 	foundSet := make(map[uuid.UUID]struct{}, len(profiles))
 	for _, profile := range profiles {
-		foundSet[profile.ID] = struct{}{}
+		foundSet[profile.AccountID] = struct{}{}
 	}
 	for _, id := range ids {
 		if _, ok := foundSet[id]; !ok {

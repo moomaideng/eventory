@@ -207,7 +207,7 @@ func (u *TeamLobbyUseCase) toView(ctx context.Context, team *models.TournamentTe
 	if err != nil {
 		return nil, err
 	}
-	view := NewTeamLobbyView(team, names[team.Tournament.OrganizerID], NewTeamMemberViews(team.Members, accounts))
+	view := NewTeamLobbyView(team, names[team.Tournament.ID], NewTeamMemberViews(team.Members, accounts))
 	return &view, nil
 }
 

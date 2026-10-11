@@ -21,7 +21,7 @@ func NewTournamentView(tournament models.Tournament, organizerName string) Tourn
 func NewTournamentViews(tournaments []models.Tournament, names map[uuid.UUID]string) []TournamentView {
 	views := make([]TournamentView, len(tournaments))
 	for i, tournament := range tournaments {
-		views[i] = NewTournamentView(tournament, names[tournament.OrganizerID])
+		views[i] = NewTournamentView(tournament, names[tournament.ID])
 	}
 	return views
 }
