@@ -44,18 +44,21 @@ jobs:
 
             echo '==> Starting Postgres...'
             sudo docker compose --env-file .env -f docker-compose.yml up -d --wait postgres
+            sudo docker compose --env-file .env -f docker-compose.yml exec -T postgres bash /docker-entrypoint-initdb.d/01-init-databases.sh
 
             if [ '$RESET_DB' = 'true' ]; then
-              echo '==> Stopping backend services (account and tournament) before dropping schemas...'
-              sudo docker compose --env-file .env -f docker-compose.yml stop account tournament
+              echo '==> Stopping backend services before dropping schemas...'
+              sudo docker compose --env-file .env -f docker-compose.yml stop account tournament payment
 
-              echo '==> Resetting database schemas (account_db and tournament_db) and migrating...'
+              echo '==> Resetting service database schemas and migrating...'
               sudo docker compose --env-file .env -f docker-compose.yml run --rm account-migrate ./migrate -reset
               sudo docker compose --env-file .env -f docker-compose.yml run --rm tournament-migrate ./migrate -reset
+              sudo docker compose --env-file .env -f docker-compose.yml run --rm payment-migrate ./migrate -reset
             else
-              echo '==> Running migrations (account and tournament)...'
+              echo '==> Running service migrations...'
               sudo docker compose --env-file .env -f docker-compose.yml run --rm account-migrate
               sudo docker compose --env-file .env -f docker-compose.yml run --rm tournament-migrate
+              sudo docker compose --env-file .env -f docker-compose.yml run --rm payment-migrate
             fi
 
             if [ '$SEED_DATA' = 'true' ]; then
@@ -64,8 +67,8 @@ jobs:
               sudo docker compose --env-file .env -f docker-compose.yml run --rm tournament-migrate ./seed
             fi
 
-            echo '==> Starting backend services (account and tournament)...'
-            sudo docker compose --env-file .env -f docker-compose.yml up -d account tournament
+            echo '==> Starting backend services...'
+            sudo docker compose --env-file .env -f docker-compose.yml up -d account tournament payment
 
             echo '==> Database operation completed successfully!'
           "

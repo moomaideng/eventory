@@ -11,6 +11,7 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
+    "test:payments": "node --experimental-strip-types --test features/payments/payments.test.mjs",
     "format": "prettier --write .",
     "openapi:generate": "node ../scripts/merge-openapi.mjs && openapi-typescript ./.openapi.merged.json -o ./lib/api/schema.d.ts"
   },
