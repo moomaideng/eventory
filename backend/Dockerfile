@@ -17,13 +17,16 @@ RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/api ./services/${S
     CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/migrate ./services/${SERVICE}/cmd/migrate && \
     CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/seed ./services/${SERVICE}/cmd/seed
 
+RUN if [ "$SERVICE" = "payment" ]; then mkdir -p /out/licenses && \
+    cp services/payment/internal/receiptpdf/fonts/OFL.txt /out/licenses/Sarabun-OFL.txt; fi
+
 FROM alpine:3.22
 
 RUN apk add --no-cache ca-certificates wget && \
     addgroup -S app && adduser -S -G app app
 
 WORKDIR /app
-COPY --from=builder /out/api /out/migrate /out/seed ./
+COPY --from=builder /out/ ./
 
 USER app
 

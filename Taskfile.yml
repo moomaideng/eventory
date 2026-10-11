@@ -15,6 +15,7 @@ tasks:
   dev:
     desc: Start infra and apps, then run the host frontend
     cmds:
+      - task: migrate
       - "{{.COMPOSE_APPS}} up -d --build"
       - task: frontend:install
       - npm --prefix frontend run dev
@@ -32,11 +33,13 @@ tasks:
   apps:
     desc: Rebuild and restart infra and apps
     cmds:
+      - task: migrate
       - "{{.COMPOSE_APPS}} up -d --build"
 
   web:
     desc: Start infra, apps, and the frontend container
     cmds:
+      - task: migrate
       - "{{.COMPOSE_ALL}} up -d --build"
 
   frontend:
@@ -58,17 +61,19 @@ tasks:
       - cp package-lock.json node_modules/.install-stamp
 
   migrate:
-    desc: Apply account_db schema, then tournament_db schema
+    desc: Create service databases and apply their schemas
     cmds:
       - "{{.COMPOSE_APPS}} up -d --build --wait postgres"
-      - "{{.COMPOSE_APPS}} up -d --build --force-recreate account-migrate tournament-migrate"
-      - "{{.COMPOSE_APPS}} wait account-migrate tournament-migrate"
+      - "{{.COMPOSE_APPS}} exec -T postgres bash /docker-entrypoint-initdb.d/01-init-databases.sh"
+      - "{{.COMPOSE_APPS}} up -d --build --force-recreate account-migrate tournament-migrate payment-migrate"
+      - "{{.COMPOSE_APPS}} wait account-migrate tournament-migrate payment-migrate"
 
   seed:
-    desc: Seed account_db, then tournament_db (apps must already be up)
+    desc: Seed sample accounts, tournaments and mock payments (apps must already be up)
     cmds:
       - go -C backend run ./services/account/cmd/seed
       - go -C backend run ./services/tournament/cmd/seed
+      - go -C backend run ./services/payment/cmd/seed
 
   db:reset:
     desc: Stop the stack and delete the local Postgres and Mongodb volume
