@@ -97,7 +97,7 @@ func (r *tournamentRepositoryImpl) Search(
 	var tournaments []models.Tournament
 	offset := (filters.Page - 1) * filters.PageSize
 	if err := query.Session(&gorm.Session{}).
-		Preload("Staff").
+		Preload("Staff", orderedStaff).
 		Order(orderBy).
 		Limit(filters.PageSize).
 		Offset(offset).
@@ -148,7 +148,7 @@ func (r *tournamentRepositoryImpl) GetPublishedByID(
 	var tournament models.Tournament
 	err := r.db.WithContext(ctx).
 		Where("id = ? AND published = ?", id, true).
-		Preload("Staff").
+		Preload("Staff", orderedStaff).
 		Preload("Teams", func(db *gorm.DB) *gorm.DB {
 			return db.Where("status = ?", models.TournamentTeamStatusAccepted).Order("name ASC")
 		}).
@@ -172,7 +172,7 @@ func (r *tournamentRepositoryImpl) GetByID(
 	var tournament models.Tournament
 	err := r.db.WithContext(ctx).
 		Where("id = ?", id).
-		Preload("Staff").
+		Preload("Staff", orderedStaff).
 		Preload("Funding").
 		First(&tournament).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -209,7 +209,7 @@ func (r *tournamentRepositoryImpl) Update(
 	ctx context.Context,
 	tournament *models.Tournament,
 ) error {
-	return r.db.WithContext(ctx).Save(tournament).Error
+	return r.db.WithContext(ctx).Omit("Staff").Save(tournament).Error
 }
 
 func (r *tournamentRepositoryImpl) GetActiveTeamCount(
@@ -241,4 +241,10 @@ func (r *tournamentRepositoryImpl) GetActiveTeamCount(
 func escapeLikePattern(value string) string {
 	replacer := strings.NewReplacer("\\", "\\\\", "%", "\\%", "_", "\\_")
 	return replacer.Replace(value)
+}
+
+// orderedStaff preloads a tournament's staff in a stable order so the owner
+// shown as the organizer is deterministic.
+func orderedStaff(db *gorm.DB) *gorm.DB {
+	return db.Order("tournament_staff.created_at ASC, tournament_staff.account_id ASC")
 }

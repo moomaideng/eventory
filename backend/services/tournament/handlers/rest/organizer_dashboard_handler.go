@@ -72,7 +72,7 @@ func RegisterOrganizerDashboardRoutes(api huma.API, dashboard *usecases.Organize
 		if err != nil {
 			return nil, organizerDashboardHTTPError(err)
 		}
-		result, err := dashboard.List(ctx, profile.ID, input.Page, input.PageSize)
+		result, err := dashboard.List(ctx, profile.AccountID, input.Page, input.PageSize)
 		if err != nil {
 			return nil, organizerDashboardHTTPError(err)
 		}
@@ -94,7 +94,7 @@ func RegisterOrganizerDashboardRoutes(api huma.API, dashboard *usecases.Organize
 		if err != nil {
 			return nil, organizerDashboardHTTPError(err)
 		}
-		result, err := dashboard.Get(ctx, profile.ID, input.TournamentID)
+		result, err := dashboard.Get(ctx, profile.AccountID, input.TournamentID)
 		if err != nil {
 			return nil, organizerDashboardHTTPError(err)
 		}
