@@ -87,7 +87,7 @@ func (c *AccountClient) BatchGetOrganizerProfiles(ctx context.Context, ids []uui
 		if err != nil {
 			continue
 		}
-		out[info.ID] = info
+		out[info.AccountID] = info
 	}
 	return out, nil
 }
@@ -116,16 +116,11 @@ func toOrganizerInfo(profile *accountv1.OrganizerProfile) (ports.OrganizerInfo, 
 	if profile == nil {
 		return ports.OrganizerInfo{}, ports.ErrOrganizerNotFound
 	}
-	id, err := uuid.Parse(profile.GetId())
-	if err != nil {
-		return ports.OrganizerInfo{}, err
-	}
 	accountID, err := uuid.Parse(profile.GetAccountId())
 	if err != nil {
 		return ports.OrganizerInfo{}, err
 	}
 	return ports.OrganizerInfo{
-		ID:            id,
 		AccountID:     accountID,
 		OrganizerName: profile.GetOrganizerName(),
 	}, nil

@@ -91,9 +91,8 @@ func (x *Account) GetStatus() string {
 
 type OrganizerProfile struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	AccountId     string                 `protobuf:"bytes,2,opt,name=account_id,json=accountId,proto3" json:"account_id,omitempty"`
-	OrganizerName string                 `protobuf:"bytes,3,opt,name=organizer_name,json=organizerName,proto3" json:"organizer_name,omitempty"`
+	AccountId     string                 `protobuf:"bytes,1,opt,name=account_id,json=accountId,proto3" json:"account_id,omitempty"`
+	OrganizerName string                 `protobuf:"bytes,2,opt,name=organizer_name,json=organizerName,proto3" json:"organizer_name,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -126,13 +125,6 @@ func (x *OrganizerProfile) ProtoReflect() protoreflect.Message {
 // Deprecated: Use OrganizerProfile.ProtoReflect.Descriptor instead.
 func (*OrganizerProfile) Descriptor() ([]byte, []int) {
 	return file_account_v1_account_proto_rawDescGZIP(), []int{1}
-}
-
-func (x *OrganizerProfile) GetId() string {
-	if x != nil {
-		return x.Id
-	}
-	return ""
 }
 
 func (x *OrganizerProfile) GetAccountId() string {
@@ -439,12 +431,11 @@ const file_account_v1_account_proto_rawDesc = "" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x16\n" +
 	"\x06handle\x18\x02 \x01(\tR\x06handle\x12!\n" +
 	"\fdisplay_name\x18\x03 \x01(\tR\vdisplayName\x12\x16\n" +
-	"\x06status\x18\x04 \x01(\tR\x06status\"h\n" +
-	"\x10OrganizerProfile\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1d\n" +
+	"\x06status\x18\x04 \x01(\tR\x06status\"X\n" +
+	"\x10OrganizerProfile\x12\x1d\n" +
 	"\n" +
-	"account_id\x18\x02 \x01(\tR\taccountId\x12%\n" +
-	"\x0eorganizer_name\x18\x03 \x01(\tR\rorganizerName\":\n" +
+	"account_id\x18\x01 \x01(\tR\taccountId\x12%\n" +
+	"\x0eorganizer_name\x18\x02 \x01(\tR\rorganizerName\":\n" +
 	"\x17BatchGetAccountsRequest\x12\x1f\n" +
 	"\vaccount_ids\x18\x01 \x03(\tR\n" +
 	"accountIds\"o\n" +

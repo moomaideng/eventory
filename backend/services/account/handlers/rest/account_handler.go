@@ -56,7 +56,6 @@ type UpdateAccountInput struct {
 
 // OrganizerProfileResponse represents the public payload for an OrganizerProfile entity.
 type OrganizerProfileResponse struct {
-	ID             uuid.UUID `json:"id" doc:"Organizer profile UUID"`
 	AccountID      uuid.UUID `json:"accountId" doc:"Associated account UUID"`
 	OrganizerName  string    `json:"organizerName" doc:"Organizer organization or brand name"`
 	OrganizerEmail string    `json:"organizerEmail" doc:"Contact email for organizer"`
@@ -82,7 +81,6 @@ type UpsertOrganizerProfileInput struct {
 
 // SponsorProfileResponse represents the public payload for a SponsorProfile entity.
 type SponsorProfileResponse struct {
-	ID           uuid.UUID `json:"id" doc:"Sponsor profile UUID"`
 	AccountID    uuid.UUID `json:"accountId" doc:"Associated account UUID"`
 	SponsorName  string    `json:"sponsorName" doc:"Sponsor company or organization name"`
 	SponsorEmail string    `json:"sponsorEmail" doc:"Contact email for sponsorship communications"`
@@ -121,7 +119,6 @@ func toAccountResponse(acc *models.Account) AccountResponse {
 
 func toOrganizerProfileResponse(p *models.OrganizerProfile) OrganizerProfileResponse {
 	return OrganizerProfileResponse{
-		ID:             p.AccountID,
 		AccountID:      p.AccountID,
 		OrganizerName:  p.OrganizerName,
 		OrganizerEmail: p.OrganizerEmail,
@@ -132,7 +129,6 @@ func toOrganizerProfileResponse(p *models.OrganizerProfile) OrganizerProfileResp
 
 func toSponsorProfileResponse(p *models.SponsorProfile) SponsorProfileResponse {
 	return SponsorProfileResponse{
-		ID:           p.AccountID,
 		AccountID:    p.AccountID,
 		SponsorName:  p.SponsorName,
 		SponsorEmail: p.SponsorEmail,
