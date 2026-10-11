@@ -31,7 +31,7 @@ func Generate(invoice *models.Invoice) ([]byte, error) {
 	if err := pdf.AddTTFFontData("SarabunBold", boldFont); err != nil {
 		return nil, err
 	}
-	pdf.SetInfo(gopdf.PdfInfo{Title: "Eventory mock receipt", Author: "Eventory", Subject: "Mock payment — no money transferred"})
+	pdf.SetInfo(gopdf.PdfInfo{Title: "Eventory receipt", Author: "Eventory", Subject: "Course-project demonstration receipt"})
 	var drawErr error
 	// Keep wrapping and PDF errors in one place; positions are A4 points.
 	write := func(text string, x, y, width float64, size float64, bold bool) float64 {
@@ -68,20 +68,19 @@ func Generate(invoice *models.Invoice) ([]byte, error) {
 	write("Eventory.", 64, 78, 240, 26, true)
 	write("PAYMENT RECEIPT", 365, 72, 170, 11, true)
 	write("Tournament management", 64, 102, 240, 10, false)
-	write("MOCK / TEST ONLY", 365, 96, 170, 9, false)
 
 	pdf.SetTextColor(49, 112, 62)
-	write("Mock payment — no money transferred", 44, 157, 507, 13, true)
+	write("Payment confirmation", 44, 157, 507, 13, true)
 	pdf.SetTextColor(104, 116, 107)
-	write("For testing only. This is not a bank slip or tax receipt.", 44, 178, 507, 10, false)
+	write("Keep this receipt for your records.", 44, 178, 507, 10, false)
 
 	pdf.SetFillColor(240, 246, 240)
 	if err := pdf.Rectangle(44, 203, 551, 298, "F", 10, 8); err != nil {
 		return nil, err
 	}
 	pdf.SetTextColor(49, 112, 62)
-	write("TOTAL PAID (MOCK)", 64, 232, 300, 10, true)
-	write("PAID / MOCK", 434, 232, 100, 10, true)
+	write("TOTAL PAID", 64, 232, 300, 10, true)
+	write("PAID", 434, 232, 100, 10, true)
 	pdf.SetTextColor(26, 45, 31)
 	write(formatAmount(invoice), 64, 277, 467, 30, true)
 
@@ -96,7 +95,7 @@ func Generate(invoice *models.Invoice) ([]byte, error) {
 		{"Receipt ID", invoice.Receipt.ID.String(), 44, 369, 240},
 		{"Paid at (UTC)", invoice.PaidAt.UTC().Format("02 Jan 2006, 15:04:05 UTC"), 318, 369, 233},
 		{"Invoice ID", invoice.ID.String(), 44, 421, 240},
-		{"Provider", invoice.Provider, 318, 421, 233},
+		{"Currency", invoice.Currency, 318, 421, 233},
 		{"Payer account", invoice.PayerAccountID.String(), 44, 473, 507},
 	} {
 		pdf.SetTextColor(104, 116, 107)
@@ -120,7 +119,7 @@ func Generate(invoice *models.Invoice) ([]byte, error) {
 	}
 	pdf.Line(44, 790, 551, 790)
 	pdf.SetTextColor(104, 116, 107)
-	write("Eventory · Mock receipt · Not proof of an actual transfer", 44, 811, 507, 9, false)
+	write("Course-project demo · No money transferred · Not proof of payment", 44, 811, 507, 9, false)
 	if drawErr != nil {
 		return nil, drawErr
 	}
