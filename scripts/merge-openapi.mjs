@@ -1,13 +1,13 @@
 #!/usr/bin/env node
 /**
- * Merge Account and Tournament OpenAPI docs into one file for openapi-typescript.
- * Services must be reachable on the ports published by Compose (8081 and 8082).
+ * Merge public service contracts for openapi-typescript (ports 8081–8083).
  */
 import { writeFileSync } from "node:fs";
 
 const sources = [
   { name: "account", url: process.env.ACCOUNT_OPENAPI_URL || "http://127.0.0.1:8081/openapi.json" },
   { name: "tournament", url: process.env.TOURNAMENT_OPENAPI_URL || "http://127.0.0.1:8082/openapi.json" },
+  { name: "payment", url: process.env.PAYMENT_OPENAPI_URL || "http://127.0.0.1:8083/openapi.json" },
 ];
 
 const merged = {
@@ -23,7 +23,11 @@ for (const source of sources) {
     throw new Error(`Failed to fetch ${source.name} OpenAPI from ${source.url}: ${response.status}`);
   }
   const doc = await response.json();
-  Object.assign(merged.paths, doc.paths || {});
+  for (const [path, operation] of Object.entries(doc.paths || {})) {
+    if (path.startsWith("/internal/")) continue;
+    if (source.name === "payment" && !path.startsWith("/api/v1/payments")) continue;
+    merged.paths[path] = operation;
+  }
   Object.assign(merged.components.schemas, doc.components?.schemas || {});
   Object.assign(merged.components.securitySchemes, doc.components?.securitySchemes || {});
 }

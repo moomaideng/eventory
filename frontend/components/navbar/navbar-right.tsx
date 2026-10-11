@@ -18,7 +18,14 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { ChevronDown, LogOut, Sparkles, LogIn, Check } from "lucide-react";
+import {
+  ChevronDown,
+  LogOut,
+  Sparkles,
+  LogIn,
+  Check,
+  ReceiptText,
+} from "lucide-react";
 
 const PERSONA_CONFIG: {
   id: UserRole;
@@ -173,6 +180,10 @@ export function NavbarRight({
                 <DropdownMenuSeparator className="my-1.5" />
 
                 <DropdownMenuGroup>
+                  <DropdownMenuItem render={<Link href="/payments" />}>
+                    <ReceiptText data-icon="inline-start" />
+                    My payments
+                  </DropdownMenuItem>
                   <DropdownMenuItem
                     onClick={logout}
                     variant="destructive"
