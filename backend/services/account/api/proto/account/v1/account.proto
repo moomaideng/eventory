@@ -8,6 +8,7 @@ service AccountService {
   rpc BatchGetAccounts(BatchGetAccountsRequest) returns (BatchGetAccountsResponse);
   rpc BatchGetOrganizerProfiles(BatchGetOrganizerProfilesRequest) returns (BatchGetOrganizerProfilesResponse);
   rpc GetOrganizerProfileByAccountID(GetOrganizerProfileByAccountIDRequest) returns (GetOrganizerProfileByAccountIDResponse);
+  rpc GetAccountByHandle(GetAccountByHandleRequest) returns (GetAccountByHandleResponse);
 }
 
 message Account {
@@ -46,4 +47,12 @@ message GetOrganizerProfileByAccountIDRequest {
 
 message GetOrganizerProfileByAccountIDResponse {
   OrganizerProfile profile = 1;
+}
+
+message GetAccountByHandleRequest {
+  string handle = 1;
+}
+
+message GetAccountByHandleResponse {
+  Account account = 1;
 }

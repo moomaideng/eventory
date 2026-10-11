@@ -344,6 +344,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/tournaments/{id}/staff": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List tournament staff
+         * @description Lists all staff members (owner, admins, referees) assigned to a tournament.
+         */
+        get: operations["list-tournament-staff"];
+        put?: never;
+        /**
+         * Invite a tournament staff member
+         * @description Invites an active user by their handle and assigns them an ADMIN or REFEREE role.
+         */
+        post: operations["invite-tournament-staff"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{id}/staff/{accountId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Remove tournament staff member
+         * @description Removes an assigned staff member from the tournament.
+         */
+        delete: operations["remove-tournament-staff"];
+        options?: never;
+        head?: never;
+        /**
+         * Update staff member role
+         * @description Updates an existing staff member's role between ADMIN and REFEREE.
+         */
+        patch: operations["update-tournament-staff-role"];
+        trace?: never;
+    };
     "/api/v1/tournaments/{id}/status": {
         parameters: {
             query?: never;
@@ -906,6 +954,21 @@ export interface components {
             id: string;
             tournamentId: string;
         };
+        InviteStaffRequest: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/InviteStaffRequest.json
+             */
+            readonly $schema?: string;
+            /** @description Public handle of the user to invite */
+            handle: string;
+            /**
+             * @description Staff role to assign (ADMIN or REFEREE)
+             * @enum {string}
+             */
+            role: "ADMIN" | "REFEREE";
+        };
         ListFormResponsesOutputBody: {
             /**
              * Format: uri
@@ -1164,6 +1227,31 @@ export interface components {
             startAt: string;
             status: string;
         };
+        TournamentStaffListBody: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/TournamentStaffListBody.json
+             */
+            readonly $schema?: string;
+            items: components["schemas"]["TournamentStaffResponse"][] | null;
+        };
+        TournamentStaffResponse: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/TournamentStaffResponse.json
+             */
+            readonly $schema?: string;
+            accountId: string;
+            /** Format: date-time */
+            createdAt: string;
+            displayName: string;
+            handle: string;
+            /** @enum {string} */
+            role: "OWNER" | "ADMIN" | "REFEREE";
+            tournamentId: string;
+        };
         TournamentStatusChangeResponse: {
             actorId: string;
             actorName?: string;
@@ -1194,6 +1282,19 @@ export interface components {
             /** Format: int64 */
             memberCount: number;
             name: string;
+        };
+        UpdateStaffRoleRequest: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/UpdateStaffRoleRequest.json
+             */
+            readonly $schema?: string;
+            /**
+             * @description New staff role (ADMIN or REFEREE)
+             * @enum {string}
+             */
+            role: "ADMIN" | "REFEREE";
         };
         UpdateTournamentRequest: {
             /**
@@ -2046,6 +2147,144 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["OrganizerDashboardOutputBody"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "list-tournament-staff": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Tournament ID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TournamentStaffListBody"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "invite-tournament-staff": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Tournament ID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InviteStaffRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TournamentStaffResponse"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "remove-tournament-staff": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Tournament ID */
+                id: string;
+                /** @description Staff member account ID to remove */
+                accountId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "update-tournament-staff-role": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Tournament ID */
+                id: string;
+                /** @description Staff member account ID */
+                accountId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateStaffRoleRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TournamentStaffResponse"];
                 };
             };
             /** @description Error */

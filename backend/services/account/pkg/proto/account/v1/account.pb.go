@@ -421,6 +421,94 @@ func (x *GetOrganizerProfileByAccountIDResponse) GetProfile() *OrganizerProfile 
 	return nil
 }
 
+type GetAccountByHandleRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Handle        string                 `protobuf:"bytes,1,opt,name=handle,proto3" json:"handle,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetAccountByHandleRequest) Reset() {
+	*x = GetAccountByHandleRequest{}
+	mi := &file_account_v1_account_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetAccountByHandleRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetAccountByHandleRequest) ProtoMessage() {}
+
+func (x *GetAccountByHandleRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_account_v1_account_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetAccountByHandleRequest.ProtoReflect.Descriptor instead.
+func (*GetAccountByHandleRequest) Descriptor() ([]byte, []int) {
+	return file_account_v1_account_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *GetAccountByHandleRequest) GetHandle() string {
+	if x != nil {
+		return x.Handle
+	}
+	return ""
+}
+
+type GetAccountByHandleResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Account       *Account               `protobuf:"bytes,1,opt,name=account,proto3" json:"account,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetAccountByHandleResponse) Reset() {
+	*x = GetAccountByHandleResponse{}
+	mi := &file_account_v1_account_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetAccountByHandleResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetAccountByHandleResponse) ProtoMessage() {}
+
+func (x *GetAccountByHandleResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_account_v1_account_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetAccountByHandleResponse.ProtoReflect.Descriptor instead.
+func (*GetAccountByHandleResponse) Descriptor() ([]byte, []int) {
+	return file_account_v1_account_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *GetAccountByHandleResponse) GetAccount() *Account {
+	if x != nil {
+		return x.Account
+	}
+	return nil
+}
+
 var File_account_v1_account_proto protoreflect.FileDescriptor
 
 const file_account_v1_account_proto_rawDesc = "" +
@@ -451,11 +539,16 @@ const file_account_v1_account_proto_rawDesc = "" +
 	"\n" +
 	"account_id\x18\x01 \x01(\tR\taccountId\"`\n" +
 	"&GetOrganizerProfileByAccountIDResponse\x126\n" +
-	"\aprofile\x18\x01 \x01(\v2\x1c.account.v1.OrganizerProfileR\aprofile2\xf3\x02\n" +
+	"\aprofile\x18\x01 \x01(\v2\x1c.account.v1.OrganizerProfileR\aprofile\"3\n" +
+	"\x19GetAccountByHandleRequest\x12\x16\n" +
+	"\x06handle\x18\x01 \x01(\tR\x06handle\"K\n" +
+	"\x1aGetAccountByHandleResponse\x12-\n" +
+	"\aaccount\x18\x01 \x01(\v2\x13.account.v1.AccountR\aaccount2\xd8\x03\n" +
 	"\x0eAccountService\x12]\n" +
 	"\x10BatchGetAccounts\x12#.account.v1.BatchGetAccountsRequest\x1a$.account.v1.BatchGetAccountsResponse\x12x\n" +
 	"\x19BatchGetOrganizerProfiles\x12,.account.v1.BatchGetOrganizerProfilesRequest\x1a-.account.v1.BatchGetOrganizerProfilesResponse\x12\x87\x01\n" +
-	"\x1eGetOrganizerProfileByAccountID\x121.account.v1.GetOrganizerProfileByAccountIDRequest\x1a2.account.v1.GetOrganizerProfileByAccountIDResponseBPZNgithub.com/moomaideng/eventory/services/account/pkg/proto/account/v1;accountv1b\x06proto3"
+	"\x1eGetOrganizerProfileByAccountID\x121.account.v1.GetOrganizerProfileByAccountIDRequest\x1a2.account.v1.GetOrganizerProfileByAccountIDResponse\x12c\n" +
+	"\x12GetAccountByHandle\x12%.account.v1.GetAccountByHandleRequest\x1a&.account.v1.GetAccountByHandleResponseBPZNgithub.com/moomaideng/eventory/services/account/pkg/proto/account/v1;accountv1b\x06proto3"
 
 var (
 	file_account_v1_account_proto_rawDescOnce sync.Once
@@ -469,7 +562,7 @@ func file_account_v1_account_proto_rawDescGZIP() []byte {
 	return file_account_v1_account_proto_rawDescData
 }
 
-var file_account_v1_account_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
+var file_account_v1_account_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
 var file_account_v1_account_proto_goTypes = []any{
 	(*Account)(nil),                                // 0: account.v1.Account
 	(*OrganizerProfile)(nil),                       // 1: account.v1.OrganizerProfile
@@ -479,22 +572,27 @@ var file_account_v1_account_proto_goTypes = []any{
 	(*BatchGetOrganizerProfilesResponse)(nil),      // 5: account.v1.BatchGetOrganizerProfilesResponse
 	(*GetOrganizerProfileByAccountIDRequest)(nil),  // 6: account.v1.GetOrganizerProfileByAccountIDRequest
 	(*GetOrganizerProfileByAccountIDResponse)(nil), // 7: account.v1.GetOrganizerProfileByAccountIDResponse
+	(*GetAccountByHandleRequest)(nil),              // 8: account.v1.GetAccountByHandleRequest
+	(*GetAccountByHandleResponse)(nil),             // 9: account.v1.GetAccountByHandleResponse
 }
 var file_account_v1_account_proto_depIdxs = []int32{
 	0, // 0: account.v1.BatchGetAccountsResponse.accounts:type_name -> account.v1.Account
 	1, // 1: account.v1.BatchGetOrganizerProfilesResponse.profiles:type_name -> account.v1.OrganizerProfile
 	1, // 2: account.v1.GetOrganizerProfileByAccountIDResponse.profile:type_name -> account.v1.OrganizerProfile
-	2, // 3: account.v1.AccountService.BatchGetAccounts:input_type -> account.v1.BatchGetAccountsRequest
-	4, // 4: account.v1.AccountService.BatchGetOrganizerProfiles:input_type -> account.v1.BatchGetOrganizerProfilesRequest
-	6, // 5: account.v1.AccountService.GetOrganizerProfileByAccountID:input_type -> account.v1.GetOrganizerProfileByAccountIDRequest
-	3, // 6: account.v1.AccountService.BatchGetAccounts:output_type -> account.v1.BatchGetAccountsResponse
-	5, // 7: account.v1.AccountService.BatchGetOrganizerProfiles:output_type -> account.v1.BatchGetOrganizerProfilesResponse
-	7, // 8: account.v1.AccountService.GetOrganizerProfileByAccountID:output_type -> account.v1.GetOrganizerProfileByAccountIDResponse
-	6, // [6:9] is the sub-list for method output_type
-	3, // [3:6] is the sub-list for method input_type
-	3, // [3:3] is the sub-list for extension type_name
-	3, // [3:3] is the sub-list for extension extendee
-	0, // [0:3] is the sub-list for field type_name
+	0, // 3: account.v1.GetAccountByHandleResponse.account:type_name -> account.v1.Account
+	2, // 4: account.v1.AccountService.BatchGetAccounts:input_type -> account.v1.BatchGetAccountsRequest
+	4, // 5: account.v1.AccountService.BatchGetOrganizerProfiles:input_type -> account.v1.BatchGetOrganizerProfilesRequest
+	6, // 6: account.v1.AccountService.GetOrganizerProfileByAccountID:input_type -> account.v1.GetOrganizerProfileByAccountIDRequest
+	8, // 7: account.v1.AccountService.GetAccountByHandle:input_type -> account.v1.GetAccountByHandleRequest
+	3, // 8: account.v1.AccountService.BatchGetAccounts:output_type -> account.v1.BatchGetAccountsResponse
+	5, // 9: account.v1.AccountService.BatchGetOrganizerProfiles:output_type -> account.v1.BatchGetOrganizerProfilesResponse
+	7, // 10: account.v1.AccountService.GetOrganizerProfileByAccountID:output_type -> account.v1.GetOrganizerProfileByAccountIDResponse
+	9, // 11: account.v1.AccountService.GetAccountByHandle:output_type -> account.v1.GetAccountByHandleResponse
+	8, // [8:12] is the sub-list for method output_type
+	4, // [4:8] is the sub-list for method input_type
+	4, // [4:4] is the sub-list for extension type_name
+	4, // [4:4] is the sub-list for extension extendee
+	0, // [0:4] is the sub-list for field type_name
 }
 
 func init() { file_account_v1_account_proto_init() }
@@ -508,7 +606,7 @@ func file_account_v1_account_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_account_v1_account_proto_rawDesc), len(file_account_v1_account_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   8,
+			NumMessages:   10,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
