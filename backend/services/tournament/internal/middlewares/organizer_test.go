@@ -44,14 +44,14 @@ func TestGetOrganizerProfile_Missing(t *testing.T) {
 }
 
 func TestGetOrganizerProfile_Present(t *testing.T) {
-	profile := &ports.OrganizerInfo{ID: uuid.New(), OrganizerName: "Alice"}
+	profile := &ports.OrganizerInfo{AccountID: uuid.New(), OrganizerName: "Alice"}
 	ctx := context.WithValue(context.Background(), middlewares.OrganizerProfileContextKey, profile)
 
 	extracted, err := middlewares.GetOrganizerProfile(ctx)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
-	if extracted.ID != profile.ID || extracted.OrganizerName != "Alice" {
+	if extracted.AccountID != profile.AccountID || extracted.OrganizerName != "Alice" {
 		t.Fatalf("unexpected profile extracted: %+v", extracted)
 	}
 }
@@ -59,7 +59,7 @@ func TestGetOrganizerProfile_Present(t *testing.T) {
 func TestOrganizerMiddleware_HTTPGuard(t *testing.T) {
 	accountID := uuid.New()
 	accountSvc := &stubAccounts{byAccount: map[uuid.UUID]ports.OrganizerInfo{
-		accountID: {ID: uuid.New(), AccountID: accountID, OrganizerName: "Organizer One"},
+		accountID: {AccountID: accountID, OrganizerName: "Organizer One"},
 	}}
 
 	router := chi.NewMux()

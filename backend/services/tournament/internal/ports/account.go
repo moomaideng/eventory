@@ -30,7 +30,6 @@ type AccountInfo struct {
 }
 
 type OrganizerInfo struct {
-	ID            uuid.UUID
 	AccountID     uuid.UUID
 	OrganizerName string
 }

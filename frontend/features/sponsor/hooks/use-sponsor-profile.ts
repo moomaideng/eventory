@@ -91,7 +91,7 @@ export function useSponsorProfile(
     refetch,
   } = query;
   const profile = profileData ?? null;
-  const hasProfile = Boolean(profile?.id);
+  const hasProfile = Boolean(profile?.accountId);
 
   const isLoading =
     isAuthLoading ||

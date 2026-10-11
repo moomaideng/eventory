@@ -633,8 +633,6 @@ export interface components {
              * @description Timestamp of profile creation
              */
             createdAt: string;
-            /** @description Organizer profile UUID */
-            id: string;
             /** @description Contact email for organizer */
             organizerEmail: string;
             /** @description Organizer organization or brand name */
@@ -659,8 +657,6 @@ export interface components {
              * @description Timestamp of profile creation
              */
             createdAt: string;
-            /** @description Sponsor profile UUID */
-            id: string;
             /** @description Contact email for sponsorship communications */
             sponsorEmail: string;
             /** @description Sponsor company or organization name */

@@ -18,9 +18,8 @@ message Account {
 }
 
 message OrganizerProfile {
-  string id = 1;
-  string account_id = 2;
-  string organizer_name = 3;
+  string account_id = 1;
+  string organizer_name = 2;
 }
 
 message BatchGetAccountsRequest {

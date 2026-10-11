@@ -85,7 +85,6 @@ func toProtoAccount(account *models.Account) *accountv1.Account {
 
 func toProtoOrganizer(profile *models.OrganizerProfile) *accountv1.OrganizerProfile {
 	return &accountv1.OrganizerProfile{
-		Id:            profile.AccountID.String(),
 		AccountId:     profile.AccountID.String(),
 		OrganizerName: profile.OrganizerName,
 	}
