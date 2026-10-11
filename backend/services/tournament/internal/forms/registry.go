@@ -2,14 +2,12 @@ package forms
 
 import (
 	"fmt"
-	"sync"
 
 	"github.com/moomaideng/eventory/services/tournament/models"
 )
 
 // FieldRegistry manages handlers for all supported field types.
 type FieldRegistry struct {
-	mu       sync.RWMutex
 	handlers map[models.FieldType]FieldHandler
 }
 
@@ -28,15 +26,11 @@ func NewDefaultRegistry() *FieldRegistry {
 
 // Register registers or replaces a field handler for a given type.
 func (r *FieldRegistry) Register(h FieldHandler) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
 	r.handlers[h.Type()] = h
 }
 
 // Get looks up a handler by field type.
 func (r *FieldRegistry) Get(t models.FieldType) (FieldHandler, bool) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
 	h, ok := r.handlers[t]
 	return h, ok
 }
