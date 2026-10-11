@@ -12,8 +12,11 @@ export interface ChoiceRowProps {
   index: number;
   fieldType: "SELECT_ONE" | "SELECT_MULTIPLE";
   canDelete: boolean;
+  isLast: boolean;
+  initialEditing?: boolean;
   onUpdate: (label: string) => void;
   onDelete: () => void;
+  onEnterLast?: () => void;
 }
 
 export function ChoiceRow({
@@ -21,10 +24,13 @@ export function ChoiceRow({
   index,
   fieldType,
   canDelete,
+  isLast,
+  initialEditing = false,
   onUpdate,
   onDelete,
+  onEnterLast,
 }: ChoiceRowProps) {
-  const [isEditing, setIsEditing] = useState(false);
+  const [isEditing, setIsEditing] = useState(initialEditing);
 
   return (
     <div className="flex items-center justify-between gap-2 min-h-8">
@@ -47,11 +53,16 @@ export function ChoiceRow({
             <Input
               autoFocus
               value={option.label}
+              onFocus={(e) => e.target.select()}
               onChange={(e) => onUpdate(e.target.value)}
               onBlur={() => setIsEditing(false)}
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
+                  e.preventDefault();
                   setIsEditing(false);
+                  if (isLast && onEnterLast) {
+                    onEnterLast();
+                  }
                 }
               }}
               placeholder={`Option ${index + 1}`}
@@ -116,12 +127,18 @@ export interface FormFieldOptionsProps {
 }
 
 export function FormFieldOptions({ field, onUpdate }: FormFieldOptionsProps) {
-  const handleAddOption = () => {
+  const [autoEditId, setAutoEditId] = useState<string | null>(null);
+
+  const handleAddOption = (autoEdit = false) => {
     const currentOptions = field.config?.options ?? [];
+    const newId = `opt_${Date.now()}`;
     const newOption: FormFieldOption = {
-      id: `opt_${Date.now()}`,
+      id: newId,
       label: `Option ${currentOptions.length + 1}`,
     };
+    if (autoEdit) {
+      setAutoEditId(newId);
+    }
     onUpdate({
       ...field,
       config: { ...field.config, options: [...currentOptions, newOption] },
@@ -151,24 +168,30 @@ export function FormFieldOptions({ field, onUpdate }: FormFieldOptionsProps) {
     <div className="flex flex-col gap-3 rounded-lg border border-border/70 bg-muted/20 p-4">
       <div className="text-sm font-medium">Choices</div>
       <div className="flex flex-col gap-2">
-        {(field.config?.options ?? []).map((opt, optIdx) => (
-          <ChoiceRow
-            key={opt.id}
-            option={opt}
-            index={optIdx}
-            fieldType={field.type as "SELECT_ONE" | "SELECT_MULTIPLE"}
-            canDelete={(field.config?.options?.length ?? 0) > 1}
-            onUpdate={(label) => handleUpdateOption(optIdx, label)}
-            onDelete={() => handleDeleteOption(optIdx)}
-          />
-        ))}
+        {(field.config?.options ?? []).map((opt, optIdx) => {
+          const isLast = optIdx === (field.config?.options?.length ?? 0) - 1;
+          return (
+            <ChoiceRow
+              key={opt.id}
+              option={opt}
+              index={optIdx}
+              fieldType={field.type as "SELECT_ONE" | "SELECT_MULTIPLE"}
+              canDelete={(field.config?.options?.length ?? 0) > 1}
+              isLast={isLast}
+              initialEditing={autoEditId === opt.id}
+              onUpdate={(label) => handleUpdateOption(optIdx, label)}
+              onDelete={() => handleDeleteOption(optIdx)}
+              onEnterLast={() => handleAddOption(true)}
+            />
+          );
+        })}
       </div>
       <div>
         <Button
           type="button"
           variant="outline"
           size="sm"
-          onClick={handleAddOption}
+          onClick={() => handleAddOption(false)}
         >
           <Plus data-icon="inline-start" />
           Add Choice

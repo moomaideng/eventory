@@ -140,7 +140,7 @@ export function FormFieldCard({
               id={`req-${field.id}`}
               checked={field.required}
               onChange={(e) => onUpdate({ ...field, required: e.target.checked })}
-              className="size-4 rounded border-input text-primary focus:ring-ring cursor-pointer"
+              className="size-4 rounded border-input text-primary focus:ring-ring cursor-pointer accent-primary"
             />
             <Label
               htmlFor={`req-${field.id}`}

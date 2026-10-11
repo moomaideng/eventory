@@ -154,7 +154,7 @@ function RegistrationFormEditor({
       />
 
       {/* Field Cards List */}
-      <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-6">
         {fields.map((field, idx) => (
           <FormFieldCard
             key={field.id}
