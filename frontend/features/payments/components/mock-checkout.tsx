@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { FlaskConical } from "lucide-react";
+import { Info } from "lucide-react";
 import { useAuth } from "@/context/auth-context";
 import { $api } from "@/lib/api/client";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
@@ -78,16 +78,16 @@ export function MockCheckout({ paymentId }: { paymentId: string }) {
   return (
     <div className="flex flex-col gap-6">
       <Alert>
-        <FlaskConical />
-        <AlertTitle>Test mode</AlertTitle>
+        <Info />
+        <AlertTitle>Demo checkout</AlertTitle>
         <AlertDescription>
-          No money moves here. Choose a result to test this invoice. Do not
-          enter card or bank details.
+          This payment is simulated. No real money is transferred. Choose a
+          result below to try the payment flow.
         </AlertDescription>
       </Alert>
       <Card>
         <CardHeader>
-          <CardTitle>Choose a mock payment result</CardTitle>
+          <CardTitle>Complete payment</CardTitle>
           <CardDescription className="break-words">
             {payment.description}
           </CardDescription>
@@ -104,7 +104,7 @@ export function MockCheckout({ paymentId }: { paymentId: string }) {
           </div>
           {resultMutation.isError && (
             <Alert variant="destructive">
-              <AlertTitle>Result could not be saved</AlertTitle>
+              <AlertTitle>Payment could not be completed</AlertTitle>
               <AlertDescription>
                 Check the current status before trying again. Paid or expired
                 invoices cannot accept another payment.
@@ -115,8 +115,8 @@ export function MockCheckout({ paymentId }: { paymentId: string }) {
             <Alert>
               <AlertTitle>
                 {lastResult === "FAILED"
-                  ? "Mock checkout failed"
-                  : "Checkout cancelled"}
+                  ? "Payment failed"
+                  : "Payment cancelled"}
               </AlertTitle>
               <AlertDescription>
                 No payment was made. You can retry this invoice before its
@@ -128,12 +128,12 @@ export function MockCheckout({ paymentId }: { paymentId: string }) {
             <Alert>
               <AlertTitle>
                 {payment.status === "PAID"
-                  ? "Mock payment succeeded"
+                  ? "Payment successful"
                   : "Invoice expired"}
               </AlertTitle>
               <AlertDescription>
                 {payment.status === "PAID"
-                  ? "Mock payment succeeded. This does not register you for a tournament or confirm sponsorship."
+                  ? "Your payment has been recorded. View your receipt below."
                   : "The payment deadline has passed. This invoice can no longer be paid."}
               </AlertDescription>
             </Alert>
@@ -165,7 +165,7 @@ export function MockCheckout({ paymentId }: { paymentId: string }) {
                   disabled={resultMutation.isPending}
                   onClick={() => complete("CANCELLED")}
                 >
-                  Cancel checkout
+                  Cancel payment
                 </Button>
               </div>
             </>
@@ -186,9 +186,6 @@ export function MockCheckout({ paymentId }: { paymentId: string }) {
       <Link href={payment.invoicePath} className="text-sm underline">
         Back to invoice
       </Link>
-      <p className="text-muted-foreground text-sm">
-        This service is not connected to registration or sponsorship yet.
-      </p>
     </div>
   );
 }

@@ -4,7 +4,7 @@ import { PaymentPageHeader } from "@/features/payments/components/payment-page-h
 import { MockCheckout } from "@/features/payments/components/mock-checkout";
 import { paymentIdSchema } from "@/features/payments/schemas";
 
-export const metadata = { title: "Mock checkout | Eventory" };
+export const metadata = { title: "Checkout | Eventory" };
 
 export default async function CheckoutPage({
   params,
@@ -17,8 +17,8 @@ export default async function CheckoutPage({
   return (
     <div className="mx-auto flex w-full max-w-2xl flex-col gap-8 px-4 py-10">
       <PaymentPageHeader
-        title="Mock checkout"
-        description="Test a payment result. This checkout does not transfer real money."
+        title="Checkout"
+        description="Review your invoice and complete payment before the deadline."
         icon={CreditCard}
         invoiceId={parsed.data}
       />

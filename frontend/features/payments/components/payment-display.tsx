@@ -3,7 +3,7 @@ import type { Payment } from "@/features/payments/utils";
 
 const statusLabels: Record<Payment["status"], string> = {
   UNPAID: "Unpaid",
-  PAID: "Paid (mock)",
+  PAID: "Paid",
   EXPIRED: "Expired",
 };
 
