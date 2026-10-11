@@ -154,6 +154,52 @@ func TestGetAccountByEmail_NotFound(t *testing.T) {
 	}
 }
 
+func TestGetAccountByHandle_Success(t *testing.T) {
+	mockRepo := newMockAccountRepository()
+	useCase := usecases.NewAccountUseCase(mockRepo)
+
+	userID := uuid.New()
+	mockRepo.accounts[userID] = &models.Account{
+		ID:          userID,
+		Email:       "player1@eventory.gg",
+		Handle:      "player_one",
+		DisplayName: "Player One",
+		Status:      models.AccountStatusActive,
+	}
+
+	account, err := useCase.GetAccountByHandle(context.Background(), "player_one")
+	if err != nil {
+		t.Fatalf("expected no error, got: %v", err)
+	}
+
+	if account.ID != userID {
+		t.Errorf("expected id %v, got %v", userID, account.ID)
+	}
+	if account.Handle != "player_one" {
+		t.Errorf("expected handle 'player_one', got %v", account.Handle)
+	}
+}
+
+func TestGetAccountByHandle_NotFound(t *testing.T) {
+	mockRepo := newMockAccountRepository()
+	useCase := usecases.NewAccountUseCase(mockRepo)
+
+	_, err := useCase.GetAccountByHandle(context.Background(), "unknown_handle")
+	if err != usecases.ErrAccountNotFound {
+		t.Errorf("expected ErrAccountNotFound, got: %v", err)
+	}
+}
+
+func TestGetAccountByHandle_InvalidHandle(t *testing.T) {
+	mockRepo := newMockAccountRepository()
+	useCase := usecases.NewAccountUseCase(mockRepo)
+
+	_, err := useCase.GetAccountByHandle(context.Background(), "   ")
+	if err != usecases.ErrInvalidHandle {
+		t.Errorf("expected ErrInvalidHandle, got: %v", err)
+	}
+}
+
 func TestCreateAccount_Success(t *testing.T) {
 	mockRepo := newMockAccountRepository()
 	useCase := usecases.NewAccountUseCase(mockRepo)

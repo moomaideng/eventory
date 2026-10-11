@@ -105,11 +105,13 @@ func newHTTPRouter(db *gorm.DB, mongoDB *mongo.Database, cfg config.Config, acco
 	teamLobbyRepo := repositories.NewTeamLobbyRepository(db)
 	organizerDashboardRepo := repositories.NewOrganizerDashboardRepository(db)
 	tournamentStatusRepo := repositories.NewTournamentStatusRepository(db)
+	tournamentStaffRepo := repositories.NewTournamentStaffRepository(db)
 
 	tournamentUseCase := usecases.NewTournamentUseCase(tournamentRepo, accountSvc)
 	teamLobbyUseCase := usecases.NewTeamLobbyUseCase(teamLobbyRepo, accountSvc)
 	dashboardUseCase := usecases.NewOrganizerDashboardUseCase(organizerDashboardRepo, accountSvc)
 	statusUseCase := usecases.NewTournamentStatusUseCase(tournamentStatusRepo, accountSvc)
+	staffUseCase := usecases.NewTournamentStaffUseCase(tournamentStaffRepo, accountSvc)
 
 	authMiddleware := middlewares.NewAuthMiddleware(api, cfg.SupabaseURL, cfg.Environment)
 	organizerMiddleware := tournamentmiddlewares.NewOrganizerMiddleware(api, accountSvc)
@@ -124,6 +126,7 @@ func newHTTPRouter(db *gorm.DB, mongoDB *mongo.Database, cfg config.Config, acco
 	organizerTournamentGroup.UseMiddleware(authMiddleware.HumaMiddleware(), organizerMiddleware.HumaMiddleware())
 
 	resthandlers.RegisterTeamLobbyRoutes(teamLobbyGroup, teamLobbyUseCase)
+	resthandlers.RegisterTournamentStaffRoutes(teamLobbyGroup, staffUseCase)
 	resthandlers.RegisterOrganizerDashboardRoutes(organizerGroup, dashboardUseCase)
 	resthandlers.RegisterTournamentStatusRoutes(organizerGroup, statusUseCase)
 	resthandlers.RegisterTournamentRoutes(api, organizerTournamentGroup, tournamentUseCase)

@@ -3,6 +3,7 @@ package proto
 import (
 	"context"
 	"errors"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/moomaideng/eventory/services/account/internal/usecases"
@@ -72,6 +73,24 @@ func (s *AccountServer) GetOrganizerProfileByAccountID(ctx context.Context, req 
 		return nil, status.Errorf(codes.Internal, "get organizer profile: %v", err)
 	}
 	return &accountv1.GetOrganizerProfileByAccountIDResponse{Profile: toProtoOrganizer(profile)}, nil
+}
+
+func (s *AccountServer) GetAccountByHandle(ctx context.Context, req *accountv1.GetAccountByHandleRequest) (*accountv1.GetAccountByHandleResponse, error) {
+	handle := strings.TrimSpace(req.GetHandle())
+	if handle == "" {
+		return nil, status.Errorf(codes.InvalidArgument, "handle is required")
+	}
+	account, err := s.accounts.GetAccountByHandle(ctx, handle)
+	if err != nil {
+		if errors.Is(err, usecases.ErrAccountNotFound) {
+			return nil, status.Error(codes.NotFound, "account not found")
+		}
+		if errors.Is(err, usecases.ErrInvalidHandle) {
+			return nil, status.Errorf(codes.InvalidArgument, "invalid handle: %v", err)
+		}
+		return nil, status.Errorf(codes.Internal, "get account by handle: %v", err)
+	}
+	return &accountv1.GetAccountByHandleResponse{Account: toProtoAccount(account)}, nil
 }
 
 func toProtoAccount(account *models.Account) *accountv1.Account {

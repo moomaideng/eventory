@@ -112,6 +112,31 @@ func (c *AccountClient) GetOrganizerProfileByAccountID(ctx context.Context, acco
 	return &info, nil
 }
 
+func (c *AccountClient) GetAccountByHandle(ctx context.Context, handle string) (*ports.AccountInfo, error) {
+	ctx, cancel := context.WithTimeout(ctx, defaultTimeout)
+	defer cancel()
+
+	resp, err := c.api.GetAccountByHandle(ctx, &accountv1.GetAccountByHandleRequest{
+		Handle: handle,
+	})
+	if err != nil {
+		if status.Code(err) == codes.NotFound {
+			return nil, ports.ErrAccountNotFound
+		}
+		return nil, fmt.Errorf("%w: %v", ports.ErrAccountUnavailable, err)
+	}
+	id, err := uuid.Parse(resp.GetAccount().GetId())
+	if err != nil {
+		return nil, fmt.Errorf("invalid account id in response: %w", err)
+	}
+	return &ports.AccountInfo{
+		ID:          id,
+		Handle:      resp.GetAccount().GetHandle(),
+		DisplayName: resp.GetAccount().GetDisplayName(),
+		Status:      ports.AccountStatus(resp.GetAccount().GetStatus()),
+	}, nil
+}
+
 func toOrganizerInfo(profile *accountv1.OrganizerProfile) (ports.OrganizerInfo, error) {
 	if profile == nil {
 		return ports.OrganizerInfo{}, ports.ErrOrganizerNotFound
