@@ -416,6 +416,74 @@ export interface paths {
         patch: operations["update-tournament"];
         trace?: never;
     };
+    "/api/v1/tournaments/{tournamentId}/form": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get registration form for a tournament
+         * @description Returns the custom registration form definition configured for this tournament.
+         */
+        get: operations["get-registration-form"];
+        /**
+         * Create or update tournament registration form
+         * @description Configures or updates custom registration form fields. Only the organizing owner can perform this action.
+         */
+        put: operations["save-registration-form"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournamentId}/form/responses": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List all submitted responses for tournament
+         * @description Lists all participant responses for the tournament. Only the organizing owner can perform this action.
+         */
+        get: operations["list-form-responses"];
+        put?: never;
+        /**
+         * Submit answers for tournament registration form
+         * @description Submits answers for a tournament registration form. One submission per participant.
+         */
+        post: operations["submit-form-response"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournamentId}/form/responses/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get current user's submitted answers for a tournament
+         * @description Returns the authenticated participant's submitted answers for this tournament.
+         */
+        get: operations["get-my-form-response"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/tournaments/{tournamentId}/lobbies": {
         parameters: {
             query?: never;
@@ -812,6 +880,43 @@ export interface components {
              */
             updatedAt: string;
         };
+        FieldAnswer: {
+            fieldId: string;
+            value: unknown;
+        };
+        FormField: {
+            config?: unknown;
+            description?: string;
+            id: string;
+            label: string;
+            /** Format: int64 */
+            order: number;
+            required: boolean;
+            type: string;
+        };
+        FormResponseItem: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/FormResponseItem.json
+             */
+            readonly $schema?: string;
+            accountId: string;
+            answers: components["schemas"]["FieldAnswer"][] | null;
+            id: string;
+            tournamentId: string;
+        };
+        ListFormResponsesOutputBody: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/ListFormResponsesOutputBody.json
+             */
+            readonly $schema?: string;
+            items: components["schemas"]["FormResponseItem"][] | null;
+            /** Format: int64 */
+            total: number;
+        };
         OrganizerDashboardEntry: {
             /** Format: date-time */
             createdAt: string;
@@ -898,6 +1003,47 @@ export interface components {
             change: components["schemas"]["TournamentStatusChangeResponse"];
             status: string;
             tournamentId: string;
+        };
+        RegistrationFormResponse: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/RegistrationFormResponse.json
+             */
+            readonly $schema?: string;
+            /** Format: date-time */
+            createdAt: string;
+            description?: string;
+            fields: components["schemas"]["FormField"][] | null;
+            id: string;
+            title: string;
+            tournamentId: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        SaveRegistrationFormInputBody: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/SaveRegistrationFormInputBody.json
+             */
+            readonly $schema?: string;
+            /** @description Form description */
+            description?: string;
+            /** @description Form field definitions */
+            fields: components["schemas"]["FormField"][] | null;
+            /** @description Form title */
+            title: string;
+        };
+        SubmitFormResponseInputBody: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/SubmitFormResponseInputBody.json
+             */
+            readonly $schema?: string;
+            /** @description Submitted answers */
+            answers: components["schemas"]["FieldAnswer"][] | null;
         };
         TeamLobbyMemberResponse: {
             accountId: string;
@@ -2036,6 +2182,174 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TournamentResponse"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "get-registration-form": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Tournament UUID */
+                tournamentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RegistrationFormResponse"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "save-registration-form": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Tournament UUID */
+                tournamentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SaveRegistrationFormInputBody"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RegistrationFormResponse"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "list-form-responses": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Tournament UUID */
+                tournamentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListFormResponsesOutputBody"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "submit-form-response": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Tournament UUID */
+                tournamentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SubmitFormResponseInputBody"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FormResponseItem"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "get-my-form-response": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Tournament UUID */
+                tournamentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FormResponseItem"];
                 };
             };
             /** @description Error */

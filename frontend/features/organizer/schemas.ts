@@ -136,4 +136,3 @@ export const createTournamentFormSchema = z
 export type CreateTournamentFormInput = z.infer<
   typeof createTournamentFormSchema
 >;
-
