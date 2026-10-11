@@ -58,7 +58,7 @@ jobs:
           NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
           NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: placeholder
           NEXT_PUBLIC_API_URL: http://localhost:8080
-        run: npm run build
+        run: npm run test:payments && npm run build
 
   publish:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'

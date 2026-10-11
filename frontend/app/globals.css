@@ -120,6 +120,16 @@
   --shadow-2xl: 0 1px 3px 0px hsl(0 0% 0% / 0.25);
 }
 
+/* Keep the receipt as white paper inside either application theme. */
+.receipt-paper {
+  --card: oklch(1 0 0);
+  --background: var(--card);
+  --card-foreground: oklch(0.1897 0.0025 145.4744);
+  --foreground: var(--card-foreground);
+  --muted-foreground: oklch(0.5311 0.0118 145.4071);
+  --border: oklch(0.882 0.0104 145.4868);
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);

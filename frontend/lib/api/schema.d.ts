@@ -96,23 +96,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/tournaments/mine": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List the current organizer's tournaments */
-        get: operations["list-my-tournaments"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/accounts/{id}": {
         parameters: {
             query?: never;
@@ -125,6 +108,23 @@ export interface paths {
          * @description Retrieves public account details for a given internal user UUID.
          */
         get: operations["get-account-by-id"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/health": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Health Check */
+        get: operations["health-check"];
         put?: never;
         post?: never;
         delete?: never;
@@ -266,6 +266,67 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/tournaments/dummy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Dummy Resources (MongoDB Example)
+         * @description Lists all dummy documents stored in MongoDB
+         */
+        get: operations["list-dummy-resources"];
+        put?: never;
+        /**
+         * Create Dummy Resource (MongoDB Example)
+         * @description Stores a dummy document in the secondary MongoDB database
+         */
+        post: operations["create-dummy-resource"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/dummy/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Dummy Resource (MongoDB Example)
+         * @description Retrieves a dummy document from MongoDB by its ID
+         */
+        get: operations["get-dummy-resource"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/mine": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List the current organizer's tournaments */
+        get: operations["list-my-tournaments"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/tournaments/{id}/dashboard": {
         parameters: {
             query?: never;
@@ -392,18 +453,83 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/health": {
+    "/api/v1/payments": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /**
-         * Health Check
-         * @description Returns a 204 No Content status if the server is running.
-         */
-        get: operations["health-check"];
+        /** Personal invoices, newest first; date filters use UTC */
+        get: operations["list-my-payments"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/payments/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** View an owned payment */
+        get: operations["get-my-payment"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/payments/{id}/mock-result": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Simulate a payment result; no money moves */
+        post: operations["complete-mock-payment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/payments/{id}/receipt": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** View the receipt for an owned paid invoice */
+        get: operations["get-my-receipt"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/payments/{id}/receipt.pdf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Download a mock receipt as PDF */
+        get: operations["download-my-receipt"];
         put?: never;
         post?: never;
         delete?: never;
@@ -445,6 +571,157 @@ export interface components {
              * @enum {string}
              */
             status: "ONBOARDING" | "ACTIVE" | "SUSPENDED";
+        };
+        ErrorDetail: {
+            /** @description Where the error occurred, e.g. 'body.items[3].tags' or 'path.thing-id' */
+            location?: string;
+            /** @description Error message text */
+            message?: string;
+            /** @description The value at the given location */
+            value?: unknown;
+        };
+        ErrorModel: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/ErrorModel.json
+             */
+            readonly $schema?: string;
+            /**
+             * @description A human-readable explanation specific to this occurrence of the problem.
+             * @example Property foo is required but is missing.
+             */
+            detail?: string;
+            /** @description Optional list of individual error details */
+            errors?: components["schemas"]["ErrorDetail"][] | null;
+            /**
+             * Format: uri
+             * @description A URI reference that identifies the specific occurrence of the problem.
+             * @example https://example.com/error-log/abc123
+             */
+            instance?: string;
+            /**
+             * Format: int64
+             * @description HTTP status code
+             * @example 400
+             */
+            status?: number;
+            /**
+             * @description A short, human-readable summary of the problem type. This value should not change between occurrences of the error.
+             * @example Bad Request
+             */
+            title?: string;
+            /**
+             * Format: uri
+             * @description A URI reference to human-readable documentation for the error.
+             * @default about:blank
+             * @example https://example.com/errors/example
+             */
+            type: string;
+        };
+        OrganizerProfileResponse: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/OrganizerProfileResponse.json
+             */
+            readonly $schema?: string;
+            /** @description Associated account UUID */
+            accountId: string;
+            /**
+             * Format: date-time
+             * @description Timestamp of profile creation
+             */
+            createdAt: string;
+            /** @description Organizer profile UUID */
+            id: string;
+            /** @description Contact email for organizer */
+            organizerEmail: string;
+            /** @description Organizer organization or brand name */
+            organizerName: string;
+            /**
+             * Format: date-time
+             * @description Timestamp of last profile update
+             */
+            updatedAt: string;
+        };
+        SponsorProfileResponse: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/SponsorProfileResponse.json
+             */
+            readonly $schema?: string;
+            /** @description Associated account UUID */
+            accountId: string;
+            /**
+             * Format: date-time
+             * @description Timestamp of profile creation
+             */
+            createdAt: string;
+            /** @description Sponsor profile UUID */
+            id: string;
+            /** @description Contact email for sponsorship communications */
+            sponsorEmail: string;
+            /** @description Sponsor company or organization name */
+            sponsorName: string;
+            /**
+             * Format: date-time
+             * @description Timestamp of last profile update
+             */
+            updatedAt: string;
+        };
+        UpdateAccountRequest: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/UpdateAccountRequest.json
+             */
+            readonly $schema?: string;
+            /** @description New avatar URL */
+            avatarUrl?: string;
+            /** @description New display name */
+            displayName?: string;
+            /** @description New unique handle */
+            handle?: string;
+            /** @description New contact phone */
+            phone?: string;
+        };
+        UpsertOrganizerProfileRequest: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/UpsertOrganizerProfileRequest.json
+             */
+            readonly $schema?: string;
+            /** @description Contact email for organizer */
+            organizerEmail?: string;
+            /** @description Organizer organization or brand name */
+            organizerName: string;
+        };
+        UpsertSponsorProfileRequest: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/UpsertSponsorProfileRequest.json
+             */
+            readonly $schema?: string;
+            /** @description Contact email for sponsorship communications */
+            sponsorEmail?: string;
+            /** @description Sponsor company or organization name */
+            sponsorName: string;
+        };
+        CreateDummyRequest: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/CreateDummyRequest.json
+             */
+            readonly $schema?: string;
+            /** @description Optional content or notes */
+            content: string;
+            /** @description Title of the dummy resource */
+            title: string;
         };
         CreateTeamLobbyRequest: {
             /**
@@ -515,52 +792,29 @@ export interface components {
              */
             startAt: string;
         };
-        ErrorDetail: {
-            /** @description Where the error occurred, e.g. 'body.items[3].tags' or 'path.thing-id' */
-            location?: string;
-            /** @description Error message text */
-            message?: string;
-            /** @description The value at the given location */
-            value?: unknown;
-        };
-        ErrorModel: {
+        DummyResponse: {
             /**
              * Format: uri
              * @description A URL to the JSON Schema for this object.
-             * @example https://example.com/schemas/ErrorModel.json
+             * @example https://example.com/schemas/DummyResponse.json
              */
             readonly $schema?: string;
+            /** @description Dummy content */
+            content: string;
             /**
-             * @description A human-readable explanation specific to this occurrence of the problem.
-             * @example Property foo is required but is missing.
+             * Format: date-time
+             * @description Created timestamp
              */
-            detail?: string;
-            /** @description Optional list of individual error details */
-            errors?: components["schemas"]["ErrorDetail"][] | null;
+            createdAt: string;
+            /** @description MongoDB ObjectID hex string */
+            id: string;
+            /** @description Dummy title */
+            title: string;
             /**
-             * Format: uri
-             * @description A URI reference that identifies the specific occurrence of the problem.
-             * @example https://example.com/error-log/abc123
+             * Format: date-time
+             * @description Updated timestamp
              */
-            instance?: string;
-            /**
-             * Format: int64
-             * @description HTTP status code
-             * @example 400
-             */
-            status?: number;
-            /**
-             * @description A short, human-readable summary of the problem type. This value should not change between occurrences of the error.
-             * @example Bad Request
-             */
-            title?: string;
-            /**
-             * Format: uri
-             * @description A URI reference to human-readable documentation for the error.
-             * @default about:blank
-             * @example https://example.com/errors/example
-             */
-            type: string;
+            updatedAt: string;
         };
         OrganizerDashboardEntry: {
             /** Format: date-time */
@@ -601,32 +855,6 @@ export interface components {
             readonly $schema?: string;
             entries: components["schemas"]["OrganizerDashboardEntry"][] | null;
             summary: components["schemas"]["OrganizerTournamentSummary"];
-        };
-        OrganizerProfileResponse: {
-            /**
-             * Format: uri
-             * @description A URL to the JSON Schema for this object.
-             * @example https://example.com/schemas/OrganizerProfileResponse.json
-             */
-            readonly $schema?: string;
-            /** @description Associated account UUID */
-            accountId: string;
-            /**
-             * Format: date-time
-             * @description Timestamp of profile creation
-             */
-            createdAt: string;
-            /** @description Organizer profile UUID */
-            id: string;
-            /** @description Contact email for organizer */
-            organizerEmail: string;
-            /** @description Organizer organization or brand name */
-            organizerName: string;
-            /**
-             * Format: date-time
-             * @description Timestamp of last profile update
-             */
-            updatedAt: string;
         };
         OrganizerTournamentListOutputBody: {
             /**
@@ -674,32 +902,6 @@ export interface components {
             change: components["schemas"]["TournamentStatusChangeResponse"];
             status: string;
             tournamentId: string;
-        };
-        SponsorProfileResponse: {
-            /**
-             * Format: uri
-             * @description A URL to the JSON Schema for this object.
-             * @example https://example.com/schemas/SponsorProfileResponse.json
-             */
-            readonly $schema?: string;
-            /** @description Associated account UUID */
-            accountId: string;
-            /**
-             * Format: date-time
-             * @description Timestamp of profile creation
-             */
-            createdAt: string;
-            /** @description Sponsor profile UUID */
-            id: string;
-            /** @description Contact email for sponsorship communications */
-            sponsorEmail: string;
-            /** @description Sponsor company or organization name */
-            sponsorName: string;
-            /**
-             * Format: date-time
-             * @description Timestamp of last profile update
-             */
-            updatedAt: string;
         };
         TeamLobbyMemberResponse: {
             accountId: string;
@@ -851,22 +1053,6 @@ export interface components {
             memberCount: number;
             name: string;
         };
-        UpdateAccountRequest: {
-            /**
-             * Format: uri
-             * @description A URL to the JSON Schema for this object.
-             * @example https://example.com/schemas/UpdateAccountRequest.json
-             */
-            readonly $schema?: string;
-            /** @description New avatar URL */
-            avatarUrl?: string;
-            /** @description New display name */
-            displayName?: string;
-            /** @description New unique handle */
-            handle?: string;
-            /** @description New contact phone */
-            phone?: string;
-        };
         UpdateTournamentRequest: {
             /**
              * Format: uri
@@ -923,29 +1109,104 @@ export interface components {
              */
             startAt?: string;
         };
-        UpsertOrganizerProfileRequest: {
+        "Complete-mock-paymentRequest": {
             /**
              * Format: uri
              * @description A URL to the JSON Schema for this object.
-             * @example https://example.com/schemas/UpsertOrganizerProfileRequest.json
+             * @example https://example.com/schemas/Complete-mock-paymentRequest.json
              */
             readonly $schema?: string;
-            /** @description Contact email for organizer */
-            organizerEmail?: string;
-            /** @description Organizer organization or brand name */
-            organizerName: string;
+            /** @enum {string} */
+            result: "SUCCEEDED" | "FAILED" | "CANCELLED";
         };
-        UpsertSponsorProfileRequest: {
+        CreatePayment: {
             /**
              * Format: uri
              * @description A URL to the JSON Schema for this object.
-             * @example https://example.com/schemas/UpsertSponsorProfileRequest.json
+             * @example https://example.com/schemas/CreatePayment.json
              */
             readonly $schema?: string;
-            /** @description Contact email for sponsorship communications */
-            sponsorEmail?: string;
-            /** @description Sponsor company or organization name */
-            sponsorName: string;
+            /**
+             * Format: int64
+             * @description Amount in satang; 100 satang = 1 THB
+             */
+            amountMinor: number;
+            /** @enum {string} */
+            currency: "THB";
+            description: string;
+            /**
+             * Format: date-time
+             * @description Caller-selected deadline; must be in the future for a new invoice
+             */
+            expiresAt: string;
+            idempotencyKey: string;
+            payerAccountId: string;
+            reference: string;
+            source: string;
+        };
+        "List-my-paymentsResponse": {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/List-my-paymentsResponse.json
+             */
+            readonly $schema?: string;
+            items: components["schemas"]["PaymentResponse"][] | null;
+            /** Format: int64 */
+            total: number;
+        };
+        PaymentResponse: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/PaymentResponse.json
+             */
+            readonly $schema?: string;
+            /**
+             * Format: int64
+             * @description Amount in satang
+             */
+            amountMinor: number;
+            checkoutPath: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** @enum {string} */
+            currency: "THB";
+            description: string;
+            /** Format: date-time */
+            expiresAt: string;
+            id: string;
+            invoicePath: string;
+            /** Format: date-time */
+            paidAt: string | null;
+            /** @enum {string} */
+            provider: "MOCK";
+            reference: string;
+            source: string;
+            /** @enum {string} */
+            status: "UNPAID" | "PAID" | "EXPIRED";
+        };
+        ReceiptResponse: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/ReceiptResponse.json
+             */
+            readonly $schema?: string;
+            /** Format: int64 */
+            amountMinor: number;
+            /** @enum {string} */
+            currency: "THB";
+            description: string;
+            id: string;
+            invoiceId: string;
+            /** Format: date-time */
+            paidAt: string;
+            payerAccountId: string;
+            /** @enum {string} */
+            provider: "MOCK";
+            reference: string;
+            source: string;
         };
     };
     responses: never;
@@ -1171,38 +1432,6 @@ export interface operations {
             };
         };
     };
-    "list-my-tournaments": {
-        parameters: {
-            query?: {
-                page?: number;
-                pageSize?: number;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OrganizerTournamentListOutputBody"];
-                };
-            };
-            /** @description Error */
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["ErrorModel"];
-                };
-            };
-        };
-    };
     "get-account-by-id": {
         parameters: {
             query?: never;
@@ -1223,6 +1452,33 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["AccountResponse"];
                 };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "health-check": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Error */
             default: {
@@ -1504,6 +1760,132 @@ export interface operations {
             };
         };
     };
+    "list-dummy-resources": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DummyResponse"][] | null;
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "create-dummy-resource": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateDummyRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DummyResponse"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "get-dummy-resource": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Dummy resource ID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DummyResponse"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "list-my-tournaments": {
+        parameters: {
+            query?: {
+                page?: number;
+                pageSize?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrganizerTournamentListOutputBody"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
     "get-organizer-tournament-dashboard": {
         parameters: {
             query?: never;
@@ -1739,21 +2121,160 @@ export interface operations {
             };
         };
     };
-    "health-check": {
+    "list-my-payments": {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Inclusive creation date YYYY-MM-DD (UTC) */
+                from?: string;
+                /** @description Inclusive creation date YYYY-MM-DD (UTC) */
+                to?: string;
+                page?: number;
+                limit?: number;
+            };
             header?: never;
             path?: never;
             cookie?: never;
         };
         requestBody?: never;
         responses: {
-            /** @description No Content */
-            204: {
+            /** @description OK */
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["List-my-paymentsResponse"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "get-my-payment": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaymentResponse"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "complete-mock-payment": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Complete-mock-paymentRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaymentResponse"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "get-my-receipt": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReceiptResponse"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "download-my-receipt": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Mock receipt PDF */
+            200: {
+                headers: {
+                    "Content-Disposition"?: string;
+                    "Content-Type"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/pdf": string;
+                };
             };
             /** @description Error */
             default: {

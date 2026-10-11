@@ -94,3 +94,4 @@ tasks:
       - go -C backend test ./...
       - npm --prefix frontend run lint
       - npm --prefix frontend run typecheck
+      - npm --prefix frontend run test:payments

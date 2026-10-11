@@ -7,6 +7,7 @@ const PROTECTED_PREFIXES = [
   "/sponsor",
   "/settings",
   "/lobbies",
+  "/payments",
 ];
 
 function isPathProtected(pathname: string): boolean {
