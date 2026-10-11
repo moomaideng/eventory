@@ -227,7 +227,7 @@ func RegisterTournamentRoutes(api huma.API, organizerGroup huma.API, tournamentU
 			return nil, tournamentHTTPError(err)
 		}
 
-		tournament, err := tournamentUseCase.CreateTournament(ctx, organizer.ID, usecases.CreateTournamentInput{
+		tournament, err := tournamentUseCase.CreateTournament(ctx, organizer.AccountID, usecases.CreateTournamentInput{
 			Name:                 input.Body.Name,
 			Description:          input.Body.Description,
 			Game:                 input.Body.Game,
@@ -272,7 +272,7 @@ func RegisterTournamentRoutes(api huma.API, organizerGroup huma.API, tournamentU
 			return nil, tournamentHTTPError(err)
 		}
 
-		tournament, err := tournamentUseCase.UpdateTournament(ctx, organizer.ID, input.TournamentID, usecases.UpdateTournamentInput{
+		tournament, err := tournamentUseCase.UpdateTournament(ctx, organizer.AccountID, input.TournamentID, usecases.UpdateTournamentInput{
 			Name:                 input.Body.Name,
 			Description:          input.Body.Description,
 			Game:                 input.Body.Game,

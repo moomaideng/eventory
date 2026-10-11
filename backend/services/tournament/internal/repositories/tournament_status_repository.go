@@ -72,7 +72,7 @@ func (r *tournamentStatusRepository) ApplyOverride(
 		// overrides cannot both read the same FromStatus and clobber each
 		// other.
 		err := ownedTournaments(tx, organizerID).
-			Clauses(clause.Locking{Strength: "UPDATE"}).
+			Clauses(clause.Locking{Strength: "UPDATE", Table: clause.Table{Name: "tournaments"}}).
 			Where("id = ?", tournamentID).
 			First(&tournament).Error
 		if errors.Is(err, gorm.ErrRecordNotFound) {

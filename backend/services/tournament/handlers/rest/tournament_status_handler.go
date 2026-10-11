@@ -74,7 +74,7 @@ func RegisterTournamentStatusRoutes(api huma.API, statuses *usecases.TournamentS
 			return nil, tournamentStatusHTTPError(err)
 		}
 
-		result, err := statuses.Override(ctx, profile.ID, accountID, input.TournamentID, input.Body.Status, input.Body.Reason)
+		result, err := statuses.Override(ctx, profile.AccountID, accountID, input.TournamentID, input.Body.Status, input.Body.Reason)
 		if err != nil {
 			return nil, tournamentStatusHTTPError(err)
 		}
@@ -100,7 +100,7 @@ func RegisterTournamentStatusRoutes(api huma.API, statuses *usecases.TournamentS
 			return nil, tournamentStatusHTTPError(err)
 		}
 
-		detail, err := statuses.History(ctx, profile.ID, input.TournamentID)
+		detail, err := statuses.History(ctx, profile.AccountID, input.TournamentID)
 		if err != nil {
 			return nil, tournamentStatusHTTPError(err)
 		}
