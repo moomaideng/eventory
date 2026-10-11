@@ -19,12 +19,12 @@ type Filter struct {
 }
 
 type PaymentRepository interface {
-	Create(context.Context, *models.Invoice) (*models.Invoice, error)
-	FindByKey(context.Context, string, string) (*models.Invoice, error)
-	Get(context.Context, uuid.UUID) (*models.Invoice, error)
-	GetOwned(context.Context, uuid.UUID, uuid.UUID) (*models.Invoice, error)
-	ListOwned(context.Context, uuid.UUID, Filter) ([]models.Invoice, int64, error)
-	Complete(context.Context, uuid.UUID, uuid.UUID, func(*models.Invoice) error) (*models.Invoice, error)
+	Create(ctx context.Context, invoice *models.Invoice) (*models.Invoice, error)
+	FindByKey(ctx context.Context, source string, idempotencyKey string) (*models.Invoice, error)
+	Get(ctx context.Context, invoiceID uuid.UUID) (*models.Invoice, error)
+	GetOwned(ctx context.Context, payerID uuid.UUID, invoiceID uuid.UUID) (*models.Invoice, error)
+	ListOwned(ctx context.Context, payerID uuid.UUID, filter Filter) ([]models.Invoice, int64, error)
+	Complete(ctx context.Context, payerID uuid.UUID, invoiceID uuid.UUID, mutate func(invoice *models.Invoice) error) (*models.Invoice, error)
 }
 
 type paymentRepository struct{ db *gorm.DB }
