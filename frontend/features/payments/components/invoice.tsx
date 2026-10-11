@@ -68,24 +68,24 @@ export function Invoice({ paymentId }: { paymentId: string }) {
             <Alert>
               <AlertTitle>
                 {invoice.status === "PAID"
-                  ? "Paid through mock checkout"
+                  ? "Invoice paid"
                   : invoice.status === "EXPIRED"
                     ? "Payment deadline has passed"
                     : "Payment is due"}
               </AlertTitle>
               <AlertDescription>
                 {invoice.status === "PAID"
-                  ? "Your mock receipt is available below. No real money was transferred."
+                  ? "Your receipt is available below."
                   : invoice.status === "EXPIRED"
                     ? "This invoice can no longer be paid. Contact the requesting service for a new payment request."
-                    : "Complete mock checkout before the deadline. Failed or cancelled checkouts leave this invoice unpaid and can be retried."}
+                    : "Complete payment before the deadline. Failed or cancelled payments can be retried."}
               </AlertDescription>
             </Alert>
           </CardContent>
           <CardFooter className="flex flex-wrap gap-3">
             {invoice.status === "UNPAID" && (
               <Link href={invoice.checkoutPath} className={buttonVariants()}>
-                Go to mock checkout
+                Proceed to checkout
               </Link>
             )}
             {invoice.status === "PAID" && (
@@ -105,10 +105,6 @@ export function Invoice({ paymentId }: { paymentId: string }) {
           </CardFooter>
         </Card>
       </div>
-      <p className="text-muted-foreground text-sm">
-        Mock payment only. Not connected to tournament registration or
-        sponsorship yet.
-      </p>
     </div>
   );
 }

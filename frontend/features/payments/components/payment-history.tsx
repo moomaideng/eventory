@@ -85,8 +85,7 @@ export function PaymentHistory() {
       <CardHeader>
         <CardTitle>Invoice history</CardTitle>
         <CardDescription>
-          Your invoices and payment status. Paid invoices have a separate mock
-          receipt. No real money has moved.
+          View your invoices, payment status and receipts.
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-6">

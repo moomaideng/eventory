@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Download, FlaskConical, BadgeCheck } from "lucide-react";
+import { Download, BadgeCheck } from "lucide-react";
 import { useAuth } from "@/context/auth-context";
 import { $api, apiClient } from "@/lib/api/client";
 import { formatAmount, formatPaymentDate } from "@/features/payments/utils";
@@ -87,7 +87,7 @@ export function Receipt({ paymentId }: { paymentId: string }) {
       <CardHeader>
         <div className="flex flex-col items-center gap-3 py-4 text-center">
           <BadgeCheck aria-hidden="true" className="text-primary size-14" />
-          <h2 className="text-2xl font-semibold">Mock payment successful</h2>
+          <h2 className="text-2xl font-semibold">Payment successful</h2>
           <p className="w-full text-2xl font-semibold break-words tabular-nums sm:text-4xl">
             {formatAmount(receipt)}
           </p>
@@ -97,13 +97,6 @@ export function Receipt({ paymentId }: { paymentId: string }) {
         </div>
       </CardHeader>
       <CardContent className="flex flex-col gap-6">
-        <Alert>
-          <FlaskConical />
-          <AlertTitle>Mock payment — no money transferred</AlertTitle>
-          <AlertDescription>
-            This is a mock receipt, not a bank slip or tax receipt.
-          </AlertDescription>
-        </Alert>
         <Separator />
         <div>
           <h3 className="font-medium">Receipt details</h3>
@@ -131,10 +124,6 @@ export function Receipt({ paymentId }: { paymentId: string }) {
             <dd className="font-mono text-xs break-all">
               {receipt.payerAccountId}
             </dd>
-          </div>
-          <div>
-            <dt className="text-muted-foreground">Provider</dt>
-            <dd>{receipt.provider}</dd>
           </div>
         </dl>
         {downloadError && (

@@ -4,7 +4,7 @@ import { PaymentPageHeader } from "@/features/payments/components/payment-page-h
 import { Receipt } from "@/features/payments/components/receipt";
 import { paymentIdSchema } from "@/features/payments/schemas";
 
-export const metadata = { title: "Mock receipt | Eventory" };
+export const metadata = { title: "Receipt | Eventory" };
 
 export default async function ReceiptPage({
   params,
@@ -18,7 +18,7 @@ export default async function ReceiptPage({
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-8 px-4 py-10">
       <PaymentPageHeader
         title="Receipt"
-        description="View your mock payment confirmation or download the receipt as a PDF."
+        description="View your payment confirmation or download the receipt as a PDF."
         icon={ReceiptText}
         invoiceId={parsed.data}
       />
