@@ -19,8 +19,7 @@ type TournamentStatusRepository interface {
 	// transition rules stay in the use case while the row stays locked.
 	ApplyOverride(
 		ctx context.Context,
-		organizerID uuid.UUID,
-		actorAccountID uuid.UUID,
+		accountID uuid.UUID,
 		actorDisplayName string,
 		tournamentID uuid.UUID,
 		reason string,
@@ -29,7 +28,7 @@ type TournamentStatusRepository interface {
 
 	// ListHistory returns an owned tournament's current status and its override
 	// trail, newest first.
-	ListHistory(ctx context.Context, organizerID, tournamentID uuid.UUID) (*TournamentStatusHistory, error)
+	ListHistory(ctx context.Context, accountID, tournamentID uuid.UUID) (*TournamentStatusHistory, error)
 }
 
 // TournamentStatusHistory pairs a tournament's current status with its override
@@ -56,8 +55,7 @@ func ownedTournaments(tx *gorm.DB, accountID uuid.UUID) *gorm.DB {
 
 func (r *tournamentStatusRepository) ApplyOverride(
 	ctx context.Context,
-	organizerID uuid.UUID,
-	actorAccountID uuid.UUID,
+	accountID uuid.UUID,
 	actorDisplayName string,
 	tournamentID uuid.UUID,
 	reason string,
@@ -71,7 +69,7 @@ func (r *tournamentStatusRepository) ApplyOverride(
 		// Lock the row for the rest of the transaction so two concurrent
 		// overrides cannot both read the same FromStatus and clobber each
 		// other.
-		err := ownedTournaments(tx, organizerID).
+		err := ownedTournaments(tx, accountID).
 			Clauses(clause.Locking{Strength: "UPDATE", Table: clause.Table{Name: "tournaments"}}).
 			Where("id = ?", tournamentID).
 			First(&tournament).Error
@@ -97,7 +95,7 @@ func (r *tournamentStatusRepository) ApplyOverride(
 			FromStatus:       from,
 			ToStatus:         to,
 			Reason:           reason,
-			ActorAccountID:   actorAccountID,
+			ActorAccountID:   accountID,
 			ActorDisplayName: actorDisplayName,
 		}
 		return tx.Create(&change).Error
@@ -110,12 +108,12 @@ func (r *tournamentStatusRepository) ApplyOverride(
 
 func (r *tournamentStatusRepository) ListHistory(
 	ctx context.Context,
-	organizerID, tournamentID uuid.UUID,
+	accountID, tournamentID uuid.UUID,
 ) (*TournamentStatusHistory, error) {
 	// Confirm ownership before exposing the trail; an unowned tournament must
 	// look identical to a missing one.
 	var tournament models.Tournament
-	err := ownedTournaments(r.db.WithContext(ctx), organizerID).
+	err := ownedTournaments(r.db.WithContext(ctx), accountID).
 		Select("id", "status").
 		Where("id = ?", tournamentID).
 		First(&tournament).Error
