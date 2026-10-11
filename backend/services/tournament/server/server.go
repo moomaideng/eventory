@@ -18,6 +18,7 @@ import (
 	"github.com/moomaideng/eventory/services/tournament/internal/ports"
 	"time"
 
+	"github.com/moomaideng/eventory/services/tournament/internal/forms"
 	"github.com/moomaideng/eventory/services/tournament/internal/repositories"
 	"github.com/moomaideng/eventory/services/tournament/internal/usecases"
 	"go.mongodb.org/mongo-driver/v2/mongo"
@@ -128,6 +129,14 @@ func newHTTPRouter(db *gorm.DB, mongoDB *mongo.Database, cfg config.Config, acco
 	resthandlers.RegisterTournamentRoutes(api, organizerTournamentGroup, tournamentUseCase)
 
 	if mongoDB != nil {
+		formRepo := repositories.NewRegistrationFormRepository(mongoDB)
+		if err := formRepo.EnsureIndexes(context.Background()); err != nil {
+			log.Printf("failed to ensure registration form indexes: %v", err)
+		}
+		fieldRegistry := forms.NewDefaultRegistry()
+		formUseCase := usecases.NewRegistrationFormUseCase(tournamentRepo, formRepo, fieldRegistry)
+		resthandlers.RegisterRegistrationFormRoutes(api, teamLobbyGroup, organizerTournamentGroup, formUseCase)
+
 		dummyRepo := repositories.NewDummyRepository(mongoDB)
 		dummyUseCase := usecases.NewDummyUseCase(dummyRepo)
 		resthandlers.RegisterDummyRoutes(api, dummyUseCase)
