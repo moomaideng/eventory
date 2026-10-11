@@ -18,7 +18,7 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-admin}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password123}
       POSTGRES_DB: postgres
-      POSTGRES_MULTIPLE_DATABASES: account_db,tournament_db
+      POSTGRES_MULTIPLE_DATABASES: account_db,tournament_db,payment_db
     ports:
       - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
     volumes:
@@ -171,6 +171,46 @@ services:
       - traefik.http.routers.tournament.entrypoints=web
       - traefik.http.services.tournament.loadbalancer.server.port=8082
 
+  payment-migrate:
+    <<: *backend-dev
+    profiles: [apps]
+    entrypoint: ["go", "run", "./services/payment/cmd/migrate"]
+    environment:
+      ENVIRONMENT: development
+      DB_DSN: postgresql://${POSTGRES_USER:-admin}:${POSTGRES_PASSWORD:-password123}@postgres:5432/payment_db?sslmode=disable
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  payment:
+    <<: *backend-dev
+    profiles: [apps]
+    environment:
+      SERVICE: payment
+      ENVIRONMENT: development
+      DB_DSN: postgresql://${POSTGRES_USER:-admin}:${POSTGRES_PASSWORD:-password123}@postgres:5432/payment_db?sslmode=disable
+      PAYMENT_SERVICE_KEY: ${PAYMENT_SERVICE_KEY:-local-payment-service-key-not-for-production}
+    ports:
+      - "127.0.0.1:8083:8083"
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--output-document=/dev/null", "http://127.0.0.1:8083/health"]
+      interval: 1s
+      timeout: 5s
+      retries: 30
+      start_period: 120s
+    depends_on:
+      postgres:
+        condition: service_healthy
+      payment-migrate:
+        condition: service_completed_successfully
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=eventory_default
+      - traefik.http.routers.payment.rule=PathPrefix(`/api/v1/payments`)
+      - traefik.http.routers.payment.entrypoints=web
+      - traefik.http.services.payment.loadbalancer.server.port=8083
+
   frontend:
     image: eventory-frontend:local
     profiles: [web]
@@ -195,6 +235,8 @@ services:
       account:
         condition: service_healthy
       tournament:
+        condition: service_healthy
+      payment:
         condition: service_healthy
 
 networks:
