@@ -26,9 +26,9 @@ tasks:
       - "{{.COMPOSE_ALL}} down --remove-orphans"
 
   logs:
-    desc: Follow infra and app logs
+    desc: Follow account, tournament, and payment logs
     cmds:
-      - "{{.COMPOSE_APPS}} logs -f"
+      - "{{.COMPOSE_APPS}} logs -f account tournament payment"
 
   apps:
     desc: Rebuild and restart infra and apps
