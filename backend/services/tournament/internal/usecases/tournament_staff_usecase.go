@@ -203,8 +203,12 @@ func (u *TournamentStaffUseCase) RemoveStaff(
 	ctx context.Context,
 	callerID, tournamentID, targetAccountID uuid.UUID,
 ) error {
-	if err := u.checkCallerAuth(ctx, tournamentID, callerID); err != nil {
+	exists, err := u.repo.TournamentExists(ctx, tournamentID)
+	if err != nil {
 		return err
+	}
+	if !exists {
+		return ErrTournamentNotFound
 	}
 
 	targetStaff, err := u.repo.GetStaff(ctx, tournamentID, targetAccountID)
@@ -216,6 +220,16 @@ func (u *TournamentStaffUseCase) RemoveStaff(
 	}
 	if targetStaff.IsOwner() {
 		return ErrCannotModifyOwner
+	}
+
+	if callerID != targetAccountID {
+		callerStaff, err := u.repo.GetStaff(ctx, tournamentID, callerID)
+		if err != nil {
+			return err
+		}
+		if callerStaff == nil || !callerStaff.IsOwner() {
+			return ErrCallerNotAuthorized
+		}
 	}
 
 	if err := u.repo.RemoveStaff(ctx, tournamentID, targetAccountID); err != nil {

@@ -100,3 +100,39 @@ func TestOrganizerDashboardListPaginationAndOwnership(t *testing.T) {
 		}
 	}
 }
+
+func TestOrganizerDashboardResolvesOwnerOrganizerName(t *testing.T) {
+	ownerID := uuid.New()
+	adminID := uuid.New()
+	tournamentID := uuid.New()
+
+	tournament := models.Tournament{
+		ID:       tournamentID,
+		Capacity: 8,
+		Staff: []models.TournamentStaff{
+			{AccountID: ownerID, Role: models.TournamentStaffRoleOwner},
+			{AccountID: adminID, Role: models.TournamentStaffRoleAdmin},
+		},
+	}
+	repo := &dashboardRepositoryStub{tournament: tournament}
+	accountSvc := newStubAccountService().withOrganizer(ownerID, "Super Esports Org")
+	uc := usecases.NewOrganizerDashboardUseCase(repo, accountSvc)
+
+	// Admin views tournament dashboard
+	result, err := uc.Get(context.Background(), adminID, tournamentID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.OrganizerName != "Super Esports Org" {
+		t.Fatalf("expected OrganizerName to be 'Super Esports Org', got '%s'", result.OrganizerName)
+	}
+
+	// Admin lists tournaments
+	listResult, err := uc.List(context.Background(), adminID, 1, 10)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(listResult.Items) != 1 || listResult.Items[0].OrganizerName != "Super Esports Org" {
+		t.Fatalf("expected list item OrganizerName to be 'Super Esports Org', got '%s'", listResult.Items[0].OrganizerName)
+	}
+}
