@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import {
-  ArrowUpRight,
+  ArrowRight,
   CalendarDays,
   LayoutDashboard,
   Plus,
@@ -46,10 +46,15 @@ import {
   DashboardPagination,
   RefreshDashboard,
 } from "@/features/organizer/components/dashboard-shared";
+import { StaffRoleBadge } from "@/features/tournament-staff";
+import { cn } from "@/lib/utils";
+
+type RoleFilter = "ALL" | "OWNER" | "ADMIN" | "REFEREE";
 
 export function OrganizerTournaments() {
   const { authorizationHeader, isLoading: authLoading } = useAuth();
   const [page, setPage] = useState(1);
+  const [roleFilter, setRoleFilter] = useState<RoleFilter>("ALL");
   const { data, error, isLoading, isFetching, refetch } = $api.useQuery(
     "get",
     "/api/v1/tournaments/mine",
@@ -59,6 +64,23 @@ export function OrganizerTournaments() {
     },
     { ...dashboardQueryOptions, enabled: Boolean(authorizationHeader) }
   );
+
+  const counts = useMemo(() => {
+    const items = data?.items ?? [];
+    const c = { ALL: items.length, OWNER: 0, ADMIN: 0, REFEREE: 0 };
+    for (const item of items) {
+      if (item.role === "OWNER") c.OWNER++;
+      else if (item.role === "ADMIN") c.ADMIN++;
+      else if (item.role === "REFEREE") c.REFEREE++;
+    }
+    return c;
+  }, [data?.items]);
+
+  const filteredItems = useMemo(() => {
+    const items = data?.items ?? [];
+    if (roleFilter === "ALL") return items;
+    return items.filter((item) => item.role === roleFilter);
+  }, [data?.items, roleFilter]);
 
   const loading = authLoading || !authorizationHeader || isLoading;
   return (
@@ -133,77 +155,140 @@ export function OrganizerTournaments() {
           </EmptyContent>
         </Empty>
       ) : (
-        <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-          {data.items.map(({ tournament, metrics, funding, published }) => (
-            <Card
-              key={tournament.id}
-              className="group motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-2 min-w-0 rounded-lg transition-shadow duration-200 hover:shadow-md"
-            >
-              <CardHeader>
-                <div className="mb-3 flex flex-wrap items-center gap-2">
-                  <Badge variant="secondary">{tournament.game}</Badge>
-                  <Badge variant="outline" className="capitalize">
-                    {statusLabel(tournament.status)}
-                  </Badge>
-                  {!published ? (
-                    <Badge variant="outline">Unpublished</Badge>
-                  ) : null}
-                </div>
-                <CardTitle>
-                  <h2 className="text-lg font-semibold wrap-anywhere">
-                    {tournament.name}
-                  </h2>
-                </CardTitle>
-                <CardDescription>{tournament.organizerName}</CardDescription>
-              </CardHeader>
-              <CardContent className="flex-1 gap-5">
-                <p className="text-muted-foreground flex items-start gap-2 text-sm">
-                  <CalendarDays className="mt-0.5 size-4 shrink-0" />
-                  {formatTournamentDate(tournament.startAt)}
-                </p>
-                <Progress
-                  value={
-                    tournament.capacity > 0
-                      ? Math.min(
-                          100,
-                          (metrics.acceptedEntries / tournament.capacity) * 100
-                        )
-                      : 0
-                  }
+        <div className="flex flex-col gap-6">
+          <div className="flex flex-wrap items-center gap-2">
+            {(
+              [
+                { id: "ALL", label: "All" },
+                { id: "OWNER", label: "Owner" },
+                { id: "ADMIN", label: "Admin" },
+                { id: "REFEREE", label: "Referee" },
+              ] as const
+            ).map(({ id, label }) => {
+              const count = counts[id];
+              const isActive = roleFilter === id;
+              return (
+                <Button
+                  key={id}
+                  variant={isActive ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setRoleFilter(id)}
+                  className="rounded-full"
                 >
-                  <ProgressLabel>Accepted entries</ProgressLabel>
-                  <ProgressValue>
-                    {() =>
-                      `${metrics.acceptedEntries} / ${tournament.capacity}`
-                    }
-                  </ProgressValue>
-                </Progress>
-                <div className="flex flex-wrap justify-between gap-3 text-sm">
-                  <span className="text-muted-foreground flex items-center gap-2">
-                    <Users className="size-4" />
-                    {metrics.confirmedParticipants} participants
+                  {label}
+                  <span
+                    className={cn(
+                      "ml-1.5 text-xs font-normal",
+                      isActive
+                        ? "text-primary-foreground/80"
+                        : "text-muted-foreground"
+                    )}
+                  >
+                    {count}
                   </span>
-                  <span className="font-medium">
-                    {formatMoney(funding.raisedAmount, funding.currency)} raised
-                  </span>
-                </div>
-              </CardContent>
-              <CardFooter>
+                </Button>
+              );
+            })}
+          </div>
+
+          {filteredItems.length === 0 ? (
+            <Empty className="border">
+              <EmptyHeader>
+                <EmptyTitle>No {roleFilter.toLowerCase()} tournaments</EmptyTitle>
+                <EmptyDescription>
+                  You are not assigned as a {roleFilter.toLowerCase()} on any
+                  tournaments.
+                </EmptyDescription>
+              </EmptyHeader>
+              <EmptyContent>
                 <Button
                   variant="outline"
-                  render={
-                    <Link href={`/organizer/tournaments/${tournament.id}`} />
-                  }
-                  nativeButton={false}
-                  aria-label={`Open ${tournament.name} dashboard`}
-                  className="w-full justify-between"
+                  size="sm"
+                  onClick={() => setRoleFilter("ALL")}
                 >
-                  Open dashboard
-                  <ArrowUpRight data-icon="inline-end" />
+                  Show all tournaments
                 </Button>
-              </CardFooter>
-            </Card>
-          ))}
+              </EmptyContent>
+            </Empty>
+          ) : (
+            <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+              {filteredItems.map(
+                ({ tournament, metrics, funding, published, role }) => (
+                  <Card
+                    key={tournament.id}
+                    className="group motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-2 min-w-0 rounded-lg transition-shadow duration-200 hover:shadow-md"
+                  >
+                    <CardHeader>
+                      <div className="mb-3 flex flex-wrap items-center gap-2">
+                        {role ? <StaffRoleBadge role={role} /> : null}
+                        <Badge variant="secondary">{tournament.game}</Badge>
+                        <Badge variant="outline" className="capitalize">
+                          {statusLabel(tournament.status)}
+                        </Badge>
+                        {!published ? (
+                          <Badge variant="outline">Unpublished</Badge>
+                        ) : null}
+                      </div>
+                      <CardTitle>
+                        <h2 className="text-lg font-semibold wrap-anywhere">
+                          {tournament.name}
+                        </h2>
+                      </CardTitle>
+                      <CardDescription>{tournament.organizerName}</CardDescription>
+                    </CardHeader>
+                    <CardContent className="flex-1 gap-5">
+                      <p className="text-muted-foreground flex items-start gap-2 text-sm">
+                        <CalendarDays className="mt-0.5 size-4 shrink-0" />
+                        {formatTournamentDate(tournament.startAt)}
+                      </p>
+                      <Progress
+                        value={
+                          tournament.capacity > 0
+                            ? Math.min(
+                                100,
+                                (metrics.acceptedEntries / tournament.capacity) *
+                                  100
+                              )
+                            : 0
+                        }
+                      >
+                        <ProgressLabel>Accepted entries</ProgressLabel>
+                        <ProgressValue>
+                          {() =>
+                            `${metrics.acceptedEntries} / ${tournament.capacity}`
+                          }
+                        </ProgressValue>
+                      </Progress>
+                      <div className="flex flex-wrap justify-between gap-3 text-sm">
+                        <span className="text-muted-foreground flex items-center gap-2">
+                          <Users className="size-4" />
+                          {metrics.confirmedParticipants} participants
+                        </span>
+                        <span className="font-medium">
+                          {formatMoney(funding.raisedAmount, funding.currency)}{" "}
+                          raised
+                        </span>
+                      </div>
+                    </CardContent>
+                    <CardFooter>
+                      <Button
+                        variant="outline"
+                        render={
+                          <Link href={`/organizer/tournaments/${tournament.id}`} />
+                        }
+                        nativeButton={false}
+                        aria-label={`Manage ${tournament.name}`}
+                        className="w-full justify-between"
+                      >
+                        Manage
+                        <ArrowRight data-icon="inline-end" />
+                      </Button>
+                    </CardFooter>
+                  </Card>
+                )
+              )}
+            </div>
+          )}
         </div>
       )}
       {!loading && !error && data ? (
