@@ -16,6 +16,7 @@ tasks:
 
   dev:
     desc: Migrate, start infra+apps, run Next.js on the host
+    deps: [build]
     cmds:
       - task: migrate
       - "{{.COMPOSE_APPS}} up -d"
@@ -24,12 +25,14 @@ tasks:
 
   dev:backend:
     desc: Migrate and start infra+apps (no frontend)
+    deps: [build]
     cmds:
       - task: migrate
       - "{{.COMPOSE_APPS}} up -d"
 
   dev:web:
     desc: Migrate and start infra+apps+frontend container
+    deps: [build]
     cmds:
       - task: migrate
       - "{{.COMPOSE_ALL}} up -d"
@@ -48,6 +51,7 @@ tasks:
 
   migrate:
     desc: Ensure Postgres is up, create DBs, run service migrations
+    deps: [build]
     cmds:
       - "{{.COMPOSE_APPS}} up -d --wait postgres"
       - "{{.COMPOSE_APPS}} exec -T postgres bash /docker-entrypoint-initdb.d/01-init-databases.sh"
@@ -70,9 +74,17 @@ tasks:
   # --- Tooling ---
 
   build:
-    desc: Rebuild Compose images (go-dev / frontend) when a Dockerfile changes
+    desc: Rebuild Compose images when Dockerfiles change
+    sources:
+      - backend/docker/**
+      - backend/Dockerfile
+      - frontend/Dockerfile
+    generates:
+      - .cache/compose-build.stamp
     cmds:
       - "{{.COMPOSE_ALL}} build"
+      - mkdir -p .cache
+      - touch .cache/compose-build.stamp
 
   frontend:
     desc: Install frontend deps if needed and run Next.js on the host
