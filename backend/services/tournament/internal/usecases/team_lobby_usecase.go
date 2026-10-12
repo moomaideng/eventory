@@ -23,6 +23,7 @@ var (
 )
 
 type TeamLobbyUseCase struct {
+	submission *TeamSubmissionUseCase
 	repo       TeamLobbyRepository
 	accountSvc ports.AccountService
 }
@@ -42,6 +43,31 @@ type TeamLobbyRepository interface {
 
 func NewTeamLobbyUseCase(repo TeamLobbyRepository, accountSvc ports.AccountService) *TeamLobbyUseCase {
 	return &TeamLobbyUseCase{repo: repo, accountSvc: accountSvc}
+}
+
+func (u *TeamLobbyUseCase) WithSubmission(submission *TeamSubmissionUseCase) *TeamLobbyUseCase {
+	u.submission = submission
+	return u
+}
+
+func (u *TeamLobbyUseCase) RefreshSubmission(ctx context.Context, teamID, accountID uuid.UUID) (*TeamLobbyView, error) {
+	if err := u.ensureActiveAccount(ctx, accountID); err != nil {
+		return nil, err
+	}
+	team, err := u.captainTeam(ctx, teamID, accountID)
+	if err != nil {
+		return nil, err
+	}
+	if u.submission != nil {
+		if err := u.submission.Reconcile(ctx, team); err != nil {
+			return nil, err
+		}
+	}
+	team, err = u.repo.FindByID(ctx, teamID)
+	if err != nil {
+		return nil, err
+	}
+	return u.toView(ctx, team)
 }
 
 type TeamLobbyView struct {
@@ -167,11 +193,11 @@ func (u *TeamLobbyUseCase) Lock(ctx context.Context, teamID, accountID uuid.UUID
 	if _, err := u.captainTeam(ctx, teamID, accountID); err != nil {
 		return nil, err
 	}
-	team, err := u.repo.Lock(ctx, teamID)
+	_, err := u.repo.Lock(ctx, teamID)
 	if err != nil {
 		return nil, err
 	}
-	return u.toView(ctx, team)
+	return u.RefreshSubmission(ctx, teamID, accountID)
 }
 
 func (u *TeamLobbyUseCase) RemoveMember(ctx context.Context, teamID, memberID, accountID uuid.UUID) (*TeamLobbyView, error) {

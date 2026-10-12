@@ -14,6 +14,7 @@ import (
 	"github.com/moomaideng/eventory/services/tournament/config"
 	resthandlers "github.com/moomaideng/eventory/services/tournament/handlers/rest"
 	"github.com/moomaideng/eventory/services/tournament/internal/adapters/accountgrpc"
+	"github.com/moomaideng/eventory/services/tournament/internal/adapters/paymenthttp"
 	tournamentmiddlewares "github.com/moomaideng/eventory/services/tournament/internal/middlewares"
 	"github.com/moomaideng/eventory/services/tournament/internal/ports"
 	"time"
@@ -27,7 +28,8 @@ import (
 )
 
 type App struct {
-	HTTP http.Handler
+	HTTP           http.Handler
+	RunSubmissions func(context.Context)
 }
 
 func NewApp(db *gorm.DB, mongoDB *mongo.Database, cfg config.Config) *App {
@@ -44,10 +46,11 @@ func NewAppWithAccountConn(db *gorm.DB, mongoDB *mongo.Database, cfg config.Conf
 }
 
 func newApp(db *gorm.DB, mongoDB *mongo.Database, cfg config.Config, accountSvc ports.AccountService) *App {
-	return &App{HTTP: newHTTPRouter(db, mongoDB, cfg, accountSvc)}
+	submission := usecases.NewTeamSubmissionUseCase(repositories.NewTeamSubmissionRepository(db), paymenthttp.New(cfg.PaymentURL, cfg.PaymentServiceKey))
+	return &App{HTTP: newHTTPRouter(db, mongoDB, cfg, accountSvc, submission), RunSubmissions: submission.Run}
 }
 
-func newHTTPRouter(db *gorm.DB, mongoDB *mongo.Database, cfg config.Config, accountSvc ports.AccountService) http.Handler {
+func newHTTPRouter(db *gorm.DB, mongoDB *mongo.Database, cfg config.Config, accountSvc ports.AccountService, submission *usecases.TeamSubmissionUseCase) http.Handler {
 	router := chi.NewMux()
 	router.Use(middleware.Logger)
 	router.Use(middleware.Recoverer)
@@ -107,7 +110,7 @@ func newHTTPRouter(db *gorm.DB, mongoDB *mongo.Database, cfg config.Config, acco
 	tournamentStatusRepo := repositories.NewTournamentStatusRepository(db)
 
 	tournamentUseCase := usecases.NewTournamentUseCase(tournamentRepo, accountSvc)
-	teamLobbyUseCase := usecases.NewTeamLobbyUseCase(teamLobbyRepo, accountSvc)
+	teamLobbyUseCase := usecases.NewTeamLobbyUseCase(teamLobbyRepo, accountSvc).WithSubmission(submission)
 	dashboardUseCase := usecases.NewOrganizerDashboardUseCase(organizerDashboardRepo, accountSvc)
 	statusUseCase := usecases.NewTournamentStatusUseCase(tournamentStatusRepo, accountSvc)
 

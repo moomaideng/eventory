@@ -7,6 +7,9 @@ import (
 
 	accountconfig "github.com/moomaideng/eventory/services/account/config"
 	accountserver "github.com/moomaideng/eventory/services/account/server"
+	paymentconfig "github.com/moomaideng/eventory/services/payment/config"
+	paymentdb "github.com/moomaideng/eventory/services/payment/database"
+	paymentserver "github.com/moomaideng/eventory/services/payment/server"
 	tournamentconfig "github.com/moomaideng/eventory/services/tournament/config"
 	tournamentserver "github.com/moomaideng/eventory/services/tournament/server"
 	"google.golang.org/grpc"
@@ -20,6 +23,7 @@ const basePath = "/api/v1"
 
 // App hosts in-process account and tournament HTTP servers against one Postgres DSN.
 type App struct {
+	PaymentServer    *httptest.Server
 	AccountServer    *httptest.Server
 	TournamentServer *httptest.Server
 	DB               *gorm.DB
@@ -64,14 +68,20 @@ func NewApp(tb testing.TB, dsn string) *App {
 	accountTS := httptest.NewServer(accountApp.HTTP)
 	tb.Cleanup(accountTS.Close)
 
+	if err := paymentdb.AutoMigrate(db); err != nil {
+		tb.Fatal(err)
+	}
+	paymentTS := httptest.NewServer(paymentserver.NewApp(db, paymentconfig.Config{Environment: "development", SupabaseURL: jwksServer.URL(), ServiceKey: "test-team-payment-service-key-12345678"}).HTTP)
+	tb.Cleanup(paymentTS.Close)
 	tournamentApp := tournamentserver.NewAppWithAccountConn(db, nil, tournamentconfig.Config{
 		Environment: "development",
 		SupabaseURL: jwksServer.URL(),
+		PaymentURL:  paymentTS.URL, PaymentServiceKey: "test-team-payment-service-key-12345678",
 	}, conn)
 	tournamentTS := httptest.NewServer(tournamentApp.HTTP)
 	tb.Cleanup(tournamentTS.Close)
 
-	return &App{
+	return &App{PaymentServer: paymentTS,
 		AccountServer:    accountTS,
 		TournamentServer: tournamentTS,
 		DB:               db,

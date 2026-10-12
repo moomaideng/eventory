@@ -60,7 +60,9 @@ func (uc *PaymentUseCase) Create(ctx context.Context, input CreatePayment) (*mod
 	if !errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, err
 	}
-	if !invoice.ExpiresAt.After(time.Now()) {
+	// A durable team attempt can be recovered after an outage. Creating its
+	// already-expired invoice is safe: CompleteMock cannot pay it.
+	if !invoice.ExpiresAt.After(time.Now()) && input.Source != "TEAM_REGISTRATION" {
 		return nil, ErrInvalid
 	}
 	return uc.repo.Create(ctx, invoice)
@@ -126,6 +128,9 @@ func (uc *PaymentUseCase) CompleteMock(ctx context.Context, payer, id uuid.UUID,
 		}
 		if result == models.Succeeded {
 			payment.PaidAt = &now
+		} else if payment.Source == "TEAM_REGISTRATION" {
+			// Close this attempt before the tournament service unlocks the roster.
+			payment.CancelledAt = &now
 		}
 		return nil
 	})

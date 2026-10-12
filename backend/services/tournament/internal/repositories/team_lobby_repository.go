@@ -12,6 +12,7 @@ import (
 )
 
 var (
+	ErrInvalidRegistrationFee       = errors.New("unsupported registration fee or currency")
 	ErrTeamLobbyNotFound            = errors.New("team lobby not found")
 	ErrTeamLobbyNotForming          = errors.New("team lobby is not forming")
 	ErrTeamLobbyFull                = errors.New("team lobby is full")
@@ -75,6 +76,7 @@ func (r *teamLobbyRepository) FindActiveByTournamentAndAccount(ctx context.Conte
 		Where("tournament_teams.status IN ?", []models.TournamentTeamStatus{
 			models.TournamentTeamStatusForming,
 			models.TournamentTeamStatusLocked,
+			models.TournamentTeamStatusPaymentPending,
 			models.TournamentTeamStatusAccepted,
 		}))
 }
@@ -165,20 +167,57 @@ func (r *teamLobbyRepository) RegenerateInvite(ctx context.Context, teamID uuid.
 
 func (r *teamLobbyRepository) Lock(ctx context.Context, teamID uuid.UUID) (*models.TournamentTeam, error) {
 	err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		var initial models.TournamentTeam
+		if err := tx.First(&initial, "id = ?", teamID).Error; err != nil {
+			return err
+		}
+		var tournament models.Tournament
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&tournament, "id = ?", initial.TournamentID).Error; err != nil {
+			return err
+		}
 		team, err := r.lockTeam(tx, teamID)
 		if err != nil {
 			return err
 		}
+		if team.Status == models.TournamentTeamStatusPaymentPending || team.Status == models.TournamentTeamStatusLocked {
+			return nil
+		}
 		if team.Status != models.TournamentTeamStatusForming {
 			return ErrTeamLobbyNotForming
 		}
-		if team.Tournament.Status != models.TournamentStatusRegistrationOpen {
+		now := time.Now().UTC().Truncate(time.Microsecond)
+		if !tournament.Published || tournament.RegistrationMode != models.TournamentRegistrationModeTeam || tournament.Status != models.TournamentStatusRegistrationOpen || !now.Before(tournament.RegistrationDeadline) {
 			return ErrTournamentRegistrationClosed
 		}
 		if len(team.Members) < team.Tournament.MinTeamSize {
 			return ErrRosterBelowMinimum
 		}
-		now := time.Now().UTC()
+		if len(team.Members) > tournament.MaxTeamSize {
+			return ErrTeamLobbyFull
+		}
+		if tournament.EntryFee < 0 || tournament.EntryFee > 9007199254740991/100 || tournament.Currency != "THB" {
+			return ErrInvalidRegistrationFee
+		}
+		if tournament.EntryFee > 0 {
+			var payer uuid.UUID
+			for _, member := range team.Members {
+				if member.Role == models.TournamentTeamMemberRoleCaptain {
+					payer = member.AccountID
+				}
+			}
+			if payer == uuid.Nil {
+				return ErrTeamLobbyNotForming
+			}
+			expires := now.Add(15 * time.Minute)
+			if tournament.RegistrationDeadline.Before(expires) {
+				expires = tournament.RegistrationDeadline
+			}
+			return tx.Model(&models.TournamentTeam{}).Where("id = ?", team.ID).Updates(map[string]any{
+				"status": models.TournamentTeamStatusPaymentPending, "locked_at": nil,
+				"payment_attempt_id": uuid.New(), "payment_id": nil, "payment_payer_id": payer,
+				"payment_amount_minor": tournament.EntryFee * 100, "payment_expires_at": expires,
+			}).Error
+		}
 		return tx.Model(&models.TournamentTeam{}).Where("id = ?", team.ID).Updates(map[string]any{
 			"status":    models.TournamentTeamStatusLocked,
 			"locked_at": now,
@@ -256,6 +295,7 @@ func accountHasActiveTournamentTeam(tx *gorm.DB, tournamentID, accountID uuid.UU
 		Where("tournament_teams.status IN ?", []models.TournamentTeamStatus{
 			models.TournamentTeamStatusForming,
 			models.TournamentTeamStatusLocked,
+			models.TournamentTeamStatusPaymentPending,
 			models.TournamentTeamStatusAccepted,
 		}).
 		Count(&count).Error

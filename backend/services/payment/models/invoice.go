@@ -12,6 +12,7 @@ const (
 	Unpaid  Status = "UNPAID"
 	Paid    Status = "PAID"
 	Expired Status = "EXPIRED"
+	Voided  Status = "CANCELLED"
 )
 
 type MockResult string
@@ -22,7 +23,7 @@ const (
 	Cancelled MockResult = "CANCELLED"
 )
 
-// Invoice terms are immutable; only PaidAt changes. IDs and references are opaque.
+// Invoice terms are immutable; PaidAt and CancelledAt record terminal results.
 type Invoice struct {
 	ID             uuid.UUID `gorm:"type:uuid;primaryKey"`
 	PayerAccountID uuid.UUID `gorm:"type:uuid;not null;index:idx_invoice_history,priority:1"`
@@ -37,6 +38,7 @@ type Invoice struct {
 	UpdatedAt      time.Time `gorm:"not null"`
 	ExpiresAt      time.Time `gorm:"not null"`
 	PaidAt         *time.Time
+	CancelledAt    *time.Time
 	Receipt        *Receipt `gorm:"foreignKey:InvoiceID"`
 }
 
@@ -45,6 +47,9 @@ func (Invoice) TableName() string { return "payment_invoices" }
 func (p *Invoice) Status(now time.Time) Status {
 	if p.PaidAt != nil {
 		return Paid
+	}
+	if p.CancelledAt != nil {
+		return Voided
 	}
 	if !now.Before(p.ExpiresAt) {
 		return Expired

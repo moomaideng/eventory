@@ -23,16 +23,18 @@ type TeamLobbyMemberResponse struct {
 }
 
 type TeamLobbyResponse struct {
-	ID          uuid.UUID                 `json:"id"`
-	Tournament  TournamentResponse        `json:"tournament"`
-	CaptainID   uuid.UUID                 `json:"captainId"`
-	CaptainName string                    `json:"captainName"`
-	Name        string                    `json:"name"`
-	InviteCode  string                    `json:"inviteCode"`
-	Status      string                    `json:"status" enum:"FORMING,LOCKED,ACCEPTED,REJECTED"`
-	Members     []TeamLobbyMemberResponse `json:"members"`
-	ViewerRole  string                    `json:"viewerRole" enum:"CAPTAIN,MEMBER,INVITEE"`
-	CreatedAt   time.Time                 `json:"createdAt"`
+	PaymentID        *uuid.UUID                `json:"paymentId"`
+	PaymentExpiresAt *time.Time                `json:"paymentExpiresAt"`
+	ID               uuid.UUID                 `json:"id"`
+	Tournament       TournamentResponse        `json:"tournament"`
+	CaptainID        uuid.UUID                 `json:"captainId"`
+	CaptainName      string                    `json:"captainName"`
+	Name             string                    `json:"name"`
+	InviteCode       string                    `json:"inviteCode"`
+	Status           string                    `json:"status" enum:"FORMING,PAYMENT_PENDING,LOCKED,ACCEPTED,REJECTED"`
+	Members          []TeamLobbyMemberResponse `json:"members"`
+	ViewerRole       string                    `json:"viewerRole" enum:"CAPTAIN,MEMBER,INVITEE"`
+	CreatedAt        time.Time                 `json:"createdAt"`
 }
 
 type TeamLobbyOutput struct {
@@ -155,6 +157,7 @@ func RegisterTeamLobbyRoutes(api huma.API, lobbyUseCase *usecases.TeamLobbyUseCa
 	registerCaptainAction(api, lobbyUseCase, "regenerate-team-lobby-invite", "/lobbies/{id}/invite/regenerate", "Regenerate a team invite", func(ctx context.Context, teamID, accountID uuid.UUID) (*usecases.TeamLobbyView, error) {
 		return lobbyUseCase.RegenerateInvite(ctx, teamID, accountID)
 	})
+	registerCaptainAction(api, lobbyUseCase, "refresh-team-submission", "/lobbies/{id}/submission/refresh", "Verify team registration payment", lobbyUseCase.RefreshSubmission)
 	registerCaptainAction(api, lobbyUseCase, "lock-team-lobby", "/lobbies/{id}/lock", "Lock a team roster", func(ctx context.Context, teamID, accountID uuid.UUID) (*usecases.TeamLobbyView, error) {
 		return lobbyUseCase.Lock(ctx, teamID, accountID)
 	})
@@ -227,6 +230,10 @@ func teamLobbyHTTPError(err error) error {
 	switch {
 	case errors.Is(err, usecases.ErrTournamentNotFound), errors.Is(err, repositories.ErrTeamLobbyNotFound):
 		return huma.Error404NotFound("Requested tournament or team lobby was not found", err)
+	case errors.Is(err, usecases.ErrPaymentUnavailable):
+		return huma.Error503ServiceUnavailable(err.Error())
+	case errors.Is(err, repositories.ErrInvalidRegistrationFee):
+		return huma.Error409Conflict(err.Error())
 	case errors.Is(err, usecases.ErrInvalidTeamName):
 		return huma.Error400BadRequest("Invalid team name", err)
 	case errors.Is(err, usecases.ErrLobbyAccessDenied):
@@ -274,7 +281,11 @@ func toTeamLobbyResponse(view *usecases.TeamLobbyView, viewerID uuid.UUID) TeamL
 			}
 		}
 	}
-	return TeamLobbyResponse{
+	var paymentID *uuid.UUID
+	if viewerRole == "CAPTAIN" {
+		paymentID = team.PaymentID
+	}
+	return TeamLobbyResponse{PaymentID: paymentID, PaymentExpiresAt: team.PaymentExpiresAt,
 		ID: team.ID, Tournament: toTournamentResponse(team.Tournament, view.OrganizerName, 0),
 		CaptainID: captainID, CaptainName: captainName, Name: team.Name,
 		InviteCode: team.InviteCode, Status: string(team.Status), Members: members,

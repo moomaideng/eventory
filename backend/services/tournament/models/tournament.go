@@ -33,10 +33,11 @@ const (
 type TournamentTeamStatus string
 
 const (
-	TournamentTeamStatusForming  TournamentTeamStatus = "FORMING"
-	TournamentTeamStatusLocked   TournamentTeamStatus = "LOCKED"
-	TournamentTeamStatusAccepted TournamentTeamStatus = "ACCEPTED"
-	TournamentTeamStatusRejected TournamentTeamStatus = "REJECTED"
+	TournamentTeamStatusForming        TournamentTeamStatus = "FORMING"
+	TournamentTeamStatusPaymentPending TournamentTeamStatus = "PAYMENT_PENDING"
+	TournamentTeamStatusLocked         TournamentTeamStatus = "LOCKED"
+	TournamentTeamStatusAccepted       TournamentTeamStatus = "ACCEPTED"
+	TournamentTeamStatusRejected       TournamentTeamStatus = "REJECTED"
 )
 
 type TournamentTeamMemberRole string
@@ -73,15 +74,20 @@ type Tournament struct {
 // TournamentTeam is the single persisted record for a team throughout
 // formation, locking, organizer review, and confirmed registration.
 type TournamentTeam struct {
-	ID           uuid.UUID              `gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
-	TournamentID uuid.UUID              `gorm:"type:uuid;not null;index;uniqueIndex:idx_tournament_team_name;index:idx_tournament_teams_status,priority:1"`
-	Tournament   Tournament             `gorm:"foreignKey:TournamentID;constraint:OnDelete:CASCADE;"`
-	Name         string                 `gorm:"type:varchar(120);not null;uniqueIndex:idx_tournament_team_name"`
-	InviteCode   string                 `gorm:"type:varchar(32);uniqueIndex"`
-	Status       TournamentTeamStatus   `gorm:"type:varchar(16);not null;default:'FORMING';index:idx_tournament_teams_status,priority:2"`
-	Members      []TournamentTeamMember `gorm:"foreignKey:TournamentTeamID;constraint:OnDelete:CASCADE;"`
-	CreatedAt    time.Time
-	LockedAt     *time.Time
+	ID                 uuid.UUID              `gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
+	TournamentID       uuid.UUID              `gorm:"type:uuid;not null;index;uniqueIndex:idx_tournament_team_name;index:idx_tournament_teams_status,priority:1"`
+	Tournament         Tournament             `gorm:"foreignKey:TournamentID;constraint:OnDelete:CASCADE;"`
+	Name               string                 `gorm:"type:varchar(120);not null;uniqueIndex:idx_tournament_team_name"`
+	InviteCode         string                 `gorm:"type:varchar(32);uniqueIndex"`
+	Status             TournamentTeamStatus   `gorm:"type:varchar(16);not null;default:'FORMING';index:idx_tournament_teams_status,priority:2"`
+	Members            []TournamentTeamMember `gorm:"foreignKey:TournamentTeamID;constraint:OnDelete:CASCADE;"`
+	CreatedAt          time.Time
+	LockedAt           *time.Time
+	PaymentAttemptID   *uuid.UUID `gorm:"type:uuid"`
+	PaymentID          *uuid.UUID `gorm:"type:uuid"`
+	PaymentPayerID     *uuid.UUID `gorm:"type:uuid"`
+	PaymentAmountMinor int64      `gorm:"not null;default:0"`
+	PaymentExpiresAt   *time.Time
 }
 
 type TournamentTeamMember struct {

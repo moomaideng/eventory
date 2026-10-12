@@ -138,6 +138,8 @@ services:
       HTTP_PORT: "8082"
       DB_DSN: postgresql://admin:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@postgres:5432/tournament_db?sslmode=disable
       ACCOUNT_GRPC_ADDR: account:9091
+      PAYMENT_URL: http://payment:8083
+      PAYMENT_SERVICE_KEY: ${PAYMENT_SERVICE_KEY:?PAYMENT_SERVICE_KEY is required}
 
   tournament:
     image: ghcr.io/moomaideng/eventory-tournament:${IMAGE_TAG:?IMAGE_TAG is required}
@@ -146,6 +148,8 @@ services:
       HTTP_PORT: "8082"
       DB_DSN: postgresql://admin:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@postgres:5432/tournament_db?sslmode=disable
       ACCOUNT_GRPC_ADDR: account:9091
+      PAYMENT_URL: http://payment:8083
+      PAYMENT_SERVICE_KEY: ${PAYMENT_SERVICE_KEY:?PAYMENT_SERVICE_KEY is required}
       MONGO_URI: mongodb://admin:${MONGO_PASSWORD:?MONGO_PASSWORD is required}@mongodb:27017/tournament_db?authSource=admin
       MONGO_DB_NAME: tournament_db
       SUPABASE_URL: ${SUPABASE_URL:?SUPABASE_URL is required}

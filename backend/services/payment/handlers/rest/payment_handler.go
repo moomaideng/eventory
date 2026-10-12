@@ -17,19 +17,20 @@ import (
 )
 
 type PaymentResponse struct {
-	ID           uuid.UUID     `json:"id"`
-	Source       string        `json:"source"`
-	Reference    string        `json:"reference"`
-	Description  string        `json:"description"`
-	AmountMinor  int64         `json:"amountMinor" doc:"Amount in satang"`
-	Currency     string        `json:"currency" enum:"THB"`
-	Provider     string        `json:"provider" enum:"MOCK"`
-	Status       models.Status `json:"status" enum:"UNPAID,PAID,EXPIRED"`
-	CreatedAt    time.Time     `json:"createdAt"`
-	ExpiresAt    time.Time     `json:"expiresAt"`
-	PaidAt       *time.Time    `json:"paidAt"`
-	InvoicePath  string        `json:"invoicePath"`
-	CheckoutPath string        `json:"checkoutPath"`
+	PayerAccountID uuid.UUID     `json:"payerAccountId"`
+	ID             uuid.UUID     `json:"id"`
+	Source         string        `json:"source"`
+	Reference      string        `json:"reference"`
+	Description    string        `json:"description"`
+	AmountMinor    int64         `json:"amountMinor" doc:"Amount in satang"`
+	Currency       string        `json:"currency" enum:"THB"`
+	Provider       string        `json:"provider" enum:"MOCK"`
+	Status         models.Status `json:"status" enum:"UNPAID,PAID,EXPIRED,CANCELLED"`
+	CreatedAt      time.Time     `json:"createdAt"`
+	ExpiresAt      time.Time     `json:"expiresAt"`
+	PaidAt         *time.Time    `json:"paidAt"`
+	InvoicePath    string        `json:"invoicePath"`
+	CheckoutPath   string        `json:"checkoutPath"`
 }
 
 type PaymentOutput struct{ Body PaymentResponse }
@@ -38,7 +39,7 @@ type PaymentIDInput struct {
 }
 
 func response(payment *models.Invoice) PaymentResponse {
-	return PaymentResponse{ID: payment.ID, Source: payment.Source, Reference: payment.Reference, Description: payment.Description,
+	return PaymentResponse{PayerAccountID: payment.PayerAccountID, ID: payment.ID, Source: payment.Source, Reference: payment.Reference, Description: payment.Description,
 		AmountMinor: payment.AmountMinor, Currency: payment.Currency, Provider: payment.Provider, Status: payment.Status(time.Now()),
 		CreatedAt: payment.CreatedAt, ExpiresAt: payment.ExpiresAt, PaidAt: payment.PaidAt,
 		InvoicePath: "/payments/" + payment.ID.String(), CheckoutPath: "/payments/" + payment.ID.String() + "/checkout"}

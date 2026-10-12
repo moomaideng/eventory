@@ -46,6 +46,7 @@ func main() {
 	}
 
 	app := server.NewApp(db, mongoDB, appConfig)
+	go app.RunSubmissions(context.Background())
 
 	fmt.Printf("Tournament service starting on HTTP port %s (env: %s)...\n", appConfig.HTTPPort, appConfig.Environment)
 	fmt.Printf("API Documentation available at http://localhost:%s/docs\n", appConfig.HTTPPort)
