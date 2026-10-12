@@ -37,6 +37,7 @@ export function RefreshDashboard({
       title="Refresh dashboard"
       disabled={fetching}
       onClick={onRefresh}
+      suppressHydrationWarning
     >
       <RefreshCw className={cn(fetching && "motion-safe:animate-spin")} />
     </Button>

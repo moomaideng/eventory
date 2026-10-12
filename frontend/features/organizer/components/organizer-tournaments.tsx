@@ -113,7 +113,7 @@ export function OrganizerTournaments() {
             Host tournament
           </Button>
           <RefreshDashboard
-            fetching={isFetching || loading}
+            fetching={isFetching}
             onRefresh={() => void refetch()}
           />
         </div>
