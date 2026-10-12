@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { X } from "lucide-react";
+import { Pencil, X } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -63,7 +63,7 @@ export function StaffTable({
               <TableHead className="w-28 sm:w-36">Role</TableHead>
               <TableHead className="hidden w-36 sm:table-cell">Joined</TableHead>
               {isOwner ? (
-                <TableHead className="w-40 text-right sm:w-44">Actions</TableHead>
+                <TableHead className="w-24 text-right sm:w-28">Actions</TableHead>
               ) : null}
             </TableRow>
           </TableHeader>
@@ -102,19 +102,23 @@ export function StaffTable({
                           Protected
                         </span>
                       ) : (
-                        <div className="flex items-center justify-end gap-1.5">
+                        <div className="flex items-center justify-end gap-1">
                           <Button
-                            variant="outline"
-                            size="sm"
+                            variant="ghost"
+                            size="icon-sm"
+                            className="text-muted-foreground hover:text-foreground"
+                            aria-label={`Change role for @${member.handle}`}
+                            title={`Change role for @${member.handle}`}
                             onClick={() => setEditingStaff(member)}
                           >
-                            Change role
+                            <Pencil className="size-4" />
                           </Button>
                           <Button
                             variant="ghost"
                             size="icon-sm"
                             className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
                             aria-label={`Remove @${member.handle}`}
+                            title={`Remove @${member.handle}`}
                             onClick={() => setRemovingStaff(member)}
                           >
                             <X className="size-4" />
