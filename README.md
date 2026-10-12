@@ -59,7 +59,7 @@ task migrate      # account_db, then tournament_db
 task seed         # sample data, after the apps are up
 task logs         # account / tournament / payment logs
 task down         # stop Compose
-task dev:web      # also run the frontend in Docker
+task dev:docker      # also run the frontend in Docker
 task dev:backend  # infra+apps only (no host Next.js)
 task build        # rebuild images when a Dockerfile changes
 task db:reset     # stop the stack and delete the local Postgres volume

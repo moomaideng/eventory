@@ -30,7 +30,7 @@ tasks:
       - task: migrate
       - "{{.COMPOSE_APPS}} up -d"
 
-  dev:web:
+  dev:docker:
     desc: Migrate and start infra+apps+frontend container
     deps: [build]
     cmds:

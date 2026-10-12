@@ -40,10 +40,10 @@ flowchart TD
 | You run the project with | Fix command |
 | --- | --- |
 | `task dev` (frontend on the host) | `npm --prefix frontend ci` |
-| `task dev:web` (frontend in Docker) | `task down`, then `docker volume rm eventory_frontend_node_modules`, then `task dev:web` |
+| `task dev:docker` (frontend in Docker) | `task down`, then `docker volume rm eventory_frontend_node_modules`, then `task dev:docker` |
 | Both, sometimes | Run both commands |
 
-**Rule of thumb:** after any `git pull` that changes `frontend/package.json`, run `npm --prefix frontend ci`. `task dev` does this when `package-lock.json` changes. `task dev:web` does not. Its `node_modules` live in the volume.
+**Rule of thumb:** after any `git pull` that changes `frontend/package.json`, run `npm --prefix frontend ci`. `task dev` does this when `package-lock.json` changes. `task dev:docker` does not. Its `node_modules` live in the volume.
 
 ---
 
@@ -153,6 +153,6 @@ This keeps `frontend/.env.local` and any `backend/services/*/.env` overrides, an
 
 Collect these before asking a teammate:
 
-1. Whether you used `task dev` or `task dev:web`.
+1. Whether you used `task dev` or `task dev:docker`.
 2. The **first** error in the terminal, not the last one. For containers, that is `task logs`.
 3. Output of `docker ps -a` and `git log --oneline -3`.

@@ -47,7 +47,7 @@ Stop Next.js with Ctrl+C. The containers keep running until `task down`.
 To run the frontend in Docker as well:
 
 ```bash
-task dev:web
+task dev:docker
 ```
 
 ---
@@ -105,7 +105,7 @@ That merges both OpenAPI documents into `frontend/lib/api/schema.d.ts`.
 | --- | --- |
 | `task dev` | Infra and apps in Docker, frontend on the host |
 | `task dev:backend` | Infra and apps only (no frontend) |
-| `task dev:web` | Infra, apps, and the frontend container |
+| `task dev:docker` | Infra, apps, and the frontend container |
 | `task build` | Rebuild Compose images when a Dockerfile changes |
 | `task logs` | Follow account / tournament / payment logs |
 | `task down` | Stop containers. The database volume stays |
