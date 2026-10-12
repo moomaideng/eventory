@@ -25,7 +25,7 @@ You do **not** need the backend or Supabase keys to build UI. Click **Dev Quick 
 | `features/` | Code for one topic (tournaments, lobbies, auth) | Most of your work happens here |
 | `components/ui/` | Buttons, inputs, dialogs | Shared, not tied to any topic |
 | `components/` | Navbar and other shared layout pieces | Shared across features |
-| `context/` | Who is logged in, which mode is active | Global state |
+| `context/` | Who is logged in and session tokens (mode/role is URL-driven) | Global auth state |
 | `lib/` | Backend client, helpers, generated types | Plumbing |
 | `proxy.ts` | Blocks pages you are not allowed to see | Login guard |
 
@@ -39,10 +39,14 @@ Next.js turns folders into URLs:
 
 | Folder | URL |
 | --- | --- |
+| `app/(public)/page.tsx` | `/` |
+| `app/(public)/hub/page.tsx` | `/hub` |
 | `app/(public)/tournaments/page.tsx` | `/tournaments` |
 | `app/(public)/tournaments/[tournamentId]/page.tsx` | `/tournaments/123` |
 | `app/(public)/lobbies/[inviteCode]/page.tsx` | `/lobbies/ABC123` |
+| `app/(public)/payments/[paymentId]/checkout/page.tsx` | `/payments/456/checkout` |
 | `app/(organizer)/organizer/page.tsx` | `/organizer` |
+| `app/(sponsor)/sponsor/page.tsx` | `/sponsor` |
 
 Two naming tricks:
 
@@ -51,17 +55,17 @@ Two naming tricks:
 | `(public)` | Grouping only. **Not** part of the URL. Lets each group have its own navbar. |
 | `[tournamentId]` | A blank to fill in. `/tournaments/abc` gives you `tournamentId = "abc"`. |
 
-The four groups are `(auth)` for login, `(public)` for competitors, `(organizer)`, and `(sponsor)`.
+The four groups are `(auth)` for login, `(public)` for discovery, competitor flows, Mode Hub, and payments, `(organizer)`, and `(sponsor)`.
 
 ---
 
 ## Talking to the backend
 
-The backend publishes a machine-readable list of everything it can do. We copy that list into TypeScript so mistakes get caught while you type, not in the browser.
+The backend publishes a machine-readable list of everything it can do across Account (`:8081`), Tournament (`:8082`), and Payment (`:8083`). We merge and copy that list into TypeScript so mistakes get caught while you type, not in the browser.
 
 ```mermaid
 flowchart LR
-    BE["Backend apps"] -->|"npm run openapi:generate"| S["lib/api/schema.d.ts"]
+    BE["Backend apps (8081-8083)"] -->|"npm run openapi:generate"| S["lib/api/schema.d.ts"]
     S --> C["Your component"]
 ```
 
@@ -92,6 +96,7 @@ const { data, isLoading } = $api.useQuery("get", "/api/v1/tournaments");
 | `npm run dev` | Start the site, reloads as you save |
 | `npm run lint` | Check code style |
 | `npm run typecheck` | Check for type mistakes |
+| `npm run test:payments` | Run unit tests for payment features |
 | `npm run format` | Auto-format the code |
 | `npm run openapi:generate` | Re-copy the backend's endpoint list |
 
