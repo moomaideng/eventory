@@ -70,6 +70,26 @@ type Tournament struct {
 	UpdatedAt            time.Time
 }
 
+// StaffMember looks up a staff member by account ID in the tournament's preloaded staff list.
+func (t *Tournament) StaffMember(accountID uuid.UUID) (*TournamentStaff, bool) {
+	for i := range t.Staff {
+		if t.Staff[i].AccountID == accountID {
+			return &t.Staff[i], true
+		}
+	}
+	return nil, false
+}
+
+// OwnerID returns the account ID of the tournament owner, or uuid.Nil if not found.
+func (t *Tournament) OwnerID() uuid.UUID {
+	for i := range t.Staff {
+		if t.Staff[i].IsOwner() {
+			return t.Staff[i].AccountID
+		}
+	}
+	return uuid.Nil
+}
+
 // TournamentTeam is the single persisted record for a team throughout
 // formation, locking, organizer review, and confirmed registration.
 type TournamentTeam struct {

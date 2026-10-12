@@ -72,8 +72,39 @@ func (r *tournamentStaffRepositoryImpl) GetStaff(ctx context.Context, tournament
 }
 
 func (r *tournamentStaffRepositoryImpl) AddStaff(ctx context.Context, staff *models.TournamentStaff) error {
-	err := r.db.WithContext(ctx).Create(staff).Error
-	if err != nil {
+	var existing models.TournamentStaff
+	err := r.db.WithContext(ctx).Unscoped().
+		Where("tournament_id = ? AND account_id = ?", staff.TournamentID, staff.AccountID).
+		First(&existing).Error
+
+	if err == nil {
+		if !existing.DeletedAt.Valid {
+			return ErrStaffAlreadyExists
+		}
+		// Staff member was previously soft-deleted; restore and update role.
+		now := time.Now().UTC()
+		res := r.db.WithContext(ctx).Unscoped().
+			Model(&models.TournamentStaff{}).
+			Where("tournament_id = ? AND account_id = ?", staff.TournamentID, staff.AccountID).
+			Updates(map[string]interface{}{
+				"role":       staff.Role,
+				"deleted_at": nil,
+				"updated_at": now,
+			})
+		if res.Error != nil {
+			return res.Error
+		}
+		staff.CreatedAt = existing.CreatedAt
+		staff.UpdatedAt = now
+		staff.DeletedAt = gorm.DeletedAt{}
+		return nil
+	}
+
+	if !errors.Is(err, gorm.ErrRecordNotFound) {
+		return err
+	}
+
+	if err := r.db.WithContext(ctx).Create(staff).Error; err != nil {
 		if errors.Is(err, gorm.ErrDuplicatedKey) || strings.Contains(strings.ToLower(err.Error()), "duplicate") || strings.Contains(err.Error(), "23505") {
 			return ErrStaffAlreadyExists
 		}
