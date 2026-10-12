@@ -6,12 +6,13 @@ const serviceDir = "services/account"
 
 // Config holds account-service settings.
 type Config struct {
-	HTTPPort    string   `mapstructure:"http_port"`
-	GRPCPort    string   `mapstructure:"grpc_port"`
-	DBDSN       string   `mapstructure:"db_dsn"`
-	SupabaseURL string   `mapstructure:"supabase_url"`
-	Environment string   `mapstructure:"environment"`
-	CORSOrigins []string `mapstructure:"cors_allowed_origins"`
+	HTTPPort    string               `mapstructure:"http_port"`
+	GRPCPort    string               `mapstructure:"grpc_port"`
+	DBDSN       string               `mapstructure:"db_dsn"`
+	SupabaseURL string               `mapstructure:"supabase_url"`
+	Environment string               `mapstructure:"environment"`
+	CORSOrigins []string             `mapstructure:"cors_allowed_origins"`
+	Logging     sharedconfig.Logging `mapstructure:",squash"`
 }
 
 // Load reads services/account/.env.default, then .env, then process env.
@@ -29,5 +30,10 @@ func Load() (Config, error) {
 		return Config{}, err
 	}
 
+	logging, err := cfg.Logging.WithDefaults(cfg.Environment)
+	if err != nil {
+		return Config{}, err
+	}
+	cfg.Logging = logging
 	return cfg, nil
 }

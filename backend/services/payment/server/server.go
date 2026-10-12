@@ -7,7 +7,6 @@ import (
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/danielgtaylor/huma/v2/adapters/humachi"
 	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
 	"github.com/moomaideng/eventory/internal/middlewares"
 	"github.com/moomaideng/eventory/services/payment/config"
@@ -21,7 +20,9 @@ type App struct{ HTTP http.Handler }
 
 func NewApp(db *gorm.DB, cfg config.Config) *App {
 	router := chi.NewMux()
-	router.Use(middleware.Logger, middleware.Recoverer)
+	router.Use(middlewares.RequestID)
+	router.Use(middlewares.AccessLog(cfg.Logging.SlowRequestMS))
+	router.Use(middlewares.Recover)
 	// Checkout and history must not be cached by shared proxies.
 	router.Use(func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
