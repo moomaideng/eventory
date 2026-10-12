@@ -1039,6 +1039,11 @@ export interface components {
             funding: components["schemas"]["TournamentFundingResponse"];
             metrics: components["schemas"]["OrganizerDashboardMetricsResponse"];
             published: boolean;
+            /**
+             * @description Staff role of the current user in this tournament (OWNER, ADMIN, REFEREE)
+             * @enum {string}
+             */
+            role?: "OWNER" | "ADMIN" | "REFEREE";
             tournament: components["schemas"]["TournamentResponse"];
         };
         OverrideTournamentStatusInputBody: {
