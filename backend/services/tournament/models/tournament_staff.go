@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"gorm.io/gorm"
 )
 
 type TournamentStaffRole string
@@ -14,6 +15,11 @@ const (
 	TournamentStaffRoleReferee TournamentStaffRole = "REFEREE"
 )
 
+// IsAssignableRole checks whether a role can be assigned or invited by staff.
+func IsAssignableRole(role TournamentStaffRole) bool {
+	return role == TournamentStaffRoleAdmin || role == TournamentStaffRoleReferee
+}
+
 // TournamentStaff represents an assigned staff member for a tournament.
 // The composite primary key is (tournament_id, account_id).
 type TournamentStaff struct {
@@ -23,8 +29,21 @@ type TournamentStaff struct {
 	Role         TournamentStaffRole `gorm:"type:varchar(32);not null"`
 	CreatedAt    time.Time
 	UpdatedAt    time.Time
+	DeletedAt    gorm.DeletedAt      `gorm:"index"`
 }
 
 func (TournamentStaff) TableName() string {
 	return "tournament_staff"
+}
+
+func (s *TournamentStaff) IsOwner() bool {
+	return s != nil && s.Role == TournamentStaffRoleOwner
+}
+
+func (s *TournamentStaff) IsAdmin() bool {
+	return s != nil && s.Role == TournamentStaffRoleAdmin
+}
+
+func (s *TournamentStaff) IsReferee() bool {
+	return s != nil && s.Role == TournamentStaffRoleReferee
 }

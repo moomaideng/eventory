@@ -233,7 +233,7 @@ func (u *TournamentUseCase) GetDetails(
 // funding stub. It strictly validates that registrationDeadline < startsAt < endsAt.
 func (u *TournamentUseCase) CreateTournament(
 	ctx context.Context,
-	organizerID uuid.UUID,
+	accountID uuid.UUID,
 	input CreateTournamentInput,
 ) (*models.Tournament, error) {
 	name := strings.TrimSpace(input.Name)
@@ -291,7 +291,7 @@ func (u *TournamentUseCase) CreateTournament(
 	tournament := &models.Tournament{
 		Staff: []models.TournamentStaff{
 			{
-				AccountID: organizerID,
+				AccountID: accountID,
 				Role:      models.TournamentStaffRoleOwner,
 			},
 		},
@@ -321,7 +321,7 @@ func (u *TournamentUseCase) CreateTournament(
 // UpdateTournament modifies mutable tournament attributes subject to strict safety invariants.
 func (u *TournamentUseCase) UpdateTournament(
 	ctx context.Context,
-	organizerID uuid.UUID,
+	accountID uuid.UUID,
 	tournamentID uuid.UUID,
 	input UpdateTournamentInput,
 ) (*models.Tournament, error) {
@@ -333,14 +333,8 @@ func (u *TournamentUseCase) UpdateTournament(
 		return nil, err
 	}
 
-	isStaff := false
-	for _, staff := range tournament.Staff {
-		if staff.AccountID == organizerID && (staff.Role == models.TournamentStaffRoleOwner || staff.Role == models.TournamentStaffRoleAdmin) {
-			isStaff = true
-			break
-		}
-	}
-	if !isStaff {
+	staff, ok := tournament.StaffMember(accountID)
+	if !ok || !staff.IsOwner() {
 		return nil, ErrNotTournamentOwner
 	}
 

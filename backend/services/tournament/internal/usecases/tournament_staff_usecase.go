@@ -41,13 +41,6 @@ func NewTournamentStaffUseCase(repo repositories.TournamentStaffRepository, acco
 	}
 }
 
-func validateAssignableRole(role models.TournamentStaffRole) error {
-	if role != models.TournamentStaffRoleAdmin && role != models.TournamentStaffRoleReferee {
-		return ErrInvalidStaffRole
-	}
-	return nil
-}
-
 func (u *TournamentStaffUseCase) checkCallerAuth(ctx context.Context, tournamentID, callerID uuid.UUID) error {
 	exists, err := u.repo.TournamentExists(ctx, tournamentID)
 	if err != nil {
@@ -61,7 +54,7 @@ func (u *TournamentStaffUseCase) checkCallerAuth(ctx context.Context, tournament
 	if err != nil {
 		return err
 	}
-	if callerStaff == nil || (callerStaff.Role != models.TournamentStaffRoleOwner && callerStaff.Role != models.TournamentStaffRoleAdmin) {
+	if !callerStaff.IsOwner() {
 		return ErrCallerNotAuthorized
 	}
 	return nil
@@ -73,8 +66,8 @@ func (u *TournamentStaffUseCase) InviteStaff(
 	handle string,
 	role models.TournamentStaffRole,
 ) (*TournamentStaffView, error) {
-	if err := validateAssignableRole(role); err != nil {
-		return nil, err
+	if !models.IsAssignableRole(role) {
+		return nil, ErrInvalidStaffRole
 	}
 
 	if err := u.checkCallerAuth(ctx, tournamentID, callerID); err != nil {
@@ -124,8 +117,8 @@ func (u *TournamentStaffUseCase) UpdateStaffRole(
 	callerID, tournamentID, targetAccountID uuid.UUID,
 	newRole models.TournamentStaffRole,
 ) (*TournamentStaffView, error) {
-	if err := validateAssignableRole(newRole); err != nil {
-		return nil, err
+	if !models.IsAssignableRole(newRole) {
+		return nil, ErrInvalidStaffRole
 	}
 
 	if err := u.checkCallerAuth(ctx, tournamentID, callerID); err != nil {
@@ -139,7 +132,7 @@ func (u *TournamentStaffUseCase) UpdateStaffRole(
 	if targetStaff == nil {
 		return nil, ErrStaffNotFound
 	}
-	if targetStaff.Role == models.TournamentStaffRoleOwner {
+	if targetStaff.IsOwner() {
 		return nil, ErrCannotModifyOwner
 	}
 
@@ -221,7 +214,7 @@ func (u *TournamentStaffUseCase) RemoveStaff(
 	if targetStaff == nil {
 		return ErrStaffNotFound
 	}
-	if targetStaff.Role == models.TournamentStaffRoleOwner {
+	if targetStaff.IsOwner() {
 		return ErrCannotModifyOwner
 	}
 

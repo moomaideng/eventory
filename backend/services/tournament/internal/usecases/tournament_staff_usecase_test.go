@@ -17,12 +17,14 @@ import (
 type mockStaffRepo struct {
 	tournaments map[uuid.UUID]bool
 	staff       map[string]*models.TournamentStaff
+	deleted     map[string]*models.TournamentStaff
 }
 
 func newMockStaffRepo() *mockStaffRepo {
 	return &mockStaffRepo{
 		tournaments: make(map[uuid.UUID]bool),
 		staff:       make(map[string]*models.TournamentStaff),
+		deleted:     make(map[string]*models.TournamentStaff),
 	}
 }
 
@@ -64,6 +66,13 @@ func (m *mockStaffRepo) AddStaff(ctx context.Context, staff *models.TournamentSt
 	if _, ok := m.staff[k]; ok {
 		return repositories.ErrStaffAlreadyExists
 	}
+	if del, ok := m.deleted[k]; ok {
+		delete(m.deleted, k)
+		del.Role = staff.Role
+		del.UpdatedAt = time.Now()
+		m.staff[k] = del
+		return nil
+	}
 	cpy := *staff
 	if cpy.CreatedAt.IsZero() {
 		cpy.CreatedAt = time.Now()
@@ -85,9 +94,11 @@ func (m *mockStaffRepo) UpdateStaffRole(ctx context.Context, tournamentID, accou
 
 func (m *mockStaffRepo) RemoveStaff(ctx context.Context, tournamentID, accountID uuid.UUID) error {
 	k := staffKey(tournamentID, accountID)
-	if _, ok := m.staff[k]; !ok {
+	s, ok := m.staff[k]
+	if !ok {
 		return repositories.ErrStaffNotFound
 	}
+	m.deleted[k] = s
 	delete(m.staff, k)
 	return nil
 }
@@ -152,17 +163,14 @@ func TestTournamentStaffUseCase_InviteStaff(t *testing.T) {
 		}
 	})
 
-	t.Run("success by admin as referee", func(t *testing.T) {
+	t.Run("unauthorized caller - admin", func(t *testing.T) {
 		_, accountSvc, uc, tID, _, adminID, _ := setupStaffFixture()
 		targetID := uuid.New()
 		accountSvc.withAccount(targetID, "new_ref", "New Referee")
 
-		view, err := uc.InviteStaff(ctx, adminID, tID, "new_ref", models.TournamentStaffRoleReferee)
-		if err != nil {
-			t.Fatalf("unexpected error: %v", err)
-		}
-		if view.Role != models.TournamentStaffRoleReferee {
-			t.Fatalf("expected role REFEREE, got %v", view.Role)
+		_, err := uc.InviteStaff(ctx, adminID, tID, "new_ref", models.TournamentStaffRoleReferee)
+		if !errors.Is(err, usecases.ErrCallerNotAuthorized) {
+			t.Fatalf("expected ErrCallerNotAuthorized, got %v", err)
 		}
 	})
 
@@ -270,18 +278,11 @@ func TestTournamentStaffUseCase_UpdateStaffRole(t *testing.T) {
 		}
 	})
 
-	t.Run("admin can demote referee or admin", func(t *testing.T) {
-		repo, _, uc, tID, _, adminID, _ := setupStaffFixture()
-		view, err := uc.UpdateStaffRole(ctx, adminID, tID, adminID, models.TournamentStaffRoleReferee)
-		if err != nil {
-			t.Fatalf("unexpected error: %v", err)
-		}
-		if view.Role != models.TournamentStaffRoleReferee {
-			t.Fatalf("expected REFEREE, got %v", view.Role)
-		}
-		saved, _ := repo.GetStaff(ctx, tID, adminID)
-		if saved.Role != models.TournamentStaffRoleReferee {
-			t.Fatalf("expected REFEREE in repo, got %v", saved.Role)
+	t.Run("admin caller unauthorized", func(t *testing.T) {
+		_, _, uc, tID, _, adminID, _ := setupStaffFixture()
+		_, err := uc.UpdateStaffRole(ctx, adminID, tID, adminID, models.TournamentStaffRoleReferee)
+		if !errors.Is(err, usecases.ErrCallerNotAuthorized) {
+			t.Fatalf("expected ErrCallerNotAuthorized, got %v", err)
 		}
 	})
 
@@ -294,8 +295,8 @@ func TestTournamentStaffUseCase_UpdateStaffRole(t *testing.T) {
 	})
 
 	t.Run("cannot modify OWNER staff member", func(t *testing.T) {
-		_, _, uc, tID, ownerID, adminID, _ := setupStaffFixture()
-		_, err := uc.UpdateStaffRole(ctx, adminID, tID, ownerID, models.TournamentStaffRoleAdmin)
+		_, _, uc, tID, ownerID, _, _ := setupStaffFixture()
+		_, err := uc.UpdateStaffRole(ctx, ownerID, tID, ownerID, models.TournamentStaffRoleAdmin)
 		if !errors.Is(err, usecases.ErrCannotModifyOwner) {
 			t.Fatalf("expected ErrCannotModifyOwner, got %v", err)
 		}
@@ -385,9 +386,25 @@ func TestTournamentStaffUseCase_RemoveStaff(t *testing.T) {
 		}
 	})
 
-	t.Run("admin can remove other staff", func(t *testing.T) {
-		repo, _, uc, tID, _, adminID, refereeID := setupStaffFixture()
+	t.Run("admin caller unauthorized", func(t *testing.T) {
+		_, _, uc, tID, _, adminID, refereeID := setupStaffFixture()
 		err := uc.RemoveStaff(ctx, adminID, tID, refereeID)
+		if !errors.Is(err, usecases.ErrCallerNotAuthorized) {
+			t.Fatalf("expected ErrCallerNotAuthorized, got %v", err)
+		}
+	})
+
+	t.Run("owner cannot remove themselves (US8-3 Scenario 2)", func(t *testing.T) {
+		_, _, uc, tID, ownerID, _, _ := setupStaffFixture()
+		err := uc.RemoveStaff(ctx, ownerID, tID, ownerID)
+		if !errors.Is(err, usecases.ErrCannotModifyOwner) {
+			t.Fatalf("expected ErrCannotModifyOwner, got %v", err)
+		}
+	})
+
+	t.Run("re-inviting previously removed staff succeeds", func(t *testing.T) {
+		repo, _, uc, tID, ownerID, _, refereeID := setupStaffFixture()
+		err := uc.RemoveStaff(ctx, ownerID, tID, refereeID)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -395,13 +412,18 @@ func TestTournamentStaffUseCase_RemoveStaff(t *testing.T) {
 		if saved != nil {
 			t.Fatalf("expected referee to be deleted from repo")
 		}
-	})
 
-	t.Run("cannot remove OWNER", func(t *testing.T) {
-		_, _, uc, tID, ownerID, adminID, _ := setupStaffFixture()
-		err := uc.RemoveStaff(ctx, adminID, tID, ownerID)
-		if !errors.Is(err, usecases.ErrCannotModifyOwner) {
-			t.Fatalf("expected ErrCannotModifyOwner, got %v", err)
+		// Re-invite the same account as ADMIN
+		view, err := uc.InviteStaff(ctx, ownerID, tID, "charlie_ref", models.TournamentStaffRoleAdmin)
+		if err != nil {
+			t.Fatalf("unexpected error re-inviting: %v", err)
+		}
+		if view.Role != models.TournamentStaffRoleAdmin {
+			t.Fatalf("expected role ADMIN, got %v", view.Role)
+		}
+		saved, _ = repo.GetStaff(ctx, tID, refereeID)
+		if saved == nil || saved.Role != models.TournamentStaffRoleAdmin {
+			t.Fatalf("expected restored staff to be ADMIN in repo, got %+v", saved)
 		}
 	})
 
@@ -420,4 +442,80 @@ func TestTournamentStaffUseCase_RemoveStaff(t *testing.T) {
 			t.Fatalf("expected ErrCallerNotAuthorized, got %v", err)
 		}
 	})
+}
+
+func TestTournamentStaff_RolesAndCapabilities(t *testing.T) {
+	owner := &models.TournamentStaff{Role: models.TournamentStaffRoleOwner}
+	admin := &models.TournamentStaff{Role: models.TournamentStaffRoleAdmin}
+	referee := &models.TournamentStaff{Role: models.TournamentStaffRoleReferee}
+	var nilStaff *models.TournamentStaff
+
+	// Nil safety
+	if nilStaff.IsOwner() || nilStaff.IsAdmin() || nilStaff.IsReferee() {
+		t.Fatal("nil staff must return false for all role checks")
+	}
+
+	// Owner
+	if !owner.IsOwner() || owner.IsAdmin() || owner.IsReferee() {
+		t.Fatal("owner capabilities mismatch")
+	}
+
+	// Admin
+	if admin.IsOwner() || !admin.IsAdmin() || admin.IsReferee() {
+		t.Fatal("admin capabilities mismatch")
+	}
+
+	// Referee
+	if referee.IsOwner() || referee.IsAdmin() || !referee.IsReferee() {
+		t.Fatal("referee capabilities mismatch")
+	}
+
+	// Assignable roles
+	if !models.IsAssignableRole(models.TournamentStaffRoleAdmin) {
+		t.Fatal("ADMIN must be assignable")
+	}
+	if !models.IsAssignableRole(models.TournamentStaffRoleReferee) {
+		t.Fatal("REFEREE must be assignable")
+	}
+	if models.IsAssignableRole(models.TournamentStaffRoleOwner) {
+		t.Fatal("OWNER must NOT be assignable")
+	}
+	if models.IsAssignableRole("UNKNOWN") {
+		t.Fatal("UNKNOWN must NOT be assignable")
+	}
+}
+
+func TestTournament_StaffHelpers(t *testing.T) {
+	ownerID := uuid.New()
+	adminID := uuid.New()
+	tourney := models.Tournament{
+		Staff: []models.TournamentStaff{
+			{AccountID: ownerID, Role: models.TournamentStaffRoleOwner},
+			{AccountID: adminID, Role: models.TournamentStaffRoleAdmin},
+		},
+	}
+
+	if tourney.OwnerID() != ownerID {
+		t.Fatalf("expected owner ID %v, got %v", ownerID, tourney.OwnerID())
+	}
+
+	ownerStaff, ok := tourney.StaffMember(ownerID)
+	if !ok || ownerStaff.Role != models.TournamentStaffRoleOwner {
+		t.Fatalf("expected owner staff, got %v, ok=%v", ownerStaff, ok)
+	}
+
+	adminStaff, ok := tourney.StaffMember(adminID)
+	if !ok || adminStaff.Role != models.TournamentStaffRoleAdmin {
+		t.Fatalf("expected admin staff, got %v, ok=%v", adminStaff, ok)
+	}
+
+	strangerStaff, ok := tourney.StaffMember(uuid.New())
+	if ok || strangerStaff != nil {
+		t.Fatalf("expected false for non-staff member")
+	}
+
+	emptyTourney := models.Tournament{}
+	if emptyTourney.OwnerID() != uuid.Nil {
+		t.Fatalf("expected uuid.Nil for empty tournament, got %v", emptyTourney.OwnerID())
+	}
 }
