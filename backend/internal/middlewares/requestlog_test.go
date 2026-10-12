@@ -84,6 +84,34 @@ func TestAccessLogLevels(t *testing.T) {
 	}
 }
 
+func TestAccessLogSkipsSuccessfulHealth(t *testing.T) {
+	h := &recordHandler{}
+	prev := slog.Default()
+	slog.SetDefault(slog.New(h))
+	t.Cleanup(func() { slog.SetDefault(prev) })
+
+	handler := RequestID(AccessLog(1000)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})))
+	req := httptest.NewRequest(http.MethodGet, "/health", nil)
+	handler.ServeHTTP(httptest.NewRecorder(), req)
+	if _, ok := h.last(); ok {
+		t.Fatal("expected no access log for successful /health")
+	}
+
+	h.mu.Lock()
+	h.records = nil
+	h.mu.Unlock()
+	failing := RequestID(AccessLog(1000)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusServiceUnavailable)
+	})))
+	failing.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodGet, "/health", nil))
+	rec, ok := h.last()
+	if !ok || rec.Level != slog.LevelError {
+		t.Fatalf("expected Error log for failing /health, ok=%v level=%v", ok, rec.Level)
+	}
+}
+
 func TestRecoverLogsPanicAsError(t *testing.T) {
 	h := &recordHandler{}
 	prev := slog.Default()
