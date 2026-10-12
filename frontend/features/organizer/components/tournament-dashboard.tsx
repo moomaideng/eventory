@@ -22,6 +22,7 @@ import { RegistrationTable } from "@/features/organizer/components/registration-
 import { StatusControlDialog } from "@/features/organizer/components/status-control-dialog";
 import { dashboardQueryOptions, statusLabel } from "@/features/organizer/utils";
 import {
+  LeaveTournamentDialog,
   StaffRoleBadge,
   TournamentStaffSection,
 } from "@/features/tournament-staff";
@@ -101,7 +102,12 @@ export function TournamentDashboard({
                         tournamentId={tournamentId}
                         currentStatus={data.summary.tournament.status}
                       />
-                    ) : null}
+                    ) : (
+                      <LeaveTournamentDialog
+                        tournamentId={tournamentId}
+                        tournamentName={data.summary.tournament.name}
+                      />
+                    )}
                     {data.summary.published ? (
                       <Button
                         render={<Link href={`/tournaments/${tournamentId}`} />}
