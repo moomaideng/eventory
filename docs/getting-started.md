@@ -40,14 +40,14 @@ Add `backend/services/account/.env` or `backend/services/tournament/.env` only w
 task dev
 ```
 
-That starts Postgres and Traefik (`infra`) and Account and Tournament (`apps`) in Docker, then runs Next.js on your machine. It migrates Account, then Tournament, before either API starts. The first build compiles those migrate commands and both services, and can take a few minutes. Later starts reuse the Go build cache.
+That starts Postgres and Traefik (`infra`) and Account and Tournament (`apps`) in Docker, then runs Next.js on your machine. It migrates Account, then Tournament, before either API starts. The first run builds Go inside the containers (Air) and can take a few minutes. Later starts reuse the Go build cache. Rebuild images only after Dockerfile changes: `task build`.
 
 Stop Next.js with Ctrl+C. The containers keep running until `task down`.
 
 To run the frontend in Docker as well:
 
 ```bash
-task web
+task dev:web
 ```
 
 ---
@@ -89,7 +89,7 @@ task test    # before a pull request
 
 `task test` runs `go test ./...` in `backend/`, then frontend lint and typecheck.
 
-**Changed a backend endpoint?** With the apps up (`task apps`):
+**Changed a backend endpoint?** With the apps up (`task dev:backend`):
 
 ```bash
 npm --prefix frontend run openapi:generate
@@ -104,13 +104,14 @@ That merges both OpenAPI documents into `frontend/lib/api/schema.d.ts`.
 | Task | Does |
 | --- | --- |
 | `task dev` | Infra and apps in Docker, frontend on the host |
-| `task web` | Infra, apps, and the frontend container |
-| `task apps` | Rebuild and restart infra and apps |
-| `task logs` | Follow infra and app logs |
+| `task dev:backend` | Infra and apps only (no frontend) |
+| `task dev:web` | Infra, apps, and the frontend container |
+| `task build` | Rebuild Compose images when a Dockerfile changes |
+| `task logs` | Follow account / tournament / payment logs |
 | `task down` | Stop containers. The database volume stays |
 | `task migrate` | Apply `account_db`, then `tournament_db` |
 | `task seed` | Sample accounts, then sample tournaments |
-| `task db:reset` | Stop the stack and delete the local Postgres volume. Run `task dev` or `task apps` when you need infra and apps again |
+| `task db:reset` | Stop the stack and delete DB volumes. Then `task dev` or `task dev:backend` |
 | `task frontend` | Host Next.js only |
 | `task test` | Backend tests, frontend lint, frontend typecheck |
 | `task gen-proto` | Lint and regenerate Account gRPC code. Needs [Buf](https://buf.build/docs/installation/) |
@@ -122,7 +123,7 @@ go -C backend run ./services/account/cmd/api
 go -C backend run ./services/tournament/cmd/api
 ```
 
-`8081`, `9091`, and `8082` must be free, so do not leave `task apps` running. Traefik on `:8080` forwards to the containers, not to these processes. Host runs read `.env.default`, so they use `localhost` and `127.0.0.1:9091`.
+`8081`, `9091`, and `8082` must be free, so do not leave `task dev:backend` running. Traefik on `:8080` forwards to the containers, not to these processes. Host runs read `.env.default`, so they use `localhost` and `127.0.0.1:9091`.
 
 ---
 

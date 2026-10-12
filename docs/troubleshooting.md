@@ -10,11 +10,11 @@ Find your error message, apply the fix.
 | --- | --- | --- |
 | `Module not found: Can't resolve '...'` | Your packages are older than the code | `npm --prefix frontend ci` |
 | Same error, but running in Docker | Docker keeps its **own** copy of packages | See [Stale frontend packages](#the-two-stale-package-traps) |
-| `violates foreign key constraint` while seeding | Your database holds rows from an older version of the code | `task db:reset`, then `task dev` or `task apps`, then `task seed` |
+| `violates foreign key constraint` while seeding | Your database holds rows from an older version of the code | `task db:reset`, then `task dev` or `task dev:backend`, then `task seed` |
 | `connection refused` on port 5432 | The database is not running yet | `task migrate` |
 | `port is already allocated` | Something else uses 3000, 8080, 8081, 8082, 9091, or 5432 | See [Port already in use](#port-already-in-use) |
 | `Cannot connect to the Docker daemon` | Docker is not running | Start Docker and wait until it accepts commands |
-| `database "account_db" does not exist` | The Postgres volume was created before the split | `task db:reset`, then `task dev` or `task apps` |
+| `database "account_db" does not exist` | The Postgres volume was created before the split | `task db:reset`, then `task dev` or `task dev:backend` |
 | `Required command not found: docker` (or `go`, `npm`) | That tool is missing, or not on your `PATH` | Install it, then open a new terminal |
 | `task: command not found` | Task is not installed | [Install Task](https://taskfile.dev/installation/) |
 | Tournament list is empty | Sample data was never added | `task seed` |
@@ -40,10 +40,10 @@ flowchart TD
 | You run the project with | Fix command |
 | --- | --- |
 | `task dev` (frontend on the host) | `npm --prefix frontend ci` |
-| `task web` (frontend in Docker) | `task down`, then `docker volume rm eventory_frontend_node_modules`, then `task web` |
+| `task dev:web` (frontend in Docker) | `task down`, then `docker volume rm eventory_frontend_node_modules`, then `task dev:web` |
 | Both, sometimes | Run both commands |
 
-**Rule of thumb:** after any `git pull` that changes `frontend/package.json`, run `npm --prefix frontend ci`. `task dev` does this when `package-lock.json` changes. `task web` does not. Its `node_modules` live in the volume.
+**Rule of thumb:** after any `git pull` that changes `frontend/package.json`, run `npm --prefix frontend ci`. `task dev` does this when `package-lock.json` changes. `task dev:web` does not. Its `node_modules` live in the volume.
 
 ---
 
@@ -62,7 +62,7 @@ violates foreign key constraint "fk_accounts_organizer_profile"
 
 ```bash
 task db:reset
-task dev   # or task apps
+task dev   # or task dev:backend
 task seed
 ```
 
@@ -114,12 +114,19 @@ DB_DSN=postgresql://admin:password123@localhost:5433/tournament_db?sslmode=disab
 
 ## Air problems
 
-`task dev` and `task apps` run Air inside the Account and Tournament containers. You do not install it on your machine for that path.
+`task dev` and `task dev:backend` run Air inside the Account and Tournament containers. You do not install it on your machine for that path.
 
-**If you save a Go file and the container does not restart,** check `task logs`. Then rebuild:
+**If you save a Go file and the container does not restart,** check `task logs`. Restart the apps (Air hot-reloads; no image rebuild for Go edits):
 
 ```bash
-task apps
+task dev:backend
+```
+
+If you changed a Dockerfile, rebuild images then restart:
+
+```bash
+task build
+task dev:backend
 ```
 
 ---
@@ -146,6 +153,6 @@ This keeps `frontend/.env.local` and any `backend/services/*/.env` overrides, an
 
 Collect these before asking a teammate:
 
-1. Whether you used `task dev` or `task web`.
+1. Whether you used `task dev` or `task dev:web`.
 2. The **first** error in the terminal, not the last one. For containers, that is `task logs`.
 3. Output of `docker ps -a` and `git log --oneline -3`.
