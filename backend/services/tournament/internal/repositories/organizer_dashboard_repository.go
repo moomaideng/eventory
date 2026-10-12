@@ -24,7 +24,7 @@ func NewOrganizerDashboardRepository(db *gorm.DB) OrganizerDashboardRepository {
 
 func (r *organizerDashboardRepository) staffOf(ctx context.Context, accountID uuid.UUID) *gorm.DB {
 	return r.db.WithContext(ctx).Model(&models.Tournament{}).
-		Joins("JOIN tournament_staff ON tournament_staff.tournament_id = tournaments.id AND tournament_staff.deleted_at IS NULL").
+		Joins("JOIN tournament_staff ON tournament_staff.tournament_id = tournaments.id").
 		Where("tournament_staff.account_id = ?", accountID)
 }
 

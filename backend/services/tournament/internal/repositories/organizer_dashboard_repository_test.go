@@ -97,17 +97,17 @@ func TestOrganizerDashboardOwnershipPostgres(t *testing.T) {
 		t.Fatalf("pagination: total=%d items=%+v err=%v", total, items, err)
 	}
 
-	// Soft-delete the admin staff member (simulates leave/removal)
+	// Remove the admin staff member (hard delete, simulates leave/removal)
 	if err := tx.Where("tournament_id = ? AND account_id = ?", tournament.ID, adminID).Delete(&models.TournamentStaff{}).Error; err != nil {
-		t.Fatalf("failed to soft-delete admin: %v", err)
+		t.Fatalf("failed to delete admin: %v", err)
 	}
 
-	// Soft-deleted admin must NOT see the tournament in ListOwned or GetOwned
+	// Removed admin must NOT see the tournament in ListOwned or GetOwned
 	items, total, err = repo.ListOwned(ctx, adminID, 1, 12)
 	if err != nil || total != 0 || len(items) != 0 {
-		t.Fatalf("soft-deleted admin list must be empty: total=%d items=%+v err=%v", total, items, err)
+		t.Fatalf("removed admin list must be empty: total=%d items=%+v err=%v", total, items, err)
 	}
 	if _, err := repo.GetOwned(ctx, adminID, tournament.ID); !errors.Is(err, repositories.ErrTournamentNotFound) {
-		t.Fatalf("soft-deleted admin dashboard: error=%v, want not found", err)
+		t.Fatalf("removed admin dashboard: error=%v, want not found", err)
 	}
 }

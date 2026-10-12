@@ -4,7 +4,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"gorm.io/gorm"
 )
 
 type TournamentStaffRole string
@@ -29,7 +28,6 @@ type TournamentStaff struct {
 	Role         TournamentStaffRole `gorm:"type:varchar(32);not null"`
 	CreatedAt    time.Time
 	UpdatedAt    time.Time
-	DeletedAt    gorm.DeletedAt      `gorm:"index"`
 }
 
 func (TournamentStaff) TableName() string {
