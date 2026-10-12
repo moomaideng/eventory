@@ -19,7 +19,11 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Spinner } from "@/components/ui/spinner";
-import { formatDate, formatEntryFee, type Lobby } from "../utils";
+import {
+  formatDate,
+  formatEntryFee,
+  type Lobby,
+} from "@/features/lobbies/utils";
 
 interface LobbyDetailsCardProps {
   lobby: Lobby;
@@ -38,10 +42,20 @@ export function LobbyDetailsCard({
   onLockRoster,
   onDisbandLobby,
 }: LobbyDetailsCardProps) {
+  const [now, setNow] = React.useState(() => Date.now());
+  React.useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, []);
   const members = lobby.members ?? [];
   const isCaptain = lobby.viewerRole === "CAPTAIN";
   const isForming = lobby.status === "FORMING";
-  const rosterReady = members.length >= lobby.tournament.minTeamSize;
+  const rosterReady =
+    members.length >= lobby.tournament.minTeamSize &&
+    members.length <= lobby.tournament.maxTeamSize;
+  const registrationOpen =
+    lobby.tournament.status === "REGISTRATION_OPEN" &&
+    new Date(lobby.tournament.registrationDeadline).getTime() > now;
 
   return (
     <div className="flex flex-col gap-6">
@@ -59,18 +73,30 @@ export function LobbyDetailsCard({
         <CardContent className="text-muted-foreground flex flex-col gap-2 text-sm">
           <span className="flex items-center gap-2">
             <CalendarDays className="size-4 shrink-0" />
-            Registration closes {formatDate(lobby.tournament.registrationDeadline)}
+            Registration closes{" "}
+            {formatDate(lobby.tournament.registrationDeadline)}
           </span>
           <span className="flex items-center gap-2">
             <MapPin className="size-4 shrink-0" />
             {lobby.tournament.location}
           </span>
+          {isForming && (
+            <p>
+              {!rosterReady
+                ? `Roster needs ${lobby.tournament.minTeamSize}–${lobby.tournament.maxTeamSize} members.`
+                : !registrationOpen
+                  ? "Registration is closed."
+                  : lobby.tournament.entryFee > 0
+                    ? "Your roster will be frozen while you pay the full team fee. Submission follows successful payment."
+                    : "Ready to submit. Locking sends your roster to the organizer for approval."}
+            </p>
+          )}
         </CardContent>
         {isCaptain && isForming ? (
           <CardFooter>
             <Button
               className="w-full"
-              disabled={!rosterReady || pendingAction === "lock"}
+              disabled={!rosterReady || !registrationOpen || !!pendingAction}
               onClick={onLockRoster}
             >
               {pendingAction === "lock" ? (
@@ -78,7 +104,9 @@ export function LobbyDetailsCard({
               ) : (
                 <LockKeyhole data-icon="inline-start" />
               )}
-              Lock roster
+              {lobby.tournament.entryFee > 0
+                ? "Lock roster & pay"
+                : "Lock roster & submit"}
             </Button>
           </CardFooter>
         ) : null}
@@ -99,7 +127,8 @@ export function LobbyDetailsCard({
                 <ShieldAlert />
                 <AlertTitle>Disband this team?</AlertTitle>
                 <AlertDescription>
-                  This permanently removes the forming team and releases its members.
+                  This permanently removes the forming team and releases its
+                  members.
                 </AlertDescription>
               </Alert>
             ) : null}
