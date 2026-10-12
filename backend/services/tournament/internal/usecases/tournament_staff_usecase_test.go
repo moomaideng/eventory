@@ -386,11 +386,35 @@ func TestTournamentStaffUseCase_RemoveStaff(t *testing.T) {
 		}
 	})
 
-	t.Run("admin caller unauthorized", func(t *testing.T) {
+	t.Run("admin caller unauthorized removing other staff", func(t *testing.T) {
 		_, _, uc, tID, _, adminID, refereeID := setupStaffFixture()
 		err := uc.RemoveStaff(ctx, adminID, tID, refereeID)
 		if !errors.Is(err, usecases.ErrCallerNotAuthorized) {
 			t.Fatalf("expected ErrCallerNotAuthorized, got %v", err)
+		}
+	})
+
+	t.Run("admin voluntary self-leave succeeds", func(t *testing.T) {
+		repo, _, uc, tID, _, adminID, _ := setupStaffFixture()
+		err := uc.RemoveStaff(ctx, adminID, tID, adminID)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		saved, _ := repo.GetStaff(ctx, tID, adminID)
+		if saved != nil {
+			t.Fatalf("expected admin to be removed after self-leave")
+		}
+	})
+
+	t.Run("referee voluntary self-leave succeeds", func(t *testing.T) {
+		repo, _, uc, tID, _, _, refereeID := setupStaffFixture()
+		err := uc.RemoveStaff(ctx, refereeID, tID, refereeID)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		saved, _ := repo.GetStaff(ctx, tID, refereeID)
+		if saved != nil {
+			t.Fatalf("expected referee to be removed after self-leave")
 		}
 	})
 
@@ -440,6 +464,14 @@ func TestTournamentStaffUseCase_RemoveStaff(t *testing.T) {
 		err := uc.RemoveStaff(ctx, refereeID, tID, adminID)
 		if !errors.Is(err, usecases.ErrCallerNotAuthorized) {
 			t.Fatalf("expected ErrCallerNotAuthorized, got %v", err)
+		}
+	})
+
+	t.Run("tournament not found", func(t *testing.T) {
+		_, _, uc, _, ownerID, adminID, _ := setupStaffFixture()
+		err := uc.RemoveStaff(ctx, ownerID, uuid.New(), adminID)
+		if !errors.Is(err, usecases.ErrTournamentNotFound) {
+			t.Fatalf("expected ErrTournamentNotFound, got %v", err)
 		}
 	})
 }

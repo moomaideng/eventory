@@ -35,6 +35,16 @@ func (s *stubAccountService) withAccountStatus(id uuid.UUID, handle, displayName
 	return s
 }
 
+func (s *stubAccountService) withOrganizer(accountID uuid.UUID, organizerName string) *stubAccountService {
+	info := ports.OrganizerInfo{
+		AccountID:     accountID,
+		OrganizerName: organizerName,
+	}
+	s.organizers[accountID] = info
+	s.byAccount[accountID] = info
+	return s
+}
+
 func (s *stubAccountService) GetAccount(ctx context.Context, id uuid.UUID) (*ports.AccountInfo, error) {
 	if account, ok := s.accounts[id]; ok {
 		return &account, nil

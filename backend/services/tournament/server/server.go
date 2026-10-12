@@ -127,7 +127,7 @@ func newHTTPRouter(db *gorm.DB, mongoDB *mongo.Database, cfg config.Config, acco
 
 	resthandlers.RegisterTeamLobbyRoutes(teamLobbyGroup, teamLobbyUseCase)
 	resthandlers.RegisterTournamentStaffRoutes(teamLobbyGroup, staffUseCase)
-	resthandlers.RegisterOrganizerDashboardRoutes(organizerGroup, dashboardUseCase)
+	resthandlers.RegisterOrganizerDashboardRoutes(teamLobbyGroup, dashboardUseCase)
 	resthandlers.RegisterTournamentStatusRoutes(organizerGroup, statusUseCase)
 	resthandlers.RegisterTournamentRoutes(api, organizerTournamentGroup, tournamentUseCase)
 
