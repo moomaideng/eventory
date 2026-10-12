@@ -17,14 +17,12 @@ import (
 type mockStaffRepo struct {
 	tournaments map[uuid.UUID]bool
 	staff       map[string]*models.TournamentStaff
-	deleted     map[string]*models.TournamentStaff
 }
 
 func newMockStaffRepo() *mockStaffRepo {
 	return &mockStaffRepo{
 		tournaments: make(map[uuid.UUID]bool),
 		staff:       make(map[string]*models.TournamentStaff),
-		deleted:     make(map[string]*models.TournamentStaff),
 	}
 }
 
@@ -66,13 +64,6 @@ func (m *mockStaffRepo) AddStaff(ctx context.Context, staff *models.TournamentSt
 	if _, ok := m.staff[k]; ok {
 		return repositories.ErrStaffAlreadyExists
 	}
-	if del, ok := m.deleted[k]; ok {
-		delete(m.deleted, k)
-		del.Role = staff.Role
-		del.UpdatedAt = time.Now()
-		m.staff[k] = del
-		return nil
-	}
 	cpy := *staff
 	if cpy.CreatedAt.IsZero() {
 		cpy.CreatedAt = time.Now()
@@ -94,11 +85,9 @@ func (m *mockStaffRepo) UpdateStaffRole(ctx context.Context, tournamentID, accou
 
 func (m *mockStaffRepo) RemoveStaff(ctx context.Context, tournamentID, accountID uuid.UUID) error {
 	k := staffKey(tournamentID, accountID)
-	s, ok := m.staff[k]
-	if !ok {
+	if _, ok := m.staff[k]; !ok {
 		return repositories.ErrStaffNotFound
 	}
-	m.deleted[k] = s
 	delete(m.staff, k)
 	return nil
 }
