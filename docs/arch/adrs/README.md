@@ -19,3 +19,5 @@ Justify decisions with architecturally significant requirements (ASRs) and quali
 | [07 Internal Synchronous IPC Style](./07_internal-ipc-style.md) | Accepted |
 | [08 Message Broker (Asynchronous Collaboration)](./08_message-broker.md) | Accepted |
 | [09 Object Storage](./09_object-storage.md) | Accepted |
+| [10 RabbitMQ as Message Broker](./10_rabbitmq-message-broker.md) | Accepted |
+| [11 SMTP for Notification Email Delivery](./11_smtp-email-delivery.md) | Accepted |
