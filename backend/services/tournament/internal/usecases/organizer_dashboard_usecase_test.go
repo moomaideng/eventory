@@ -56,7 +56,7 @@ func TestOrganizerDashboardCountsConfirmedParticipantsAndEntryStates(t *testing.
 	if len(result.Tournament.Teams) != 0 || result.Tournament.Funding != nil {
 		t.Fatalf("dashboard tournament still carries raw teams or funding: %+v", result.Tournament)
 	}
-	if len(result.Entries) != 5 || len(result.Entries[3].Members) != 1 {
+	if len(result.Entries) != 4 || len(result.Entries[2].Members) != 1 {
 		t.Fatalf("entries = %+v", result.Entries)
 	}
 	if repo.accountID != accountID {

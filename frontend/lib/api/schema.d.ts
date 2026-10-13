@@ -201,6 +201,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/lobbies/{id}/submission/refresh": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Verify team registration payment */
+        post: operations["refresh-team-submission"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/lobbies/{inviteCode}": {
         parameters: {
             query?: never;
@@ -1138,8 +1155,11 @@ export interface components {
             inviteCode: string;
             members: components["schemas"]["TeamLobbyMemberResponse"][] | null;
             name: string;
+            /** Format: date-time */
+            paymentExpiresAt: string | null;
+            paymentId: string;
             /** @enum {string} */
-            status: "FORMING" | "LOCKED" | "ACCEPTED" | "REJECTED";
+            status: "FORMING" | "PAYMENT_PENDING" | "LOCKED" | "ACCEPTED" | "REJECTED";
             tournament: components["schemas"]["TournamentResponse"];
             /** @enum {string} */
             viewerRole: "CAPTAIN" | "MEMBER" | "INVITEE";
@@ -1427,12 +1447,13 @@ export interface components {
             invoicePath: string;
             /** Format: date-time */
             paidAt: string | null;
+            payerAccountId: string;
             /** @enum {string} */
             provider: "MOCK";
             reference: string;
             source: string;
             /** @enum {string} */
-            status: "UNPAID" | "PAID" | "EXPIRED";
+            status: "UNPAID" | "PAID" | "EXPIRED" | "CANCELLED";
         };
         ReceiptResponse: {
             /**
@@ -1842,6 +1863,38 @@ export interface operations {
                 id: string;
                 /** @description Team member UUID */
                 memberId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TeamLobbyResponse"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "refresh-team-submission": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Team UUID */
+                id: string;
             };
             cookie?: never;
         };

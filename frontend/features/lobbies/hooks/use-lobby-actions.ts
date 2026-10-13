@@ -3,7 +3,7 @@
 import React from "react";
 import { useRouter } from "next/navigation";
 import { apiClient } from "@/lib/api/client";
-import { problemMessage, type Lobby } from "../utils";
+import { problemMessage, type Lobby } from "@/features/lobbies/utils";
 
 export function useLobbyActions({
   lobby,
@@ -33,6 +33,7 @@ export function useLobbyActions({
         setActionError(
           problemMessage(requestError, "We could not update this team lobby.")
         );
+        await refetch();
         return;
       }
       afterSuccess?.(data as Lobby | undefined);
@@ -40,7 +41,9 @@ export function useLobbyActions({
         await refetch();
       }
     } catch {
-      setActionError("Connection error. Please check your network and try again.");
+      setActionError(
+        "Connection error. Please check your network and try again."
+      );
     } finally {
       setPendingAction(null);
     }
@@ -78,7 +81,15 @@ export function useLobbyActions({
       apiClient.POST("/api/v1/lobbies/{id}/lock", {
         params: { path: { id: lobby.id } },
         headers: { Authorization: authorizationHeader },
-      })
+      }),
+      (updatedLobby) => {
+        void refetch();
+        if (
+          updatedLobby?.status === "PAYMENT_PENDING" &&
+          updatedLobby.paymentId
+        )
+          router.push(`/payments/${updatedLobby.paymentId}/checkout`);
+      }
     );
   }
 

@@ -106,7 +106,7 @@ func (r *paymentRepository) Complete(ctx context.Context, payer, id uuid.UUID, m
 			return err
 		}
 		if previouslyPaid || payment.PaidAt == nil {
-			return nil
+			return tx.Model(&payment).Update("cancelled_at", payment.CancelledAt).Error
 		}
 		payment.Receipt = &models.Receipt{ID: uuid.New(), InvoiceID: payment.ID, CreatedAt: *payment.PaidAt}
 		if err := tx.Create(payment.Receipt).Error; err != nil {

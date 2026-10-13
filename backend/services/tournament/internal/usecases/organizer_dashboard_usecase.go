@@ -111,6 +111,9 @@ func (u *OrganizerDashboardUseCase) Get(ctx context.Context, organizerID, tourna
 	}
 	entries := make([]OrganizerDashboardEntry, 0, len(tournament.Teams))
 	for _, team := range tournament.Teams {
+		if team.Status == models.TournamentTeamStatusForming || team.Status == models.TournamentTeamStatusPaymentPending {
+			continue
+		}
 		entries = append(entries, NewOrganizerDashboardEntry(team, NewTeamMemberViews(team.Members, accounts)))
 	}
 	return &OrganizerDashboard{OrganizerTournamentSummary: summary, Entries: entries}, nil
@@ -121,7 +124,7 @@ func summarizeDashboard(tournament models.Tournament, organizerName string) Orga
 	participants := make(map[uuid.UUID]struct{})
 	for _, team := range tournament.Teams {
 		switch team.Status {
-		case models.TournamentTeamStatusForming:
+		case models.TournamentTeamStatusForming, models.TournamentTeamStatusPaymentPending:
 			metrics.FormingEntries++
 		case models.TournamentTeamStatusLocked:
 			metrics.LockedEntries++

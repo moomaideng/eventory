@@ -137,6 +137,8 @@ services:
       ENVIRONMENT: development
       DB_DSN: postgresql://${POSTGRES_USER:-admin}:${POSTGRES_PASSWORD:-password123}@postgres:5432/tournament_db?sslmode=disable
       ACCOUNT_GRPC_ADDR: account:9091
+      PAYMENT_URL: http://payment:8083
+      PAYMENT_SERVICE_KEY: ${PAYMENT_SERVICE_KEY:-local-payment-service-key-not-for-production}
       MONGO_URI: mongodb://${MONGO_USER:-admin}:${MONGO_PASSWORD:-password123}@mongodb:27017/tournament_db?authSource=admin
       MONGO_DB_NAME: tournament_db
     ports:

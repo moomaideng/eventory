@@ -5,13 +5,14 @@ const statusLabels: Record<Payment["status"], string> = {
   UNPAID: "Unpaid",
   PAID: "Paid",
   EXPIRED: "Expired",
+  CANCELLED: "Cancelled",
 };
 
 export function PaymentStatus({ status }: { status: Payment["status"] }) {
   return (
     <Badge
       variant={
-        status === "EXPIRED"
+        status === "EXPIRED" || status === "CANCELLED"
           ? "destructive"
           : status === "PAID"
             ? "default"
