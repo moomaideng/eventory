@@ -15,27 +15,28 @@ import (
 const serviceDir = "services/notification"
 
 type Config struct {
-	HTTPPort           string `mapstructure:"http_port"`
-	DBDSN              string `mapstructure:"db_dsn"`
-	AMQPURL            string `mapstructure:"amqp_url"`
-	AMQPHost           string `mapstructure:"amqp_host"`
-	AMQPPort           string `mapstructure:"amqp_port"`
-	AMQPUsername       string `mapstructure:"amqp_username"`
-	AMQPPassword       string `mapstructure:"amqp_password"`
-	SMTPHost           string `mapstructure:"smtp_host"`
-	SMTPPort           string `mapstructure:"smtp_port"`
-	SMTPUsername       string `mapstructure:"smtp_username"`
-	SMTPPassword       string `mapstructure:"smtp_password"`
-	SMTPFromAddress    string `mapstructure:"smtp_from_address"`
-	SMTPFromName       string `mapstructure:"smtp_from_name"`
-	SMTPStartTLSRaw    string `mapstructure:"smtp_starttls"`
-	PublicWebURL       string `mapstructure:"public_web_url"`
-	Environment        string `mapstructure:"environment"`
-	RetryDelaysRaw     string `mapstructure:"retry_delays"`
-	ConsumerPrefetch   int    `mapstructure:"consumer_prefetch"`
-	ProcessingLeaseRaw string `mapstructure:"processing_lease"`
-	SMTPTimeoutRaw     string `mapstructure:"smtp_timeout"`
-	BrokerReconnectRaw string `mapstructure:"broker_reconnect_delay"`
+	HTTPPort           string               `mapstructure:"http_port"`
+	DBDSN              string               `mapstructure:"db_dsn"`
+	AMQPURL            string               `mapstructure:"amqp_url"`
+	AMQPHost           string               `mapstructure:"amqp_host"`
+	AMQPPort           string               `mapstructure:"amqp_port"`
+	AMQPUsername       string               `mapstructure:"amqp_username"`
+	AMQPPassword       string               `mapstructure:"amqp_password"`
+	SMTPHost           string               `mapstructure:"smtp_host"`
+	SMTPPort           string               `mapstructure:"smtp_port"`
+	SMTPUsername       string               `mapstructure:"smtp_username"`
+	SMTPPassword       string               `mapstructure:"smtp_password"`
+	SMTPFromAddress    string               `mapstructure:"smtp_from_address"`
+	SMTPFromName       string               `mapstructure:"smtp_from_name"`
+	SMTPStartTLSRaw    string               `mapstructure:"smtp_starttls"`
+	PublicWebURL       string               `mapstructure:"public_web_url"`
+	Environment        string               `mapstructure:"environment"`
+	RetryDelaysRaw     string               `mapstructure:"retry_delays"`
+	ConsumerPrefetch   int                  `mapstructure:"consumer_prefetch"`
+	ProcessingLeaseRaw string               `mapstructure:"processing_lease"`
+	SMTPTimeoutRaw     string               `mapstructure:"smtp_timeout"`
+	BrokerReconnectRaw string               `mapstructure:"broker_reconnect_delay"`
+	Logging            sharedconfig.Logging `mapstructure:",squash"`
 
 	SMTPStartTLS         bool            `mapstructure:"-"`
 	RetryDelays          []time.Duration `mapstructure:"-"`
@@ -105,6 +106,11 @@ func Load() (Config, error) {
 	if err != nil || cfg.BrokerReconnectDelay <= 0 {
 		return Config{}, fmt.Errorf("BROKER_RECONNECT_DELAY must be a positive duration")
 	}
+	logging, err := cfg.Logging.WithDefaults(cfg.Environment)
+	if err != nil {
+		return Config{}, err
+	}
+	cfg.Logging = logging
 	return cfg, nil
 }
 
