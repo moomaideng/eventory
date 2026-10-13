@@ -13,7 +13,7 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
-import type { AnswerValue } from "@/features/registration-form/answer-validation";
+import type { AnswerValue } from "@/features/registration-form/utils";
 import type { FormField } from "@/features/registration-form/schemas";
 
 export interface FormFieldAnswerCardProps {
@@ -161,7 +161,7 @@ export function FormFieldAnswerCard({
       id={`field-card-${field.id}`}
       className={cn("border-border", error && "border-destructive")}
     >
-      <CardHeader className="flex flex-row items-center gap-3 pb-3">
+      <CardHeader className="flex flex-row items-center gap-3 pb-0">
         <Badge variant="outline" className="shrink-0 font-mono">
           #{index + 1}
         </Badge>

@@ -11,7 +11,7 @@ import {
   emptyAnswer,
   validateAnswer,
   type AnswerValue,
-} from "@/features/registration-form/answer-validation";
+} from "@/features/registration-form/utils";
 import { formFieldSchema, type FormField } from "@/features/registration-form/schemas";
 import type { components } from "@/lib/api/schema";
 
