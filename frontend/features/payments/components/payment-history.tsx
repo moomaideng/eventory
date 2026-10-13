@@ -90,7 +90,7 @@ export function PaymentHistory() {
       </CardHeader>
       <CardContent className="flex flex-col gap-6">
         <form onSubmit={applyDates}>
-          <FieldGroup className="flex flex-col gap-4 sm:flex-row sm:items-end">
+          <FieldGroup className="flex flex-col gap-4 sm:flex-row sm:items-start">
             <Field data-invalid={!!errors.from}>
               <FieldLabel htmlFor="payment-from">From (UTC)</FieldLabel>
               <Input
@@ -125,7 +125,7 @@ export function PaymentHistory() {
                 <FieldError id="payment-to-error">{errors.to}</FieldError>
               )}
             </Field>
-            <div className="flex shrink-0 gap-2">
+            <div className="flex shrink-0 gap-2 sm:mt-8">
               <Button type="submit">Apply</Button>
               <Button type="button" variant="outline" onClick={clearDates}>
                 Clear

@@ -12,7 +12,7 @@ export function PaymentStatus({ status }: { status: Payment["status"] }) {
   return (
     <Badge
       variant={
-        status === "EXPIRED"
+        status === "EXPIRED" || status === "CANCELLED"
           ? "destructive"
           : status === "PAID"
             ? "default"
