@@ -48,17 +48,19 @@ jobs:
 
             if [ '$RESET_DB' = 'true' ]; then
               echo '==> Stopping backend services before dropping schemas...'
-              sudo docker compose --env-file .env -f docker-compose.yml stop account tournament payment
+              sudo docker compose --env-file .env -f docker-compose.yml stop account tournament payment notification
 
               echo '==> Resetting service database schemas and migrating...'
               sudo docker compose --env-file .env -f docker-compose.yml run --rm account-migrate ./migrate -reset
               sudo docker compose --env-file .env -f docker-compose.yml run --rm tournament-migrate ./migrate -reset
               sudo docker compose --env-file .env -f docker-compose.yml run --rm payment-migrate ./migrate -reset
+              sudo docker compose --env-file .env -f docker-compose.yml run --rm notification-migrate ./migrate -reset
             else
               echo '==> Running service migrations...'
               sudo docker compose --env-file .env -f docker-compose.yml run --rm account-migrate
               sudo docker compose --env-file .env -f docker-compose.yml run --rm tournament-migrate
               sudo docker compose --env-file .env -f docker-compose.yml run --rm payment-migrate
+              sudo docker compose --env-file .env -f docker-compose.yml run --rm notification-migrate
             fi
 
             if [ '$SEED_DATA' = 'true' ]; then
@@ -68,7 +70,7 @@ jobs:
             fi
 
             echo '==> Starting backend services...'
-            sudo docker compose --env-file .env -f docker-compose.yml up -d account tournament payment
+            sudo docker compose --env-file .env -f docker-compose.yml up -d account tournament payment notification
 
             echo '==> Database operation completed successfully!'
           "
