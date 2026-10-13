@@ -31,17 +31,18 @@ To run a service on the host instead of in Compose, use `task migrate`, then:
 go run ./services/account/cmd/api
 go run ./services/tournament/cmd/api
 go run ./services/payment/cmd/api
+go run ./services/notification/cmd/api
 ```
 
 `8081`, `9091`, `8082`, and `8083` must be free, so do not leave `task apps` running. Traefik on `:8080` forwards to the containers, not to these host processes. Call `:8081`, `:8082`, and `:8083` directly. MongoDB runs on port `27017` as a secondary database for the Tournament Service.
 
-| URL | What |
-| --- | --- |
-| http://localhost:8081/docs | Account endpoints |
-| http://localhost:8082/docs | Tournament endpoints |
-| http://localhost:8083/docs | Payment endpoints |
-| http://localhost:8080/health | Gateway health check |
-| localhost:27017 | MongoDB (database: `tournament_db`) |
+| URL                          | What                                |
+| ---------------------------- | ----------------------------------- |
+| http://localhost:8081/docs   | Account endpoints                   |
+| http://localhost:8082/docs   | Tournament endpoints                |
+| http://localhost:8083/docs   | Payment endpoints                   |
+| http://localhost:8080/health | Gateway health check                |
+| localhost:27017              | MongoDB (database: `tournament_db`) |
 
 ---
 
@@ -57,14 +58,14 @@ flowchart LR
     Rep --> DB[("PostgreSQL / MongoDB")]
 ```
 
-| Folder | Job | Example question it answers |
-| --- | --- | --- |
-| `services/<name>/handlers/` | Read the request, send the reply | "What did the browser send?" |
-| `services/<name>/internal/usecases/` | The actual rules | "Is this user allowed to close registration?" |
-| `services/<name>/internal/repositories/` | Database reads and writes | "Fetch tournament 123" |
-| `services/<name>/models/` | Shape of each table or collection document | "What columns does a tournament have?" |
-| `services/<name>/cmd/` | One service each: `cmd/api`, `cmd/migrate`, and `cmd/seed` | — |
-| `internal/` | Shared across services: `config`, `database`, `middlewares` | "Is this person logged in?" |
+| Folder                                   | Job                                                         | Example question it answers                   |
+| ---------------------------------------- | ----------------------------------------------------------- | --------------------------------------------- |
+| `services/<name>/handlers/`              | Read the request, send the reply                            | "What did the browser send?"                  |
+| `services/<name>/internal/usecases/`     | The actual rules                                            | "Is this user allowed to close registration?" |
+| `services/<name>/internal/repositories/` | Database reads and writes                                   | "Fetch tournament 123"                        |
+| `services/<name>/models/`                | Shape of each table or collection document                  | "What columns does a tournament have?"        |
+| `services/<name>/cmd/`                   | One service each: `cmd/api`, `cmd/migrate`, and `cmd/seed`  | —                                             |
+| `internal/`                              | Shared across services: `config`, `database`, `middlewares` | "Is this person logged in?"                   |
 
 **Why split it up:** each microservice under `services/<name>` owns its domain logic and databases. Inside each service, rules in `usecases/` stay readable and testable because they contain no web code and no database queries.
 
@@ -90,22 +91,22 @@ Step 6 is required. The frontend gets its types from the running backend, so ski
 
 ## Commands
 
-| Command | Does |
-| --- | --- |
-| `go run ./services/account/cmd/migrate` | Create or update Account tables. `-reset` drops `public` first |
-| `go run ./services/tournament/cmd/migrate` | Create or update Tournament tables, including search indexes. `-reset` drops `public` first |
-| `go run ./services/payment/cmd/migrate` | Create or update Payment tables. `-reset` drops `public` first |
-| `go run ./services/account/cmd/api` | Account on the host. Reads `services/account/.env.default` |
-| `go run ./services/tournament/cmd/api` | Tournament on the host. Reads `services/tournament/.env.default` |
-| `go run ./services/payment/cmd/api` | Payment on the host. Reads `services/payment/.env.default` |
-| `go run ./services/account/cmd/seed` | Sample accounts |
-| `go run ./services/tournament/cmd/seed` | Sample tournaments |
-| `go run ./services/payment/cmd/seed` | Sample mock payments |
-| `go test ./...` | Run the tests |
-| `go build ./services/account/cmd/api` | Check Account still compiles |
-| `go build ./services/tournament/cmd/api` | Check Tournament still compiles |
-| `go build ./services/payment/cmd/api` | Check Payment still compiles |
-| `task gen-proto` | From the repo root. Lint and regenerate gRPC code. Needs [Buf](https://buf.build/docs/installation/) |
+| Command                                    | Does                                                                                                 |
+| ------------------------------------------ | ---------------------------------------------------------------------------------------------------- |
+| `go run ./services/account/cmd/migrate`    | Create or update Account tables. `-reset` drops `public` first                                       |
+| `go run ./services/tournament/cmd/migrate` | Create or update Tournament tables, including the search indexes. `-reset` drops `public` first      |
+| `go run ./services/account/cmd/api`        | Account on the host. Reads `services/account/.env.default`                                           |
+| `go run ./services/tournament/cmd/api`     | Tournament on the host. Reads `services/tournament/.env.default`                                     |
+| `go run ./services/payment/cmd/api`        | Payment on the host. Reads `services/payment/.env.default`                                           |
+| `go run ./services/notification/cmd/api`   | Notification worker and internal health server on the host                                           |
+| `go run ./services/account/cmd/seed`       | Sample accounts                                                                                      |
+| `go run ./services/tournament/cmd/seed`    | Sample tournaments                                                                                   |
+| `go test ./...`                            | Run the tests                                                                                        |
+| `go build ./services/account/cmd/api`      | Check Account still compiles                                                                         |
+| `go build ./services/tournament/cmd/api`   | Check Tournament still compiles                                                                      |
+| `go build ./services/payment/cmd/api`      | Check Payment still compiles                                                                         |
+| `go build ./services/notification/cmd/api` | Check Notification still compiles                                                                    |
+| `task gen-proto`                           | From the repo root. Lint and regenerate gRPC code. Needs [Buf](https://buf.build/docs/installation/) |
 
 Run `go test ./...` before opening a pull request.
 
@@ -115,17 +116,20 @@ Run `go test ./...` before opening a pull request.
 
 Each service loads `services/<name>/.env.default`, then an optional `.env` in that same directory, then the process environment.
 
-| Setting | Meaning |
-| --- | --- |
-| `HTTP_PORT` | Account listens on 8081. Tournament listens on 8082. Payment listens on 8083 |
-| `GRPC_PORT` | Account gRPC port. Default 9091 |
-| `DB_DSN` | Database address. Account uses `account_db`. Tournament uses `tournament_db`. Payment uses `payment_db` |
-| `ACCOUNT_GRPC_ADDR` | Where Tournament calls Account. `127.0.0.1:9091` on the host, `account:9091` in Compose |
-| `MONGO_URI` | MongoDB connection URI for Tournament Service dynamic forms |
-| `MONGO_DB_NAME` | MongoDB database name for Tournament Service (`tournament_db`) |
-| `PAYMENT_SERVICE_KEY` | Server-only secret for internal Payment endpoints (`X-Payment-Service-Key`) |
-| `SUPABASE_URL` | Used to verify login tickets |
-| `CORS_ALLOWED_ORIGINS` | Which websites may call this API |
+| Setting                | Meaning                                                                                 |
+| ---------------------- | --------------------------------------------------------------------------------------- |
+| `HTTP_PORT`            | Account listens on 8081. Tournament listens on 8082                                     |
+| `GRPC_PORT`            | Account gRPC port. Default 9091                                                         |
+| `DB_DSN`               | Database address. Account uses `account_db`. Tournament uses `tournament_db`            |
+| `ACCOUNT_GRPC_ADDR`    | Where Tournament calls Account. `127.0.0.1:9091` on the host, `account:9091` in Compose |
+| `MONGO_URI`            | MongoDB connection URI for Tournament Service dynamic forms                             |
+| `MONGO_DB_NAME`        | MongoDB database name for Tournament Service (`tournament_db`)                          |
+| `PAYMENT_SERVICE_KEY`  | Server-only secret for internal Payment endpoints (`X-Payment-Service-Key`)             |
+| `AMQP_URL`             | RabbitMQ connection used by Notification                                                |
+| `SMTP_*`               | Notification SMTP relay, credentials, sender, TLS, and timeout                          |
+| `RETRY_DELAYS`         | Notification retry TTLs; project default `30s,5m,30m`                                   |
+| `SUPABASE_URL`         | Used to verify login tickets                                                            |
+| `CORS_ALLOWED_ORIGINS` | Which websites may call this API                                                        |
 
 Compose replaces `DB_DSN` so the containers talk to the `postgres` hostname. Host `go run` keeps the `localhost` value from `.env.default`.
 
