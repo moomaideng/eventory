@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { TeamSubmissionResult } from "@/features/payments/components/team-submission-result";
+import { SoloSubmissionResult } from "@/features/payments/components/solo-submission-result";
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Info } from "lucide-react";
@@ -79,6 +80,7 @@ export function MockCheckout({ paymentId }: { paymentId: string }) {
   return (
     <div className="flex flex-col gap-6">
       <TeamSubmissionResult payment={payment} />
+      <SoloSubmissionResult payment={payment} />
       <Alert>
         <Info />
         <AlertTitle>Demo checkout</AlertTitle>

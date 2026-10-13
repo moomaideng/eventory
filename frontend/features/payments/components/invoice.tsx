@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { TeamSubmissionResult } from "@/features/payments/components/team-submission-result";
+import { SoloSubmissionResult } from "@/features/payments/components/solo-submission-result";
 import { useInvoice } from "@/features/payments/hooks/use-invoice";
 import { formatAmount } from "@/features/payments/utils";
 import { InvoiceDetails } from "@/features/payments/components/invoice-details";
@@ -41,6 +42,7 @@ export function Invoice({ paymentId }: { paymentId: string }) {
   return (
     <div className="flex flex-col gap-6">
       <TeamSubmissionResult payment={invoice} />
+      <SoloSubmissionResult payment={invoice} />
       <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
         <Card>
           <CardHeader>
