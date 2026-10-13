@@ -2,13 +2,13 @@ package server
 
 import (
 	"context"
-	"log"
+	"log/slog"
 	"net/http"
+	"time"
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/danielgtaylor/huma/v2/adapters/humachi"
 	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
 	"github.com/moomaideng/eventory/internal/middlewares"
 	"github.com/moomaideng/eventory/services/tournament/config"
@@ -17,7 +17,6 @@ import (
 	"github.com/moomaideng/eventory/services/tournament/internal/adapters/paymenthttp"
 	tournamentmiddlewares "github.com/moomaideng/eventory/services/tournament/internal/middlewares"
 	"github.com/moomaideng/eventory/services/tournament/internal/ports"
-	"time"
 
 	"github.com/moomaideng/eventory/services/tournament/internal/forms"
 	"github.com/moomaideng/eventory/services/tournament/internal/repositories"
@@ -33,9 +32,10 @@ type App struct {
 }
 
 func NewApp(db *gorm.DB, mongoDB *mongo.Database, cfg config.Config) *App {
-	accountSvc, err := accountgrpc.NewAccountClient(cfg.AccountGRPCAddr)
+	accountSvc, err := accountgrpc.NewAccountClient(cfg.AccountGRPCAddr, cfg.Logging.SlowRequestMS)
 	if err != nil {
-		log.Fatalf("failed to create account gRPC client: %v", err)
+		slog.Error("failed to create account gRPC client", "error", err)
+		panic(err)
 	}
 	return newApp(db, mongoDB, cfg, accountSvc)
 }
@@ -52,8 +52,9 @@ func newApp(db *gorm.DB, mongoDB *mongo.Database, cfg config.Config, accountSvc 
 
 func newHTTPRouter(db *gorm.DB, mongoDB *mongo.Database, cfg config.Config, accountSvc ports.AccountService, submission *usecases.TeamSubmissionUseCase) http.Handler {
 	router := chi.NewMux()
-	router.Use(middleware.Logger)
-	router.Use(middleware.Recoverer)
+	router.Use(middlewares.RequestID)
+	router.Use(middlewares.AccessLog(cfg.Logging.SlowRequestMS))
+	router.Use(middlewares.Recover)
 
 	if len(cfg.CORSOrigins) > 0 {
 		router.Use(cors.Handler(cors.Options{
@@ -137,7 +138,7 @@ func newHTTPRouter(db *gorm.DB, mongoDB *mongo.Database, cfg config.Config, acco
 	if mongoDB != nil {
 		formRepo := repositories.NewRegistrationFormRepository(mongoDB)
 		if err := formRepo.EnsureIndexes(context.Background()); err != nil {
-			log.Printf("failed to ensure registration form indexes: %v", err)
+			slog.Error("failed to ensure registration form indexes", "error", err)
 		}
 		fieldRegistry := forms.NewDefaultRegistry()
 		formUseCase := usecases.NewRegistrationFormUseCase(tournamentRepo, formRepo, fieldRegistry)

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/moomaideng/eventory/internal/grpcx"
 	accountv1 "github.com/moomaideng/eventory/services/account/pkg/proto/account/v1"
 	"github.com/moomaideng/eventory/services/tournament/internal/ports"
 	"google.golang.org/grpc"
@@ -21,8 +22,11 @@ type AccountClient struct {
 	api accountv1.AccountServiceClient
 }
 
-func NewAccountClient(addr string) (*AccountClient, error) {
-	conn, err := grpc.NewClient(addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+func NewAccountClient(addr string, slowRequestMS int) (*AccountClient, error) {
+	conn, err := grpc.NewClient(addr,
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithUnaryInterceptor(grpcx.UnaryClientLogging(slowRequestMS)),
+	)
 	if err != nil {
 		return nil, fmt.Errorf("dial account gRPC: %w", err)
 	}

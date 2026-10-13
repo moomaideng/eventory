@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
+	"log/slog"
 	"net/http"
 	"strings"
 	"time"
@@ -72,9 +72,9 @@ func NewAuthMiddleware(api huma.API, supabaseURL string, environment string) *Au
 		var err error
 		jwks, err = keyfunc.NewDefault([]string{jwksURL})
 		if err != nil {
-			log.Printf("[WARN] Failed to initialize Supabase JWKS from %s: %v", jwksURL, err)
+			slog.Warn("failed to initialize Supabase JWKS", "jwks_url", jwksURL, "error", err)
 		} else {
-			log.Printf("[INFO] Supabase JWKS initialized successfully from %s", jwksURL)
+			slog.Info("Supabase JWKS initialized", "jwks_url", jwksURL)
 		}
 	}
 
@@ -172,7 +172,7 @@ func (m *AuthMiddleware) verifyToken(tokenString string) (string, string, error)
 	// Extract verified email claim
 	email, _ := claims["email"].(string)
 	if email == "" {
-		if userMeta, ok := claims["user_metadata"].(map[string]interface{}); ok {
+		if userMeta, ok := claims["user_metadata"].(map[string]any); ok {
 			email, _ = userMeta["email"].(string)
 		}
 	}
@@ -241,4 +241,3 @@ func GetAuthUserID(ctx context.Context) (uuid.UUID, error) {
 	}
 	return id, nil
 }
-
