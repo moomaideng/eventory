@@ -55,18 +55,20 @@ Then open:
 Useful tasks:
 
 ```bash
-task migrate   # account_db, then tournament_db
-task seed      # sample data, after the apps are up
-task logs      # infra and app logs
-task down      # stop Compose
-task web       # also run the frontend in Docker
-task db:reset  # stop the stack and delete the local Postgres volume
-task test      # backend tests, frontend lint, frontend typecheck
+task migrate      # account_db, then tournament_db
+task seed         # sample data, after the apps are up
+task logs         # account / tournament / payment logs
+task down         # stop Compose
+task dev:docker      # also run the frontend in Docker
+task dev:backend  # infra+apps only (no host Next.js)
+task build        # rebuild images when a Dockerfile changes
+task db:reset     # stop the stack and delete the local Postgres volume
+task test         # backend tests, frontend lint, frontend typecheck
 ```
 
 `task dev` leaves the containers running after you stop Next.js with Ctrl+C. `task down` stops them.
 
-An existing Postgres volume from the old single-database setup does not contain `account_db` and `tournament_db`. Run `task db:reset` once (delete local data), then `task dev` or `task apps` if you need the stack again.
+An existing Postgres volume from the old single-database setup does not contain `account_db` and `tournament_db`. Run `task db:reset` once (delete local data), then `task dev` or `task dev:backend` if you need the stack again.
 
 ---
 
@@ -102,4 +104,4 @@ An existing Postgres volume from the old single-database setup does not contain 
 | Commit style | `feat:` `fix:` `refactor:` `chore:` |
 | Before a PR | `task test`, then rebase onto latest `main` |
 | Merging | Squash and merge |
-| Changed a backend endpoint? | After `task apps`: `npm --prefix frontend run openapi:generate` |
+| Changed a backend endpoint? | After `task dev:backend` (or with apps up): `npm --prefix frontend run openapi:generate` |

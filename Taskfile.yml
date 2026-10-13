@@ -12,35 +12,79 @@ tasks:
     cmds:
       - task --list
 
+  # --- Day-to-day ---
+
   dev:
-    desc: Start infra and apps, then run the host frontend
+    desc: Migrate, start infra+apps, run Next.js on the host
+    deps: [build]
     cmds:
       - task: migrate
-      - "{{.COMPOSE_APPS}} up -d --build"
+      - "{{.COMPOSE_APPS}} up -d"
       - task: frontend:install
       - npm --prefix frontend run dev
+
+  dev:backend:
+    desc: Migrate and start infra+apps (no frontend)
+    deps: [build]
+    cmds:
+      - task: migrate
+      - "{{.COMPOSE_APPS}} up -d"
+
+  dev:docker:
+    desc: Migrate and start infra+apps+frontend container
+    deps: [build]
+    cmds:
+      - task: migrate
+      - "{{.COMPOSE_ALL}} up -d"
+
+  logs:
+    desc: Follow account, tournament, and payment logs
+    cmds:
+      - "{{.COMPOSE_APPS}} logs -f account tournament payment"
 
   down:
     desc: Stop the Compose stack
     cmds:
       - "{{.COMPOSE_ALL}} down --remove-orphans"
 
-  logs:
-    desc: Follow infra and app logs
-    cmds:
-      - "{{.COMPOSE_APPS}} logs -f"
+  # --- Backend data ---
 
-  apps:
-    desc: Rebuild and restart infra and apps
+  migrate:
+    desc: Ensure Postgres is up, create DBs, run service migrations
+    deps: [build]
     cmds:
-      - task: migrate
-      - "{{.COMPOSE_APPS}} up -d --build"
+      - "{{.COMPOSE_APPS}} up -d --wait postgres"
+      - "{{.COMPOSE_APPS}} exec -T postgres bash /docker-entrypoint-initdb.d/01-init-databases.sh"
+      - "{{.COMPOSE_APPS}} up -d --force-recreate account-migrate tournament-migrate payment-migrate"
+      - "{{.COMPOSE_APPS}} wait account-migrate tournament-migrate payment-migrate"
 
-  web:
-    desc: Start infra, apps, and the frontend container
+  seed:
+    desc: Seed sample accounts, tournaments and mock payments (apps must already be up)
     cmds:
-      - task: migrate
-      - "{{.COMPOSE_ALL}} up -d --build"
+      - go -C backend run ./services/account/cmd/seed
+      - go -C backend run ./services/tournament/cmd/seed
+      - go -C backend run ./services/payment/cmd/seed
+
+  db:reset:
+    desc: Stop the stack and delete the local Postgres and Mongodb volume
+    cmds:
+      - "{{.COMPOSE_ALL}} down --remove-orphans"
+      - docker volume rm -f eventory_postgres_data eventory_mongo_data
+
+  # --- Tooling ---
+
+  build:
+    desc: Rebuild Compose images when Dockerfiles change
+    sources:
+      - backend/docker/**
+      - backend/Dockerfile
+      - frontend/Dockerfile
+    generates:
+      - .cache/compose-build.stamp
+    cmds:
+      - "{{.COMPOSE_ALL}} build"
+      - mkdir -p .cache
+      - touch .cache/compose-build.stamp
 
   frontend:
     desc: Install frontend deps if needed and run Next.js on the host
@@ -59,27 +103,6 @@ tasks:
     cmds:
       - npm ci --no-fund --no-audit
       - cp package-lock.json node_modules/.install-stamp
-
-  migrate:
-    desc: Create service databases and apply their schemas
-    cmds:
-      - "{{.COMPOSE_APPS}} up -d --build --wait postgres"
-      - "{{.COMPOSE_APPS}} exec -T postgres bash /docker-entrypoint-initdb.d/01-init-databases.sh"
-      - "{{.COMPOSE_APPS}} up -d --build --force-recreate account-migrate tournament-migrate payment-migrate"
-      - "{{.COMPOSE_APPS}} wait account-migrate tournament-migrate payment-migrate"
-
-  seed:
-    desc: Seed sample accounts, tournaments and mock payments (apps must already be up)
-    cmds:
-      - go -C backend run ./services/account/cmd/seed
-      - go -C backend run ./services/tournament/cmd/seed
-      - go -C backend run ./services/payment/cmd/seed
-
-  db:reset:
-    desc: Stop the stack and delete the local Postgres and Mongodb volume
-    cmds:
-      - "{{.COMPOSE_ALL}} down --remove-orphans"
-      - docker volume rm -f eventory_postgres_data eventory_mongo_data
 
   gen-proto:
     desc: Lint and regenerate gRPC code

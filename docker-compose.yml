@@ -26,13 +26,16 @@ services:
       - ./docker/postgres/init-databases.sh:/docker-entrypoint-initdb.d/01-init-databases.sh:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
-      interval: 1s
+      start_period: 20s
+      start_interval: 1s
+      interval: 5s
       timeout: 5s
       retries: 30
 
   mongodb:
     image: mongo:7.0
     profiles: [infra]
+    command: ["--quiet"]
     environment:
       MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER:-admin}
       MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD:-password123}
@@ -41,8 +44,23 @@ services:
     volumes:
       - mongo_data:/data/db
     healthcheck:
-      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping')", "-u", "${MONGO_USER:-admin}", "-p", "${MONGO_PASSWORD:-password123}", "--authenticationDatabase", "admin"]
-      interval: 1s
+      test:
+        [
+          "CMD",
+          "mongosh",
+          "--quiet",
+          "--eval",
+          "db.adminCommand('ping')",
+          "-u",
+          "${MONGO_USER:-admin}",
+          "-p",
+          "${MONGO_PASSWORD:-password123}",
+          "--authenticationDatabase",
+          "admin",
+        ]
+      start_period: 20s
+      start_interval: 1s
+      interval: 5s
       timeout: 5s
       retries: 30
 
@@ -62,7 +80,9 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     healthcheck:
       test: ["CMD", "traefik", "healthcheck", "--ping"]
-      interval: 1s
+      start_period: 20s
+      start_interval: 1s
+      interval: 5s
       timeout: 5s
       retries: 30
 
@@ -98,10 +118,11 @@ services:
           "--output-document=/dev/null",
           "http://127.0.0.1:8081/health",
         ]
-      interval: 1s
+      start_period: 120s
+      start_interval: 1s
+      interval: 5s
       timeout: 5s
       retries: 30
-      start_period: 120s
     depends_on:
       postgres:
         condition: service_healthy
@@ -153,10 +174,11 @@ services:
           "--output-document=/dev/null",
           "http://127.0.0.1:8082/health",
         ]
-      interval: 1s
+      start_period: 120s
+      start_interval: 1s
+      interval: 5s
       timeout: 5s
       retries: 30
-      start_period: 120s
     depends_on:
       postgres:
         condition: service_healthy
@@ -196,11 +218,20 @@ services:
     ports:
       - "127.0.0.1:8083:8083"
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--output-document=/dev/null", "http://127.0.0.1:8083/health"]
-      interval: 1s
+      test:
+        [
+          "CMD",
+          "wget",
+          "--no-verbose",
+          "--tries=1",
+          "--output-document=/dev/null",
+          "http://127.0.0.1:8083/health",
+        ]
+      start_period: 120s
+      start_interval: 1s
+      interval: 5s
       timeout: 5s
       retries: 30
-      start_period: 120s
     depends_on:
       postgres:
         condition: service_healthy

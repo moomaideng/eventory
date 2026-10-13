@@ -73,7 +73,7 @@ flowchart LR
 
 ```bash
 # from the repo root
-task apps
+task dev:backend
 
 # from frontend/
 npm run openapi:generate

@@ -15,7 +15,7 @@ From the repo root, pick one:
 task dev
 
 # or the same stack without the frontend
-task apps
+task dev:backend
 ```
 
 Both run `task migrate` first: Account, Tournament, and Payment schemas. `task migrate` alone starts Postgres and applies those schemas. It does not start the APIs.
@@ -33,7 +33,7 @@ go run ./services/tournament/cmd/api
 go run ./services/payment/cmd/api
 ```
 
-`8081`, `9091`, `8082`, and `8083` must be free, so do not leave `task apps` running. Traefik on `:8080` forwards to the containers, not to these host processes. Call `:8081`, `:8082`, and `:8083` directly. MongoDB runs on port `27017` as a secondary database for the Tournament Service.
+`8081`, `9091`, `8082`, and `8083` must be free, so do not leave `task dev:backend` running. Traefik on `:8080` forwards to the containers, not to these host processes. Call `:8081`, `:8082`, and `:8083` directly. MongoDB runs on port `27017` as a secondary database for the Tournament Service.
 
 | URL | What |
 | --- | --- |
@@ -77,7 +77,7 @@ flowchart LR
 3. Put the rules in `services/<name>/internal/usecases/`, and write a test next to it.
 4. Register the endpoint in `services/<name>/handlers/` with `huma.Register(...)`.
 5. Check it appears at http://localhost:8081/docs, http://localhost:8082/docs, or http://localhost:8083/docs.
-6. Tell the frontend about it. The apps must be up (`task apps`):
+6. Tell the frontend about it. The apps must be up (`task dev:backend`):
 
 ```bash
 # from backend/
