@@ -2,12 +2,12 @@ package main
 
 import (
 	"context"
-	"fmt"
-	"log"
+	"log/slog"
 	"net/http"
 	"time"
 
 	"github.com/moomaideng/eventory/internal/database"
+	"github.com/moomaideng/eventory/internal/logger"
 	"github.com/moomaideng/eventory/services/tournament/config"
 	"github.com/moomaideng/eventory/services/tournament/server"
 	"go.mongodb.org/mongo-driver/v2/mongo"
@@ -16,14 +16,17 @@ import (
 func main() {
 	appConfig, err := config.Load()
 	if err != nil {
-		log.Fatalf("failed to load configuration: %v", err)
+		slog.Error("failed to load configuration", "error", err)
+		panic(err)
 	}
+	logger.SetDefault(appConfig.Logging, appConfig.Environment, "tournament")
 
 	db, err := database.ConnectPostgres(appConfig.DBDSN)
 	if err != nil {
-		log.Fatalf("failed to connect to database: %v", err)
+		slog.Error("failed to connect to database", "error", err)
+		panic(err)
 	}
-	log.Println("Database connection established successfully.")
+	slog.Info("database connection established")
 
 	var mongoDB *mongo.Database
 	if appConfig.MongoURI != "" {
@@ -32,12 +35,13 @@ func main() {
 
 		mongoClient, err := database.ConnectMongo(ctx, appConfig.MongoURI)
 		if err != nil {
-			log.Fatalf("failed to connect to mongodb: %v", err)
+			slog.Error("failed to connect to mongodb", "error", err)
+			panic(err)
 		}
 		defer func() {
 			_ = mongoClient.Disconnect(context.Background())
 		}()
-		log.Println("MongoDB connection established successfully.")
+		slog.Info("mongodb connection established")
 		dbName := appConfig.MongoDBName
 		if dbName == "" {
 			dbName = "tournament_db"
@@ -46,11 +50,13 @@ func main() {
 	}
 
 	app := server.NewApp(db, mongoDB, appConfig)
+	go app.RunSubmissions(context.Background())
 
-	fmt.Printf("Tournament service starting on HTTP port %s (env: %s)...\n", appConfig.HTTPPort, appConfig.Environment)
-	fmt.Printf("API Documentation available at http://localhost:%s/docs\n", appConfig.HTTPPort)
+	slog.Info("tournament HTTP starting", "port", appConfig.HTTPPort, "env", appConfig.Environment)
+	slog.Info("API docs available", "url", "http://localhost:"+appConfig.HTTPPort+"/docs")
 
 	if err := http.ListenAndServe(":"+appConfig.HTTPPort, app.HTTP); err != nil {
-		log.Fatalf("Server failed to start: %v", err)
+		slog.Error("HTTP server failed", "error", err)
+		panic(err)
 	}
 }

@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"strings"
+	"time"
 
 	"github.com/spf13/viper"
 )
@@ -60,26 +61,79 @@ func mergeDotEnv(serviceDir string) (*viper.Viper, error) {
 }
 
 // bindEnvs registers BindEnv for every mapstructure-tagged field so process
-// env overrides work with Unmarshal.
+// env overrides work with Unmarshal. Nested structs use mapstructure:",squash"
+// with flat keys (e.g. logging_level) so dotenv stays flat.
 func bindEnvs(v *viper.Viper, sample any) error {
 	t := reflect.TypeOf(sample)
+	return bindEnvsPrefix(v, t)
+}
+
+func bindEnvsPrefix(v *viper.Viper, t reflect.Type) error {
 	if t.Kind() == reflect.Pointer {
 		t = t.Elem()
 	}
 	if t.Kind() != reflect.Struct {
 		return fmt.Errorf("config type must be a struct, got %s", t.Kind())
 	}
+
 	for field := range t.Fields() {
 		if !field.IsExported() {
 			continue
 		}
-		key := field.Tag.Get("mapstructure")
-		if key == "" || key == "-" {
+
+		tag := field.Tag.Get("mapstructure")
+		if tag == "-" {
 			continue
 		}
-		if err := v.BindEnv(key); err != nil {
-			return fmt.Errorf("bind env %q: %w", key, err)
+
+		name, squash := parseMapstructureTag(tag)
+		if squash {
+			if err := bindEnvsPrefix(v, field.Type); err != nil {
+				return err
+			}
+			continue
+		}
+		if name == "" {
+			continue
+		}
+
+		ft := field.Type
+		if ft.Kind() == reflect.Pointer {
+			ft = ft.Elem()
+		}
+		if ft.Kind() == reflect.Struct && !isBindLeafStruct(ft) {
+			return fmt.Errorf("nested config field %q must use mapstructure:\",squash\" with flat keys (dotenv has no nesting)", name)
+		}
+
+		if err := v.BindEnv(name); err != nil {
+			return fmt.Errorf("bind env %q: %w", name, err)
 		}
 	}
 	return nil
+}
+
+func parseMapstructureTag(tag string) (name string, squash bool) {
+	if tag == "" {
+		return "", false
+	}
+	parts := strings.Split(tag, ",")
+	name = parts[0]
+	for _, opt := range parts[1:] {
+		if strings.TrimSpace(opt) == "squash" {
+			squash = true
+		}
+	}
+	if name == "squash" {
+		return "", true
+	}
+	return name, squash
+}
+
+func isBindLeafStruct(t reflect.Type) bool {
+	switch t {
+	case reflect.TypeFor[time.Time]():
+		return true
+	default:
+		return false
+	}
 }

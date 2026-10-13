@@ -28,6 +28,23 @@ func (s *stubAccountService) withAccount(id uuid.UUID, handle, displayName strin
 	return s
 }
 
+func (s *stubAccountService) withAccountStatus(id uuid.UUID, handle, displayName string, status ports.AccountStatus) *stubAccountService {
+	s.accounts[id] = ports.AccountInfo{
+		ID: id, Handle: handle, DisplayName: displayName, Status: status,
+	}
+	return s
+}
+
+func (s *stubAccountService) withOrganizer(accountID uuid.UUID, organizerName string) *stubAccountService {
+	info := ports.OrganizerInfo{
+		AccountID:     accountID,
+		OrganizerName: organizerName,
+	}
+	s.organizers[accountID] = info
+	s.byAccount[accountID] = info
+	return s
+}
+
 func (s *stubAccountService) GetAccount(ctx context.Context, id uuid.UUID) (*ports.AccountInfo, error) {
 	if account, ok := s.accounts[id]; ok {
 		return &account, nil
@@ -68,4 +85,13 @@ func (s *stubAccountService) GetOrganizerProfileByAccountID(ctx context.Context,
 		return nil, ports.ErrOrganizerNotFound
 	}
 	return &profile, nil
+}
+
+func (s *stubAccountService) GetAccountByHandle(ctx context.Context, handle string) (*ports.AccountInfo, error) {
+	for _, acc := range s.accounts {
+		if acc.Handle == handle {
+			return &acc, nil
+		}
+	}
+	return nil, ports.ErrAccountNotFound
 }

@@ -46,12 +46,17 @@ func TestOrganizerDashboardOwnershipPostgres(t *testing.T) {
 
 	organizerID := uuid.New()
 	otherOrganizerID := uuid.New()
+	adminID := uuid.New()
 	tournament := models.Tournament{
 		ID: uuid.New(),
 		Staff: []models.TournamentStaff{
 			{
 				AccountID: organizerID,
 				Role:      models.TournamentStaffRoleOwner,
+			},
+			{
+				AccountID: adminID,
+				Role:      models.TournamentStaffRoleAdmin,
 			},
 		},
 		Name: "Private draft", Game: "Chess",
@@ -66,6 +71,13 @@ func TestOrganizerDashboardOwnershipPostgres(t *testing.T) {
 	items, total, err := repo.ListOwned(ctx, organizerID, 1, 12)
 	if err != nil || total != 1 || len(items) != 1 || items[0].ID != tournament.ID || items[0].Published {
 		t.Fatalf("owner should see their draft: total=%d items=%+v err=%v", total, items, err)
+	}
+	items, total, err = repo.ListOwned(ctx, adminID, 1, 12)
+	if err != nil || total != 1 || len(items) != 1 || items[0].ID != tournament.ID {
+		t.Fatalf("admin should see tournament: total=%d items=%+v err=%v", total, items, err)
+	}
+	if _, err := repo.GetOwned(ctx, adminID, tournament.ID); err != nil {
+		t.Fatalf("admin cannot read dashboard: %v", err)
 	}
 	items, total, err = repo.ListOwned(ctx, otherOrganizerID, 1, 12)
 	if err != nil || total != 0 || len(items) != 0 {
@@ -83,5 +95,19 @@ func TestOrganizerDashboardOwnershipPostgres(t *testing.T) {
 	items, total, err = repo.ListOwned(ctx, organizerID, 2, 1)
 	if err != nil || total != 1 || len(items) != 0 {
 		t.Fatalf("pagination: total=%d items=%+v err=%v", total, items, err)
+	}
+
+	// Remove the admin staff member (hard delete, simulates leave/removal)
+	if err := tx.Where("tournament_id = ? AND account_id = ?", tournament.ID, adminID).Delete(&models.TournamentStaff{}).Error; err != nil {
+		t.Fatalf("failed to delete admin: %v", err)
+	}
+
+	// Removed admin must NOT see the tournament in ListOwned or GetOwned
+	items, total, err = repo.ListOwned(ctx, adminID, 1, 12)
+	if err != nil || total != 0 || len(items) != 0 {
+		t.Fatalf("removed admin list must be empty: total=%d items=%+v err=%v", total, items, err)
+	}
+	if _, err := repo.GetOwned(ctx, adminID, tournament.ID); !errors.Is(err, repositories.ErrTournamentNotFound) {
+		t.Fatalf("removed admin dashboard: error=%v, want not found", err)
 	}
 }

@@ -26,9 +26,10 @@ type OrganizerDashboardMetrics struct {
 // OrganizerTournamentSummary is the list-row read model. Tournament is the persisted
 // row with Teams and Funding cleared; those values live on Metrics and Funding.
 type OrganizerTournamentSummary struct {
-	Tournament models.Tournament
-	Metrics    OrganizerDashboardMetrics
-	Funding    TournamentFundingStats
+	Tournament    models.Tournament
+	OrganizerName string
+	Metrics       OrganizerDashboardMetrics
+	Funding       TournamentFundingStats
 }
 
 type OrganizerDashboardEntry struct {
@@ -46,7 +47,6 @@ func NewOrganizerDashboardEntry(team models.TournamentTeam, members []TeamMember
 }
 
 // OrganizerDashboard is one owned tournament plus its enriched registrations.
-// Organizer display name is supplied by the handler from the authenticated profile.
 type OrganizerDashboard struct {
 	OrganizerTournamentSummary
 	Entries []OrganizerDashboardEntry
@@ -76,9 +76,13 @@ func (u *OrganizerDashboardUseCase) List(ctx context.Context, organizerID uuid.U
 	if err != nil {
 		return nil, err
 	}
+	names, err := organizerNames(ctx, u.accountSvc, tournaments...)
+	if err != nil {
+		return nil, err
+	}
 	items := make([]OrganizerTournamentSummary, 0, len(tournaments))
 	for _, tournament := range tournaments {
-		items = append(items, summarizeDashboard(tournament))
+		items = append(items, summarizeDashboard(tournament, names[tournament.ID]))
 	}
 	return &OrganizerDashboardList{Items: items, Total: total, Page: page, PageSize: pageSize}, nil
 }
@@ -91,7 +95,11 @@ func (u *OrganizerDashboardUseCase) Get(ctx context.Context, organizerID, tourna
 	if err != nil {
 		return nil, err
 	}
-	summary := summarizeDashboard(*tournament)
+	names, err := organizerNames(ctx, u.accountSvc, *tournament)
+	if err != nil {
+		return nil, err
+	}
+	summary := summarizeDashboard(*tournament, names[tournament.ID])
 
 	var allMembers []models.TournamentTeamMember
 	for _, team := range tournament.Teams {
@@ -103,17 +111,20 @@ func (u *OrganizerDashboardUseCase) Get(ctx context.Context, organizerID, tourna
 	}
 	entries := make([]OrganizerDashboardEntry, 0, len(tournament.Teams))
 	for _, team := range tournament.Teams {
+		if team.Status == models.TournamentTeamStatusForming || team.Status == models.TournamentTeamStatusPaymentPending {
+			continue
+		}
 		entries = append(entries, NewOrganizerDashboardEntry(team, NewTeamMemberViews(team.Members, accounts)))
 	}
 	return &OrganizerDashboard{OrganizerTournamentSummary: summary, Entries: entries}, nil
 }
 
-func summarizeDashboard(tournament models.Tournament) OrganizerTournamentSummary {
+func summarizeDashboard(tournament models.Tournament, organizerName string) OrganizerTournamentSummary {
 	metrics := OrganizerDashboardMetrics{TotalEntries: len(tournament.Teams)}
 	participants := make(map[uuid.UUID]struct{})
 	for _, team := range tournament.Teams {
 		switch team.Status {
-		case models.TournamentTeamStatusForming:
+		case models.TournamentTeamStatusForming, models.TournamentTeamStatusPaymentPending:
 			metrics.FormingEntries++
 		case models.TournamentTeamStatusLocked:
 			metrics.LockedEntries++
@@ -132,8 +143,9 @@ func summarizeDashboard(tournament models.Tournament) OrganizerTournamentSummary
 	funding := tournament.Funding
 	tournament.Funding = nil
 	return OrganizerTournamentSummary{
-		Tournament: tournament,
-		Metrics:    metrics,
-		Funding:    NewFundingStats(funding),
+		Tournament:    tournament,
+		OrganizerName: organizerName,
+		Metrics:       metrics,
+		Funding:       NewFundingStats(funding),
 	}
 }

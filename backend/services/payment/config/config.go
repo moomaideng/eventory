@@ -6,12 +6,13 @@ import (
 )
 
 type Config struct {
-	HTTPPort    string   `mapstructure:"http_port"`
-	DBDSN       string   `mapstructure:"db_dsn"`
-	SupabaseURL string   `mapstructure:"supabase_url"`
-	Environment string   `mapstructure:"environment"`
-	CORSOrigins []string `mapstructure:"cors_allowed_origins"`
-	ServiceKey  string   `mapstructure:"payment_service_key"`
+	HTTPPort    string               `mapstructure:"http_port"`
+	DBDSN       string               `mapstructure:"db_dsn"`
+	SupabaseURL string               `mapstructure:"supabase_url"`
+	Environment string               `mapstructure:"environment"`
+	CORSOrigins []string             `mapstructure:"cors_allowed_origins"`
+	ServiceKey  string               `mapstructure:"payment_service_key"`
+	Logging     sharedconfig.Logging `mapstructure:",squash"`
 }
 
 func Load() (Config, error) {
@@ -28,5 +29,10 @@ func Load() (Config, error) {
 	if cfg.Environment == "production" && cfg.ServiceKey == "local-payment-service-key-not-for-production" {
 		return Config{}, fmt.Errorf("production requires a private PAYMENT_SERVICE_KEY")
 	}
+	logging, err := cfg.Logging.WithDefaults(cfg.Environment)
+	if err != nil {
+		return Config{}, err
+	}
+	cfg.Logging = logging
 	return cfg, nil
 }

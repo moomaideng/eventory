@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { TeamSubmissionResult } from "@/features/payments/components/team-submission-result";
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Info } from "lucide-react";
@@ -77,6 +78,7 @@ export function MockCheckout({ paymentId }: { paymentId: string }) {
   const payment = paymentQuery.data;
   return (
     <div className="flex flex-col gap-6">
+      <TeamSubmissionResult payment={payment} />
       <Alert>
         <Info />
         <AlertTitle>Demo checkout</AlertTitle>
@@ -129,12 +131,16 @@ export function MockCheckout({ paymentId }: { paymentId: string }) {
               <AlertTitle>
                 {payment.status === "PAID"
                   ? "Payment successful"
-                  : "Invoice expired"}
+                  : payment.status === "CANCELLED"
+                    ? lastResult === "FAILED"
+                      ? "Payment failed"
+                      : "Payment cancelled"
+                    : "Invoice expired"}
               </AlertTitle>
               <AlertDescription>
                 {payment.status === "PAID"
                   ? "Your payment has been recorded. View your receipt below."
-                  : "The payment deadline has passed. This invoice can no longer be paid."}
+                  : "This invoice is closed and can no longer be paid. No payment was made."}
               </AlertDescription>
             </Alert>
           )}

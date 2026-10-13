@@ -39,4 +39,5 @@ type AccountService interface {
 	BatchGetAccounts(ctx context.Context, ids []uuid.UUID) (map[uuid.UUID]AccountInfo, error)
 	BatchGetOrganizerProfiles(ctx context.Context, ids []uuid.UUID) (map[uuid.UUID]OrganizerInfo, error)
 	GetOrganizerProfileByAccountID(ctx context.Context, accountID uuid.UUID) (*OrganizerInfo, error)
+	GetAccountByHandle(ctx context.Context, handle string) (*AccountInfo, error)
 }

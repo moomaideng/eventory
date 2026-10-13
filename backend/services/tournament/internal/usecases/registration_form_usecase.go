@@ -61,7 +61,7 @@ func (u *RegistrationFormUseCase) GetForm(ctx context.Context, tournamentID uuid
 
 func (u *RegistrationFormUseCase) SaveForm(
 	ctx context.Context,
-	organizerID uuid.UUID,
+	accountID uuid.UUID,
 	tournamentID uuid.UUID,
 	title string,
 	description string,
@@ -75,7 +75,7 @@ func (u *RegistrationFormUseCase) SaveForm(
 		return nil, err
 	}
 
-	if !isTournamentOrganizer(tournament, organizerID) {
+	if !isTournamentOrganizer(tournament, accountID) {
 		return nil, ErrNotTournamentOwner
 	}
 
@@ -196,7 +196,7 @@ func (u *RegistrationFormUseCase) GetMyResponse(
 
 func (u *RegistrationFormUseCase) ListResponses(
 	ctx context.Context,
-	organizerID uuid.UUID,
+	accountID uuid.UUID,
 	tournamentID uuid.UUID,
 ) ([]models.FormResponse, error) {
 	tournament, err := u.tournamentRepo.GetByID(ctx, tournamentID)
@@ -207,7 +207,7 @@ func (u *RegistrationFormUseCase) ListResponses(
 		return nil, err
 	}
 
-	if !isTournamentOrganizer(tournament, organizerID) {
+	if !isTournamentOrganizer(tournament, accountID) {
 		return nil, ErrNotTournamentOwner
 	}
 
@@ -215,10 +215,8 @@ func (u *RegistrationFormUseCase) ListResponses(
 }
 
 func isTournamentOrganizer(tournament *models.Tournament, accountID uuid.UUID) bool {
-	for _, staff := range tournament.Staff {
-		if staff.AccountID == accountID && (staff.Role == models.TournamentStaffRoleOwner || staff.Role == models.TournamentStaffRoleAdmin) {
-			return true
-		}
+	if staff, ok := tournament.StaffMember(accountID); ok {
+		return staff.IsOwner()
 	}
 	return false
 }

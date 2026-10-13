@@ -22,6 +22,7 @@ const (
 	AccountService_BatchGetAccounts_FullMethodName               = "/account.v1.AccountService/BatchGetAccounts"
 	AccountService_BatchGetOrganizerProfiles_FullMethodName      = "/account.v1.AccountService/BatchGetOrganizerProfiles"
 	AccountService_GetOrganizerProfileByAccountID_FullMethodName = "/account.v1.AccountService/GetOrganizerProfileByAccountID"
+	AccountService_GetAccountByHandle_FullMethodName             = "/account.v1.AccountService/GetAccountByHandle"
 )
 
 // AccountServiceClient is the client API for AccountService service.
@@ -31,6 +32,7 @@ type AccountServiceClient interface {
 	BatchGetAccounts(ctx context.Context, in *BatchGetAccountsRequest, opts ...grpc.CallOption) (*BatchGetAccountsResponse, error)
 	BatchGetOrganizerProfiles(ctx context.Context, in *BatchGetOrganizerProfilesRequest, opts ...grpc.CallOption) (*BatchGetOrganizerProfilesResponse, error)
 	GetOrganizerProfileByAccountID(ctx context.Context, in *GetOrganizerProfileByAccountIDRequest, opts ...grpc.CallOption) (*GetOrganizerProfileByAccountIDResponse, error)
+	GetAccountByHandle(ctx context.Context, in *GetAccountByHandleRequest, opts ...grpc.CallOption) (*GetAccountByHandleResponse, error)
 }
 
 type accountServiceClient struct {
@@ -71,6 +73,16 @@ func (c *accountServiceClient) GetOrganizerProfileByAccountID(ctx context.Contex
 	return out, nil
 }
 
+func (c *accountServiceClient) GetAccountByHandle(ctx context.Context, in *GetAccountByHandleRequest, opts ...grpc.CallOption) (*GetAccountByHandleResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetAccountByHandleResponse)
+	err := c.cc.Invoke(ctx, AccountService_GetAccountByHandle_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // AccountServiceServer is the server API for AccountService service.
 // All implementations must embed UnimplementedAccountServiceServer
 // for forward compatibility.
@@ -78,6 +90,7 @@ type AccountServiceServer interface {
 	BatchGetAccounts(context.Context, *BatchGetAccountsRequest) (*BatchGetAccountsResponse, error)
 	BatchGetOrganizerProfiles(context.Context, *BatchGetOrganizerProfilesRequest) (*BatchGetOrganizerProfilesResponse, error)
 	GetOrganizerProfileByAccountID(context.Context, *GetOrganizerProfileByAccountIDRequest) (*GetOrganizerProfileByAccountIDResponse, error)
+	GetAccountByHandle(context.Context, *GetAccountByHandleRequest) (*GetAccountByHandleResponse, error)
 	mustEmbedUnimplementedAccountServiceServer()
 }
 
@@ -96,6 +109,9 @@ func (UnimplementedAccountServiceServer) BatchGetOrganizerProfiles(context.Conte
 }
 func (UnimplementedAccountServiceServer) GetOrganizerProfileByAccountID(context.Context, *GetOrganizerProfileByAccountIDRequest) (*GetOrganizerProfileByAccountIDResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetOrganizerProfileByAccountID not implemented")
+}
+func (UnimplementedAccountServiceServer) GetAccountByHandle(context.Context, *GetAccountByHandleRequest) (*GetAccountByHandleResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetAccountByHandle not implemented")
 }
 func (UnimplementedAccountServiceServer) mustEmbedUnimplementedAccountServiceServer() {}
 func (UnimplementedAccountServiceServer) testEmbeddedByValue()                        {}
@@ -172,6 +188,24 @@ func _AccountService_GetOrganizerProfileByAccountID_Handler(srv interface{}, ctx
 	return interceptor(ctx, in, info, handler)
 }
 
+func _AccountService_GetAccountByHandle_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetAccountByHandleRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AccountServiceServer).GetAccountByHandle(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AccountService_GetAccountByHandle_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AccountServiceServer).GetAccountByHandle(ctx, req.(*GetAccountByHandleRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // AccountService_ServiceDesc is the grpc.ServiceDesc for AccountService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -190,6 +224,10 @@ var AccountService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetOrganizerProfileByAccountID",
 			Handler:    _AccountService_GetOrganizerProfileByAccountID_Handler,
+		},
+		{
+			MethodName: "GetAccountByHandle",
+			Handler:    _AccountService_GetAccountByHandle_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

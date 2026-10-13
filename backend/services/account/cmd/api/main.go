@@ -1,12 +1,12 @@
 package main
 
 import (
-	"fmt"
-	"log"
+	"log/slog"
 	"net"
 	"net/http"
 
 	"github.com/moomaideng/eventory/internal/database"
+	"github.com/moomaideng/eventory/internal/logger"
 	"github.com/moomaideng/eventory/services/account/config"
 	"github.com/moomaideng/eventory/services/account/server"
 )
@@ -14,32 +14,38 @@ import (
 func main() {
 	appConfig, err := config.Load()
 	if err != nil {
-		log.Fatalf("failed to load configuration: %v", err)
+		slog.Error("failed to load configuration", "error", err)
+		panic(err)
 	}
+	logger.SetDefault(appConfig.Logging, appConfig.Environment, "account")
 
 	db, err := database.ConnectPostgres(appConfig.DBDSN)
 	if err != nil {
-		log.Fatalf("failed to connect to database: %v", err)
+		slog.Error("failed to connect to database", "error", err)
+		panic(err)
 	}
-	log.Println("Database connection established successfully.")
+	slog.Info("database connection established")
 
 	app := server.NewApp(db, appConfig)
 
 	go func() {
 		lis, err := net.Listen("tcp", ":"+appConfig.GRPCPort)
 		if err != nil {
-			log.Fatalf("failed to listen on gRPC port %s: %v", appConfig.GRPCPort, err)
+			slog.Error("failed to listen on gRPC port", "port", appConfig.GRPCPort, "error", err)
+			panic(err)
 		}
-		log.Printf("Account gRPC listening on :%s", appConfig.GRPCPort)
+		slog.Info("account gRPC listening", "port", appConfig.GRPCPort)
 		if err := app.GRPC.Serve(lis); err != nil {
-			log.Fatalf("Account gRPC failed: %v", err)
+			slog.Error("account gRPC failed", "error", err)
+			panic(err)
 		}
 	}()
 
-	fmt.Printf("Account service starting on HTTP port %s (env: %s)...\n", appConfig.HTTPPort, appConfig.Environment)
-	fmt.Printf("API Documentation available at http://localhost:%s/docs\n", appConfig.HTTPPort)
+	slog.Info("account HTTP starting", "port", appConfig.HTTPPort, "env", appConfig.Environment)
+	slog.Info("API docs available", "url", "http://localhost:"+appConfig.HTTPPort+"/docs")
 
 	if err := http.ListenAndServe(":"+appConfig.HTTPPort, app.HTTP); err != nil {
-		log.Fatalf("Server failed to start: %v", err)
+		slog.Error("HTTP server failed", "error", err)
+		panic(err)
 	}
 }

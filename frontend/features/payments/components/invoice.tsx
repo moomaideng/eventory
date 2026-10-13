@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { TeamSubmissionResult } from "@/features/payments/components/team-submission-result";
 import { useInvoice } from "@/features/payments/hooks/use-invoice";
 import { formatAmount } from "@/features/payments/utils";
 import { InvoiceDetails } from "@/features/payments/components/invoice-details";
@@ -39,6 +40,7 @@ export function Invoice({ paymentId }: { paymentId: string }) {
   const invoice = query.data;
   return (
     <div className="flex flex-col gap-6">
+      <TeamSubmissionResult payment={invoice} />
       <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
         <Card>
           <CardHeader>
@@ -69,16 +71,20 @@ export function Invoice({ paymentId }: { paymentId: string }) {
               <AlertTitle>
                 {invoice.status === "PAID"
                   ? "Invoice paid"
-                  : invoice.status === "EXPIRED"
-                    ? "Payment deadline has passed"
-                    : "Payment is due"}
+                  : invoice.status === "CANCELLED"
+                    ? "This payment attempt is closed. Return to the team lobby to retry."
+                    : invoice.status === "EXPIRED"
+                      ? "Payment deadline has passed"
+                      : "Payment is due"}
               </AlertTitle>
               <AlertDescription>
                 {invoice.status === "PAID"
                   ? "Your receipt is available below."
-                  : invoice.status === "EXPIRED"
-                    ? "This invoice can no longer be paid. Contact the requesting service for a new payment request."
-                    : "Complete payment before the deadline. Failed or cancelled payments can be retried."}
+                  : invoice.status === "CANCELLED"
+                    ? "This payment attempt is closed. Return to the team lobby to retry."
+                    : invoice.status === "EXPIRED"
+                      ? "This invoice can no longer be paid. Contact the requesting service for a new payment request."
+                      : "Complete payment before the deadline. Failed or cancelled payments can be retried."}
               </AlertDescription>
             </Alert>
           </CardContent>

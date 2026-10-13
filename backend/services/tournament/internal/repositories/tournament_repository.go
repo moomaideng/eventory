@@ -229,6 +229,7 @@ func (r *tournamentRepositoryImpl) GetActiveTeamCount(
 		Where("tournament_id = ? AND status IN ?", tournamentID, []models.TournamentTeamStatus{
 			models.TournamentTeamStatusAccepted,
 			models.TournamentTeamStatusLocked,
+			models.TournamentTeamStatusPaymentPending,
 		}).
 		Count(&lockedOrAcceptedCount).Error
 	if err != nil {

@@ -17,6 +17,8 @@ export const dashboardQueryOptions = {
 } as const;
 
 export function statusLabel(status: string) {
+  if (status === "LOCKED") return "Waiting for approval";
+  if (status === "PAYMENT_PENDING") return "Awaiting payment";
   return status.toLowerCase().replaceAll("_", " ");
 }
 
@@ -34,9 +36,7 @@ export const REASON_MIN_LENGTH = 10;
 export const REASON_MAX_LENGTH = 500;
 
 export const statusOverrideSchema = z.object({
-  status: z
-    .string({ message: "Choose a status." })
-    .min(1, "Choose a status."),
+  status: z.string({ message: "Choose a status." }).min(1, "Choose a status."),
   reason: z
     .string()
     .trim()

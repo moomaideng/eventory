@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/moomaideng/eventory/internal/grpcx"
 	accountv1 "github.com/moomaideng/eventory/services/account/pkg/proto/account/v1"
 	"github.com/moomaideng/eventory/services/tournament/internal/ports"
 	"google.golang.org/grpc"
@@ -21,8 +22,11 @@ type AccountClient struct {
 	api accountv1.AccountServiceClient
 }
 
-func NewAccountClient(addr string) (*AccountClient, error) {
-	conn, err := grpc.NewClient(addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+func NewAccountClient(addr string, slowRequestMS int) (*AccountClient, error) {
+	conn, err := grpc.NewClient(addr,
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithUnaryInterceptor(grpcx.UnaryClientLogging(slowRequestMS)),
+	)
 	if err != nil {
 		return nil, fmt.Errorf("dial account gRPC: %w", err)
 	}
@@ -110,6 +114,31 @@ func (c *AccountClient) GetOrganizerProfileByAccountID(ctx context.Context, acco
 		return nil, ports.ErrOrganizerNotFound
 	}
 	return &info, nil
+}
+
+func (c *AccountClient) GetAccountByHandle(ctx context.Context, handle string) (*ports.AccountInfo, error) {
+	ctx, cancel := context.WithTimeout(ctx, defaultTimeout)
+	defer cancel()
+
+	resp, err := c.api.GetAccountByHandle(ctx, &accountv1.GetAccountByHandleRequest{
+		Handle: handle,
+	})
+	if err != nil {
+		if status.Code(err) == codes.NotFound {
+			return nil, ports.ErrAccountNotFound
+		}
+		return nil, fmt.Errorf("%w: %v", ports.ErrAccountUnavailable, err)
+	}
+	id, err := uuid.Parse(resp.GetAccount().GetId())
+	if err != nil {
+		return nil, fmt.Errorf("invalid account id in response: %w", err)
+	}
+	return &ports.AccountInfo{
+		ID:          id,
+		Handle:      resp.GetAccount().GetHandle(),
+		DisplayName: resp.GetAccount().GetDisplayName(),
+		Status:      ports.AccountStatus(resp.GetAccount().GetStatus()),
+	}, nil
 }
 
 func toOrganizerInfo(profile *accountv1.OrganizerProfile) (ports.OrganizerInfo, error) {

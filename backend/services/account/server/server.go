@@ -7,8 +7,8 @@ import (
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/danielgtaylor/huma/v2/adapters/humachi"
 	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
+	"github.com/moomaideng/eventory/internal/grpcx"
 	"github.com/moomaideng/eventory/internal/middlewares"
 	"github.com/moomaideng/eventory/services/account/config"
 	protohandlers "github.com/moomaideng/eventory/services/account/handlers/proto"
@@ -29,7 +29,7 @@ func NewApp(db *gorm.DB, cfg config.Config) *App {
 	accountRepo := repositories.NewAccountRepository(db)
 	accountUseCase := usecases.NewAccountUseCase(accountRepo)
 
-	grpcServer := grpc.NewServer()
+	grpcServer := grpc.NewServer(grpc.UnaryInterceptor(grpcx.UnaryServerLogging(cfg.Logging.SlowRequestMS)))
 	accountv1.RegisterAccountServiceServer(grpcServer, protohandlers.NewAccountServer(accountUseCase))
 
 	return &App{
@@ -40,8 +40,9 @@ func NewApp(db *gorm.DB, cfg config.Config) *App {
 
 func newHTTPRouter(db *gorm.DB, cfg config.Config, accountUseCase *usecases.AccountUseCase) http.Handler {
 	router := chi.NewMux()
-	router.Use(middleware.Logger)
-	router.Use(middleware.Recoverer)
+	router.Use(middlewares.RequestID)
+	router.Use(middlewares.AccessLog(cfg.Logging.SlowRequestMS))
+	router.Use(middlewares.Recover)
 
 	if len(cfg.CORSOrigins) > 0 {
 		router.Use(cors.Handler(cors.Options{

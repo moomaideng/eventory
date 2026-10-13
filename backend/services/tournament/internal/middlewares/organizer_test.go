@@ -35,6 +35,9 @@ func (s *stubAccounts) GetOrganizerProfileByAccountID(_ context.Context, account
 	}
 	return &profile, nil
 }
+func (s *stubAccounts) GetAccountByHandle(context.Context, string) (*ports.AccountInfo, error) {
+	return nil, ports.ErrAccountNotFound
+}
 
 func TestGetOrganizerProfile_Missing(t *testing.T) {
 	_, err := middlewares.GetOrganizerProfile(context.Background())

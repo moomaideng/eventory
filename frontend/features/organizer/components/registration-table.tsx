@@ -42,8 +42,8 @@ export function RegistrationTable({
   const visible = entries.slice((page - 1) * 10, page * 10);
   const counts = [
     ["Total entries", metrics.totalEntries],
-    ["Forming", metrics.formingEntries],
-    ["Locked", metrics.lockedEntries],
+    ["Not submitted", metrics.formingEntries],
+    ["Awaiting approval", metrics.lockedEntries],
     ["Accepted", metrics.acceptedEntries],
     ["Rejected", metrics.rejectedEntries],
   ] as const;
@@ -57,14 +57,14 @@ export function RegistrationTable({
           id="registrations"
           className="flex items-center gap-2 text-base font-semibold"
         >
-          <ClipboardList className="size-4 text-muted-foreground" />
+          <ClipboardList className="text-muted-foreground size-4" />
           Registrations
         </h2>
         <Badge variant="secondary" className="rounded-full px-2.5">
           {entries.length} {entries.length === 1 ? "entry" : "entries"}
         </Badge>
       </div>
-      <dl className="grid grid-cols-2 gap-4 border-y border-border/40 py-3 sm:grid-cols-5">
+      <dl className="border-border/40 grid grid-cols-2 gap-4 border-y py-3 sm:grid-cols-5">
         {counts.map(([label, count]) => (
           <div key={label}>
             <dt className="text-muted-foreground text-xs">{label}</dt>
@@ -77,12 +77,13 @@ export function RegistrationTable({
           <EmptyHeader>
             <EmptyTitle>No registrations yet</EmptyTitle>
             <EmptyDescription>
-              Entries will appear when participants form a team or register.
+              Teams appear after submitting a complete roster and paying any
+              entry fee.
             </EmptyDescription>
           </EmptyHeader>
         </Empty>
       ) : (
-        <div className="overflow-hidden rounded-xl border border-border/40">
+        <div className="border-border/40 overflow-hidden rounded-xl border">
           <Table className="table-fixed">
             <TableCaption className="sr-only">
               Tournament entries, status, and participant rosters

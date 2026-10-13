@@ -8,20 +8,11 @@ import (
 	"github.com/moomaideng/eventory/services/tournament/models"
 )
 
-func getTournamentOwnerAccountID(t models.Tournament) uuid.UUID {
-	for _, s := range t.Staff {
-		if s.Role == models.TournamentStaffRoleOwner {
-			return s.AccountID
-		}
-	}
-	return uuid.Nil
-}
-
 func organizerNames(ctx context.Context, accountSvc ports.AccountService, tournaments ...models.Tournament) (map[uuid.UUID]string, error) {
 	ids := make([]uuid.UUID, 0, len(tournaments))
 	seen := make(map[uuid.UUID]struct{}, len(tournaments))
 	for _, tournament := range tournaments {
-		ownerID := getTournamentOwnerAccountID(tournament)
+		ownerID := tournament.OwnerID()
 		if ownerID == uuid.Nil {
 			continue
 		}
@@ -40,7 +31,7 @@ func organizerNames(ctx context.Context, accountSvc ports.AccountService, tourna
 	}
 	names := make(map[uuid.UUID]string, len(tournaments))
 	for _, tournament := range tournaments {
-		ownerID := getTournamentOwnerAccountID(tournament)
+		ownerID := tournament.OwnerID()
 		if profile, ok := profiles[ownerID]; ok {
 			names[tournament.ID] = profile.OrganizerName
 		}

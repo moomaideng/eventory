@@ -1,0 +1,49 @@
+package paymenthttp
+
+import (
+	"bytes"
+	"context"
+	"encoding/json"
+	"fmt"
+	"github.com/moomaideng/eventory/services/tournament/internal/ports"
+	"io"
+	"net/http"
+	"strings"
+	"time"
+)
+
+type Client struct {
+	url, key string
+	http     *http.Client
+}
+
+func New(url, key string) *Client {
+	return &Client{strings.TrimRight(url, "/"), key, &http.Client{Timeout: 5 * time.Second}}
+}
+
+// Creation is idempotent and also returns the latest status on retries.
+func (c *Client) EnsureInvoice(ctx context.Context, input ports.RegistrationPaymentRequest) (*ports.RegistrationPayment, error) {
+	body, err := json.Marshal(input)
+	if err != nil {
+		return nil, err
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.url+"/internal/v1/payments", bytes.NewReader(body))
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Payment-Service-Key", c.key)
+	res, err := c.http.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer res.Body.Close()
+	if res.StatusCode != http.StatusOK && res.StatusCode != http.StatusCreated {
+		return nil, fmt.Errorf("payment service returned %d", res.StatusCode)
+	}
+	var payment ports.RegistrationPayment
+	if err := json.NewDecoder(io.LimitReader(res.Body, 65536)).Decode(&payment); err != nil {
+		return nil, err
+	}
+	return &payment, nil
+}

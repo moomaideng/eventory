@@ -15,19 +15,15 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty";
-import { useLobbyActions } from "../hooks/use-lobby-actions";
-import { LobbyStatusBadge } from "./lobby-status-badge";
-import { LobbyWorkspaceSkeleton } from "./lobby-skeleton";
-import { LobbyRosterCard } from "./lobby-roster-card";
-import { LobbyInviteCard } from "./lobby-invite-card";
-import { LobbyDetailsCard } from "./lobby-details-card";
+import { useLobbyActions } from "@/features/lobbies/hooks/use-lobby-actions";
+import { LobbyStatusBadge } from "@/features/lobbies/components/lobby-status-badge";
+import { LobbyWorkspaceSkeleton } from "@/features/lobbies/components/lobby-skeleton";
+import { LobbyRosterCard } from "@/features/lobbies/components/lobby-roster-card";
+import { LobbyInviteCard } from "@/features/lobbies/components/lobby-invite-card";
+import { LobbyDetailsCard } from "@/features/lobbies/components/lobby-details-card";
 
 export function TeamLobbyWorkspace({ inviteCode }: { inviteCode: string }) {
-  const {
-    user,
-    isLoading: isAuthLoading,
-    authorizationHeader,
-  } = useAuth();
+  const { user, isLoading: isAuthLoading, authorizationHeader } = useAuth();
   const [copied, setCopied] = React.useState(false);
   const [copyError, setCopyError] = React.useState("");
   const [confirmDisband, setConfirmDisband] = React.useState(false);
@@ -47,7 +43,13 @@ export function TeamLobbyWorkspace({ inviteCode }: { inviteCode: string }) {
         ? { Authorization: authorizationHeader }
         : {},
     },
-    { enabled: Boolean(authorizationHeader), retry: false, staleTime: 0 }
+    {
+      enabled: Boolean(authorizationHeader),
+      retry: false,
+      staleTime: 0,
+      refetchInterval: (query) =>
+        query.state.data?.status === "PAYMENT_PENDING" ? 5000 : false,
+    }
   );
 
   const {
@@ -93,7 +95,8 @@ export function TeamLobbyWorkspace({ inviteCode }: { inviteCode: string }) {
             </EmptyMedia>
             <EmptyTitle>Lobby unavailable</EmptyTitle>
             <EmptyDescription>
-              This invite may be invalid, revoked, or linked to a disbanded lobby.
+              This invite may be invalid, revoked, or linked to a disbanded
+              lobby.
             </EmptyDescription>
           </EmptyHeader>
         </Empty>
@@ -145,14 +148,29 @@ export function TeamLobbyWorkspace({ inviteCode }: { inviteCode: string }) {
       {lobby.status === "LOCKED" ? (
         <Alert>
           <Check />
-          <AlertTitle>Roster locked</AlertTitle>
+          <AlertTitle>Waiting for organizer approval</AlertTitle>
           <AlertDescription>
-            This team can no longer be changed. The registration and payment
-            workflow continues from the tournament organizer&apos;s process.
+            Your completed roster has been submitted to the organizer for
+            review. Team members can no longer be changed.
           </AlertDescription>
         </Alert>
       ) : null}
 
+      {lobby.status === "PAYMENT_PENDING" && (
+        <Alert>
+          <AlertTitle>Roster locked · awaiting payment</AlertTitle>
+          <AlertDescription>
+            Your team is not in the organizer review list yet. Complete the full
+            team payment to submit. A failed, cancelled, or expired payment
+            unlocks the roster after verification.
+            {isCaptain && (
+              <Button disabled={!!pendingAction} onClick={lockRoster}>
+                Continue to payment
+              </Button>
+            )}
+          </AlertDescription>
+        </Alert>
+      )}
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
         <LobbyRosterCard
           lobby={lobby}

@@ -25,6 +25,7 @@ type OrganizerDashboardMetricsResponse struct {
 type OrganizerTournamentSummary struct {
 	Tournament TournamentResponse                `json:"tournament"`
 	Published  bool                              `json:"published"`
+	Role       string                            `json:"role,omitempty" doc:"Staff role of the current user in this tournament (OWNER, ADMIN, REFEREE)" enum:"OWNER,ADMIN,REFEREE"`
 	Metrics    OrganizerDashboardMetricsResponse `json:"metrics"`
 	Funding    TournamentFundingResponse         `json:"funding"`
 }
@@ -68,18 +69,18 @@ func RegisterOrganizerDashboardRoutes(api huma.API, dashboard *usecases.Organize
 		Summary: "List the current organizer's tournaments", Tags: []string{"Organizer dashboard"},
 		Security: []map[string][]string{{"bearer": {}}},
 	}, func(ctx context.Context, input *OrganizerTournamentListInput) (*OrganizerTournamentListOutput, error) {
-		profile, err := middlewares.GetOrganizerProfile(ctx)
+		accountID, err := authenticatedAccountID(ctx)
 		if err != nil {
-			return nil, organizerDashboardHTTPError(err)
+			return nil, err
 		}
-		result, err := dashboard.List(ctx, profile.AccountID, input.Page, input.PageSize)
+		result, err := dashboard.List(ctx, accountID, input.Page, input.PageSize)
 		if err != nil {
 			return nil, organizerDashboardHTTPError(err)
 		}
 		output := &OrganizerTournamentListOutput{}
 		output.Body.Items = make([]OrganizerTournamentSummary, 0, len(result.Items))
 		for _, item := range result.Items {
-			output.Body.Items = append(output.Body.Items, toOrganizerSummary(item, profile.OrganizerName))
+			output.Body.Items = append(output.Body.Items, toOrganizerSummary(item, accountID))
 		}
 		output.Body.Total, output.Body.Page, output.Body.PageSize = result.Total, result.Page, result.PageSize
 		return output, nil
@@ -90,16 +91,16 @@ func RegisterOrganizerDashboardRoutes(api huma.API, dashboard *usecases.Organize
 		Summary: "View an owned tournament's dashboard and registrations", Tags: []string{"Organizer dashboard"},
 		Security: []map[string][]string{{"bearer": {}}},
 	}, func(ctx context.Context, input *OrganizerDashboardInput) (*OrganizerDashboardOutput, error) {
-		profile, err := middlewares.GetOrganizerProfile(ctx)
+		accountID, err := authenticatedAccountID(ctx)
 		if err != nil {
-			return nil, organizerDashboardHTTPError(err)
+			return nil, err
 		}
-		result, err := dashboard.Get(ctx, profile.AccountID, input.TournamentID)
+		result, err := dashboard.Get(ctx, accountID, input.TournamentID)
 		if err != nil {
 			return nil, organizerDashboardHTTPError(err)
 		}
 		output := &OrganizerDashboardOutput{}
-		output.Body.Summary = toOrganizerSummary(result.OrganizerTournamentSummary, profile.OrganizerName)
+		output.Body.Summary = toOrganizerSummary(result.OrganizerTournamentSummary, accountID)
 		output.Body.Entries = make([]OrganizerDashboardEntry, 0, len(result.Entries))
 		for _, entry := range result.Entries {
 			members := make([]TeamLobbyMemberResponse, 0, len(entry.Members))
@@ -135,11 +136,16 @@ func organizerDashboardHTTPError(err error) error {
 	}
 }
 
-func toOrganizerSummary(result usecases.OrganizerTournamentSummary, organizerName string) OrganizerTournamentSummary {
+func toOrganizerSummary(result usecases.OrganizerTournamentSummary, accountID uuid.UUID) OrganizerTournamentSummary {
 	m := result.Metrics
+	var role string
+	if staff, ok := result.Tournament.StaffMember(accountID); ok {
+		role = string(staff.Role)
+	}
 	return OrganizerTournamentSummary{
-		Tournament: toTournamentResponse(result.Tournament, organizerName, m.AcceptedEntries),
+		Tournament: toTournamentResponse(result.Tournament, result.OrganizerName, m.AcceptedEntries),
 		Published:  result.Tournament.Published,
+		Role:       role,
 		Metrics: OrganizerDashboardMetricsResponse{
 			TotalEntries: m.TotalEntries, FormingEntries: m.FormingEntries, LockedEntries: m.LockedEntries,
 			AcceptedEntries: m.AcceptedEntries, RejectedEntries: m.RejectedEntries,
