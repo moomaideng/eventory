@@ -13,16 +13,16 @@ import (
 )
 
 var (
-	ErrFormNotFound         = repositories.ErrFormNotFound
-	ErrResponseNotFound     = repositories.ErrResponseNotFound
+	ErrFormNotFound          = repositories.ErrFormNotFound
+	ErrResponseNotFound      = repositories.ErrResponseNotFound
 	ErrResponseAlreadyExists = repositories.ErrResponseAlreadyExists
-	ErrInvalidFormTitle     = errors.New("form title is required")
-	ErrDuplicateFieldID     = errors.New("duplicate field id in form")
-	ErrEmptyFieldID         = errors.New("field id cannot be empty")
-	ErrEmptyFieldLabel      = errors.New("field label cannot be empty")
-	ErrRegistrationClosed   = errors.New("tournament registration is not open")
-	ErrUnrecognizedField    = errors.New("unrecognized field submitted")
-	ErrDuplicateFieldAnswer = errors.New("duplicate answer for field submitted")
+	ErrInvalidFormTitle      = errors.New("form title is required")
+	ErrDuplicateFieldID      = errors.New("duplicate field id in form")
+	ErrEmptyFieldID          = errors.New("field id cannot be empty")
+	ErrEmptyFieldLabel       = errors.New("field label cannot be empty")
+	ErrRegistrationClosed    = errors.New("tournament registration is not open")
+	ErrUnrecognizedField     = errors.New("unrecognized field submitted")
+	ErrDuplicateFieldAnswer  = errors.New("duplicate answer for field submitted")
 )
 
 type RegistrationFormUseCase struct {
@@ -211,7 +211,28 @@ func (u *RegistrationFormUseCase) ListResponses(
 		return nil, ErrNotTournamentOwner
 	}
 
-	return u.formRepo.ListResponsesByTournamentID(ctx, tournamentID)
+	responses, err := u.formRepo.ListResponsesByTournamentID(ctx, tournamentID)
+	if err != nil {
+		return nil, err
+	}
+	if tournament.RegistrationMode == models.TournamentRegistrationModeSolo {
+		if counter, ok := u.tournamentRepo.(interface {
+			RegisteredSoloAccountIDs(context.Context, uuid.UUID) (map[uuid.UUID]bool, error)
+		}); ok {
+			registered, err := counter.RegisteredSoloAccountIDs(ctx, tournamentID)
+			if err != nil {
+				return nil, err
+			}
+			filtered := make([]models.FormResponse, 0, len(responses))
+			for _, response := range responses {
+				if registered[response.AccountID] {
+					filtered = append(filtered, response)
+				}
+			}
+			return filtered, nil
+		}
+	}
+	return responses, nil
 }
 
 func isTournamentOrganizer(tournament *models.Tournament, accountID uuid.UUID) bool {

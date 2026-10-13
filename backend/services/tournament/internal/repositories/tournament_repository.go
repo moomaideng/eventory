@@ -134,11 +134,45 @@ func (r *tournamentRepositoryImpl) Search(
 	for _, count := range counts {
 		countsByTournamentID[count.TournamentID] = count.Count
 	}
+	var soloCounts []tournamentTeamCount
+	if err := r.db.WithContext(ctx).Model(&models.SoloRegistration{}).
+		Select("tournament_id, COUNT(*) AS count").
+		Where("tournament_id IN ? AND status = ?", tournamentIDs, models.SoloRegistered).
+		Group("tournament_id").Scan(&soloCounts).Error; err != nil {
+		return nil, 0, err
+	}
+	soloByTournamentID := make(map[uuid.UUID]int64, len(soloCounts))
+	for _, count := range soloCounts {
+		soloByTournamentID[count.TournamentID] = count.Count
+	}
 	for index := range items {
-		items[index].RegisteredCount = countsByTournamentID[items[index].Tournament.ID]
+		if items[index].Tournament.RegistrationMode == models.TournamentRegistrationModeSolo {
+			items[index].RegisteredCount = soloByTournamentID[items[index].Tournament.ID]
+		} else {
+			items[index].RegisteredCount = countsByTournamentID[items[index].Tournament.ID]
+		}
 	}
 
 	return items, total, nil
+}
+
+func (r *tournamentRepositoryImpl) CountSoloRegistered(ctx context.Context, tournamentID uuid.UUID) (int64, error) {
+	var count int64
+	err := r.db.WithContext(ctx).Model(&models.SoloRegistration{}).Where("tournament_id = ? AND status = ?", tournamentID, models.SoloRegistered).Count(&count).Error
+	return count, err
+}
+
+func (r *tournamentRepositoryImpl) RegisteredSoloAccountIDs(ctx context.Context, tournamentID uuid.UUID) (map[uuid.UUID]bool, error) {
+	var ids []uuid.UUID
+	err := r.db.WithContext(ctx).Model(&models.SoloRegistration{}).Where("tournament_id = ? AND status = ?", tournamentID, models.SoloRegistered).Pluck("account_id", &ids).Error
+	if err != nil {
+		return nil, err
+	}
+	result := make(map[uuid.UUID]bool, len(ids))
+	for _, id := range ids {
+		result[id] = true
+	}
+	return result, nil
 }
 
 func (r *tournamentRepositoryImpl) GetPublishedByID(
@@ -235,8 +269,15 @@ func (r *tournamentRepositoryImpl) GetActiveTeamCount(
 	if err != nil {
 		return 0, 0, err
 	}
+	// Solo registrations reserve capacity while payment is pending. Include
+	// them when checking whether an organizer may reduce capacity or switch mode.
+	var soloOccupied int64
+	if err := r.db.WithContext(ctx).Model(&models.SoloRegistration{}).
+		Where("tournament_id = ? AND status IN ?", tournamentID, []models.SoloRegistrationStatus{models.SoloRegistered, models.SoloPaymentPending}).Count(&soloOccupied).Error; err != nil {
+		return 0, 0, err
+	}
 
-	return acceptedCount, lockedOrAcceptedCount, nil
+	return acceptedCount + soloOccupied, lockedOrAcceptedCount + soloOccupied, nil
 }
 
 func escapeLikePattern(value string) string {

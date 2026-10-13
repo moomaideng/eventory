@@ -129,10 +129,10 @@ func (u *TournamentUseCase) Search(
 
 	status := models.TournamentStatus(strings.ToUpper(strings.TrimSpace(input.Status)))
 	validStatuses := map[models.TournamentStatus]bool{
-		"":                                      true,
-		models.TournamentStatusDraft:            true,
-		models.TournamentStatusCrowdfunding:     true,
-		models.TournamentStatusRegistrationOpen: true,
+		"":                                        true,
+		models.TournamentStatusDraft:              true,
+		models.TournamentStatusCrowdfunding:       true,
+		models.TournamentStatusRegistrationOpen:   true,
 		models.TournamentStatusRegistrationClosed: true,
 		models.TournamentStatusOngoing:            true,
 		models.TournamentStatusCompleted:          true,
@@ -214,6 +214,18 @@ func (u *TournamentUseCase) GetDetails(
 		}
 	}
 	tournament.Teams = acceptedTeams
+	registeredCount := len(acceptedTeams)
+	if tournament.RegistrationMode == models.TournamentRegistrationModeSolo {
+		if counter, ok := u.tournamentRepo.(interface {
+			CountSoloRegistered(context.Context, uuid.UUID) (int64, error)
+		}); ok {
+			count, err := counter.CountSoloRegistered(ctx, tournament.ID)
+			if err != nil {
+				return nil, err
+			}
+			registeredCount = int(count)
+		}
+	}
 
 	names, err := organizerNames(ctx, u.accountSvc, *tournament)
 	if err != nil {
@@ -222,7 +234,7 @@ func (u *TournamentUseCase) GetDetails(
 
 	return &TournamentDetailsResult{
 		TournamentView:  NewTournamentView(*tournament, names[tournament.ID]),
-		RegisteredCount: len(acceptedTeams),
+		RegisteredCount: registeredCount,
 		Funding:         NewFundingStats(tournament.Funding),
 	}, nil
 }
