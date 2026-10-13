@@ -53,7 +53,7 @@ func main() {
 	defer stop()
 	httpServer := &http.Server{
 		Addr:              ":" + cfg.HTTPPort,
-		Handler:           server.New(db, broker, cfg.Logging.SlowRequestMS),
+		Handler:           server.New(db, broker),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 
