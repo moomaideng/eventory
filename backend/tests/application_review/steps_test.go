@@ -233,14 +233,21 @@ func (s *reviewScenarioContext) acceptedEntries() (int, error) {
 		return 0, fmt.Errorf("dashboard: expected 200, got %d: %s", resp.StatusCode, resp.Body)
 	}
 	var dashboard struct {
-		Metrics struct {
-			AcceptedEntries int `json:"acceptedEntries"`
-		} `json:"metrics"`
+		Summary struct {
+			Metrics struct {
+				AcceptedEntries *int `json:"acceptedEntries"`
+			} `json:"metrics"`
+		} `json:"summary"`
 	}
 	if err := resp.JSON(&dashboard); err != nil {
 		return 0, err
 	}
-	return dashboard.Metrics.AcceptedEntries, nil
+	// A pointer distinguishes "missing field" from a genuine count of zero, so a
+	// wrong path fails loudly instead of silently reading 0.
+	if dashboard.Summary.Metrics.AcceptedEntries == nil {
+		return 0, fmt.Errorf("dashboard response has no summary.metrics.acceptedEntries: %s", resp.Body)
+	}
+	return *dashboard.Summary.Metrics.AcceptedEntries, nil
 }
 
 func (s *reviewScenarioContext) expectDecision(want models.TournamentTeamStatus) error {
