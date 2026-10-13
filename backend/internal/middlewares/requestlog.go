@@ -24,8 +24,8 @@ func AccessLog(slowRequestMS int) func(http.Handler) http.Handler {
 			rec := &statusRecorder{ResponseWriter: w, status: http.StatusOK}
 			next.ServeHTTP(rec, r)
 
-			// Skip successful healthcheck
-			if r.URL.Path == "/health" && rec.status < 400 {
+			// Skip successful probe traffic
+			if (r.URL.Path == "/health" || r.URL.Path == "/ready") && rec.status < 400 {
 				return
 			}
 
