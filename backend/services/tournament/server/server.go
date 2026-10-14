@@ -116,12 +116,14 @@ func newHTTPRouter(db *gorm.DB, mongoDB *mongo.Database, cfg config.Config, acco
 	organizerDashboardRepo := repositories.NewOrganizerDashboardRepository(db)
 	tournamentStatusRepo := repositories.NewTournamentStatusRepository(db)
 	tournamentStaffRepo := repositories.NewTournamentStaffRepository(db)
+	sponsorshipTierRepo := repositories.NewSponsorshipTierRepository(db)
 
 	tournamentUseCase := usecases.NewTournamentUseCase(tournamentRepo, accountSvc)
 	teamLobbyUseCase := usecases.NewTeamLobbyUseCase(teamLobbyRepo, accountSvc).WithSubmission(submission)
 	dashboardUseCase := usecases.NewOrganizerDashboardUseCase(organizerDashboardRepo, accountSvc)
 	statusUseCase := usecases.NewTournamentStatusUseCase(tournamentStatusRepo, accountSvc)
 	staffUseCase := usecases.NewTournamentStaffUseCase(tournamentStaffRepo, accountSvc)
+	sponsorshipTierUseCase := usecases.NewSponsorshipTierUseCase(sponsorshipTierRepo, tournamentRepo)
 
 	authMiddleware := middlewares.NewAuthMiddleware(api, cfg.SupabaseURL, cfg.Environment)
 	organizerMiddleware := tournamentmiddlewares.NewOrganizerMiddleware(api, accountSvc)
@@ -141,6 +143,7 @@ func newHTTPRouter(db *gorm.DB, mongoDB *mongo.Database, cfg config.Config, acco
 	resthandlers.RegisterOrganizerDashboardRoutes(teamLobbyGroup, dashboardUseCase)
 	resthandlers.RegisterTournamentStatusRoutes(organizerGroup, statusUseCase)
 	resthandlers.RegisterTournamentRoutes(api, organizerTournamentGroup, tournamentUseCase)
+	resthandlers.RegisterSponsorshipTierRoutes(api, organizerTournamentGroup, sponsorshipTierUseCase)
 
 	if mongoDB != nil {
 		formRepo := repositories.NewRegistrationFormRepository(mongoDB)
