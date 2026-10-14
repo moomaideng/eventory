@@ -48,7 +48,7 @@ export function DashboardStatus({ status }: { status: string }) {
   const Icon =
     status === "ACCEPTED"
       ? Check
-      : status === "LOCKED"
+      : status === "LOCKED" || status === "AWAITING_APPROVAL"
         ? LockKeyhole
         : status === "REJECTED"
           ? X

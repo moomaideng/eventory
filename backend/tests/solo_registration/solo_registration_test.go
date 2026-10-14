@@ -9,6 +9,7 @@ import (
 
 	"github.com/google/uuid"
 	accountmodels "github.com/moomaideng/eventory/services/account/models"
+	tournamentdb "github.com/moomaideng/eventory/services/tournament/database"
 	"github.com/moomaideng/eventory/services/tournament/models"
 	"github.com/moomaideng/eventory/tests/internal/apptest"
 )
@@ -68,6 +69,25 @@ func TestSoloRegistrationPaymentAndEligibility(t *testing.T) {
 	if duplicate.PaymentID != pending.PaymentID {
 		t.Fatal("duplicate submission created a new invoice")
 	}
+	dashboardPath := "/tournaments/" + tournament.ID.String() + "/dashboard"
+	var dashboard struct {
+		Entries []struct {
+			Name   string `json:"name"`
+			Status string `json:"status"`
+		} `json:"entries"`
+		Summary struct {
+			Metrics struct {
+				LockedEntries  int `json:"lockedEntries"`
+				AvailableSpots int `json:"availableSpots"`
+			} `json:"metrics"`
+		} `json:"summary"`
+	}
+	if err := call(client, http.MethodGet, dashboardPath, nil, owner, 200).JSON(&dashboard); err != nil {
+		t.Fatal(err)
+	}
+	if len(dashboard.Entries) != 0 {
+		t.Fatal("unpaid solo application entered organizer review")
+	}
 	call(client, http.MethodPost, path, map[string]any{"answers": []any{}}, second, 409)
 	call(payments, http.MethodPost, "/"+pending.PaymentID.String()+"/mock-result", map[string]string{"result": "FAILED"}, first, 200)
 	var failed struct {
@@ -98,14 +118,20 @@ func TestSoloRegistrationPaymentAndEligibility(t *testing.T) {
 	if err := call(client, http.MethodPost, path+"/refresh", nil, second, 200).JSON(&registered); err != nil {
 		t.Fatal(err)
 	}
-	if registered.Status != "REGISTERED" {
+	if registered.Status != "AWAITING_APPROVAL" {
 		t.Fatalf("unexpected registered status: %s", registered.Status)
 	}
 	if err := call(client, http.MethodPost, path, map[string]any{"answers": []any{}}, second, 200).JSON(&registered); err != nil {
 		t.Fatal(err)
 	}
-	if registered.Status != "REGISTERED" {
+	if registered.Status != "AWAITING_APPROVAL" {
 		t.Fatal("duplicate registration changed completed status")
+	}
+	if err := call(client, http.MethodGet, dashboardPath, nil, owner, 200).JSON(&dashboard); err != nil {
+		t.Fatal(err)
+	}
+	if len(dashboard.Entries) != 1 || dashboard.Entries[0].Status != "AWAITING_APPROVAL" || dashboard.Entries[0].Name != second.DisplayName || dashboard.Summary.Metrics.LockedEntries != 1 || dashboard.Summary.Metrics.AvailableSpots != 0 {
+		t.Fatalf("paid solo application missing from review: %+v", dashboard)
 	}
 	call(client, http.MethodPost, path, map[string]any{"answers": []any{}}, first, 409)
 	var details struct {
@@ -116,7 +142,7 @@ func TestSoloRegistrationPaymentAndEligibility(t *testing.T) {
 	if err := call(client, http.MethodGet, "/tournaments/"+tournament.ID.String(), nil, first, 200).JSON(&details); err != nil {
 		t.Fatal(err)
 	}
-	if details.Tournament.RegisteredCount != 1 {
+	if details.Tournament.RegisteredCount != 0 {
 		t.Fatalf("registered count = %d", details.Tournament.RegisteredCount)
 	}
 	free := tournament
@@ -135,8 +161,14 @@ func TestSoloRegistrationPaymentAndEligibility(t *testing.T) {
 	if err := call(client, http.MethodPost, freePath, map[string]any{"answers": []any{}}, first, 200).JSON(&freeResult); err != nil {
 		t.Fatal(err)
 	}
-	if freeResult.Status != "REGISTERED" || freeResult.PaymentID != nil {
+	if freeResult.Status != "AWAITING_APPROVAL" || freeResult.PaymentID != nil {
 		t.Fatalf("unexpected free result: %+v", freeResult)
+	}
+	if err := call(client, http.MethodGet, "/tournaments/"+free.ID.String()+"/dashboard", nil, owner, 200).JSON(&dashboard); err != nil {
+		t.Fatal(err)
+	}
+	if len(dashboard.Entries) != 1 || dashboard.Entries[0].Status != "AWAITING_APPROVAL" {
+		t.Fatalf("free solo application missing from review: %+v", dashboard)
 	}
 	var eligibility struct {
 		Reason      string `json:"reason"`
@@ -145,7 +177,7 @@ func TestSoloRegistrationPaymentAndEligibility(t *testing.T) {
 	if err := call(client, http.MethodGet, freePath+"/eligibility", nil, first, 200).JSON(&eligibility); err != nil {
 		t.Fatal(err)
 	}
-	if eligibility.Reason != "ALREADY_REGISTERED" || eligibility.CanRegister {
+	if eligibility.Reason != "AWAITING_APPROVAL" || eligibility.CanRegister {
 		t.Fatalf("unexpected eligibility: %+v", eligibility)
 	}
 	if err := call(client, http.MethodGet, freePath+"/eligibility", nil, second, 200).JSON(&eligibility); err != nil {
@@ -200,5 +232,25 @@ func TestSoloRegistrationPaymentAndEligibility(t *testing.T) {
 	}
 	if counts[200] != 1 || counts[409] != 1 {
 		t.Fatalf("concurrent one-seat results: %v", counts)
+	}
+	legacy := free
+	legacy.ID = uuid.New()
+	legacy.Name = "Legacy solo registration"
+	legacy.Staff = []models.TournamentStaff{{AccountID: owner.ID, Role: models.TournamentStaffRoleOwner}}
+	if err := app.DB.Create(&legacy).Error; err != nil {
+		t.Fatal(err)
+	}
+	old := models.SoloRegistration{ID: uuid.New(), TournamentID: legacy.ID, AccountID: second.ID, Status: "REGISTERED"}
+	if err := app.DB.Create(&old).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := tournamentdb.AutoMigrate(app.DB); err != nil {
+		t.Fatal(err)
+	}
+	if err := app.DB.First(&old, "id = ?", old.ID).Error; err != nil {
+		t.Fatal(err)
+	}
+	if old.Status != models.SoloAwaitingApproval {
+		t.Fatalf("legacy status was not migrated: %s", old.Status)
 	}
 }

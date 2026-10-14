@@ -32,12 +32,14 @@ export function SoloSubmissionResult({ payment }: { payment: Payment }) {
   return (
     <Alert aria-live="polite">
       <AlertTitle>
-        {status === "REGISTERED" ? "Registration complete" : status === "PAYMENT_FAILED" ? "Registration not submitted" : "Verifying registration"}
+        {status === "AWAITING_APPROVAL" ? "Application submitted" : status === "ACCEPTED" ? "Registration approved" : status === "PAYMENT_FAILED" ? "Registration not submitted" : "Verifying registration"}
       </AlertTitle>
       <AlertDescription className="flex flex-col gap-2">
         <p>
-          {status === "REGISTERED"
-            ? "Your payment and individual registration are confirmed."
+          {status === "AWAITING_APPROVAL"
+            ? "Your application is with the organizer and is waiting for approval."
+            : status === "ACCEPTED"
+              ? "The organizer approved your individual registration."
             : status === "PAYMENT_FAILED"
               ? "Payment was unsuccessful or expired. Your seat is available again; you can retry registration."
               : "Your payment result is saved. We are checking the registration status."}

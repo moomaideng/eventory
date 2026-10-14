@@ -37,7 +37,7 @@ func (r *SoloRegistrationRepository) Get(ctx context.Context, tournamentID, acco
 }
 
 func (r *SoloRegistrationRepository) Count(ctx context.Context, tournamentID uuid.UUID, includePending bool) (int64, error) {
-	statuses := []models.SoloRegistrationStatus{models.SoloRegistered}
+	statuses := []models.SoloRegistrationStatus{models.SoloAwaitingApproval, models.SoloAccepted}
 	if includePending {
 		statuses = append(statuses, models.SoloPaymentPending)
 	}
@@ -64,7 +64,7 @@ func (r *SoloRegistrationRepository) Begin(ctx context.Context, tournamentID, ac
 		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 			return err
 		}
-		if err == nil && (existing.Status == models.SoloRegistered || existing.Status == models.SoloPaymentPending) {
+		if err == nil && (existing.Status == models.SoloAwaitingApproval || existing.Status == models.SoloAccepted || existing.Status == models.SoloRejected || existing.Status == models.SoloPaymentPending) {
 			result = existing
 			return nil
 		}
@@ -75,14 +75,14 @@ func (r *SoloRegistrationRepository) Begin(ctx context.Context, tournamentID, ac
 			return ErrInvalidRegistrationFee
 		}
 		var occupied int64
-		if err := tx.Model(&models.SoloRegistration{}).Where("tournament_id = ? AND status IN ?", tournamentID, []models.SoloRegistrationStatus{models.SoloRegistered, models.SoloPaymentPending}).Count(&occupied).Error; err != nil {
+		if err := tx.Model(&models.SoloRegistration{}).Where("tournament_id = ? AND status IN ?", tournamentID, []models.SoloRegistrationStatus{models.SoloAwaitingApproval, models.SoloAccepted, models.SoloPaymentPending}).Count(&occupied).Error; err != nil {
 			return err
 		}
 		if occupied >= int64(tournament.Capacity) {
 			return ErrSoloFull
 		}
 		now := time.Now().UTC().Truncate(time.Microsecond)
-		status := models.SoloRegistered
+		status := models.SoloAwaitingApproval
 		var attempt *uuid.UUID
 		var expires *time.Time
 		var registered *time.Time
@@ -126,7 +126,7 @@ func (r *SoloRegistrationRepository) ApplyPayment(ctx context.Context, row *mode
 	case "UNPAID":
 		// Store the invoice ID so the player can resume the same checkout.
 	case "PAID":
-		updates["status"] = models.SoloRegistered
+		updates["status"] = models.SoloAwaitingApproval
 		updates["registered_at"] = time.Now().UTC()
 	case "EXPIRED", "CANCELLED":
 		updates["status"] = models.SoloPaymentFailed

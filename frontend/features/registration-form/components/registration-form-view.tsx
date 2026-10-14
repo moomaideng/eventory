@@ -136,7 +136,7 @@ export function RegistrationFormView({ tournamentId }: { tournamentId: string })
       if (result.data.status === "PAYMENT_PENDING" && result.data.paymentId) {
         void queryClient.invalidateQueries({ queryKey: ["get", "/api/v1/tournaments/{tournamentId}/solo-registration/eligibility"] });
         router.push(`/payments/${result.data.paymentId}/checkout`);
-      } else if (result.data.status === "REGISTERED") {
+      } else if (result.data.status === "AWAITING_APPROVAL" || result.data.status === "ACCEPTED") {
         void queryClient.invalidateQueries({ queryKey: ["get", "/api/v1/tournaments/{tournamentId}"] });
         void queryClient.invalidateQueries({ queryKey: ["get", "/api/v1/tournaments/{tournamentId}/solo-registration/eligibility"] });
         router.push(`/tournaments/${tournamentId}`);

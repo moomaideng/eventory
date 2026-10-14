@@ -51,8 +51,12 @@ func (u *SoloRegistrationUseCase) Eligibility(ctx context.Context, tournamentID,
 	}
 	if err == nil {
 		switch row.Status {
-		case models.SoloRegistered:
+		case models.SoloAwaitingApproval:
+			return SoloEligibility{Reason: "AWAITING_APPROVAL", Status: string(row.Status)}, nil
+		case models.SoloAccepted:
 			return SoloEligibility{Reason: "ALREADY_REGISTERED", Status: string(row.Status)}, nil
+		case models.SoloRejected:
+			return SoloEligibility{Reason: "APPLICATION_REJECTED", Status: string(row.Status)}, nil
 		case models.SoloPaymentPending:
 			return SoloEligibility{Reason: "PAYMENT_PENDING", Status: string(row.Status), PaymentID: row.PaymentID}, nil
 		}
@@ -86,7 +90,7 @@ func (u *SoloRegistrationUseCase) Start(ctx context.Context, tournamentID, accou
 				return nil, err
 			}
 		}
-		if existing.Status == models.SoloRegistered || existing.Status == models.SoloPaymentPending {
+		if existing.Status == models.SoloAwaitingApproval || existing.Status == models.SoloAccepted || existing.Status == models.SoloRejected || existing.Status == models.SoloPaymentPending {
 			return existing, nil
 		}
 	} else if !errors.Is(err, repositories.ErrSoloNotFound) {
@@ -103,6 +107,8 @@ func (u *SoloRegistrationUseCase) Start(ctx context.Context, tournamentID, accou
 		return nil, repositories.ErrSoloClosed
 	case "TOURNAMENT_FULL":
 		return nil, repositories.ErrSoloFull
+	case "AWAITING_APPROVAL", "ALREADY_REGISTERED", "APPLICATION_REJECTED":
+		return u.repo.Get(ctx, tournamentID, accountID)
 	}
 	if u.forms != nil {
 		_, err := u.forms.SubmitResponse(ctx, accountID, tournamentID, answers)

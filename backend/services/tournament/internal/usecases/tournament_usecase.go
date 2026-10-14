@@ -217,9 +217,9 @@ func (u *TournamentUseCase) GetDetails(
 	registeredCount := len(acceptedTeams)
 	if tournament.RegistrationMode == models.TournamentRegistrationModeSolo {
 		if counter, ok := u.tournamentRepo.(interface {
-			CountSoloRegistered(context.Context, uuid.UUID) (int64, error)
+			CountSoloAccepted(context.Context, uuid.UUID) (int64, error)
 		}); ok {
-			count, err := counter.CountSoloRegistered(ctx, tournament.ID)
+			count, err := counter.CountSoloAccepted(ctx, tournament.ID)
 			if err != nil {
 				return nil, err
 			}

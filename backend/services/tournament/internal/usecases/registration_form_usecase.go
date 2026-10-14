@@ -217,9 +217,9 @@ func (u *RegistrationFormUseCase) ListResponses(
 	}
 	if tournament.RegistrationMode == models.TournamentRegistrationModeSolo {
 		if counter, ok := u.tournamentRepo.(interface {
-			RegisteredSoloAccountIDs(context.Context, uuid.UUID) (map[uuid.UUID]bool, error)
+			SubmittedSoloAccountIDs(context.Context, uuid.UUID) (map[uuid.UUID]bool, error)
 		}); ok {
-			registered, err := counter.RegisteredSoloAccountIDs(ctx, tournamentID)
+			registered, err := counter.SubmittedSoloAccountIDs(ctx, tournamentID)
 			if err != nil {
 				return nil, err
 			}

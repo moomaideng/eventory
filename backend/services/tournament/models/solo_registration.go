@@ -9,9 +9,11 @@ import (
 type SoloRegistrationStatus string
 
 const (
-	SoloPaymentPending SoloRegistrationStatus = "PAYMENT_PENDING"
-	SoloRegistered     SoloRegistrationStatus = "REGISTERED"
-	SoloPaymentFailed  SoloRegistrationStatus = "PAYMENT_FAILED"
+	SoloPaymentPending   SoloRegistrationStatus = "PAYMENT_PENDING"
+	SoloAwaitingApproval SoloRegistrationStatus = "AWAITING_APPROVAL"
+	SoloAccepted         SoloRegistrationStatus = "ACCEPTED"
+	SoloRejected         SoloRegistrationStatus = "REJECTED"
+	SoloPaymentFailed    SoloRegistrationStatus = "PAYMENT_FAILED"
 )
 
 // A row is unique per player and tournament. Pending rows reserve a seat;

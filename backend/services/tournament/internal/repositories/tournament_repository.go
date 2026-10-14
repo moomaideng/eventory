@@ -137,7 +137,7 @@ func (r *tournamentRepositoryImpl) Search(
 	var soloCounts []tournamentTeamCount
 	if err := r.db.WithContext(ctx).Model(&models.SoloRegistration{}).
 		Select("tournament_id, COUNT(*) AS count").
-		Where("tournament_id IN ? AND status = ?", tournamentIDs, models.SoloRegistered).
+		Where("tournament_id IN ? AND status = ?", tournamentIDs, models.SoloAccepted).
 		Group("tournament_id").Scan(&soloCounts).Error; err != nil {
 		return nil, 0, err
 	}
@@ -156,15 +156,15 @@ func (r *tournamentRepositoryImpl) Search(
 	return items, total, nil
 }
 
-func (r *tournamentRepositoryImpl) CountSoloRegistered(ctx context.Context, tournamentID uuid.UUID) (int64, error) {
+func (r *tournamentRepositoryImpl) CountSoloAccepted(ctx context.Context, tournamentID uuid.UUID) (int64, error) {
 	var count int64
-	err := r.db.WithContext(ctx).Model(&models.SoloRegistration{}).Where("tournament_id = ? AND status = ?", tournamentID, models.SoloRegistered).Count(&count).Error
+	err := r.db.WithContext(ctx).Model(&models.SoloRegistration{}).Where("tournament_id = ? AND status = ?", tournamentID, models.SoloAccepted).Count(&count).Error
 	return count, err
 }
 
-func (r *tournamentRepositoryImpl) RegisteredSoloAccountIDs(ctx context.Context, tournamentID uuid.UUID) (map[uuid.UUID]bool, error) {
+func (r *tournamentRepositoryImpl) SubmittedSoloAccountIDs(ctx context.Context, tournamentID uuid.UUID) (map[uuid.UUID]bool, error) {
 	var ids []uuid.UUID
-	err := r.db.WithContext(ctx).Model(&models.SoloRegistration{}).Where("tournament_id = ? AND status = ?", tournamentID, models.SoloRegistered).Pluck("account_id", &ids).Error
+	err := r.db.WithContext(ctx).Model(&models.SoloRegistration{}).Where("tournament_id = ? AND status IN ?", tournamentID, []models.SoloRegistrationStatus{models.SoloAwaitingApproval, models.SoloAccepted, models.SoloRejected}).Pluck("account_id", &ids).Error
 	if err != nil {
 		return nil, err
 	}
@@ -273,7 +273,7 @@ func (r *tournamentRepositoryImpl) GetActiveTeamCount(
 	// them when checking whether an organizer may reduce capacity or switch mode.
 	var soloOccupied int64
 	if err := r.db.WithContext(ctx).Model(&models.SoloRegistration{}).
-		Where("tournament_id = ? AND status IN ?", tournamentID, []models.SoloRegistrationStatus{models.SoloRegistered, models.SoloPaymentPending}).Count(&soloOccupied).Error; err != nil {
+		Where("tournament_id = ? AND status IN ?", tournamentID, []models.SoloRegistrationStatus{models.SoloAwaitingApproval, models.SoloAccepted, models.SoloPaymentPending}).Count(&soloOccupied).Error; err != nil {
 		return 0, 0, err
 	}
 
