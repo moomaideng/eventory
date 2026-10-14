@@ -27,6 +27,7 @@ import {
   StaffRoleBadge,
   TournamentStaffSection,
 } from "@/features/tournament-staff";
+import { SponsorshipTierSection } from "@/features/sponsorship";
 
 export function TournamentWorkspace({
   tournamentId,
@@ -130,6 +131,9 @@ export function TournamentWorkspace({
                     {isOwner ? (
                       <TabsTrigger value="staff">Manage Staff</TabsTrigger>
                     ) : null}
+                    {isOwner ? (
+                      <TabsTrigger value="sponsorship">Sponsorship</TabsTrigger>
+                    ) : null}
                   </TabsList>
 
                   <TabsContent value="dashboard" keepMounted>
@@ -164,6 +168,19 @@ export function TournamentWorkspace({
                       <TournamentStaffSection
                         tournamentId={tournamentId}
                         isOwner={isOwner}
+                      />
+                    </TabsContent>
+                  ) : null}
+
+                  {isOwner ? (
+                    <TabsContent value="sponsorship">
+                      <SponsorshipTierSection
+                        tournamentId={tournamentId}
+                        currency={data.summary.tournament.currency}
+                        editable={
+                          data.summary.tournament.status !== "COMPLETED" &&
+                          data.summary.tournament.status !== "CANCELLED"
+                        }
                       />
                     </TabsContent>
                   ) : null}
