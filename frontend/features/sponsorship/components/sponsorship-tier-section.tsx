@@ -4,17 +4,7 @@ import { useMemo, useState } from "react";
 import { AlertCircle, HandCoins, Pencil, Plus, Trash2 } from "lucide-react";
 import { $api } from "@/lib/api/client";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardAction,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import {
   Empty,
   EmptyDescription,
@@ -23,10 +13,10 @@ import {
   EmptyTitle,
 } from "@/components/ui/empty";
 import { Skeleton } from "@/components/ui/skeleton";
+import { TierCard } from "@/features/sponsorship/components/tier-card";
 import { DeleteTierDialog } from "@/features/sponsorship/components/delete-tier-dialog";
 import { TierFormDialog } from "@/features/sponsorship/components/tier-form-dialog";
 import { sortTiers, type SponsorshipTier } from "@/features/sponsorship/utils";
-import { formatMoney } from "@/features/tournaments/utils";
 
 type DialogState =
   | { kind: "closed" }
@@ -103,46 +93,33 @@ export function SponsorshipTierSection({
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {tiers.map((tier) => (
-            <Card key={tier.id}>
-              <CardHeader>
-                <CardTitle className="wrap-anywhere">{tier.name}</CardTitle>
-                <CardDescription>{formatMoney(tier.price, currency)}</CardDescription>
-                <CardAction>
-                  <Badge variant="secondary">
-                    {tier.slots} {tier.slots === 1 ? "slot" : "slots"}
-                  </Badge>
-                </CardAction>
-              </CardHeader>
-              <CardContent>
-                <ul className="text-muted-foreground flex list-disc flex-col gap-1 pl-5 text-sm">
-                  {(tier.perks ?? []).map((perk) => (
-                    <li key={perk} className="wrap-anywhere">
-                      {perk}
-                    </li>
-                  ))}
-                </ul>
-              </CardContent>
-              {editable ? (
-                <CardFooter className="gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setDialog({ kind: "form", tier })}
-                  >
-                    <Pencil data-icon="inline-start" />
-                    Edit
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setDialog({ kind: "delete", tier })}
-                  >
-                    <Trash2 data-icon="inline-start" />
-                    Delete
-                  </Button>
-                </CardFooter>
-              ) : null}
-            </Card>
+            <TierCard
+              key={tier.id}
+              tier={tier}
+              currency={currency}
+              footer={
+                editable ? (
+                  <>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setDialog({ kind: "form", tier })}
+                    >
+                      <Pencil data-icon="inline-start" />
+                      Edit
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setDialog({ kind: "delete", tier })}
+                    >
+                      <Trash2 data-icon="inline-start" />
+                      Delete
+                    </Button>
+                  </>
+                ) : null
+              }
+            />
           ))}
         </div>
       )}

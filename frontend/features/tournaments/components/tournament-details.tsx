@@ -16,6 +16,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { PublicTiersSection } from "@/features/sponsorship";
 import { formatRegistrationType, formatTournamentStatus } from "../utils";
 import { TournamentAboutCard } from "./tournament-about-card";
 import { TournamentDetailsSkeleton } from "./tournament-details-skeleton";
@@ -171,6 +172,10 @@ export function TournamentDetails({ tournamentId }: { tournamentId: string }) {
             tournament={tournament}
             spotsLeft={spotsLeft}
             registrationType={registrationType}
+          />
+          <PublicTiersSection
+            tournamentId={tournament.id}
+            currency={tournament.currency}
           />
           <TournamentRegisteredTeamsCard teams={teams} />
         </div>
