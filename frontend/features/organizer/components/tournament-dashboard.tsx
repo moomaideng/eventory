@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowLeft, ArrowUpRight, Trophy } from "lucide-react";
+import { ArrowLeft, ArrowUpRight, FileQuestion, Trophy } from "lucide-react";
 import { useAuth } from "@/context/auth-context";
 import { $api } from "@/lib/api/client";
 import { Badge } from "@/components/ui/badge";
@@ -97,6 +97,18 @@ export function TournamentDashboard({
                     </div>
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
+                    {isOwner ? (
+                      <Button
+                        variant="outline"
+                        render={
+                          <Link href={`/organizer/tournaments/${tournamentId}/form`} />
+                        }
+                        nativeButton={false}
+                      >
+                        <FileQuestion data-icon="inline-start" />
+                        Registration questions
+                      </Button>
+                    ) : null}
                     {isOwner ? (
                       <StatusControlDialog
                         tournamentId={tournamentId}

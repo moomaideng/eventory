@@ -40,10 +40,16 @@ export function TournamentDetails({ tournamentId }: { tournamentId: string }) {
         : {},
     },
     {
-      enabled: Boolean(authorizationHeader),
+      enabled: Boolean(authorizationHeader && data?.tournament.registrationMode === "TEAM"),
       retry: false,
       staleTime: 0,
     }
+  );
+  const { data: soloEligibility, isLoading: isSoloEligibilityLoading } = $api.useQuery(
+    "get",
+    "/api/v1/tournaments/{tournamentId}/solo-registration/eligibility",
+    { params: { path: { tournamentId } }, headers: { Authorization: authorizationHeader ?? "" } },
+    { enabled: Boolean(authorizationHeader && data?.tournament.registrationMode === "SOLO"), retry: false, staleTime: 0 }
   );
 
   if (isLoading) return <TournamentDetailsSkeleton />;
@@ -84,6 +90,30 @@ export function TournamentDetails({ tournamentId }: { tournamentId: string }) {
     tournament.status === "REGISTRATION_OPEN" &&
     !isMyTeamLoading &&
     !myTeam;
+  const soloReason = soloEligibility?.reason;
+  const soloLabel = !authorizationHeader
+    ? "Sign in to register"
+    : isSoloEligibilityLoading
+      ? "Checking eligibility"
+      : soloReason === "ALREADY_REGISTERED"
+        ? "Already Registered"
+        : soloReason === "AWAITING_APPROVAL"
+          ? "Waiting for organizer approval"
+          : soloReason === "APPLICATION_REJECTED"
+            ? "Application Rejected"
+        : soloReason === "TOURNAMENT_FULL"
+          ? "Tournament Full"
+          : soloReason === "REGISTRATION_CLOSED"
+            ? "Registration Closed"
+            : soloReason === "PAYMENT_PENDING"
+              ? "Continue Payment"
+              : soloEligibility?.canRegister
+                ? "Register as an individual"
+                : "Registration unavailable";
+  const soloHref = soloReason === "PAYMENT_PENDING" && soloEligibility?.paymentId
+    ? `/payments/${soloEligibility.paymentId}/checkout`
+    : `/tournaments/${tournament.id}/form`;
+  const soloEnabled = Boolean(soloEligibility?.canRegister || (soloReason === "PAYMENT_PENDING" && soloEligibility?.paymentId));
 
   return (
     <main className="container mx-auto flex w-full max-w-7xl flex-1 flex-col gap-8 px-4 py-10 sm:px-8">
@@ -121,6 +151,16 @@ export function TournamentDetails({ tournamentId }: { tournamentId: string }) {
           >
             <Users data-icon="inline-start" />
             Create a team
+          </Button>
+        ) : null}
+        {tournament.registrationMode === "SOLO" ? (
+          <Button
+            render={soloEnabled ? <Link href={soloHref} /> : undefined}
+            nativeButton={!soloEnabled}
+            disabled={!soloEnabled}
+            className="self-start"
+          >
+            {soloLabel}
           </Button>
         ) : null}
       </header>

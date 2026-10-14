@@ -77,8 +77,7 @@ export function RegistrationTable({
           <EmptyHeader>
             <EmptyTitle>No registrations yet</EmptyTitle>
             <EmptyDescription>
-              Teams appear after submitting a complete roster and paying any
-              entry fee.
+              Applications appear after a player submits and pays any entry fee.
             </EmptyDescription>
           </EmptyHeader>
         </Empty>

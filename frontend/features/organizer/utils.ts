@@ -17,7 +17,7 @@ export const dashboardQueryOptions = {
 } as const;
 
 export function statusLabel(status: string) {
-  if (status === "LOCKED") return "Waiting for approval";
+  if (status === "LOCKED" || status === "AWAITING_APPROVAL") return "Waiting for approval";
   if (status === "PAYMENT_PENDING") return "Awaiting payment";
   return status.toLowerCase().replaceAll("_", " ");
 }
