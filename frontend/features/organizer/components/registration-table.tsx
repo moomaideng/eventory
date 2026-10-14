@@ -95,7 +95,7 @@ export function RegistrationTable({
             <TableHeader>
               <TableRow>
                 <TableHead className="w-1/3 sm:w-1/4">Entry</TableHead>
-                <TableHead className="hidden w-32 sm:table-cell">
+                <TableHead className="hidden w-44 sm:table-cell">
                   Status
                 </TableHead>
                 <TableHead>Participants</TableHead>
@@ -103,7 +103,9 @@ export function RegistrationTable({
                   Created
                 </TableHead>
                 {canReview ? (
-                  <TableHead className="w-28 sm:w-44">Actions</TableHead>
+                  <TableHead className="hidden w-44 sm:table-cell">
+                    Actions
+                  </TableHead>
                 ) : null}
               </TableRow>
             </TableHeader>
@@ -122,6 +124,14 @@ export function RegistrationTable({
                         <span className="sm:hidden">
                           <DashboardStatus status={entry.status} />
                         </span>
+                        {canReview ? (
+                          <div className="pt-2 sm:hidden">
+                            <ReviewActions
+                              tournamentId={tournamentId}
+                              entry={entry}
+                            />
+                          </div>
+                        ) : null}
                       </div>
                     </div>
                   </TableCell>
@@ -155,7 +165,7 @@ export function RegistrationTable({
                     {formatDate(entry.createdAt)}
                   </TableCell>
                   {canReview ? (
-                    <TableCell className="align-top whitespace-normal">
+                    <TableCell className="hidden align-top whitespace-normal sm:table-cell">
                       <ReviewActions
                         tournamentId={tournamentId}
                         entry={entry}
