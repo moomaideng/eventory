@@ -76,12 +76,27 @@ func RegisterSponsorshipTierRoutes(api huma.API, organizerTournamentGroup huma.A
 		if err != nil {
 			return nil, sponsorshipTierHTTPError(err)
 		}
-		output := &ListSponsorshipTiersOutput{}
-		output.Body.Items = make([]SponsorshipTierResponse, 0, len(items))
-		for _, tier := range items {
-			output.Body.Items = append(output.Body.Items, toSponsorshipTierResponse(tier))
+		return toListSponsorshipTiersOutput(items), nil
+	})
+
+	huma.Register(organizerTournamentGroup, huma.Operation{
+		OperationID: "list-my-sponsorship-tiers",
+		Method:      http.MethodGet,
+		Path:        "/{tournamentId}/sponsorship-tiers/manage",
+		Summary:     "List sponsorship tiers for the owner",
+		Description: "Returns an owned tournament's sponsorship packages, including while it is unpublished.",
+		Tags:        []string{"Sponsorship"},
+		Security:    []map[string][]string{{"bearer": {}}},
+	}, func(ctx context.Context, input *ListSponsorshipTiersInput) (*ListSponsorshipTiersOutput, error) {
+		profile, err := middlewares.GetOrganizerProfile(ctx)
+		if err != nil {
+			return nil, sponsorshipTierHTTPError(err)
 		}
-		return output, nil
+		items, err := tiers.ListForOwner(ctx, profile.AccountID, input.TournamentID)
+		if err != nil {
+			return nil, sponsorshipTierHTTPError(err)
+		}
+		return toListSponsorshipTiersOutput(items), nil
 	})
 
 	huma.Register(organizerTournamentGroup, huma.Operation{
@@ -144,6 +159,15 @@ func RegisterSponsorshipTierRoutes(api huma.API, organizerTournamentGroup huma.A
 		}
 		return nil, nil
 	})
+}
+
+func toListSponsorshipTiersOutput(items []models.SponsorshipTier) *ListSponsorshipTiersOutput {
+	output := &ListSponsorshipTiersOutput{}
+	output.Body.Items = make([]SponsorshipTierResponse, 0, len(items))
+	for _, tier := range items {
+		output.Body.Items = append(output.Body.Items, toSponsorshipTierResponse(tier))
+	}
+	return output
 }
 
 func toSponsorshipTierInput(body SponsorshipTierBody) usecases.SponsorshipTierInput {

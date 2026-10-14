@@ -55,6 +55,19 @@ func (u *SponsorshipTierUseCase) ListPublic(ctx context.Context, tournamentID uu
 	return u.tiers.List(ctx, tournamentID)
 }
 
+// ListForOwner returns an owned tournament's tiers, published or not, so the
+// organizer can manage them before the tournament goes public.
+func (u *SponsorshipTierUseCase) ListForOwner(ctx context.Context, accountID, tournamentID uuid.UUID) ([]models.SponsorshipTier, error) {
+	tournament, err := u.tournaments.GetByID(ctx, tournamentID)
+	if err != nil {
+		return nil, mapTierError(err)
+	}
+	if !isTournamentOrganizer(tournament, accountID) {
+		return nil, ErrTournamentNotFound
+	}
+	return u.tiers.List(ctx, tournamentID)
+}
+
 func (u *SponsorshipTierUseCase) Create(
 	ctx context.Context,
 	accountID, tournamentID uuid.UUID,

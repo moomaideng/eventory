@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { AlertCircle, HandCoins, Pencil, Plus, Trash2 } from "lucide-react";
+import { useAuth } from "@/context/auth-context";
 import { $api } from "@/lib/api/client";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -33,11 +34,17 @@ export function SponsorshipTierSection({
   editable: boolean;
 }) {
   const [dialog, setDialog] = useState<DialogState>({ kind: "closed" });
-  const { data, error, isLoading, refetch } = $api.useQuery(
+  const { authorizationHeader, isLoading: authLoading } = useAuth();
+  const { data, error, isLoading: queryLoading, refetch } = $api.useQuery(
     "get",
-    "/api/v1/tournaments/{tournamentId}/sponsorship-tiers",
-    { params: { path: { tournamentId } } }
+    "/api/v1/tournaments/{tournamentId}/sponsorship-tiers/manage",
+    {
+      params: { path: { tournamentId } },
+      headers: { Authorization: authorizationHeader ?? "" },
+    },
+    { enabled: Boolean(authorizationHeader), retry: false }
   );
+  const isLoading = authLoading || !authorizationHeader || queryLoading;
   const tiers = useMemo(() => sortTiers(data?.items ?? []), [data?.items]);
   const close = () => setDialog({ kind: "closed" });
 
@@ -70,7 +77,7 @@ export function SponsorshipTierSection({
           <AlertCircle />
           <AlertTitle>Unable to load sponsorship tiers</AlertTitle>
           <AlertDescription className="flex items-center justify-between gap-4">
-            <span>Tiers are only shown for published tournaments.</span>
+            <span>Something went wrong while loading the tiers.</span>
             <Button variant="outline" size="sm" onClick={() => void refetch()}>
               Retry
             </Button>

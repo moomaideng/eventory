@@ -135,6 +135,23 @@ func (s *tierScenario) visibleTiers(expected string) error {
 	return nil
 }
 
+func (s *tierScenario) managedTiers(expected string) error {
+	var list struct {
+		Items []tierItem `json:"items"`
+	}
+	if err := s.resp.JSON(&list); err != nil {
+		return err
+	}
+	names := make([]string, 0, len(list.Items))
+	for _, item := range list.Items {
+		names = append(names, item.Name)
+	}
+	if got, want := strings.Join(names, ", "), strings.Join(splitList(expected), ", "); got != want {
+		return fmt.Errorf("managed tiers = %q, want %q", got, want)
+	}
+	return nil
+}
+
 func (s *tierScenario) status(code int) error {
 	if s.resp == nil {
 		return fmt.Errorf("no response recorded")
@@ -178,6 +195,14 @@ func initializeScenario(sc *godog.ScenarioContext, app *apptest.App) {
 	sc.Step(`^the organizer deletes tier "([^"]*)"$`, func(name string) error { return s.remove(s.owner, name) })
 	sc.Step(`^the other organizer deletes tier "([^"]*)"$`, func(name string) error { return s.remove(s.other, name) })
 	sc.Step(`^a visitor lists the tournament's tiers$`, func() error { return s.do(http.MethodGet, s.tiersPath(), nil, nil) })
+	sc.Step(`^the (organizer|other organizer) lists tiers to manage$`, func(who string) error {
+		user := s.owner
+		if who == "other organizer" {
+			user = s.other
+		}
+		return s.do(http.MethodGet, s.tiersPath()+"/manage", nil, user)
+	})
+	sc.Step(`^the managed tiers should be exactly "([^"]*)"$`, s.managedTiers)
 	sc.Step(`^the response status should be (\d+)$`, s.status)
 	sc.Step(`^sponsors should see exactly "([^"]*)" on the tournament$`, s.visibleTiers)
 }

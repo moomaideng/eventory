@@ -70,3 +70,14 @@ Feature: Sponsorship tier packages
     And the tournament is unpublished
     When a visitor lists the tournament's tiers
     Then the response status should be 404
+
+  @us5_4
+  Scenario: The owner manages tiers before publishing
+    Given the organizer has a tier named "Gold"
+    And the tournament is unpublished
+    And another organizer exists
+    When the organizer lists tiers to manage
+    Then the response status should be 200
+    And the managed tiers should be exactly "Gold"
+    When the other organizer lists tiers to manage
+    Then the response status should be 404

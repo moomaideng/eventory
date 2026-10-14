@@ -18,7 +18,7 @@ export function PublicTiersSection({
     "get",
     "/api/v1/tournaments/{tournamentId}/sponsorship-tiers",
     { params: { path: { tournamentId } } },
-    { staleTime: 30_000 }
+    { staleTime: 30_000, retry: false }
   );
   const tiers = useMemo(() => sortTiers(data?.items ?? []), [data?.items]);
 
