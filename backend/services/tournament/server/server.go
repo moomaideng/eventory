@@ -117,13 +117,14 @@ func newHTTPRouter(db *gorm.DB, mongoDB *mongo.Database, cfg config.Config, acco
 	tournamentStatusRepo := repositories.NewTournamentStatusRepository(db)
 	tournamentStaffRepo := repositories.NewTournamentStaffRepository(db)
 	teamReviewRepo := repositories.NewTeamReviewRepository(db)
+	soloReviewRepo := repositories.NewSoloReviewRepository(db)
 
 	tournamentUseCase := usecases.NewTournamentUseCase(tournamentRepo, accountSvc)
 	teamLobbyUseCase := usecases.NewTeamLobbyUseCase(teamLobbyRepo, accountSvc).WithSubmission(submission)
 	dashboardUseCase := usecases.NewOrganizerDashboardUseCase(organizerDashboardRepo, accountSvc)
 	statusUseCase := usecases.NewTournamentStatusUseCase(tournamentStatusRepo, accountSvc)
 	staffUseCase := usecases.NewTournamentStaffUseCase(tournamentStaffRepo, accountSvc)
-	teamReviewUseCase := usecases.NewTeamReviewUseCase(teamReviewRepo, accountSvc)
+	teamReviewUseCase := usecases.NewTeamReviewUseCase(teamReviewRepo, soloReviewRepo, accountSvc)
 
 	authMiddleware := middlewares.NewAuthMiddleware(api, cfg.SupabaseURL, cfg.Environment)
 	organizerMiddleware := tournamentmiddlewares.NewOrganizerMiddleware(api, accountSvc)

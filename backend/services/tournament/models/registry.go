@@ -10,5 +10,6 @@ func All() []any {
 		&TournamentFunding{},
 		&TournamentStatusChange{},
 		&TournamentTeamReview{},
+		&SoloRegistrationReview{},
 	}
 }

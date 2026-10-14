@@ -13,7 +13,7 @@ import (
 
 type TeamReviewInput struct {
 	TournamentID uuid.UUID `path:"id" doc:"Tournament ID"`
-	TeamID       uuid.UUID `path:"teamId" doc:"Team (application) ID"`
+	EntryID      uuid.UUID `path:"entryId" doc:"Application ID: a team's ID, or a solo registration's ID"`
 	Body         struct {
 		Decision string `json:"decision" enum:"ACCEPT,REJECT" doc:"Accept or reject the application"`
 		Reason   string `json:"reason,omitempty" maxLength:"500" doc:"Optional justification, mainly for rejections; recorded in the audit trail"`
@@ -22,7 +22,7 @@ type TeamReviewInput struct {
 
 type TeamReviewResponse struct {
 	ID           uuid.UUID `json:"id"`
-	FromStatus   string    `json:"fromStatus" enum:"LOCKED,ACCEPTED,REJECTED"`
+	FromStatus   string    `json:"fromStatus" enum:"LOCKED,AWAITING_APPROVAL,ACCEPTED,REJECTED"`
 	ToStatus     string    `json:"toStatus" enum:"ACCEPTED,REJECTED"`
 	Reason       string    `json:"reason"`
 	ReviewerID   uuid.UUID `json:"reviewerId"`
@@ -33,7 +33,7 @@ type TeamReviewResponse struct {
 type TeamReviewOutput struct {
 	Body struct {
 		TournamentID uuid.UUID          `json:"tournamentId"`
-		TeamID       uuid.UUID          `json:"teamId"`
+		EntryID      uuid.UUID          `json:"entryId"`
 		Status       string             `json:"status" enum:"ACCEPTED,REJECTED"`
 		Review       TeamReviewResponse `json:"review"`
 	}
@@ -41,14 +41,14 @@ type TeamReviewOutput struct {
 
 func RegisterTeamReviewRoutes(api huma.API, reviews *usecases.TeamReviewUseCase) {
 	huma.Register(api, huma.Operation{
-		OperationID:   "review-team-application",
+		OperationID:   "review-application",
 		Method:        http.MethodPost,
-		Path:          "/tournaments/{id}/entries/{teamId}/review",
+		Path:          "/tournaments/{id}/entries/{entryId}/review",
 		DefaultStatus: http.StatusOK,
-		Summary:       "Accept or reject a team's application",
-		Description: "Records an organizer's decision on a locked team application, " +
-			"enforcing the tournament's capacity. A decision may be switched later; " +
-			"every decision is kept in the audit trail.",
+		Summary:       "Accept or reject an application",
+		Description: "Records an organizer's decision on a team or solo application " +
+			"that is waiting for review, enforcing the tournament's capacity. " +
+			"A decision may be switched later; every decision is kept in the audit trail.",
 		Tags:     []string{"Organizer dashboard"},
 		Security: []map[string][]string{{"bearer": {}}},
 	}, func(ctx context.Context, input *TeamReviewInput) (*TeamReviewOutput, error) {
@@ -57,7 +57,7 @@ func RegisterTeamReviewRoutes(api huma.API, reviews *usecases.TeamReviewUseCase)
 			return nil, err
 		}
 
-		review, err := reviews.Review(ctx, accountID, input.TournamentID, input.TeamID,
+		review, err := reviews.Review(ctx, accountID, input.TournamentID, input.EntryID,
 			input.Body.Decision, input.Body.Reason)
 		if err != nil {
 			return nil, teamReviewHTTPError(err)
@@ -65,12 +65,12 @@ func RegisterTeamReviewRoutes(api huma.API, reviews *usecases.TeamReviewUseCase)
 
 		output := &TeamReviewOutput{}
 		output.Body.TournamentID = review.TournamentID
-		output.Body.TeamID = review.TournamentTeamID
-		output.Body.Status = string(review.ToStatus)
+		output.Body.EntryID = review.EntryID
+		output.Body.Status = review.ToStatus
 		output.Body.Review = TeamReviewResponse{
 			ID:           review.ID,
-			FromStatus:   string(review.FromStatus),
-			ToStatus:     string(review.ToStatus),
+			FromStatus:   review.FromStatus,
+			ToStatus:     review.ToStatus,
 			Reason:       review.Reason,
 			ReviewerID:   review.ReviewerAccountID,
 			ReviewerName: review.ReviewerDisplayName,
@@ -98,7 +98,7 @@ func teamReviewHTTPError(err error) error {
 	case errors.Is(err, usecases.ErrReviewNotAllowedInStage):
 		return huma.Error409Conflict("Applications cannot be reviewed in the tournament's current stage")
 	case errors.Is(err, usecases.ErrApplicationNotReviewable):
-		return huma.Error409Conflict("Only locked applications can be reviewed")
+		return huma.Error409Conflict("This application is not ready to be reviewed")
 	case errors.Is(err, usecases.ErrApplicationAlreadyDecided):
 		return huma.Error409Conflict("The application already has that decision")
 	case errors.Is(err, usecases.ErrTournamentFull):
