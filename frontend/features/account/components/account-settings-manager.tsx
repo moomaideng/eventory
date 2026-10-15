@@ -36,7 +36,7 @@ function toFormValues(account: Account): AccountSettingsInput {
 }
 
 export function AccountSettingsManager() {
-  const { isLoading: isAuthLoading, authorizationHeader } = useAuth();
+  const { user, isLoading: isAuthLoading, authorizationHeader } = useAuth();
   const queryClient = useQueryClient();
 
   // Same request as auth-context, so this reads the shared cache entry
@@ -128,6 +128,7 @@ export function AccountSettingsManager() {
     <AccountSettingsForm
       key={account.id}
       initial={toFormValues(account)}
+      fallbackAvatarUrl={user?.avatarUrl}
       onSave={handleSave}
     />
   );
