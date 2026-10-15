@@ -119,4 +119,3 @@ Feature: Organizer application review
     When the admin approves the application
     Then the application should be accepted
     And the accepted count on the dashboard should increase
-    
