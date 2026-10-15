@@ -94,7 +94,7 @@ export function RegistrationTable({
             </TableCaption>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-1/3 sm:w-1/4">Entry</TableHead>
+                <TableHead className="w-1/2 sm:w-1/4">Entry</TableHead>
                 <TableHead className="hidden w-44 sm:table-cell">
                   Status
                 </TableHead>
