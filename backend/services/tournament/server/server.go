@@ -144,10 +144,6 @@ func newHTTPRouter(db *gorm.DB, mongoDB *mongo.Database, cfg config.Config, acco
 		fieldRegistry := forms.NewDefaultRegistry()
 		formUseCase := usecases.NewRegistrationFormUseCase(tournamentRepo, formRepo, fieldRegistry)
 		resthandlers.RegisterRegistrationFormRoutes(api, teamLobbyGroup, organizerTournamentGroup, formUseCase)
-
-		dummyRepo := repositories.NewDummyRepository(mongoDB)
-		dummyUseCase := usecases.NewDummyUseCase(dummyRepo)
-		resthandlers.RegisterDummyRoutes(api, dummyUseCase)
 	}
 
 	return router

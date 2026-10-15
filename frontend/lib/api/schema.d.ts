@@ -351,50 +351,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/tournaments/dummy": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * List Dummy Resources (MongoDB Example)
-         * @description Lists all dummy documents stored in MongoDB
-         */
-        get: operations["list-dummy-resources"];
-        put?: never;
-        /**
-         * Create Dummy Resource (MongoDB Example)
-         * @description Stores a dummy document in the secondary MongoDB database
-         */
-        post: operations["create-dummy-resource"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/tournaments/dummy/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get Dummy Resource (MongoDB Example)
-         * @description Retrieves a dummy document from MongoDB by its ID
-         */
-        get: operations["get-dummy-resource"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/tournaments/mine": {
         parameters: {
             query?: never;
@@ -808,18 +764,6 @@ export interface components {
             /** @enum {string} */
             result: "SUCCEEDED" | "FAILED" | "CANCELLED";
         };
-        CreateDummyRequest: {
-            /**
-             * Format: uri
-             * @description A URL to the JSON Schema for this object.
-             * @example https://example.com/schemas/CreateDummyRequest.json
-             */
-            readonly $schema?: string;
-            /** @description Optional content or notes */
-            content: string;
-            /** @description Title of the dummy resource */
-            title: string;
-        };
         CreatePayment: {
             /**
              * Format: uri
@@ -945,30 +889,6 @@ export interface components {
             readonly $schema?: string;
             /** @description List of matches defining the bracket DAG */
             matches: components["schemas"]["DefineBracketMatchItem"][] | null;
-        };
-        DummyResponse: {
-            /**
-             * Format: uri
-             * @description A URL to the JSON Schema for this object.
-             * @example https://example.com/schemas/DummyResponse.json
-             */
-            readonly $schema?: string;
-            /** @description Dummy content */
-            content: string;
-            /**
-             * Format: date-time
-             * @description Created timestamp
-             */
-            createdAt: string;
-            /** @description MongoDB ObjectID hex string */
-            id: string;
-            /** @description Dummy title */
-            title: string;
-            /**
-             * Format: date-time
-             * @description Updated timestamp
-             */
-            updatedAt: string;
         };
         ErrorDetail: {
             /** @description Where the error occurred, e.g. 'body.items[3].tags' or 'path.thing-id' */
@@ -2387,100 +2307,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TournamentResponse"];
-                };
-            };
-            /** @description Error */
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["ErrorModel"];
-                };
-            };
-        };
-    };
-    "list-dummy-resources": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DummyResponse"][] | null;
-                };
-            };
-            /** @description Error */
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["ErrorModel"];
-                };
-            };
-        };
-    };
-    "create-dummy-resource": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["CreateDummyRequest"];
-            };
-        };
-        responses: {
-            /** @description Created */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DummyResponse"];
-                };
-            };
-            /** @description Error */
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["ErrorModel"];
-                };
-            };
-        };
-    };
-    "get-dummy-resource": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description Dummy resource ID */
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DummyResponse"];
                 };
             };
             /** @description Error */
