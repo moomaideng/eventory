@@ -186,7 +186,7 @@ func (r *teamLobbyRepository) Lock(ctx context.Context, teamID uuid.UUID) (*mode
 			return ErrTeamLobbyNotForming
 		}
 		now := time.Now().UTC().Truncate(time.Microsecond)
-		if !tournament.Published || tournament.RegistrationMode != models.TournamentRegistrationModeTeam || tournament.Status != models.TournamentStatusRegistrationOpen || !now.Before(tournament.RegistrationDeadline) {
+		if !tournament.Published || tournament.Status != models.TournamentStatusRegistrationOpen || !now.Before(tournament.RegistrationDeadline) {
 			return ErrTournamentRegistrationClosed
 		}
 		if len(team.Members) < team.Tournament.MinTeamSize {

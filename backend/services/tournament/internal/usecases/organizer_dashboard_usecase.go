@@ -102,78 +102,24 @@ func (u *OrganizerDashboardUseCase) Get(ctx context.Context, organizerID, tourna
 	summary := summarizeDashboard(*tournament, names[tournament.ID])
 
 	var allMembers []models.TournamentTeamMember
-	if tournament.RegistrationMode == models.TournamentRegistrationModeSolo {
-		for _, solo := range tournament.SoloRegistrations {
-			if solo.Status == models.SoloAwaitingApproval || solo.Status == models.SoloAccepted || solo.Status == models.SoloRejected {
-				allMembers = append(allMembers, models.TournamentTeamMember{ID: solo.ID, AccountID: solo.AccountID, Role: "PLAYER", JoinedAt: solo.CreatedAt})
-			}
-		}
-	} else {
-		for _, team := range tournament.Teams {
-			allMembers = append(allMembers, team.Members...)
-		}
+	for _, team := range tournament.Teams {
+		allMembers = append(allMembers, team.Members...)
 	}
 	accounts, err := accountInfos(ctx, u.accountSvc, allMembers...)
 	if err != nil {
 		return nil, err
 	}
 	entries := make([]OrganizerDashboardEntry, 0, len(allMembers))
-	if tournament.RegistrationMode == models.TournamentRegistrationModeSolo {
-		for _, solo := range tournament.SoloRegistrations {
-			if solo.Status != models.SoloAwaitingApproval && solo.Status != models.SoloAccepted && solo.Status != models.SoloRejected {
-				continue
-			}
-			member := models.TournamentTeamMember{ID: solo.ID, AccountID: solo.AccountID, Role: "PLAYER", JoinedAt: solo.CreatedAt}
-			info := accounts[solo.AccountID]
-			name := info.DisplayName
-			if name == "" {
-				name = info.Handle
-			}
-			if name == "" {
-				name = solo.AccountID.String()
-			}
-			entries = append(entries, OrganizerDashboardEntry{ID: solo.ID, Name: name, Status: string(solo.Status), CreatedAt: solo.CreatedAt, Members: NewTeamMemberViews([]models.TournamentTeamMember{member}, accounts)})
+	for _, team := range tournament.Teams {
+		if team.Status == models.TournamentTeamStatusForming || team.Status == models.TournamentTeamStatusPaymentPending {
+			continue
 		}
-	} else {
-		for _, team := range tournament.Teams {
-			if team.Status == models.TournamentTeamStatusForming || team.Status == models.TournamentTeamStatusPaymentPending {
-				continue
-			}
-			entries = append(entries, NewOrganizerDashboardEntry(team, NewTeamMemberViews(team.Members, accounts)))
-		}
+		entries = append(entries, NewOrganizerDashboardEntry(team, NewTeamMemberViews(team.Members, accounts)))
 	}
 	return &OrganizerDashboard{OrganizerTournamentSummary: summary, Entries: entries}, nil
 }
 
 func summarizeDashboard(tournament models.Tournament, organizerName string) OrganizerTournamentSummary {
-	if tournament.RegistrationMode == models.TournamentRegistrationModeSolo {
-		metrics := OrganizerDashboardMetrics{TotalEntries: len(tournament.SoloRegistrations)}
-		occupied := 0
-		for _, registration := range tournament.SoloRegistrations {
-			switch registration.Status {
-			case models.SoloPaymentPending:
-				metrics.FormingEntries++
-				occupied++
-			case models.SoloPaymentFailed:
-				metrics.FormingEntries++
-			case models.SoloAwaitingApproval:
-				metrics.LockedEntries++
-				occupied++
-			case models.SoloAccepted:
-				metrics.AcceptedEntries++
-				metrics.ConfirmedParticipants++
-				occupied++
-			case models.SoloRejected:
-				metrics.RejectedEntries++
-			}
-		}
-		metrics.AvailableSpots = max(tournament.Capacity-occupied, 0)
-		tournament.SoloRegistrations = nil
-		tournament.Teams = nil
-		funding := tournament.Funding
-		tournament.Funding = nil
-		return OrganizerTournamentSummary{Tournament: tournament, OrganizerName: organizerName, Metrics: metrics, Funding: NewFundingStats(funding)}
-	}
 	metrics := OrganizerDashboardMetrics{TotalEntries: len(tournament.Teams)}
 	participants := make(map[uuid.UUID]struct{})
 	for _, team := range tournament.Teams {
@@ -194,7 +140,6 @@ func summarizeDashboard(tournament models.Tournament, organizerName string) Orga
 	metrics.ConfirmedParticipants = len(participants)
 	metrics.AvailableSpots = max(tournament.Capacity-metrics.AcceptedEntries, 0)
 	tournament.Teams = nil
-	tournament.SoloRegistrations = nil
 	funding := tournament.Funding
 	tournament.Funding = nil
 	return OrganizerTournamentSummary{

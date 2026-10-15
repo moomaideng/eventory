@@ -66,10 +66,14 @@ type Tournament struct {
 	Published            bool                       `gorm:"not null;default:false;index:idx_tournaments_public_start,priority:1"`
 	Staff                []TournamentStaff          `gorm:"foreignKey:TournamentID;constraint:OnDelete:CASCADE;"`
 	Teams                []TournamentTeam           `gorm:"foreignKey:TournamentID;constraint:OnDelete:CASCADE;"`
-	SoloRegistrations    []SoloRegistration         `gorm:"foreignKey:TournamentID;constraint:OnDelete:CASCADE;"`
 	Funding              *TournamentFunding         `gorm:"foreignKey:TournamentID;constraint:OnDelete:CASCADE;"`
 	CreatedAt            time.Time
 	UpdatedAt            time.Time
+}
+
+// IsSolo reports whether this tournament is intended for solo participants.
+func (t *Tournament) IsSolo() bool {
+	return t.MinTeamSize == 1 && t.MaxTeamSize == 1
 }
 
 // StaffMember looks up a staff member by account ID in the tournament's preloaded staff list.

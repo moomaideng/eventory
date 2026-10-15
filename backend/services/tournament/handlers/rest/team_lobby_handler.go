@@ -97,6 +97,26 @@ func RegisterTeamLobbyRoutes(api huma.API, lobbyUseCase *usecases.TeamLobbyUseCa
 	})
 
 	huma.Register(api, huma.Operation{
+		OperationID: "register-solo-tournament",
+		Method:      http.MethodPost,
+		Path:        "/tournaments/{tournamentId}/solo-register",
+		Summary:     "Register for a solo tournament",
+		Description: "Automatically creates and locks a 1-person team for a solo tournament, initiating payment if an entry fee is required.",
+		Tags:        []string{"Team lobbies"},
+		Security:    []map[string][]string{{"bearer": {}}},
+	}, func(ctx context.Context, input *MyTournamentTeamInput) (*CreateTeamLobbyOutput, error) {
+		accountID, err := authenticatedAccountID(ctx)
+		if err != nil {
+			return nil, err
+		}
+		view, err := lobbyUseCase.RegisterSolo(ctx, input.TournamentID, accountID)
+		if err != nil {
+			return nil, teamLobbyHTTPError(err)
+		}
+		return &CreateTeamLobbyOutput{Status: http.StatusCreated, Body: toTeamLobbyResponse(view, accountID)}, nil
+	})
+
+	huma.Register(api, huma.Operation{
 		OperationID: "create-team-lobby",
 		Method:      http.MethodPost,
 		Path:        "/tournaments/{tournamentId}/lobbies",
@@ -240,7 +260,7 @@ func teamLobbyHTTPError(err error) error {
 		return huma.Error403Forbidden("Only the team captain can perform this action", err)
 	case errors.Is(err, repositories.ErrAlreadyInTournamentLobby):
 		return huma.Error409Conflict("You are already in a team for this tournament", err)
-	case errors.Is(err, usecases.ErrTeamsNotAllowed),
+	case errors.Is(err, usecases.ErrNotSoloTournament),
 		errors.Is(err, usecases.ErrRegistrationNotOpen),
 		errors.Is(err, repositories.ErrTeamLobbyNotForming),
 		errors.Is(err, repositories.ErrTeamLobbyFull),

@@ -39,7 +39,8 @@ func (s *teamLobbyRepositoryStub) FindActiveByTournamentAndAccount(_ context.Con
 }
 func (s *teamLobbyRepositoryStub) Create(_ context.Context, team *models.TournamentTeam, captain *models.TournamentTeamMember) (*models.TournamentTeam, error) {
 	captain.TournamentTeamID = team.ID
-	s.created, s.captain = team, captain
+	team.Members = []models.TournamentTeamMember{*captain}
+	s.created, s.captain, s.team = team, captain, team
 	return team, nil
 }
 func (s *teamLobbyRepositoryStub) Join(_ context.Context, _ uuid.UUID, _ uuid.UUID) (*models.TournamentTeam, error) {
@@ -49,6 +50,9 @@ func (s *teamLobbyRepositoryStub) RegenerateInvite(_ context.Context, _ uuid.UUI
 	return s.team, nil
 }
 func (s *teamLobbyRepositoryStub) Lock(_ context.Context, _ uuid.UUID) (*models.TournamentTeam, error) {
+	if s.team != nil {
+		s.team.Status = models.TournamentTeamStatusLocked
+	}
 	return s.team, nil
 }
 func (s *teamLobbyRepositoryStub) RemoveMember(_ context.Context, _ uuid.UUID, _ uuid.UUID) (*models.TournamentTeam, error) {
@@ -86,7 +90,7 @@ func TestCreateTeamLobby_RejectsUnavailableTournamentState(t *testing.T) {
 		want       error
 	}{
 		{
-			name: "solo tournament", tournament: &models.Tournament{ID: tournamentID, Status: models.TournamentStatusRegistrationOpen, RegistrationMode: models.TournamentRegistrationModeSolo}, want: usecases.ErrTeamsNotAllowed,
+			name: "tournament not found", tournament: nil, want: usecases.ErrTournamentNotFound,
 		},
 		{
 			name: "closed registration", tournament: &models.Tournament{ID: tournamentID, Status: models.TournamentStatusRegistrationClosed, RegistrationMode: models.TournamentRegistrationModeTeam}, want: usecases.ErrRegistrationNotOpen,
@@ -100,6 +104,55 @@ func TestCreateTeamLobby_RejectsUnavailableTournamentState(t *testing.T) {
 				t.Fatalf("Create() error = %v, want %v", err, test.want)
 			}
 		})
+	}
+}
+
+func TestRegisterSolo_Success(t *testing.T) {
+	tournamentID := uuid.New()
+	playerID := uuid.New()
+	tournament := &models.Tournament{
+		ID:               tournamentID,
+		Status:           models.TournamentStatusRegistrationOpen,
+		MinTeamSize:      1,
+		MaxTeamSize:      1,
+		RegistrationMode: models.TournamentRegistrationModeSolo,
+	}
+	repo := &teamLobbyRepositoryStub{tournament: tournament}
+	accounts := newStubAccountService().withAccount(playerID, "playerone", "Player One")
+	useCase := usecases.NewTeamLobbyUseCase(repo, accounts)
+
+	got, err := useCase.RegisterSolo(context.Background(), tournamentID, playerID)
+	if err != nil {
+		t.Fatalf("RegisterSolo() error = %v", err)
+	}
+	if got.Team == nil {
+		t.Fatal("RegisterSolo() returned nil team")
+	}
+	if repo.created.Name != "Player One" {
+		t.Fatalf("RegisterSolo() team name = %q, want %q", repo.created.Name, "Player One")
+	}
+	if repo.captain.AccountID != playerID || repo.captain.Role != models.TournamentTeamMemberRoleCaptain {
+		t.Fatalf("RegisterSolo() captain = %+v", repo.captain)
+	}
+}
+
+func TestRegisterSolo_RejectsNonSoloTournament(t *testing.T) {
+	tournamentID := uuid.New()
+	playerID := uuid.New()
+	tournament := &models.Tournament{
+		ID:               tournamentID,
+		Status:           models.TournamentStatusRegistrationOpen,
+		MinTeamSize:      5,
+		MaxTeamSize:      5,
+		RegistrationMode: models.TournamentRegistrationModeTeam,
+	}
+	repo := &teamLobbyRepositoryStub{tournament: tournament}
+	accounts := newStubAccountService().withAccount(playerID, "playerone", "Player One")
+	useCase := usecases.NewTeamLobbyUseCase(repo, accounts)
+
+	_, err := useCase.RegisterSolo(context.Background(), tournamentID, playerID)
+	if !errors.Is(err, usecases.ErrNotSoloTournament) {
+		t.Fatalf("RegisterSolo() error = %v, want %v", err, usecases.ErrNotSoloTournament)
 	}
 }
 

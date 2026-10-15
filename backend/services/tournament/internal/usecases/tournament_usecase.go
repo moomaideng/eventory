@@ -215,17 +215,6 @@ func (u *TournamentUseCase) GetDetails(
 	}
 	tournament.Teams = acceptedTeams
 	registeredCount := len(acceptedTeams)
-	if tournament.RegistrationMode == models.TournamentRegistrationModeSolo {
-		if counter, ok := u.tournamentRepo.(interface {
-			CountSoloAccepted(context.Context, uuid.UUID) (int64, error)
-		}); ok {
-			count, err := counter.CountSoloAccepted(ctx, tournament.ID)
-			if err != nil {
-				return nil, err
-			}
-			registeredCount = int(count)
-		}
-	}
 
 	names, err := organizerNames(ctx, u.accountSvc, *tournament)
 	if err != nil {

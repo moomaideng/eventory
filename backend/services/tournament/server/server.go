@@ -48,15 +48,10 @@ func NewAppWithAccountConn(db *gorm.DB, mongoDB *mongo.Database, cfg config.Conf
 func newApp(db *gorm.DB, mongoDB *mongo.Database, cfg config.Config, accountSvc ports.AccountService) *App {
 	payments := paymenthttp.New(cfg.PaymentURL, cfg.PaymentServiceKey)
 	submission := usecases.NewTeamSubmissionUseCase(repositories.NewTeamSubmissionRepository(db), payments)
-	solo := usecases.NewSoloRegistrationUseCase(repositories.NewSoloRegistrationRepository(db), repositories.NewTournamentRepository(db), nil, accountSvc, payments)
-	if mongoDB != nil {
-		formRepo := repositories.NewRegistrationFormRepository(mongoDB)
-		solo = usecases.NewSoloRegistrationUseCase(repositories.NewSoloRegistrationRepository(db), repositories.NewTournamentRepository(db), usecases.NewRegistrationFormUseCase(repositories.NewTournamentRepository(db), formRepo, forms.NewDefaultRegistry()), accountSvc, payments)
-	}
-	return &App{HTTP: newHTTPRouter(db, mongoDB, cfg, accountSvc, submission, solo), RunSubmissions: func(ctx context.Context) { go solo.Run(ctx); submission.Run(ctx) }}
+	return &App{HTTP: newHTTPRouter(db, mongoDB, cfg, accountSvc, submission), RunSubmissions: func(ctx context.Context) { submission.Run(ctx) }}
 }
 
-func newHTTPRouter(db *gorm.DB, mongoDB *mongo.Database, cfg config.Config, accountSvc ports.AccountService, submission *usecases.TeamSubmissionUseCase, solo *usecases.SoloRegistrationUseCase) http.Handler {
+func newHTTPRouter(db *gorm.DB, mongoDB *mongo.Database, cfg config.Config, accountSvc ports.AccountService, submission *usecases.TeamSubmissionUseCase) http.Handler {
 	router := chi.NewMux()
 	router.Use(middlewares.RequestID)
 	router.Use(middlewares.AccessLog(cfg.Logging.SlowRequestMS))
@@ -136,7 +131,6 @@ func newHTTPRouter(db *gorm.DB, mongoDB *mongo.Database, cfg config.Config, acco
 	organizerTournamentGroup.UseMiddleware(authMiddleware.HumaMiddleware(), organizerMiddleware.HumaMiddleware())
 
 	resthandlers.RegisterTeamLobbyRoutes(teamLobbyGroup, teamLobbyUseCase)
-	resthandlers.RegisterSoloRegistrationRoutes(teamLobbyGroup, solo)
 	resthandlers.RegisterTournamentStaffRoutes(teamLobbyGroup, staffUseCase)
 	resthandlers.RegisterOrganizerDashboardRoutes(teamLobbyGroup, dashboardUseCase)
 	resthandlers.RegisterTournamentStatusRoutes(organizerGroup, statusUseCase)

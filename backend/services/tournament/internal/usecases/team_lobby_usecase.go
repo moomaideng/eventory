@@ -15,7 +15,7 @@ import (
 )
 
 var (
-	ErrTeamsNotAllowed       = errors.New("this tournament does not allow team registration")
+	ErrNotSoloTournament     = errors.New("this tournament is not configured for solo registration")
 	ErrRegistrationNotOpen   = errors.New("tournament registration is not open")
 	ErrInvalidTeamName       = errors.New("team name must be between 1 and 120 characters")
 	ErrLobbyAccessDenied     = errors.New("only the team captain can manage this lobby")
@@ -107,9 +107,6 @@ func (u *TeamLobbyUseCase) Create(ctx context.Context, tournamentID, captainAcco
 	if tournament.Status != models.TournamentStatusRegistrationOpen {
 		return nil, ErrRegistrationNotOpen
 	}
-	if tournament.RegistrationMode != models.TournamentRegistrationModeTeam {
-		return nil, ErrTeamsNotAllowed
-	}
 
 	inviteCode, err := u.newInviteCode(ctx)
 	if err != nil {
@@ -129,6 +126,78 @@ func (u *TeamLobbyUseCase) Create(ctx context.Context, tournamentID, captainAcco
 		return nil, err
 	}
 	return u.toView(ctx, created)
+}
+
+func (u *TeamLobbyUseCase) RegisterSolo(ctx context.Context, tournamentID, accountID uuid.UUID) (*TeamLobbyView, error) {
+	account, err := requireActiveAccount(ctx, u.accountSvc, accountID)
+	if err != nil {
+		return nil, err
+	}
+	tournament, err := u.repo.FindTournamentByID(ctx, tournamentID)
+	if err != nil {
+		return nil, err
+	}
+	if tournament == nil {
+		return nil, ErrTournamentNotFound
+	}
+	if !tournament.IsSolo() {
+		return nil, ErrNotSoloTournament
+	}
+	if tournament.Status != models.TournamentStatusRegistrationOpen {
+		return nil, ErrRegistrationNotOpen
+	}
+
+	name := strings.TrimSpace(account.DisplayName)
+	if name == "" {
+		name = strings.TrimSpace(account.Handle)
+	}
+	if name == "" {
+		name = "Player " + accountID.String()[:8]
+	}
+
+	inviteCode, err := u.newInviteCode(ctx)
+	if err != nil {
+		return nil, err
+	}
+	now := time.Now().UTC()
+	team := &models.TournamentTeam{
+		ID:           uuid.New(),
+		TournamentID: tournamentID,
+		Name:         name,
+		InviteCode:   inviteCode,
+		Status:       models.TournamentTeamStatusForming,
+	}
+	captainMember := &models.TournamentTeamMember{
+		ID:        uuid.New(),
+		AccountID: accountID,
+		Role:      models.TournamentTeamMemberRoleCaptain,
+		JoinedAt:  now,
+	}
+	created, err := u.repo.Create(ctx, team, captainMember)
+	if err != nil && account.Handle != "" && account.Handle != name {
+		team.Name = name + " (@" + account.Handle + ")"
+		created, err = u.repo.Create(ctx, team, captainMember)
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	locked, err := u.repo.Lock(ctx, created.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	if u.submission != nil && locked.Status == models.TournamentTeamStatusPaymentPending {
+		if err := u.submission.Reconcile(ctx, locked); err != nil {
+			return nil, err
+		}
+		locked, err = u.repo.FindByID(ctx, created.ID)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return u.toView(ctx, locked)
 }
 
 func (u *TeamLobbyUseCase) GetByInviteCode(ctx context.Context, inviteCode string, viewerAccountID uuid.UUID) (*TeamLobbyView, error) {

@@ -215,23 +215,6 @@ func (u *RegistrationFormUseCase) ListResponses(
 	if err != nil {
 		return nil, err
 	}
-	if tournament.RegistrationMode == models.TournamentRegistrationModeSolo {
-		if counter, ok := u.tournamentRepo.(interface {
-			SubmittedSoloAccountIDs(context.Context, uuid.UUID) (map[uuid.UUID]bool, error)
-		}); ok {
-			registered, err := counter.SubmittedSoloAccountIDs(ctx, tournamentID)
-			if err != nil {
-				return nil, err
-			}
-			filtered := make([]models.FormResponse, 0, len(responses))
-			for _, response := range responses {
-				if registered[response.AccountID] {
-					filtered = append(filtered, response)
-				}
-			}
-			return filtered, nil
-		}
-	}
 	return responses, nil
 }
 
