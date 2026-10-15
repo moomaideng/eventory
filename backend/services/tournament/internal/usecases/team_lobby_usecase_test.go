@@ -73,8 +73,11 @@ func TestCreateTeamLobby_InitializesCaptainAndInvite(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Create() error = %v", err)
 	}
-	if team.Team.Name != "Night Owls" || len(team.Team.InviteCode) != 6 {
+	if team.Team.Name != "Night Owls" || team.Team.InviteCode == nil || len(*team.Team.InviteCode) != 6 {
 		t.Fatalf("unexpected team: %+v", team)
+	}
+	if !usecases.ValidateInviteCode(*team.Team.InviteCode) {
+		t.Fatalf("invalid invite code: %s", *team.Team.InviteCode)
 	}
 	if repo.captain == nil || repo.captain.AccountID != captainID || repo.captain.TournamentTeamID != team.Team.ID || repo.captain.Role != models.TournamentTeamMemberRoleCaptain {
 		t.Fatalf("captain membership was not initialized: %+v", repo.captain)
@@ -131,6 +134,9 @@ func TestRegisterSolo_Success(t *testing.T) {
 	if repo.created.Name != "Player One" {
 		t.Fatalf("RegisterSolo() team name = %q, want %q", repo.created.Name, "Player One")
 	}
+	if repo.created.InviteCode != nil {
+		t.Fatalf("RegisterSolo() team invite code = %v, want nil", repo.created.InviteCode)
+	}
 	if repo.captain.AccountID != playerID || repo.captain.Role != models.TournamentTeamMemberRoleCaptain {
 		t.Fatalf("RegisterSolo() captain = %+v", repo.captain)
 	}
@@ -183,5 +189,20 @@ func TestGetActiveForTournament_ReturnsActiveTeam(t *testing.T) {
 	}
 	if got.Team.ID != team.ID {
 		t.Fatalf("GetActiveForTournament() = %+v, want %+v", got.Team, team)
+	}
+}
+
+func TestGetByInviteCode_ValidatesFormat(t *testing.T) {
+	repo := &teamLobbyRepositoryStub{}
+	useCase := usecases.NewTeamLobbyUseCase(repo, newStubAccountService().withAccount(uuid.New(), "user", "User"))
+
+	_, err := useCase.GetByInviteCode(context.Background(), "INVALID-CODE", uuid.New())
+	if !errors.Is(err, usecases.ErrInvalidInviteCode) {
+		t.Fatalf("expected ErrInvalidInviteCode, got %v", err)
+	}
+
+	_, err = useCase.Join(context.Background(), "123", uuid.New())
+	if !errors.Is(err, usecases.ErrInvalidInviteCode) {
+		t.Fatalf("expected ErrInvalidInviteCode, got %v", err)
 	}
 }

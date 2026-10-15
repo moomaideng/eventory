@@ -1323,7 +1323,7 @@ export interface components {
             /** Format: date-time */
             createdAt: string;
             id: string;
-            inviteCode: string;
+            inviteCode?: string | null;
             members: components["schemas"]["TeamLobbyMemberResponse"][] | null;
             name: string;
             /** Format: date-time */

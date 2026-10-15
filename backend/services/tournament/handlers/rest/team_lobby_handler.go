@@ -30,7 +30,7 @@ type TeamLobbyResponse struct {
 	CaptainID        uuid.UUID                 `json:"captainId"`
 	CaptainName      string                    `json:"captainName"`
 	Name             string                    `json:"name"`
-	InviteCode       string                    `json:"inviteCode"`
+	InviteCode       *string                   `json:"inviteCode,omitempty" doc:"Six-character team invite code, or null if registration is closed/solo"`
 	Status           string                    `json:"status" enum:"FORMING,PAYMENT_PENDING,LOCKED,ACCEPTED,REJECTED"`
 	Members          []TeamLobbyMemberResponse `json:"members"`
 	ViewerRole       string                    `json:"viewerRole" enum:"CAPTAIN,MEMBER,INVITEE"`
@@ -254,8 +254,8 @@ func teamLobbyHTTPError(err error) error {
 		return huma.Error503ServiceUnavailable(err.Error())
 	case errors.Is(err, repositories.ErrInvalidRegistrationFee):
 		return huma.Error409Conflict(err.Error())
-	case errors.Is(err, usecases.ErrInvalidTeamName):
-		return huma.Error400BadRequest("Invalid team name", err)
+	case errors.Is(err, usecases.ErrInvalidTeamName), errors.Is(err, usecases.ErrInvalidInviteCode):
+		return huma.Error400BadRequest("Invalid input", err)
 	case errors.Is(err, usecases.ErrLobbyAccessDenied):
 		return huma.Error403Forbidden("Only the team captain can perform this action", err)
 	case errors.Is(err, repositories.ErrAlreadyInTournamentLobby):

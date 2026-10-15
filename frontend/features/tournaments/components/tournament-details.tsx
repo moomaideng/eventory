@@ -236,7 +236,7 @@ export function TournamentDetails({ tournamentId }: { tournamentId: string }) {
                   </p>
                 )}
               </CardContent>
-              {!isSolo && (
+              {!isSolo && myTeam.inviteCode ? (
                 <CardFooter>
                   <Button
                     render={<Link href={`/lobbies/${myTeam.inviteCode}`} />}
@@ -247,7 +247,7 @@ export function TournamentDetails({ tournamentId }: { tournamentId: string }) {
                     Open team lobby
                   </Button>
                 </CardFooter>
-              )}
+              ) : null}
             </Card>
           ) : null}
 

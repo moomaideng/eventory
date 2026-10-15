@@ -5,12 +5,12 @@ import (
 	cryptorand "crypto/rand"
 	"errors"
 	"math/big"
+	"regexp"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/moomaideng/eventory/services/tournament/internal/ports"
-	"github.com/moomaideng/eventory/services/tournament/internal/repositories"
 	"github.com/moomaideng/eventory/services/tournament/models"
 )
 
@@ -19,8 +19,14 @@ var (
 	ErrRegistrationNotOpen   = errors.New("tournament registration is not open")
 	ErrInvalidTeamName       = errors.New("team name must be between 1 and 120 characters")
 	ErrLobbyAccessDenied     = errors.New("only the team captain can manage this lobby")
-	ErrInviteCodeUnavailable = errors.New("unable to create a unique invite code")
+	ErrInvalidInviteCode     = errors.New("invalid team invite code")
 )
+
+var inviteCodeRegex = regexp.MustCompile(`^[A-Z0-9]{6}$`)
+
+func ValidateInviteCode(code string) bool {
+	return inviteCodeRegex.MatchString(code)
+}
 
 type TeamLobbyUseCase struct {
 	submission *TeamSubmissionUseCase
@@ -108,14 +114,14 @@ func (u *TeamLobbyUseCase) Create(ctx context.Context, tournamentID, captainAcco
 		return nil, ErrRegistrationNotOpen
 	}
 
-	inviteCode, err := u.newInviteCode(ctx)
+	inviteCode, err := generateInviteCode()
 	if err != nil {
 		return nil, err
 	}
 	now := time.Now().UTC()
 	team := &models.TournamentTeam{
 		ID: uuid.New(), TournamentID: tournamentID, Name: name,
-		InviteCode: inviteCode, Status: models.TournamentTeamStatusForming,
+		InviteCode: &inviteCode, Status: models.TournamentTeamStatusForming,
 	}
 	captainMember := &models.TournamentTeamMember{
 		ID: uuid.New(), AccountID: captainAccountID,
@@ -155,16 +161,12 @@ func (u *TeamLobbyUseCase) RegisterSolo(ctx context.Context, tournamentID, accou
 		name = "Player " + accountID.String()[:8]
 	}
 
-	inviteCode, err := u.newInviteCode(ctx)
-	if err != nil {
-		return nil, err
-	}
 	now := time.Now().UTC()
 	team := &models.TournamentTeam{
 		ID:           uuid.New(),
 		TournamentID: tournamentID,
 		Name:         name,
-		InviteCode:   inviteCode,
+		InviteCode:   nil,
 		Status:       models.TournamentTeamStatusForming,
 	}
 	captainMember := &models.TournamentTeamMember{
@@ -204,7 +206,11 @@ func (u *TeamLobbyUseCase) GetByInviteCode(ctx context.Context, inviteCode strin
 	if err := u.ensureActiveAccount(ctx, viewerAccountID); err != nil {
 		return nil, err
 	}
-	team, err := u.repo.FindByInviteCode(ctx, normalizeInviteCode(inviteCode))
+	normalized := normalizeInviteCode(inviteCode)
+	if !ValidateInviteCode(normalized) {
+		return nil, ErrInvalidInviteCode
+	}
+	team, err := u.repo.FindByInviteCode(ctx, normalized)
 	if err != nil {
 		return nil, err
 	}
@@ -226,7 +232,11 @@ func (u *TeamLobbyUseCase) Join(ctx context.Context, inviteCode string, memberAc
 	if err := u.ensureActiveAccount(ctx, memberAccountID); err != nil {
 		return nil, err
 	}
-	team, err := u.repo.FindByInviteCode(ctx, normalizeInviteCode(inviteCode))
+	normalized := normalizeInviteCode(inviteCode)
+	if !ValidateInviteCode(normalized) {
+		return nil, ErrInvalidInviteCode
+	}
+	team, err := u.repo.FindByInviteCode(ctx, normalized)
 	if err != nil {
 		return nil, err
 	}
@@ -244,7 +254,7 @@ func (u *TeamLobbyUseCase) RegenerateInvite(ctx context.Context, teamID, account
 	if _, err := u.captainTeam(ctx, teamID, accountID); err != nil {
 		return nil, err
 	}
-	inviteCode, err := u.newInviteCode(ctx)
+	inviteCode, err := generateInviteCode()
 	if err != nil {
 		return nil, err
 	}
@@ -317,23 +327,6 @@ func (u *TeamLobbyUseCase) captainTeam(ctx context.Context, teamID, accountID uu
 		}
 	}
 	return nil, ErrLobbyAccessDenied
-}
-
-func (u *TeamLobbyUseCase) newInviteCode(ctx context.Context) (string, error) {
-	for range 10 {
-		inviteCode, err := generateInviteCode()
-		if err != nil {
-			return "", err
-		}
-		_, err = u.repo.FindByInviteCode(ctx, inviteCode)
-		if errors.Is(err, repositories.ErrTeamLobbyNotFound) {
-			return inviteCode, nil
-		}
-		if err != nil {
-			return "", err
-		}
-	}
-	return "", ErrInviteCodeUnavailable
 }
 
 func normalizeInviteCode(value string) string {

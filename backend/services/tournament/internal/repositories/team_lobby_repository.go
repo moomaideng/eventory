@@ -65,6 +65,9 @@ func (r *teamLobbyRepository) FindByID(ctx context.Context, id uuid.UUID) (*mode
 }
 
 func (r *teamLobbyRepository) FindByInviteCode(ctx context.Context, inviteCode string) (*models.TournamentTeam, error) {
+	if inviteCode == "" {
+		return nil, ErrTeamLobbyNotFound
+	}
 	return r.find(ctx, r.db.WithContext(ctx).Where("invite_code = ?", inviteCode))
 }
 
