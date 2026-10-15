@@ -361,7 +361,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/tournaments/{id}/entries/{teamId}/review": {
+    "/api/v1/tournaments/{id}/entries/{entryId}/review": {
         parameters: {
             query?: never;
             header?: never;
@@ -371,10 +371,10 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Accept or reject a team's application
-         * @description Records an organizer's decision on a locked team application, enforcing the tournament's capacity. A decision may be switched later; every decision is kept in the audit trail.
+         * Accept or reject an application
+         * @description Records an organizer's decision on a team or solo application that is waiting for review, enforcing the tournament's capacity. A decision may be switched later; every decision is kept in the audit trail.
          */
-        post: operations["review-team-application"];
+        post: operations["review-application"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1288,17 +1288,17 @@ export interface components {
              * @example https://example.com/schemas/TeamReviewOutputBody.json
              */
             readonly $schema?: string;
+            entryId: string;
             review: components["schemas"]["TeamReviewResponse"];
             /** @enum {string} */
             status: "ACCEPTED" | "REJECTED";
-            teamId: string;
             tournamentId: string;
         };
         TeamReviewResponse: {
             /** Format: date-time */
             createdAt: string;
             /** @enum {string} */
-            fromStatus: "LOCKED" | "ACCEPTED" | "REJECTED";
+            fromStatus: "LOCKED" | "AWAITING_APPROVAL" | "ACCEPTED" | "REJECTED";
             id: string;
             reason: string;
             reviewerId: string;
@@ -2360,15 +2360,15 @@ export interface operations {
             };
         };
     };
-    "review-team-application": {
+    "review-application": {
         parameters: {
             query?: never;
             header?: never;
             path: {
                 /** @description Tournament ID */
                 id: string;
-                /** @description Team (application) ID */
-                teamId: string;
+                /** @description Application ID: a team's ID, or a solo registration's ID */
+                entryId: string;
             };
             cookie?: never;
         };

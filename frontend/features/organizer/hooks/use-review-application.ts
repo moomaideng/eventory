@@ -6,20 +6,20 @@ import { $api } from "@/lib/api/client";
 import { extractProblemMessage } from "@/lib/schemas";
 import type { components } from "@/lib/api/schema";
 
-type ReviewDecision =
-  components["schemas"]["TeamReviewInputBody"]["decision"];
+type ReviewDecision = components["schemas"]["TeamReviewInputBody"]["decision"];
 
 /**
- * Accepts or rejects one team's application. The server owns every rule
- * (stage, capacity, allowed transitions), so a refusal comes back as a message
- * for the dialog to show rather than being second-guessed here.
+ * Accepts or rejects one application, a team's or a solo player's. The server
+ * owns every rule (stage, capacity, allowed transitions), so a refusal comes
+ * back as a message for the dialog to show rather than being second-guessed
+ * here.
  */
-export function useReviewApplication(tournamentId: string, teamId: string) {
+export function useReviewApplication(tournamentId: string, entryId: string) {
   const { authorizationHeader } = useAuth();
   const queryClient = useQueryClient();
   const mutation = $api.useMutation(
     "post",
-    "/api/v1/tournaments/{id}/entries/{teamId}/review"
+    "/api/v1/tournaments/{id}/entries/{entryId}/review"
   );
 
   function review(
@@ -29,7 +29,7 @@ export function useReviewApplication(tournamentId: string, teamId: string) {
     const reason = options.reason?.trim();
     mutation.mutate(
       {
-        params: { path: { id: tournamentId, teamId } },
+        params: { path: { id: tournamentId, entryId } },
         headers: { Authorization: authorizationHeader ?? "" },
         body: reason ? { decision, reason } : { decision },
       },
