@@ -24,6 +24,8 @@ type accountScenarioContext struct {
 	// US1-4: snapshot before an update, and the values we expect after it.
 	primaryBefore   handlers.AccountResponse
 	primaryExpected handlers.AccountResponse
+	// US1-4: HTTP status the failing row is expected to return (0 = default 422).
+	expectedFailStatus int
 }
 
 func (s *accountScenarioContext) theEventoryAPIServiceIsRunning() error {
@@ -352,11 +354,14 @@ func (s *accountScenarioContext) theUpdateShouldFail() error {
 	if s.resp == nil {
 		return fmt.Errorf("no HTTP response captured")
 	}
-	switch s.resp.StatusCode {
-	case http.StatusUnprocessableEntity, http.StatusConflict:
-		return nil
+	want := s.expectedFailStatus
+	if want == 0 {
+		want = http.StatusUnprocessableEntity // default used by the US1-3 scenarios
 	}
-	return fmt.Errorf("expected update to fail with 422 or 409, got %d: %s", s.resp.StatusCode, s.resp.Body)
+	if s.resp.StatusCode != want {
+		return fmt.Errorf("expected update to fail with %d, got %d: %s", want, s.resp.StatusCode, s.resp.Body)
+	}
+	return nil
 }
 
 func (s *accountScenarioContext) theirExistingRoleProfileInformationShouldStayTheSame(role string) error {
@@ -513,9 +518,11 @@ func (s *accountScenarioContext) theyUpdateTheirPrimaryProfileWith(change string
 		}
 		handle := takenHandle
 		body.Handle = &handle
+		s.expectedFailStatus = http.StatusConflict
 	case "a display name that is completely cleared":
 		empty := ""
 		body.DisplayName = &empty
+		s.expectedFailStatus = http.StatusUnprocessableEntity
 	default:
 		return fmt.Errorf("unknown primary profile change %q", change)
 	}
