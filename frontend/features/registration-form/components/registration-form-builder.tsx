@@ -110,6 +110,7 @@ function RegistrationFormEditor({
   );
 
   const handleAddField = () => {
+    setSaveSuccess(false);
     const id =
       typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
         ? `fld_${crypto.randomUUID()}`
@@ -127,6 +128,7 @@ function RegistrationFormEditor({
   };
 
   const handleUpdateField = (index: number, updated: FormField) => {
+    setSaveSuccess(false);
     setFields((prev) => {
       const next = [...prev];
       next[index] = updated;
@@ -135,12 +137,14 @@ function RegistrationFormEditor({
   };
 
   const handleDeleteField = (index: number) => {
+    setSaveSuccess(false);
     setFields((prev) => prev.filter((_, i) => i !== index));
   };
 
   const handleMoveField = (index: number, direction: -1 | 1) => {
     const targetIndex = index + direction;
     if (targetIndex < 0 || targetIndex >= fields.length) return;
+    setSaveSuccess(false);
     setFields((prev) => {
       const next = [...prev];
       const temp = next[index];
@@ -208,16 +212,15 @@ function RegistrationFormEditor({
         <div className="flex flex-col gap-1">
           <div className="flex items-center gap-2.5">
             <h2 className="text-xl font-semibold tracking-tight">Registration Questions</h2>
-            {isDirty && (
+            {isDirty ? (
               <Badge variant="outline" className="text-amber-500 border-amber-500/30 bg-amber-500/10 text-xs">
                 Unsaved changes
               </Badge>
-            )}
-            {saveSuccess && (
+            ) : saveSuccess ? (
               <Badge variant="outline" className="text-primary border-primary/30 bg-primary/10 text-xs">
                 Saved
               </Badge>
-            )}
+            ) : null}
           </div>
           <p className="text-muted-foreground text-sm">
             Customize the questionnaire players must fill out when registering for this tournament.
@@ -264,8 +267,14 @@ function RegistrationFormEditor({
           <FormHeaderCard
             title={title}
             description={description}
-            onTitleChange={setTitle}
-            onDescriptionChange={setDescription}
+            onTitleChange={(val) => {
+              setTitle(val);
+              setSaveSuccess(false);
+            }}
+            onDescriptionChange={(val) => {
+              setDescription(val);
+              setSaveSuccess(false);
+            }}
           />
 
           {fields.length === 0 ? (
