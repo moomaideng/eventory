@@ -60,4 +60,63 @@ Feature: Organizer application review
       | the team has not locked its application yet     |
       | the application has already been accepted       |
       | the tournament is managed by another organizer  |
-      
+
+  # =========================================================================
+  # 3. SOLO APPLICATIONS
+  # =========================================================================
+  # A solo player's application waits for the organizer in AWAITING_APPROVAL,
+  # the solo counterpart of a team's LOCKED status. The same rules apply.
+
+  @US3-6 @valid @solo
+  Scenario: Approve a solo player who is awaiting approval
+    Given an organizer manages a solo tournament that still has open spots
+    And a solo player is awaiting approval for that tournament
+    When the organizer approves the application
+    Then the application should be accepted
+    And the accepted count on the dashboard should increase
+
+  @US3-6 @valid @solo
+  Scenario: Reject a solo player with a reason
+    Given an organizer manages a solo tournament that still has open spots
+    And a solo player is awaiting approval for that tournament
+    When the organizer rejects the application with a reason
+    Then the application should be rejected
+    And the accepted count on the dashboard should stay the same
+
+  @US3-6 @valid @solo
+  Scenario: Change an accepted solo player to rejected
+    Given an organizer manages a solo tournament that still has open spots
+    And a solo player application has already been accepted
+    When the organizer rejects the application
+    Then the application should be rejected
+    And the accepted count on the dashboard should decrease
+
+  @US3-6 @invalid @solo
+  Scenario Outline: Block a solo approval that cannot be applied
+    Given an organizer reviews a solo application where <situation>
+    When the organizer approves the application
+    Then the approval should be blocked
+    And the application should keep its previous status
+
+    Examples:
+      | situation                                        |
+      | the tournament has already reached its capacity  |
+      | the player has not completed payment yet         |
+      | the application has already been accepted        |
+      | the tournament is managed by another organizer   |
+
+  # =========================================================================
+  # 4. REVIEWING AS AN ADMIN
+  # =========================================================================
+  # Admins are delegated staff of a tournament and may decide on applications
+  # just like its owner.
+
+  @US3-6 @valid
+  Scenario: An admin approves a locked application
+    Given an organizer manages a tournament that still has open spots
+    And a team has locked its application for that tournament
+    And an admin has been added to that tournament's staff
+    When the admin approves the application
+    Then the application should be accepted
+    And the accepted count on the dashboard should increase
+    
