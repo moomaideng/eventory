@@ -38,6 +38,8 @@ export type SaveResult =
 interface AccountSettingsFormProps {
   /** Values currently stored on the account. */
   initial: AccountSettingsInput;
+  /** Photo to show when no avatar URL is saved (the sign-in photo). */
+  fallbackAvatarUrl?: string;
   onSave: (values: AccountSettingsInput) => Promise<SaveResult>;
 }
 
@@ -55,6 +57,7 @@ function sanitizeHandleInput(raw: string): string {
 
 export function AccountSettingsForm({
   initial,
+  fallbackAvatarUrl,
   onSave,
 }: AccountSettingsFormProps) {
   const [values, setValues] = useState(initial);
@@ -111,17 +114,16 @@ export function AccountSettingsForm({
     }
   }
 
+  const avatarSrc = baseline.avatarUrl || fallbackAvatarUrl;
+
   return (
     <form onSubmit={handleSubmit} noValidate>
       <Card>
         <CardHeader>
           <div className="flex items-center gap-4">
             <Avatar size="lg">
-              {baseline.avatarUrl ? (
-                <AvatarImage
-                  src={baseline.avatarUrl}
-                  alt={baseline.displayName}
-                />
+              {avatarSrc ? (
+                <AvatarImage src={avatarSrc} alt={baseline.displayName} />
               ) : null}
               <AvatarFallback>
                 {baseline.displayName.slice(0, 2).toUpperCase()}
