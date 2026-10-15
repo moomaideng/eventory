@@ -124,24 +124,22 @@ func TestRegistrationFormRoutes(t *testing.T) {
 
 	_, api := humatest.New(t)
 
-	authGroup := huma.NewGroup(api, "/api/v1")
-	authGroup.UseMiddleware(func(ctx huma.Context, next func(huma.Context)) {
+	authMW := func(ctx huma.Context, next func(huma.Context)) {
 		newCtx := context.WithValue(ctx.Context(), sharedmiddlewares.UserSubContextKey, participantAccountID.String())
 		ctx = huma.WithContext(ctx, newCtx)
 		next(ctx)
-	})
+	}
 
-	organizerTournamentGroup := huma.NewGroup(api, "/api/v1/tournaments")
-	organizerTournamentGroup.UseMiddleware(func(ctx huma.Context, next func(huma.Context)) {
+	organizerMW := func(ctx huma.Context, next func(huma.Context)) {
 		newCtx := context.WithValue(ctx.Context(), sharedmiddlewares.UserSubContextKey, organizerAccountID.String())
 		newCtx = context.WithValue(newCtx, tournamentmiddlewares.OrganizerProfileContextKey, &ports.OrganizerInfo{
 			AccountID: organizerAccountID,
 		})
 		ctx = huma.WithContext(ctx, newCtx)
 		next(ctx)
-	})
+	}
 
-	rest.RegisterRegistrationFormRoutes(api, authGroup, organizerTournamentGroup, useCase)
+	rest.RegisterRegistrationFormRoutes(api, authMW, organizerMW, useCase)
 
 	t.Run("GET form when not found", func(t *testing.T) {
 		resp := api.Get("/api/v1/tournaments/" + tournamentID.String() + "/form")

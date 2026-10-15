@@ -121,20 +121,14 @@ func newHTTPRouter(db *gorm.DB, mongoDB *mongo.Database, cfg config.Config, acco
 	authMiddleware := middlewares.NewAuthMiddleware(api, cfg.SupabaseURL, cfg.Environment)
 	organizerMiddleware := tournamentmiddlewares.NewOrganizerMiddleware(api, accountSvc)
 
-	teamLobbyGroup := huma.NewGroup(api, "/api/v1")
-	teamLobbyGroup.UseMiddleware(authMiddleware.HumaMiddleware())
+	auth := authMiddleware.HumaMiddleware()
+	organizer := organizerMiddleware.HumaMiddleware()
 
-	organizerGroup := huma.NewGroup(api, "/api/v1")
-	organizerGroup.UseMiddleware(authMiddleware.HumaMiddleware(), organizerMiddleware.HumaMiddleware())
-
-	organizerTournamentGroup := huma.NewGroup(api, "/api/v1/tournaments")
-	organizerTournamentGroup.UseMiddleware(authMiddleware.HumaMiddleware(), organizerMiddleware.HumaMiddleware())
-
-	resthandlers.RegisterTeamLobbyRoutes(teamLobbyGroup, teamLobbyUseCase)
-	resthandlers.RegisterTournamentStaffRoutes(teamLobbyGroup, staffUseCase)
-	resthandlers.RegisterOrganizerDashboardRoutes(teamLobbyGroup, dashboardUseCase)
-	resthandlers.RegisterTournamentStatusRoutes(organizerGroup, statusUseCase)
-	resthandlers.RegisterTournamentRoutes(api, organizerTournamentGroup, tournamentUseCase)
+	resthandlers.RegisterTournamentRoutes(api, auth, organizer, tournamentUseCase)
+	resthandlers.RegisterTeamLobbyRoutes(api, auth, teamLobbyUseCase)
+	resthandlers.RegisterTournamentStaffRoutes(api, auth, staffUseCase)
+	resthandlers.RegisterOrganizerDashboardRoutes(api, auth, dashboardUseCase)
+	resthandlers.RegisterTournamentStatusRoutes(api, auth, organizer, statusUseCase)
 
 	if mongoDB != nil {
 		formRepo := repositories.NewRegistrationFormRepository(mongoDB)
@@ -143,7 +137,7 @@ func newHTTPRouter(db *gorm.DB, mongoDB *mongo.Database, cfg config.Config, acco
 		}
 		fieldRegistry := forms.NewDefaultRegistry()
 		formUseCase := usecases.NewRegistrationFormUseCase(tournamentRepo, formRepo, fieldRegistry)
-		resthandlers.RegisterRegistrationFormRoutes(api, teamLobbyGroup, organizerTournamentGroup, formUseCase)
+		resthandlers.RegisterRegistrationFormRoutes(api, auth, organizer, formUseCase)
 	}
 
 	return router
