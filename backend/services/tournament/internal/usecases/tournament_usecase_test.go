@@ -57,22 +57,6 @@ func (m *mockTournamentRepository) Search(_ context.Context, filters repositorie
 	return m.items, m.total, m.err
 }
 
-func (m *mockTournamentRepository) ListOwned(_ context.Context, _ uuid.UUID, _, _ int) ([]models.Tournament, int64, error) {
-	return nil, 0, nil
-}
-
-func (m *mockTournamentRepository) GetOwned(_ context.Context, _, _ uuid.UUID) (*models.Tournament, error) {
-	return nil, nil
-}
-
-func (m *mockTournamentRepository) ApplyOverride(_ context.Context, _ uuid.UUID, _ string, _ uuid.UUID, _ string, _ func(*models.Tournament) (models.TournamentStatus, error)) (*models.TournamentStatusChange, error) {
-	return nil, nil
-}
-
-func (m *mockTournamentRepository) ListHistory(_ context.Context, _, _ uuid.UUID) (*repositories.TournamentStatusHistory, error) {
-	return nil, nil
-}
-
 func ptr[T any](v T) *T { return &v }
 
 func baseTournament(ownerID uuid.UUID) *models.Tournament {

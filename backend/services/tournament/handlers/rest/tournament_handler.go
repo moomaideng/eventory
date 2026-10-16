@@ -133,11 +133,7 @@ type GetTournamentDetailsOutput struct {
 	Body TournamentDetailsBody
 }
 
-func RegisterTournamentRoutes(
-	api huma.API,
-	auth, organizer func(huma.Context, func(huma.Context)),
-	tournamentUseCase *usecases.TournamentUseCase,
-) {
+func RegisterTournamentRoutes(api huma.API, organizerGroup huma.API, tournamentUseCase *usecases.TournamentUseCase) {
 	huma.Register(api, huma.Operation{
 		OperationID: "search-tournaments",
 		Method:      http.MethodGet,
@@ -210,10 +206,10 @@ func RegisterTournamentRoutes(
 		}}, nil
 	})
 
-	huma.Register(api, huma.Operation{
+	huma.Register(organizerGroup, huma.Operation{
 		OperationID: "create-tournament",
 		Method:      http.MethodPost,
-		Path:        "/api/v1/tournaments",
+		Path:        "",
 		Summary:     "Create tournament",
 		Description: "Creates a new tournament for the authenticated organizer. Requires an active organizer profile.\n\n" +
 			"### Rules & Defaults:\n" +
@@ -224,7 +220,6 @@ func RegisterTournamentRoutes(
 			"- **Validation (400):** Requires non-empty `name`, `game`, `location`, `capacity >= 1`, and `entryFee >= 0`.",
 		DefaultStatus: http.StatusCreated,
 		Tags:          []string{"Tournaments"},
-		Middlewares:   huma.Middlewares{auth, organizer},
 		Security:      []map[string][]string{{"bearer": {}}},
 	}, func(ctx context.Context, input *CreateTournamentInput) (*CreateTournamentOutput, error) {
 		organizer, err := middlewares.GetOrganizerProfile(ctx)
@@ -256,10 +251,10 @@ func RegisterTournamentRoutes(
 		}, nil
 	})
 
-	huma.Register(api, huma.Operation{
+	huma.Register(organizerGroup, huma.Operation{
 		OperationID: "update-tournament",
 		Method:      http.MethodPatch,
-		Path:        "/api/v1/tournaments/{tournamentId}",
+		Path:        "/{tournamentId}",
 		Summary:     "Update tournament",
 		Description: "Updates an existing tournament configuration. Only permitted for the organizing owner with the following invariants:\n\n" +
 			"### Restrictions & Invariants:\n" +
@@ -269,9 +264,8 @@ func RegisterTournamentRoutes(
 			"- **Roster Freezing (409 Conflict):** Once any team has locked or been accepted into the tournament (`lockedOrAcceptedCount > 0`), `registrationMode`, `minTeamSize`, and `maxTeamSize` cannot be altered.\n" +
 			"- **Date Integrity (400 Bad Request):** Merged dates must maintain `registrationDeadline < startAt < endAt`.\n" +
 			"- **Field Validation (400 Bad Request):** If provided, `name`, `game`, and `location` cannot be empty or whitespace; `entryFee` cannot be negative.",
-		Tags:        []string{"Tournaments"},
-		Middlewares: huma.Middlewares{auth, organizer},
-		Security:    []map[string][]string{{"bearer": {}}},
+		Tags:     []string{"Tournaments"},
+		Security: []map[string][]string{{"bearer": {}}},
 	}, func(ctx context.Context, input *UpdateTournamentInput) (*TournamentOutput, error) {
 		organizer, err := middlewares.GetOrganizerProfile(ctx)
 		if err != nil {

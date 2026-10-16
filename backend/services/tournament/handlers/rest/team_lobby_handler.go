@@ -30,7 +30,7 @@ type TeamLobbyResponse struct {
 	CaptainID        uuid.UUID                 `json:"captainId"`
 	CaptainName      string                    `json:"captainName"`
 	Name             string                    `json:"name"`
-	InviteCode       *string                   `json:"inviteCode,omitempty" doc:"Six-character team invite code, or null if registration is closed/solo"`
+	InviteCode       string                    `json:"inviteCode"`
 	Status           string                    `json:"status" enum:"FORMING,PAYMENT_PENDING,LOCKED,ACCEPTED,REJECTED"`
 	Members          []TeamLobbyMemberResponse `json:"members"`
 	ViewerRole       string                    `json:"viewerRole" enum:"CAPTAIN,MEMBER,INVITEE"`
@@ -76,18 +76,13 @@ type LobbyMemberInput struct {
 	MemberID uuid.UUID `path:"memberId" doc:"Team member UUID"`
 }
 
-func RegisterTeamLobbyRoutes(
-	api huma.API,
-	auth func(huma.Context, func(huma.Context)),
-	lobbyUseCase *usecases.TeamLobbyUseCase,
-) {
+func RegisterTeamLobbyRoutes(api huma.API, lobbyUseCase *usecases.TeamLobbyUseCase) {
 	huma.Register(api, huma.Operation{
 		OperationID: "get-my-tournament-team",
 		Method:      http.MethodGet,
-		Path:        "/api/v1/tournaments/{tournamentId}/my-team",
+		Path:        "/tournaments/{tournamentId}/my-team",
 		Summary:     "View the authenticated competitor's team for a tournament",
 		Tags:        []string{"Team lobbies"},
-		Middlewares: huma.Middlewares{auth},
 		Security:    []map[string][]string{{"bearer": {}}},
 	}, func(ctx context.Context, input *MyTournamentTeamInput) (*TeamLobbyOutput, error) {
 		accountID, err := authenticatedAccountID(ctx)
@@ -102,34 +97,12 @@ func RegisterTeamLobbyRoutes(
 	})
 
 	huma.Register(api, huma.Operation{
-		OperationID: "register-solo-tournament",
-		Method:      http.MethodPost,
-		Path:        "/api/v1/tournaments/{tournamentId}/solo-register",
-		Summary:     "Register for a solo tournament",
-		Description: "Automatically creates and locks a 1-person team for a solo tournament, initiating payment if an entry fee is required.",
-		Tags:        []string{"Team lobbies"},
-		Middlewares: huma.Middlewares{auth},
-		Security:    []map[string][]string{{"bearer": {}}},
-	}, func(ctx context.Context, input *MyTournamentTeamInput) (*CreateTeamLobbyOutput, error) {
-		accountID, err := authenticatedAccountID(ctx)
-		if err != nil {
-			return nil, err
-		}
-		view, err := lobbyUseCase.RegisterSolo(ctx, input.TournamentID, accountID)
-		if err != nil {
-			return nil, teamLobbyHTTPError(err)
-		}
-		return &CreateTeamLobbyOutput{Status: http.StatusCreated, Body: toTeamLobbyResponse(view, accountID)}, nil
-	})
-
-	huma.Register(api, huma.Operation{
 		OperationID: "create-team-lobby",
 		Method:      http.MethodPost,
-		Path:        "/api/v1/tournaments/{tournamentId}/lobbies",
+		Path:        "/tournaments/{tournamentId}/lobbies",
 		Summary:     "Create a team lobby",
 		Description: "Creates a forming team and makes the authenticated account its captain.",
 		Tags:        []string{"Team lobbies"},
-		Middlewares: huma.Middlewares{auth},
 		Security:    []map[string][]string{{"bearer": {}}},
 	}, func(ctx context.Context, input *CreateTeamLobbyInput) (*CreateTeamLobbyOutput, error) {
 		accountID, err := authenticatedAccountID(ctx)
@@ -146,10 +119,9 @@ func RegisterTeamLobbyRoutes(
 	huma.Register(api, huma.Operation{
 		OperationID: "get-team-lobby",
 		Method:      http.MethodGet,
-		Path:        "/api/v1/lobbies/{inviteCode}",
+		Path:        "/lobbies/{inviteCode}",
 		Summary:     "View a team lobby by invite code",
 		Tags:        []string{"Team lobbies"},
-		Middlewares: huma.Middlewares{auth},
 		Security:    []map[string][]string{{"bearer": {}}},
 	}, func(ctx context.Context, input *InviteCodeInput) (*TeamLobbyOutput, error) {
 		accountID, err := authenticatedAccountID(ctx)
@@ -166,10 +138,9 @@ func RegisterTeamLobbyRoutes(
 	huma.Register(api, huma.Operation{
 		OperationID: "join-team-lobby",
 		Method:      http.MethodPost,
-		Path:        "/api/v1/lobbies/{inviteCode}/join",
+		Path:        "/lobbies/{inviteCode}/join",
 		Summary:     "Join a team lobby",
 		Tags:        []string{"Team lobbies"},
-		Middlewares: huma.Middlewares{auth},
 		Security:    []map[string][]string{{"bearer": {}}},
 	}, func(ctx context.Context, input *InviteCodeInput) (*TeamLobbyOutput, error) {
 		accountID, err := authenticatedAccountID(ctx)
@@ -183,73 +154,20 @@ func RegisterTeamLobbyRoutes(
 		return &TeamLobbyOutput{Body: toTeamLobbyResponse(view, accountID)}, nil
 	})
 
-	huma.Register(api, huma.Operation{
-		OperationID: "regenerate-team-lobby-invite",
-		Method:      http.MethodPost,
-		Path:        "/api/v1/lobbies/{id}/invite/regenerate",
-		Summary:     "Regenerate a team invite",
-		Tags:        []string{"Team lobbies"},
-		Middlewares: huma.Middlewares{auth},
-		Security:    []map[string][]string{{"bearer": {}}},
-	}, func(ctx context.Context, input *LobbyIDInput) (*TeamLobbyOutput, error) {
-		accountID, err := authenticatedAccountID(ctx)
-		if err != nil {
-			return nil, err
-		}
-		view, err := lobbyUseCase.RegenerateInvite(ctx, input.ID, accountID)
-		if err != nil {
-			return nil, teamLobbyHTTPError(err)
-		}
-		return &TeamLobbyOutput{Body: toTeamLobbyResponse(view, accountID)}, nil
+	registerCaptainAction(api, lobbyUseCase, "regenerate-team-lobby-invite", "/lobbies/{id}/invite/regenerate", "Regenerate a team invite", func(ctx context.Context, teamID, accountID uuid.UUID) (*usecases.TeamLobbyView, error) {
+		return lobbyUseCase.RegenerateInvite(ctx, teamID, accountID)
 	})
-
-	huma.Register(api, huma.Operation{
-		OperationID: "refresh-team-submission",
-		Method:      http.MethodPost,
-		Path:        "/api/v1/lobbies/{id}/submission/refresh",
-		Summary:     "Verify team registration payment",
-		Tags:        []string{"Team lobbies"},
-		Middlewares: huma.Middlewares{auth},
-		Security:    []map[string][]string{{"bearer": {}}},
-	}, func(ctx context.Context, input *LobbyIDInput) (*TeamLobbyOutput, error) {
-		accountID, err := authenticatedAccountID(ctx)
-		if err != nil {
-			return nil, err
-		}
-		view, err := lobbyUseCase.RefreshSubmission(ctx, input.ID, accountID)
-		if err != nil {
-			return nil, teamLobbyHTTPError(err)
-		}
-		return &TeamLobbyOutput{Body: toTeamLobbyResponse(view, accountID)}, nil
-	})
-
-	huma.Register(api, huma.Operation{
-		OperationID: "lock-team-lobby",
-		Method:      http.MethodPost,
-		Path:        "/api/v1/lobbies/{id}/lock",
-		Summary:     "Lock a team roster",
-		Tags:        []string{"Team lobbies"},
-		Middlewares: huma.Middlewares{auth},
-		Security:    []map[string][]string{{"bearer": {}}},
-	}, func(ctx context.Context, input *LobbyIDInput) (*TeamLobbyOutput, error) {
-		accountID, err := authenticatedAccountID(ctx)
-		if err != nil {
-			return nil, err
-		}
-		view, err := lobbyUseCase.Lock(ctx, input.ID, accountID)
-		if err != nil {
-			return nil, teamLobbyHTTPError(err)
-		}
-		return &TeamLobbyOutput{Body: toTeamLobbyResponse(view, accountID)}, nil
+	registerCaptainAction(api, lobbyUseCase, "refresh-team-submission", "/lobbies/{id}/submission/refresh", "Verify team registration payment", lobbyUseCase.RefreshSubmission)
+	registerCaptainAction(api, lobbyUseCase, "lock-team-lobby", "/lobbies/{id}/lock", "Lock a team roster", func(ctx context.Context, teamID, accountID uuid.UUID) (*usecases.TeamLobbyView, error) {
+		return lobbyUseCase.Lock(ctx, teamID, accountID)
 	})
 
 	huma.Register(api, huma.Operation{
 		OperationID: "remove-team-lobby-member",
 		Method:      http.MethodDelete,
-		Path:        "/api/v1/lobbies/{id}/members/{memberId}",
+		Path:        "/lobbies/{id}/members/{memberId}",
 		Summary:     "Remove a lobby member",
 		Tags:        []string{"Team lobbies"},
-		Middlewares: huma.Middlewares{auth},
 		Security:    []map[string][]string{{"bearer": {}}},
 	}, func(ctx context.Context, input *LobbyMemberInput) (*TeamLobbyOutput, error) {
 		accountID, err := authenticatedAccountID(ctx)
@@ -266,10 +184,9 @@ func RegisterTeamLobbyRoutes(
 	huma.Register(api, huma.Operation{
 		OperationID: "disband-team-lobby",
 		Method:      http.MethodDelete,
-		Path:        "/api/v1/lobbies/{id}",
+		Path:        "/lobbies/{id}",
 		Summary:     "Disband a team lobby",
 		Tags:        []string{"Team lobbies"},
-		Middlewares: huma.Middlewares{auth},
 		Security:    []map[string][]string{{"bearer": {}}},
 	}, func(ctx context.Context, input *LobbyIDInput) (*EmptyTeamLobbyOutput, error) {
 		accountID, err := authenticatedAccountID(ctx)
@@ -280,6 +197,29 @@ func RegisterTeamLobbyRoutes(
 			return nil, teamLobbyHTTPError(err)
 		}
 		return &EmptyTeamLobbyOutput{Status: http.StatusNoContent}, nil
+	})
+}
+
+type captainAction func(context.Context, uuid.UUID, uuid.UUID) (*usecases.TeamLobbyView, error)
+
+func registerCaptainAction(api huma.API, lobbyUseCase *usecases.TeamLobbyUseCase, operationID, path, summary string, action captainAction) {
+	huma.Register(api, huma.Operation{
+		OperationID: operationID,
+		Method:      http.MethodPost,
+		Path:        path,
+		Summary:     summary,
+		Tags:        []string{"Team lobbies"},
+		Security:    []map[string][]string{{"bearer": {}}},
+	}, func(ctx context.Context, input *LobbyIDInput) (*TeamLobbyOutput, error) {
+		accountID, err := authenticatedAccountID(ctx)
+		if err != nil {
+			return nil, err
+		}
+		view, err := action(ctx, input.ID, accountID)
+		if err != nil {
+			return nil, teamLobbyHTTPError(err)
+		}
+		return &TeamLobbyOutput{Body: toTeamLobbyResponse(view, accountID)}, nil
 	})
 }
 
@@ -294,13 +234,13 @@ func teamLobbyHTTPError(err error) error {
 		return huma.Error503ServiceUnavailable(err.Error())
 	case errors.Is(err, repositories.ErrInvalidRegistrationFee):
 		return huma.Error409Conflict(err.Error())
-	case errors.Is(err, usecases.ErrInvalidTeamName), errors.Is(err, usecases.ErrInvalidInviteCode):
-		return huma.Error400BadRequest("Invalid input", err)
+	case errors.Is(err, usecases.ErrInvalidTeamName):
+		return huma.Error400BadRequest("Invalid team name", err)
 	case errors.Is(err, usecases.ErrLobbyAccessDenied):
 		return huma.Error403Forbidden("Only the team captain can perform this action", err)
 	case errors.Is(err, repositories.ErrAlreadyInTournamentLobby):
 		return huma.Error409Conflict("You are already in a team for this tournament", err)
-	case errors.Is(err, usecases.ErrNotSoloTournament),
+	case errors.Is(err, usecases.ErrTeamsNotAllowed),
 		errors.Is(err, usecases.ErrRegistrationNotOpen),
 		errors.Is(err, repositories.ErrTeamLobbyNotForming),
 		errors.Is(err, repositories.ErrTeamLobbyFull),

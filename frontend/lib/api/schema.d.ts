@@ -283,6 +283,50 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/tournaments/dummy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Dummy Resources (MongoDB Example)
+         * @description Lists all dummy documents stored in MongoDB
+         */
+        get: operations["list-dummy-resources"];
+        put?: never;
+        /**
+         * Create Dummy Resource (MongoDB Example)
+         * @description Stores a dummy document in the secondary MongoDB database
+         */
+        post: operations["create-dummy-resource"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/dummy/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Dummy Resource (MongoDB Example)
+         * @description Retrieves a dummy document from MongoDB by its ID
+         */
+        get: operations["get-dummy-resource"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/tournaments/mine": {
         parameters: {
             query?: never;
@@ -542,7 +586,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/tournaments/{tournamentId}/solo-register": {
+    "/api/v1/tournaments/{tournamentId}/solo-registration": {
         parameters: {
             query?: never;
             header?: never;
@@ -551,11 +595,42 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /**
-         * Register for a solo tournament
-         * @description Automatically creates and locks a 1-person team for a solo tournament, initiating payment if an entry fee is required.
-         */
-        post: operations["register-solo-tournament"];
+        /** Save solo answers and start registration payment */
+        post: operations["start-solo-registration"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournamentId}/solo-registration/eligibility": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Check personal solo registration eligibility */
+        get: operations["get-solo-registration-eligibility"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournamentId}/solo-registration/refresh": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Verify solo registration payment */
+        post: operations["refresh-solo-registration"];
         delete?: never;
         options?: never;
         head?: never;
@@ -884,6 +959,18 @@ export interface components {
             /** @description Sponsor company or organization name */
             sponsorName: string;
         };
+        CreateDummyRequest: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/CreateDummyRequest.json
+             */
+            readonly $schema?: string;
+            /** @description Optional content or notes */
+            content: string;
+            /** @description Title of the dummy resource */
+            title: string;
+        };
         CreateTeamLobbyRequest: {
             /**
              * Format: uri
@@ -952,6 +1039,30 @@ export interface components {
              * @description Tournament start timestamp (RFC 3339)
              */
             startAt: string;
+        };
+        DummyResponse: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/DummyResponse.json
+             */
+            readonly $schema?: string;
+            /** @description Dummy content */
+            content: string;
+            /**
+             * Format: date-time
+             * @description Created timestamp
+             */
+            createdAt: string;
+            /** @description MongoDB ObjectID hex string */
+            id: string;
+            /** @description Dummy title */
+            title: string;
+            /**
+             * Format: date-time
+             * @description Updated timestamp
+             */
+            updatedAt: string;
         };
         FieldAnswer: {
             fieldId: string;
@@ -1137,6 +1248,28 @@ export interface components {
             /** @description Form title */
             title: string;
         };
+        SoloEligibility: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/SoloEligibility.json
+             */
+            readonly $schema?: string;
+            canRegister: boolean;
+            paymentId?: string;
+            reason: string;
+            status: string;
+        };
+        SoloRegistrationResponse: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/SoloRegistrationResponse.json
+             */
+            readonly $schema?: string;
+            paymentId?: string;
+            status: string;
+        };
         SponsorshipTierBody: {
             /**
              * Format: uri
@@ -1193,6 +1326,15 @@ export interface components {
             /** Format: date-time */
             updatedAt: string;
         };
+        StartSoloRegistrationInputBody: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/StartSoloRegistrationInputBody.json
+             */
+            readonly $schema?: string;
+            answers: components["schemas"]["FieldAnswer"][] | null;
+        };
         SubmitFormResponseInputBody: {
             /**
              * Format: uri
@@ -1225,8 +1367,7 @@ export interface components {
             /** Format: date-time */
             createdAt: string;
             id: string;
-            /** @description Six-character team invite code, or null if registration is closed/solo */
-            inviteCode?: string;
+            inviteCode: string;
             members: components["schemas"]["TeamLobbyMemberResponse"][] | null;
             name: string;
             /** Format: date-time */
@@ -2135,6 +2276,100 @@ export interface operations {
             };
         };
     };
+    "list-dummy-resources": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DummyResponse"][] | null;
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "create-dummy-resource": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateDummyRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DummyResponse"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "get-dummy-resource": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Dummy resource ID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DummyResponse"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
     "list-my-tournaments": {
         parameters: {
             query?: {
@@ -2708,12 +2943,46 @@ export interface operations {
             };
         };
     };
-    "register-solo-tournament": {
+    "start-solo-registration": {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                /** @description Tournament UUID */
+                tournamentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StartSoloRegistrationInputBody"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SoloRegistrationResponse"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "get-solo-registration-eligibility": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
                 tournamentId: string;
             };
             cookie?: never;
@@ -2726,7 +2995,38 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["TeamLobbyResponse"];
+                    "application/json": components["schemas"]["SoloEligibility"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "refresh-solo-registration": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tournamentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SoloRegistrationResponse"];
                 };
             };
             /** @description Error */
@@ -2788,8 +3088,8 @@ export interface operations {
             };
         };
         responses: {
-            /** @description OK */
-            200: {
+            /** @description Created */
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
