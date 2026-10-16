@@ -4,8 +4,10 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
+	"github.com/moomaideng/eventory/services/tournament/internal/ports"
 	"github.com/moomaideng/eventory/services/tournament/internal/repositories"
 	"github.com/moomaideng/eventory/services/tournament/internal/usecases"
 	"github.com/moomaideng/eventory/services/tournament/models"
@@ -17,6 +19,7 @@ type teamLobbyRepositoryStub struct {
 	activeTeam *models.TournamentTeam
 	created    *models.TournamentTeam
 	captain    *models.TournamentTeamMember
+	applied    string
 }
 
 func (s *teamLobbyRepositoryStub) FindTournamentByID(_ context.Context, _ uuid.UUID) (*models.Tournament, error) {
@@ -46,7 +49,10 @@ func (s *teamLobbyRepositoryStub) Create(_ context.Context, team *models.Tournam
 func (s *teamLobbyRepositoryStub) Join(_ context.Context, _ uuid.UUID, _ uuid.UUID) (*models.TournamentTeam, error) {
 	return s.team, nil
 }
-func (s *teamLobbyRepositoryStub) RegenerateInvite(_ context.Context, _ uuid.UUID, _ string) (*models.TournamentTeam, error) {
+func (s *teamLobbyRepositoryStub) RegenerateInvite(_ context.Context, _ uuid.UUID, inviteCode string) (*models.TournamentTeam, error) {
+	if s.team != nil {
+		s.team.InviteCode = &inviteCode
+	}
 	return s.team, nil
 }
 func (s *teamLobbyRepositoryStub) Lock(_ context.Context, _ uuid.UUID) (*models.TournamentTeam, error) {
@@ -55,14 +61,27 @@ func (s *teamLobbyRepositoryStub) Lock(_ context.Context, _ uuid.UUID) (*models.
 	}
 	return s.team, nil
 }
-func (s *teamLobbyRepositoryStub) RemoveMember(_ context.Context, _ uuid.UUID, _ uuid.UUID) (*models.TournamentTeam, error) {
+func (s *teamLobbyRepositoryStub) RemoveMember(_ context.Context, _ uuid.UUID, memberID uuid.UUID) (*models.TournamentTeam, error) {
+	if s.team != nil {
+		newMembers := make([]models.TournamentTeamMember, 0, len(s.team.Members))
+		for _, m := range s.team.Members {
+			if m.ID != memberID {
+				newMembers = append(newMembers, m)
+			}
+		}
+		s.team.Members = newMembers
+	}
 	return s.team, nil
 }
-func (s *teamLobbyRepositoryStub) Disband(_ context.Context, _ uuid.UUID) error { return nil }
+func (s *teamLobbyRepositoryStub) Disband(_ context.Context, _ uuid.UUID) error {
+	s.team = nil
+	return nil
+}
 func (s *teamLobbyRepositoryStub) Pending(_ context.Context) ([]models.TournamentTeam, error) {
 	return nil, nil
 }
-func (s *teamLobbyRepositoryStub) ApplyPayment(_ context.Context, _ *models.TournamentTeam, _ uuid.UUID, _ string) error {
+func (s *teamLobbyRepositoryStub) ApplyPayment(_ context.Context, _ *models.TournamentTeam, _ uuid.UUID, status string) error {
+	s.applied = status
 	return nil
 }
 
@@ -210,5 +229,173 @@ func TestGetByInviteCode_ValidatesFormat(t *testing.T) {
 	_, err = useCase.Join(context.Background(), "123", uuid.New())
 	if !errors.Is(err, usecases.ErrInvalidInviteCode) {
 		t.Fatalf("expected ErrInvalidInviteCode, got %v", err)
+	}
+}
+
+func TestRegenerateInvite(t *testing.T) {
+	captainID := uuid.New()
+	teamID := uuid.New()
+	oldCode := "OLDCOD"
+	team := &models.TournamentTeam{
+		ID:         teamID,
+		InviteCode: &oldCode,
+		Members: []models.TournamentTeamMember{{
+			AccountID: captainID, Role: models.TournamentTeamMemberRoleCaptain,
+		}},
+	}
+	repo := &teamLobbyRepositoryStub{team: team}
+	useCase := usecases.NewTeamLobbyUseCase(repo, newStubAccountService().withAccount(captainID, "captain", "Captain"))
+
+	// Non-captain denied
+	_, err := useCase.RegenerateInvite(context.Background(), teamID, uuid.New())
+	if !errors.Is(err, usecases.ErrLobbyAccessDenied) {
+		t.Fatalf("RegenerateInvite() error = %v, want ErrLobbyAccessDenied", err)
+	}
+
+	// Captain succeeds
+	updated, err := useCase.RegenerateInvite(context.Background(), teamID, captainID)
+	if err != nil {
+		t.Fatalf("RegenerateInvite() error = %v", err)
+	}
+	if updated.Team.InviteCode == nil || *updated.Team.InviteCode == oldCode {
+		t.Fatalf("invite code was not regenerated: %v", updated.Team.InviteCode)
+	}
+	if !usecases.ValidateInviteCode(*updated.Team.InviteCode) {
+		t.Fatalf("regenerated code is invalid: %s", *updated.Team.InviteCode)
+	}
+}
+
+func TestLock_Success(t *testing.T) {
+	captainID := uuid.New()
+	teamID := uuid.New()
+	team := &models.TournamentTeam{
+		ID:     teamID,
+		Status: models.TournamentTeamStatusForming,
+		Members: []models.TournamentTeamMember{{
+			AccountID: captainID, Role: models.TournamentTeamMemberRoleCaptain,
+		}},
+	}
+	repo := &teamLobbyRepositoryStub{team: team}
+	useCase := usecases.NewTeamLobbyUseCase(repo, newStubAccountService().withAccount(captainID, "captain", "Captain"))
+
+	locked, err := useCase.Lock(context.Background(), teamID, captainID)
+	if err != nil {
+		t.Fatalf("Lock() error = %v", err)
+	}
+	if locked.Team.Status != models.TournamentTeamStatusLocked {
+		t.Fatalf("team status = %v, want %v", locked.Team.Status, models.TournamentTeamStatusLocked)
+	}
+}
+
+func TestRemoveMember(t *testing.T) {
+	captainID := uuid.New()
+	memberID := uuid.New()
+	memberAccountID := uuid.New()
+	teamID := uuid.New()
+	team := &models.TournamentTeam{
+		ID: teamID,
+		Members: []models.TournamentTeamMember{
+			{ID: uuid.New(), AccountID: captainID, Role: models.TournamentTeamMemberRoleCaptain},
+			{ID: memberID, AccountID: memberAccountID, Role: models.TournamentTeamMemberRoleMember},
+		},
+	}
+	repo := &teamLobbyRepositoryStub{team: team}
+	accounts := newStubAccountService().
+		withAccount(captainID, "captain", "Captain").
+		withAccount(memberAccountID, "member", "Member")
+	useCase := usecases.NewTeamLobbyUseCase(repo, accounts)
+
+	// Non-captain denied
+	_, err := useCase.RemoveMember(context.Background(), teamID, memberID, memberAccountID)
+	if !errors.Is(err, usecases.ErrLobbyAccessDenied) {
+		t.Fatalf("RemoveMember() error = %v, want ErrLobbyAccessDenied", err)
+	}
+
+	// Captain succeeds
+	updated, err := useCase.RemoveMember(context.Background(), teamID, memberID, captainID)
+	if err != nil {
+		t.Fatalf("RemoveMember() error = %v", err)
+	}
+	if len(updated.Team.Members) != 1 || updated.Team.Members[0].ID == memberID {
+		t.Fatalf("member was not removed: %+v", updated.Team.Members)
+	}
+}
+
+func TestDisband(t *testing.T) {
+	captainID := uuid.New()
+	teamID := uuid.New()
+	team := &models.TournamentTeam{
+		ID: teamID,
+		Members: []models.TournamentTeamMember{{
+			AccountID: captainID, Role: models.TournamentTeamMemberRoleCaptain,
+		}},
+	}
+	repo := &teamLobbyRepositoryStub{team: team}
+	useCase := usecases.NewTeamLobbyUseCase(repo, newStubAccountService().withAccount(captainID, "captain", "Captain"))
+
+	// Non-captain denied
+	err := useCase.Disband(context.Background(), teamID, uuid.New())
+	if !errors.Is(err, usecases.ErrLobbyAccessDenied) {
+		t.Fatalf("Disband() error = %v, want ErrLobbyAccessDenied", err)
+	}
+
+	// Captain succeeds
+	if err := useCase.Disband(context.Background(), teamID, captainID); err != nil {
+		t.Fatalf("Disband() error = %v", err)
+	}
+	if repo.team != nil {
+		t.Fatalf("team was not disbanded: %+v", repo.team)
+	}
+}
+
+type registrationPaymentStub struct {
+	mutate func(*ports.RegistrationPayment)
+	err    error
+}
+
+func (p registrationPaymentStub) EnsureInvoice(_ context.Context, r ports.RegistrationPaymentRequest) (*ports.RegistrationPayment, error) {
+	payment := &ports.RegistrationPayment{ID: uuid.New(), PayerAccountID: r.PayerAccountID, Source: r.Source, Reference: r.Reference, AmountMinor: r.AmountMinor, Currency: r.Currency, ExpiresAt: r.ExpiresAt, Status: "PAID"}
+	if p.mutate != nil {
+		p.mutate(payment)
+	}
+	return payment, p.err
+}
+
+func TestSubmissionRequiresAuthoritativeMatchingInvoice(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		mutate func(*ports.RegistrationPayment)
+		err    error
+	}{
+		{name: "unavailable", err: errors.New("timeout after creating invoice")},
+		{name: "wrong payer", mutate: func(p *ports.RegistrationPayment) { p.PayerAccountID = uuid.New() }},
+		{name: "wrong amount", mutate: func(p *ports.RegistrationPayment) { p.AmountMinor++ }},
+		{name: "wrong team or attempt", mutate: func(p *ports.RegistrationPayment) { p.Reference = uuid.NewString() }},
+		{name: "wrong currency", mutate: func(p *ports.RegistrationPayment) { p.Currency = "USD" }},
+		{name: "wrong source", mutate: func(p *ports.RegistrationPayment) { p.Source = "OTHER" }},
+		{name: "wrong deadline", mutate: func(p *ports.RegistrationPayment) { p.ExpiresAt = p.ExpiresAt.Add(time.Second) }},
+		{name: "unknown status", mutate: func(p *ports.RegistrationPayment) { p.Status = "UNKNOWN" }},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			attempt, payer := uuid.New(), uuid.New()
+			expires := time.Now().Add(time.Minute)
+			team := &models.TournamentTeam{ID: uuid.New(), Status: models.TournamentTeamStatusPaymentPending, PaymentAttemptID: &attempt, PaymentPayerID: &payer, PaymentExpiresAt: &expires, PaymentAmountMinor: 10000}
+			repo := &teamLobbyRepositoryStub{}
+			uc := usecases.NewTeamLobbyUseCase(repo, nil, registrationPaymentStub{tc.mutate, tc.err})
+			if err := uc.Reconcile(context.Background(), team); !errors.Is(err, usecases.ErrPaymentUnavailable) {
+				t.Fatalf("error = %v", err)
+			}
+			if repo.applied != "" {
+				t.Fatal("unverified payment changed roster")
+			}
+			// A later retry of the same durable attempt can complete after an outage.
+			uc = usecases.NewTeamLobbyUseCase(repo, nil, registrationPaymentStub{})
+			if err := uc.Reconcile(context.Background(), team); err != nil {
+				t.Fatal(err)
+			}
+			if repo.applied != "PAID" {
+				t.Fatal("paid attempt was not submitted")
+			}
+		})
 	}
 }
