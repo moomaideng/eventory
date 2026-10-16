@@ -30,10 +30,8 @@ import {
   sponsorshipTierSchema,
   type SponsorshipTierFormInput,
 } from "@/features/sponsorship/schemas";
-import {
-  getErrorMessage,
-  type SponsorshipTier,
-} from "@/features/sponsorship/utils";
+import { type SponsorshipTier } from "@/features/sponsorship/utils";
+import { getErrorMessage } from "@/features/tournament-staff/utils";
 
 const EMPTY_FORM: SponsorshipTierFormInput = {
   name: "",

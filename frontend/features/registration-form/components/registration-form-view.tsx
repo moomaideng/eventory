@@ -119,29 +119,31 @@ export function RegistrationFormView({ tournamentId }: { tournamentId: string })
     setSubmitError(null);
     setIsSubmitting(true);
     try {
-      const result = await apiClient.POST("/api/v1/tournaments/{tournamentId}/solo-registration", {
-        params: { path: { tournamentId } },
-        headers: { Authorization: authorizationHeader },
-        body: { answers: fields.map((field) => ({
-          fieldId: field.id,
-          value: field.type === "NUMBER"
-            ? answerOf(field) === "" ? null : Number(answerOf(field))
-            : answerOf(field),
-        })) },
-      });
+      const result = await apiClient.POST(
+        "/api/v1/tournaments/{tournamentId}/solo-register",
+        {
+          params: { path: { tournamentId } },
+          headers: { Authorization: authorizationHeader },
+        }
+      );
       if (result.error || !result.data) {
-        setSubmitError(result.error?.detail ?? result.error?.title ?? "Registration failed. Check your answers and try again.");
+        setSubmitError(
+          result.error?.detail ??
+            result.error?.title ??
+            "Registration failed. Please try again."
+        );
         return;
       }
-      if (result.data.status === "PAYMENT_PENDING" && result.data.paymentId) {
-        void queryClient.invalidateQueries({ queryKey: ["get", "/api/v1/tournaments/{tournamentId}/solo-registration/eligibility"] });
+      void queryClient.invalidateQueries({
+        queryKey: ["get", "/api/v1/tournaments/{tournamentId}"],
+      });
+      void queryClient.invalidateQueries({
+        queryKey: ["get", "/api/v1/tournaments/{tournamentId}/my-team"],
+      });
+      if (result.data.paymentId) {
         router.push(`/payments/${result.data.paymentId}/checkout`);
-      } else if (result.data.status === "AWAITING_APPROVAL" || result.data.status === "ACCEPTED") {
-        void queryClient.invalidateQueries({ queryKey: ["get", "/api/v1/tournaments/{tournamentId}"] });
-        void queryClient.invalidateQueries({ queryKey: ["get", "/api/v1/tournaments/{tournamentId}/solo-registration/eligibility"] });
-        router.push(`/tournaments/${tournamentId}`);
       } else {
-        setSubmitError("Payment is being prepared. Please retry shortly.");
+        router.push(`/tournaments/${tournamentId}`);
       }
     } catch {
       setSubmitError("Registration is temporarily unavailable. Please try again.");

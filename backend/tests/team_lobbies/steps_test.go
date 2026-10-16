@@ -15,7 +15,7 @@ import (
 	"github.com/moomaideng/eventory/tests/internal/apptest"
 )
 
-var inviteCodePattern = regexp.MustCompile(`^[A-Z2-9]{6}$`)
+var inviteCodePattern = regexp.MustCompile(`^[A-Z0-9]{6}$`)
 
 type teamLobbyScenarioContext struct {
 	client          *apptest.Client
@@ -154,9 +154,12 @@ func (s *teamLobbyScenarioContext) createLobby(user *apptest.TestUser, name stri
 }
 
 func (s *teamLobbyScenarioContext) theOtherCompetitorJoinsUsingTheValidInviteCode() error {
+	if s.lobby.InviteCode == nil {
+		return fmt.Errorf("lobby invite code is nil")
+	}
 	resp, err := s.client.Do(
 		http.MethodPost,
-		fmt.Sprintf("/lobbies/%s/join", s.lobby.InviteCode),
+		fmt.Sprintf("/lobbies/%s/join", *s.lobby.InviteCode),
 		nil,
 		s.otherCompetitor.AuthHeaders(),
 	)
@@ -220,8 +223,8 @@ func (s *teamLobbyScenarioContext) theCompetitorShouldBeTheLobbyCaptain() error 
 }
 
 func (s *teamLobbyScenarioContext) aValidInviteCodeShouldBeGenerated() error {
-	if !inviteCodePattern.MatchString(s.lobby.InviteCode) {
-		return fmt.Errorf("expected a valid six-character invite code, got %q", s.lobby.InviteCode)
+	if s.lobby.InviteCode == nil || !inviteCodePattern.MatchString(*s.lobby.InviteCode) {
+		return fmt.Errorf("expected a valid six-character invite code, got %v", s.lobby.InviteCode)
 	}
 	return nil
 }

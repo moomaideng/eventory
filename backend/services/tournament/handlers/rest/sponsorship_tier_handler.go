@@ -59,11 +59,25 @@ type DeleteSponsorshipTierInput struct {
 	TierID       uuid.UUID `path:"tierId" doc:"Sponsorship tier UUID"`
 }
 
+type CreateSponsorshipTierOutput struct {
+	Status int `default:"201"`
+	Body   SponsorshipTierResponse
+}
+
 type SponsorshipTierOutput struct {
 	Body SponsorshipTierResponse
 }
 
-func RegisterSponsorshipTierRoutes(api huma.API, organizerTournamentGroup huma.API, tiers *usecases.SponsorshipTierUseCase) {
+type EmptySponsorshipTierOutput struct {
+	Status int
+}
+
+func RegisterSponsorshipTierRoutes(
+	api huma.API,
+	auth func(huma.Context, func(huma.Context)),
+	organizer func(huma.Context, func(huma.Context)),
+	tiers *usecases.SponsorshipTierUseCase,
+) {
 	huma.Register(api, huma.Operation{
 		OperationID: "list-sponsorship-tiers",
 		Method:      http.MethodGet,
@@ -79,13 +93,14 @@ func RegisterSponsorshipTierRoutes(api huma.API, organizerTournamentGroup huma.A
 		return toListSponsorshipTiersOutput(items), nil
 	})
 
-	huma.Register(organizerTournamentGroup, huma.Operation{
+	huma.Register(api, huma.Operation{
 		OperationID: "list-my-sponsorship-tiers",
 		Method:      http.MethodGet,
-		Path:        "/{tournamentId}/sponsorship-tiers/manage",
+		Path:        "/api/v1/tournaments/{tournamentId}/sponsorship-tiers/manage",
 		Summary:     "List sponsorship tiers for the owner",
 		Description: "Returns an owned tournament's sponsorship packages, including while it is unpublished.",
 		Tags:        []string{"Sponsorship"},
+		Middlewares: huma.Middlewares{auth, organizer},
 		Security:    []map[string][]string{{"bearer": {}}},
 	}, func(ctx context.Context, input *ListSponsorshipTiersInput) (*ListSponsorshipTiersOutput, error) {
 		profile, err := middlewares.GetOrganizerProfile(ctx)
@@ -99,16 +114,16 @@ func RegisterSponsorshipTierRoutes(api huma.API, organizerTournamentGroup huma.A
 		return toListSponsorshipTiersOutput(items), nil
 	})
 
-	huma.Register(organizerTournamentGroup, huma.Operation{
-		OperationID:   "create-sponsorship-tier",
-		Method:        http.MethodPost,
-		Path:          "/{tournamentId}/sponsorship-tiers",
-		Summary:       "Create a sponsorship tier",
-		Description:   "Adds a sponsorship package to an owned tournament.",
-		Tags:          []string{"Sponsorship"},
-		Security:      []map[string][]string{{"bearer": {}}},
-		DefaultStatus: http.StatusCreated,
-	}, func(ctx context.Context, input *CreateSponsorshipTierInput) (*SponsorshipTierOutput, error) {
+	huma.Register(api, huma.Operation{
+		OperationID: "create-sponsorship-tier",
+		Method:      http.MethodPost,
+		Path:        "/api/v1/tournaments/{tournamentId}/sponsorship-tiers",
+		Summary:     "Create a sponsorship tier",
+		Description: "Adds a sponsorship package to an owned tournament.",
+		Tags:        []string{"Sponsorship"},
+		Middlewares: huma.Middlewares{auth, organizer},
+		Security:    []map[string][]string{{"bearer": {}}},
+	}, func(ctx context.Context, input *CreateSponsorshipTierInput) (*CreateSponsorshipTierOutput, error) {
 		profile, err := middlewares.GetOrganizerProfile(ctx)
 		if err != nil {
 			return nil, sponsorshipTierHTTPError(err)
@@ -117,16 +132,20 @@ func RegisterSponsorshipTierRoutes(api huma.API, organizerTournamentGroup huma.A
 		if err != nil {
 			return nil, sponsorshipTierHTTPError(err)
 		}
-		return &SponsorshipTierOutput{Body: toSponsorshipTierResponse(*tier)}, nil
+		return &CreateSponsorshipTierOutput{
+			Status: http.StatusCreated,
+			Body:   toSponsorshipTierResponse(*tier),
+		}, nil
 	})
 
-	huma.Register(organizerTournamentGroup, huma.Operation{
+	huma.Register(api, huma.Operation{
 		OperationID: "update-sponsorship-tier",
 		Method:      http.MethodPut,
-		Path:        "/{tournamentId}/sponsorship-tiers/{tierId}",
+		Path:        "/api/v1/tournaments/{tournamentId}/sponsorship-tiers/{tierId}",
 		Summary:     "Update a sponsorship tier",
 		Description: "Replaces the details of a sponsorship package on an owned tournament.",
 		Tags:        []string{"Sponsorship"},
+		Middlewares: huma.Middlewares{auth, organizer},
 		Security:    []map[string][]string{{"bearer": {}}},
 	}, func(ctx context.Context, input *UpdateSponsorshipTierInput) (*SponsorshipTierOutput, error) {
 		profile, err := middlewares.GetOrganizerProfile(ctx)
@@ -140,16 +159,16 @@ func RegisterSponsorshipTierRoutes(api huma.API, organizerTournamentGroup huma.A
 		return &SponsorshipTierOutput{Body: toSponsorshipTierResponse(*tier)}, nil
 	})
 
-	huma.Register(organizerTournamentGroup, huma.Operation{
-		OperationID:   "delete-sponsorship-tier",
-		Method:        http.MethodDelete,
-		Path:          "/{tournamentId}/sponsorship-tiers/{tierId}",
-		Summary:       "Delete a sponsorship tier",
-		Description:   "Removes a sponsorship package from an owned tournament.",
-		Tags:          []string{"Sponsorship"},
-		Security:      []map[string][]string{{"bearer": {}}},
-		DefaultStatus: http.StatusNoContent,
-	}, func(ctx context.Context, input *DeleteSponsorshipTierInput) (*struct{}, error) {
+	huma.Register(api, huma.Operation{
+		OperationID: "delete-sponsorship-tier",
+		Method:      http.MethodDelete,
+		Path:        "/api/v1/tournaments/{tournamentId}/sponsorship-tiers/{tierId}",
+		Summary:     "Delete a sponsorship tier",
+		Description: "Removes a sponsorship package from an owned tournament.",
+		Tags:        []string{"Sponsorship"},
+		Middlewares: huma.Middlewares{auth, organizer},
+		Security:    []map[string][]string{{"bearer": {}}},
+	}, func(ctx context.Context, input *DeleteSponsorshipTierInput) (*EmptySponsorshipTierOutput, error) {
 		profile, err := middlewares.GetOrganizerProfile(ctx)
 		if err != nil {
 			return nil, sponsorshipTierHTTPError(err)
@@ -157,7 +176,7 @@ func RegisterSponsorshipTierRoutes(api huma.API, organizerTournamentGroup huma.A
 		if err := tiers.Delete(ctx, profile.AccountID, input.TournamentID, input.TierID); err != nil {
 			return nil, sponsorshipTierHTTPError(err)
 		}
-		return nil, nil
+		return &EmptySponsorshipTierOutput{Status: http.StatusNoContent}, nil
 	})
 }
 
@@ -213,6 +232,6 @@ func sponsorshipTierHTTPError(err error) error {
 		errors.Is(err, usecases.ErrInvalidSponsorshipTierPerks):
 		return huma.Error422UnprocessableEntity(err.Error())
 	default:
-		return huma.Error500InternalServerError("Unable to process sponsorship tier request")
+		return huma.Error500InternalServerError("Sponsorship tier operation failed", err)
 	}
 }

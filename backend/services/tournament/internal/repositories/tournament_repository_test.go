@@ -66,7 +66,7 @@ func TestOrganizerDashboardOwnershipPostgres(t *testing.T) {
 	if err := tx.Create(&tournament).Error; err != nil {
 		t.Fatal(err)
 	}
-	repo := repositories.NewOrganizerDashboardRepository(tx)
+	repo := repositories.NewTournamentRepository(tx)
 	ctx := context.Background()
 	items, total, err := repo.ListOwned(ctx, organizerID, 1, 12)
 	if err != nil || total != 1 || len(items) != 1 || items[0].ID != tournament.ID || items[0].Published {
