@@ -9,11 +9,6 @@ func AutoMigrate(db *gorm.DB) error {
 	if err := db.AutoMigrate(models.All()...); err != nil {
 		return err
 	}
-	// Solo applications created before organizer review was introduced were
-	// previously marked REGISTERED immediately. Keep them submitted for review.
-	if err := db.Exec("UPDATE solo_registrations SET status = ? WHERE status = ?", models.SoloAwaitingApproval, "REGISTERED").Error; err != nil {
-		return err
-	}
 
 	if err := db.Exec("CREATE EXTENSION IF NOT EXISTS pg_trgm").Error; err != nil {
 		return err

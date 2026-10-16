@@ -47,6 +47,18 @@ func (m *mockTournamentRepo) Update(_ context.Context, _ *models.Tournament) err
 func (m *mockTournamentRepo) GetActiveTeamCount(_ context.Context, _ uuid.UUID) (int64, int64, error) {
 	return 0, 0, nil
 }
+func (m *mockTournamentRepo) ListOwned(_ context.Context, _ uuid.UUID, _, _ int) ([]models.Tournament, int64, error) {
+	return nil, 0, nil
+}
+func (m *mockTournamentRepo) GetOwned(_ context.Context, _, _ uuid.UUID) (*models.Tournament, error) {
+	return nil, nil
+}
+func (m *mockTournamentRepo) ApplyOverride(_ context.Context, _ uuid.UUID, _ string, _ uuid.UUID, _ string, _ func(*models.Tournament) (models.TournamentStatus, error)) (*models.TournamentStatusChange, error) {
+	return nil, nil
+}
+func (m *mockTournamentRepo) ListHistory(_ context.Context, _, _ uuid.UUID) (*repositories.TournamentStatusHistory, error) {
+	return nil, nil
+}
 
 type mockFormRepo struct {
 	form      *models.RegistrationForm
@@ -124,24 +136,22 @@ func TestRegistrationFormRoutes(t *testing.T) {
 
 	_, api := humatest.New(t)
 
-	authGroup := huma.NewGroup(api, "/api/v1")
-	authGroup.UseMiddleware(func(ctx huma.Context, next func(huma.Context)) {
+	authMW := func(ctx huma.Context, next func(huma.Context)) {
 		newCtx := context.WithValue(ctx.Context(), sharedmiddlewares.UserSubContextKey, participantAccountID.String())
 		ctx = huma.WithContext(ctx, newCtx)
 		next(ctx)
-	})
+	}
 
-	organizerTournamentGroup := huma.NewGroup(api, "/api/v1/tournaments")
-	organizerTournamentGroup.UseMiddleware(func(ctx huma.Context, next func(huma.Context)) {
+	organizerMW := func(ctx huma.Context, next func(huma.Context)) {
 		newCtx := context.WithValue(ctx.Context(), sharedmiddlewares.UserSubContextKey, organizerAccountID.String())
 		newCtx = context.WithValue(newCtx, tournamentmiddlewares.OrganizerProfileContextKey, &ports.OrganizerInfo{
 			AccountID: organizerAccountID,
 		})
 		ctx = huma.WithContext(ctx, newCtx)
 		next(ctx)
-	})
+	}
 
-	rest.RegisterRegistrationFormRoutes(api, authGroup, organizerTournamentGroup, useCase)
+	rest.RegisterRegistrationFormRoutes(api, authMW, organizerMW, useCase)
 
 	t.Run("GET form when not found", func(t *testing.T) {
 		resp := api.Get("/api/v1/tournaments/" + tournamentID.String() + "/form")
