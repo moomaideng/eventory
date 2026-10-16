@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowLeft, ArrowUpRight, FileQuestion, Trophy } from "lucide-react";
+import { ArrowLeft, ArrowUpRight, Trophy } from "lucide-react";
 import { useAuth } from "@/context/auth-context";
 import { $api } from "@/lib/api/client";
+import { RegistrationFormBuilder } from "@/features/registration-form/components/registration-form-builder";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -27,7 +28,7 @@ import {
   TournamentStaffSection,
 } from "@/features/tournament-staff";
 
-export function TournamentDashboard({
+export function TournamentWorkspace({
   tournamentId,
 }: {
   tournamentId: string;
@@ -98,18 +99,6 @@ export function TournamentDashboard({
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
                     {isOwner ? (
-                      <Button
-                        variant="outline"
-                        render={
-                          <Link href={`/organizer/tournaments/${tournamentId}/form`} />
-                        }
-                        nativeButton={false}
-                      >
-                        <FileQuestion data-icon="inline-start" />
-                        Registration questions
-                      </Button>
-                    ) : null}
-                    {isOwner ? (
                       <StatusControlDialog
                         tournamentId={tournamentId}
                         currentStatus={data.summary.tournament.status}
@@ -129,10 +118,6 @@ export function TournamentDashboard({
                         <ArrowUpRight data-icon="inline-end" />
                       </Button>
                     ) : null}
-                    <RefreshDashboard
-                      fetching={isFetching}
-                      onRefresh={() => void refetch()}
-                    />
                   </div>
                 </header>
 
@@ -140,11 +125,26 @@ export function TournamentDashboard({
                   <TabsList>
                     <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
                     {isOwner ? (
+                      <TabsTrigger value="form">Registration Form</TabsTrigger>
+                    ) : null}
+                    {isOwner ? (
                       <TabsTrigger value="staff">Manage Staff</TabsTrigger>
                     ) : null}
                   </TabsList>
 
-                  <TabsContent value="dashboard">
+                  <TabsContent value="dashboard" keepMounted>
+                    <div className="flex flex-wrap items-center justify-between gap-4">
+                      <div>
+                        <h2 className="text-xl font-semibold tracking-tight">Overview & Metrics</h2>
+                        <p className="text-muted-foreground text-sm">
+                          Live participant pipeline, capacity, and crowdfunding metrics.
+                        </p>
+                      </div>
+                      <RefreshDashboard
+                        fetching={isFetching}
+                        onRefresh={() => void refetch()}
+                      />
+                    </div>
                     <DashboardOverview summary={data.summary} />
                     <RegistrationTable
                       key={tournamentId}
@@ -154,7 +154,13 @@ export function TournamentDashboard({
                   </TabsContent>
 
                   {isOwner ? (
-                    <TabsContent value="staff">
+                    <TabsContent value="form" keepMounted>
+                      <RegistrationFormBuilder tournamentId={tournamentId} />
+                    </TabsContent>
+                  ) : null}
+
+                  {isOwner ? (
+                    <TabsContent value="staff" keepMounted>
                       <TournamentStaffSection
                         tournamentId={tournamentId}
                         isOwner={isOwner}
@@ -170,3 +176,5 @@ export function TournamentDashboard({
     </div>
   );
 }
+
+export const TournamentDashboard = TournamentWorkspace;
