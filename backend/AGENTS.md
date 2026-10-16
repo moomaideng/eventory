@@ -76,3 +76,21 @@ Before opening a PR or finishing a task:
 2. **Acceptance Tests**: Ensure test suites compile: `go test -c -o /dev/null ./tests/...`.
 3. **Static Analysis**: Run `go vet ./...` from the `backend/` directory. Zero errors or linter warnings are permitted.
 4. **OpenAPI Sync**: If any endpoint schemas changed, run `npm --prefix frontend run openapi:generate` and ensure `npm --prefix frontend run lint && npm --prefix frontend run typecheck` passes.
+
+---
+
+## 4. Canonical CRUD Reference Implementation
+
+For a clean, end-to-end CRUD reference adhering strictly to these layer boundaries and conventions, follow the **Tournament Staff** endpoint:
+
+- **Entity Model:** [`services/tournament/models/tournament_staff.go`](services/tournament/models/tournament_staff.go)
+  - Pure GORM entity definition, role enums, table name, and domain helper methods.
+- **Persistence Repository:** [`services/tournament/internal/repositories/tournament_staff_repository.go`](services/tournament/internal/repositories/tournament_staff_repository.go)
+  - Interface definition and GORM implementation for database CRUD operations without business logic.
+- **Domain Use Case:** [`services/tournament/internal/usecases/tournament_staff_usecase.go`](services/tournament/internal/usecases/tournament_staff_usecase.go)
+  - Business rules, caller authorization checks, view projection, and dependency injection via constructor.
+- **Transport Handler:** [`services/tournament/handlers/rest/tournament_staff_handler.go`](services/tournament/handlers/rest/tournament_staff_handler.go)
+  - Huma v2 route registrations, request/response DTO schemas with doc/validation tags, auth context extraction, and error translation.
+- **Unit Tests:** [`services/tournament/internal/usecases/tournament_staff_usecase_test.go`](services/tournament/internal/usecases/tournament_staff_usecase_test.go)
+  - Table-driven unit tests using repository stubs and standard Go testing assertions.
+
