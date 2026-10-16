@@ -30,8 +30,6 @@ func ValidateInviteCode(code string) bool {
 	return inviteCodeRegex.MatchString(code)
 }
 
-type SubmissionRepository = TeamLobbyRepository
-
 type TeamLobbyRepository interface {
 	FindTournamentByID(ctx context.Context, id uuid.UUID) (*models.Tournament, error)
 	FindByID(ctx context.Context, id uuid.UUID) (*models.TournamentTeam, error)
@@ -78,19 +76,6 @@ func NewTeamLobbyUseCase(repo TeamLobbyRepository, accountSvc ports.AccountServi
 		p = payments[0]
 	}
 	return &TeamLobbyUseCase{repo: repo, accountSvc: accountSvc, payments: p}
-}
-
-type TeamSubmissionUseCase = TeamLobbyUseCase
-
-func NewTeamSubmissionUseCase(repo TeamLobbyRepository, payments ports.PaymentService) *TeamSubmissionUseCase {
-	return &TeamLobbyUseCase{repo: repo, payments: payments}
-}
-
-func (u *TeamLobbyUseCase) WithSubmission(submission *TeamSubmissionUseCase) *TeamLobbyUseCase {
-	if submission != nil && submission.payments != nil {
-		u.payments = submission.payments
-	}
-	return u
 }
 
 func (u *TeamLobbyUseCase) RefreshSubmission(ctx context.Context, teamID, accountID uuid.UUID) (*TeamLobbyView, error) {

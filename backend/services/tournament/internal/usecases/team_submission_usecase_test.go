@@ -57,7 +57,7 @@ func TestSubmissionRequiresAuthoritativeMatchingInvoice(t *testing.T) {
 			expires := time.Now().Add(time.Minute)
 			team := &models.TournamentTeam{ID: uuid.New(), Status: models.TournamentTeamStatusPaymentPending, PaymentAttemptID: &attempt, PaymentPayerID: &payer, PaymentExpiresAt: &expires, PaymentAmountMinor: 10000}
 			repo := &submissionRepoStub{}
-			uc := usecases.NewTeamSubmissionUseCase(repo, registrationPaymentStub{tc.mutate, tc.err})
+			uc := usecases.NewTeamLobbyUseCase(repo, nil, registrationPaymentStub{tc.mutate, tc.err})
 			if err := uc.Reconcile(context.Background(), team); !errors.Is(err, usecases.ErrPaymentUnavailable) {
 				t.Fatalf("error = %v", err)
 			}
@@ -65,7 +65,7 @@ func TestSubmissionRequiresAuthoritativeMatchingInvoice(t *testing.T) {
 				t.Fatal("unverified payment changed roster")
 			}
 			// A later retry of the same durable attempt can complete after an outage.
-			uc = usecases.NewTeamSubmissionUseCase(repo, registrationPaymentStub{})
+			uc = usecases.NewTeamLobbyUseCase(repo, nil, registrationPaymentStub{})
 			if err := uc.Reconcile(context.Background(), team); err != nil {
 				t.Fatal(err)
 			}

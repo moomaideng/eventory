@@ -48,13 +48,6 @@ func NewTeamLobbyRepository(db *gorm.DB) TeamLobbyRepository {
 	return &teamLobbyRepository{db: db}
 }
 
-// SubmissionRepository and NewTeamSubmissionRepository are aliases for backward compatibility.
-type SubmissionRepository = TeamLobbyRepository
-
-func NewTeamSubmissionRepository(db *gorm.DB) TeamLobbyRepository {
-	return NewTeamLobbyRepository(db)
-}
-
 func (r *teamLobbyRepository) FindTournamentByID(ctx context.Context, id uuid.UUID) (*models.Tournament, error) {
 	var tournament models.Tournament
 	err := r.db.WithContext(ctx).

@@ -57,7 +57,7 @@ type TournamentStatusHistoryOutput struct {
 func RegisterTournamentStatusRoutes(
 	api huma.API,
 	auth, organizer func(huma.Context, func(huma.Context)),
-	statuses *usecases.TournamentStatusUseCase,
+	tournaments *usecases.TournamentUseCase,
 ) {
 	huma.Register(api, huma.Operation{
 		OperationID: "override-tournament-status",
@@ -78,7 +78,7 @@ func RegisterTournamentStatusRoutes(
 			return nil, tournamentStatusHTTPError(err)
 		}
 
-		result, err := statuses.Override(ctx, accountID, input.TournamentID, input.Body.Status, input.Body.Reason)
+		result, err := tournaments.Override(ctx, accountID, input.TournamentID, input.Body.Status, input.Body.Reason)
 		if err != nil {
 			return nil, tournamentStatusHTTPError(err)
 		}
@@ -105,7 +105,7 @@ func RegisterTournamentStatusRoutes(
 			return nil, tournamentStatusHTTPError(err)
 		}
 
-		detail, err := statuses.History(ctx, profile.AccountID, input.TournamentID)
+		detail, err := tournaments.History(ctx, profile.AccountID, input.TournamentID)
 		if err != nil {
 			return nil, tournamentStatusHTTPError(err)
 		}

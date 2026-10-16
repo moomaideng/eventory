@@ -59,18 +59,6 @@ type TournamentRepository interface {
 	ListHistory(ctx context.Context, accountID, tournamentID uuid.UUID) (*TournamentStatusHistory, error)
 }
 
-type OrganizerDashboardRepository = TournamentRepository
-
-func NewOrganizerDashboardRepository(db *gorm.DB) OrganizerDashboardRepository {
-	return NewTournamentRepository(db)
-}
-
-type TournamentStatusRepository = TournamentRepository
-
-func NewTournamentStatusRepository(db *gorm.DB) TournamentStatusRepository {
-	return NewTournamentRepository(db)
-}
-
 type tournamentRepositoryImpl struct {
 	db *gorm.DB
 }

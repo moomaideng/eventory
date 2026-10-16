@@ -218,18 +218,6 @@ func NewTournamentUseCase(tournamentRepo repositories.TournamentRepository, acco
 	return &TournamentUseCase{tournamentRepo: tournamentRepo, accountSvc: accountSvc}
 }
 
-type OrganizerDashboardUseCase = TournamentUseCase
-
-func NewOrganizerDashboardUseCase(repo repositories.OrganizerDashboardRepository, accountSvc ports.AccountService) *OrganizerDashboardUseCase {
-	return NewTournamentUseCase(repo, accountSvc)
-}
-
-type TournamentStatusUseCase = TournamentUseCase
-
-func NewTournamentStatusUseCase(repo repositories.TournamentStatusRepository, accountSvc ports.AccountService) *TournamentStatusUseCase {
-	return NewTournamentUseCase(repo, accountSvc)
-}
-
 // validate query
 func (u *TournamentUseCase) Search(
 	ctx context.Context,

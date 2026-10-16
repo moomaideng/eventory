@@ -66,7 +66,7 @@ type OrganizerDashboardOutput struct {
 func RegisterOrganizerDashboardRoutes(
 	api huma.API,
 	auth func(huma.Context, func(huma.Context)),
-	dashboard *usecases.OrganizerDashboardUseCase,
+	tournaments *usecases.TournamentUseCase,
 ) {
 	huma.Register(api, huma.Operation{
 		OperationID: "list-my-tournaments",
@@ -81,7 +81,7 @@ func RegisterOrganizerDashboardRoutes(
 		if err != nil {
 			return nil, err
 		}
-		result, err := dashboard.List(ctx, accountID, input.Page, input.PageSize)
+		result, err := tournaments.List(ctx, accountID, input.Page, input.PageSize)
 		if err != nil {
 			return nil, organizerDashboardHTTPError(err)
 		}
@@ -107,7 +107,7 @@ func RegisterOrganizerDashboardRoutes(
 		if err != nil {
 			return nil, err
 		}
-		result, err := dashboard.Get(ctx, accountID, input.TournamentID)
+		result, err := tournaments.Get(ctx, accountID, input.TournamentID)
 		if err != nil {
 			return nil, organizerDashboardHTTPError(err)
 		}
