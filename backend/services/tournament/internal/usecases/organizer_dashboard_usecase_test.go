@@ -12,6 +12,7 @@ import (
 )
 
 type dashboardRepositoryStub struct {
+	mockTournamentRepository
 	tournament models.Tournament
 	accountID  uuid.UUID
 	err        error

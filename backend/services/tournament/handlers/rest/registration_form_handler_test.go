@@ -47,6 +47,18 @@ func (m *mockTournamentRepo) Update(_ context.Context, _ *models.Tournament) err
 func (m *mockTournamentRepo) GetActiveTeamCount(_ context.Context, _ uuid.UUID) (int64, int64, error) {
 	return 0, 0, nil
 }
+func (m *mockTournamentRepo) ListOwned(_ context.Context, _ uuid.UUID, _, _ int) ([]models.Tournament, int64, error) {
+	return nil, 0, nil
+}
+func (m *mockTournamentRepo) GetOwned(_ context.Context, _, _ uuid.UUID) (*models.Tournament, error) {
+	return nil, nil
+}
+func (m *mockTournamentRepo) ApplyOverride(_ context.Context, _ uuid.UUID, _ string, _ uuid.UUID, _ string, _ func(*models.Tournament) (models.TournamentStatus, error)) (*models.TournamentStatusChange, error) {
+	return nil, nil
+}
+func (m *mockTournamentRepo) ListHistory(_ context.Context, _, _ uuid.UUID) (*repositories.TournamentStatusHistory, error) {
+	return nil, nil
+}
 
 type mockFormRepo struct {
 	form      *models.RegistrationForm

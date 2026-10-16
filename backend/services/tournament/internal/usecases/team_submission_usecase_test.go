@@ -11,7 +11,10 @@ import (
 	"time"
 )
 
-type submissionRepoStub struct{ applied string }
+type submissionRepoStub struct {
+	teamLobbyRepositoryStub
+	applied string
+}
 
 func (r *submissionRepoStub) Pending(context.Context) ([]models.TournamentTeam, error) {
 	return nil, nil

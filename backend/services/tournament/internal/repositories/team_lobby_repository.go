@@ -36,6 +36,8 @@ type TeamLobbyRepository interface {
 	Lock(ctx context.Context, teamID uuid.UUID) (*models.TournamentTeam, error)
 	RemoveMember(ctx context.Context, teamID, memberID uuid.UUID) (*models.TournamentTeam, error)
 	Disband(ctx context.Context, teamID uuid.UUID) error
+	Pending(ctx context.Context) ([]models.TournamentTeam, error)
+	ApplyPayment(ctx context.Context, team *models.TournamentTeam, paymentID uuid.UUID, status string) error
 }
 
 type teamLobbyRepository struct {
@@ -44,6 +46,13 @@ type teamLobbyRepository struct {
 
 func NewTeamLobbyRepository(db *gorm.DB) TeamLobbyRepository {
 	return &teamLobbyRepository{db: db}
+}
+
+// SubmissionRepository and NewTeamSubmissionRepository are aliases for backward compatibility.
+type SubmissionRepository = TeamLobbyRepository
+
+func NewTeamSubmissionRepository(db *gorm.DB) TeamLobbyRepository {
+	return NewTeamLobbyRepository(db)
 }
 
 func (r *teamLobbyRepository) FindTournamentByID(ctx context.Context, id uuid.UUID) (*models.Tournament, error) {
@@ -309,4 +318,29 @@ func accountHasActiveTournamentTeam(tx *gorm.DB, tournamentID, accountID uuid.UU
 		return ErrAlreadyInTournamentLobby
 	}
 	return nil
+}
+
+func (r *teamLobbyRepository) Pending(ctx context.Context) ([]models.TournamentTeam, error) {
+	var teams []models.TournamentTeam
+	err := r.db.WithContext(ctx).Where("status = ?", models.TournamentTeamStatusPaymentPending).Find(&teams).Error
+	return teams, err
+}
+
+func (r *teamLobbyRepository) ApplyPayment(ctx context.Context, team *models.TournamentTeam, paymentID uuid.UUID, status string) error {
+	updates := map[string]any{"payment_id": paymentID}
+	switch status {
+	case "PAID":
+		updates["status"] = models.TournamentTeamStatusLocked
+		updates["locked_at"] = time.Now().UTC()
+	case "EXPIRED", "CANCELLED":
+		updates["status"] = models.TournamentTeamStatusForming
+		updates["payment_attempt_id"] = nil
+		updates["payment_id"] = nil
+		updates["payment_payer_id"] = nil
+		updates["payment_expires_at"] = nil
+		updates["payment_amount_minor"] = 0
+	}
+	return r.db.WithContext(ctx).Model(&models.TournamentTeam{}).
+		Where("id = ? AND status = ? AND payment_attempt_id = ?", team.ID, models.TournamentTeamStatusPaymentPending, team.PaymentAttemptID).
+		Updates(updates).Error
 }

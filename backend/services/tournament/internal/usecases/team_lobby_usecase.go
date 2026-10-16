@@ -4,6 +4,7 @@ import (
 	"context"
 	cryptorand "crypto/rand"
 	"errors"
+	"log"
 	"math/big"
 	"regexp"
 	"strings"
@@ -15,11 +16,12 @@ import (
 )
 
 var (
-	ErrNotSoloTournament     = errors.New("this tournament is not configured for solo registration")
-	ErrRegistrationNotOpen   = errors.New("tournament registration is not open")
-	ErrInvalidTeamName       = errors.New("team name must be between 1 and 120 characters")
-	ErrLobbyAccessDenied     = errors.New("only the team captain can manage this lobby")
-	ErrInvalidInviteCode     = errors.New("invalid team invite code")
+	ErrNotSoloTournament   = errors.New("this tournament is not configured for solo registration")
+	ErrRegistrationNotOpen = errors.New("tournament registration is not open")
+	ErrInvalidTeamName     = errors.New("team name must be between 1 and 120 characters")
+	ErrLobbyAccessDenied   = errors.New("only the team captain can manage this lobby")
+	ErrInvalidInviteCode   = errors.New("invalid team invite code")
+	ErrPaymentUnavailable  = errors.New("payment status could not be verified; roster remains locked, please retry")
 )
 
 var inviteCodeRegex = regexp.MustCompile(`^[A-Z0-9]{6}$`)
@@ -28,11 +30,7 @@ func ValidateInviteCode(code string) bool {
 	return inviteCodeRegex.MatchString(code)
 }
 
-type TeamLobbyUseCase struct {
-	submission *TeamSubmissionUseCase
-	repo       TeamLobbyRepository
-	accountSvc ports.AccountService
-}
+type SubmissionRepository = TeamLobbyRepository
 
 type TeamLobbyRepository interface {
 	FindTournamentByID(ctx context.Context, id uuid.UUID) (*models.Tournament, error)
@@ -45,14 +43,53 @@ type TeamLobbyRepository interface {
 	Lock(ctx context.Context, teamID uuid.UUID) (*models.TournamentTeam, error)
 	RemoveMember(ctx context.Context, teamID, memberID uuid.UUID) (*models.TournamentTeam, error)
 	Disband(ctx context.Context, teamID uuid.UUID) error
+	Pending(ctx context.Context) ([]models.TournamentTeam, error)
+	ApplyPayment(ctx context.Context, team *models.TournamentTeam, paymentID uuid.UUID, status string) error
 }
 
-func NewTeamLobbyUseCase(repo TeamLobbyRepository, accountSvc ports.AccountService) *TeamLobbyUseCase {
-	return &TeamLobbyUseCase{repo: repo, accountSvc: accountSvc}
+type TeamMemberView struct {
+	Member      models.TournamentTeamMember
+	Handle      string
+	DisplayName string
+}
+
+func NewTeamMemberViews(members []models.TournamentTeamMember, accounts map[uuid.UUID]ports.AccountInfo) []TeamMemberView {
+	views := make([]TeamMemberView, 0, len(members))
+	for _, member := range members {
+		info := accounts[member.AccountID]
+		views = append(views, TeamMemberView{
+			Member:      member,
+			Handle:      info.Handle,
+			DisplayName: info.DisplayName,
+		})
+	}
+	return views
+}
+
+type TeamLobbyUseCase struct {
+	repo       TeamLobbyRepository
+	accountSvc ports.AccountService
+	payments   ports.PaymentService
+}
+
+func NewTeamLobbyUseCase(repo TeamLobbyRepository, accountSvc ports.AccountService, payments ...ports.PaymentService) *TeamLobbyUseCase {
+	var p ports.PaymentService
+	if len(payments) > 0 {
+		p = payments[0]
+	}
+	return &TeamLobbyUseCase{repo: repo, accountSvc: accountSvc, payments: p}
+}
+
+type TeamSubmissionUseCase = TeamLobbyUseCase
+
+func NewTeamSubmissionUseCase(repo TeamLobbyRepository, payments ports.PaymentService) *TeamSubmissionUseCase {
+	return &TeamLobbyUseCase{repo: repo, payments: payments}
 }
 
 func (u *TeamLobbyUseCase) WithSubmission(submission *TeamSubmissionUseCase) *TeamLobbyUseCase {
-	u.submission = submission
+	if submission != nil && submission.payments != nil {
+		u.payments = submission.payments
+	}
 	return u
 }
 
@@ -64,8 +101,8 @@ func (u *TeamLobbyUseCase) RefreshSubmission(ctx context.Context, teamID, accoun
 	if err != nil {
 		return nil, err
 	}
-	if u.submission != nil {
-		if err := u.submission.Reconcile(ctx, team); err != nil {
+	if u.payments != nil {
+		if err := u.Reconcile(ctx, team); err != nil {
 			return nil, err
 		}
 	}
@@ -189,8 +226,8 @@ func (u *TeamLobbyUseCase) RegisterSolo(ctx context.Context, tournamentID, accou
 		return nil, err
 	}
 
-	if u.submission != nil && locked.Status == models.TournamentTeamStatusPaymentPending {
-		if err := u.submission.Reconcile(ctx, locked); err != nil {
+	if u.payments != nil && locked.Status == models.TournamentTeamStatusPaymentPending {
+		if err := u.Reconcile(ctx, locked); err != nil {
 			return nil, err
 		}
 		locked, err = u.repo.FindByID(ctx, created.ID)
@@ -344,4 +381,64 @@ func generateInviteCode() (string, error) {
 		code[index] = alphabet[randomIndex.Int64()]
 	}
 	return string(code), nil
+}
+
+func (u *TeamLobbyUseCase) Reconcile(ctx context.Context, team *models.TournamentTeam) error {
+	if team.Status != models.TournamentTeamStatusPaymentPending {
+		return nil
+	}
+	if u.payments == nil {
+		return nil
+	}
+	if team.PaymentAttemptID == nil || team.PaymentPayerID == nil || team.PaymentExpiresAt == nil {
+		return ErrPaymentUnavailable
+	}
+	request := ports.RegistrationPaymentRequest{
+		PayerAccountID: *team.PaymentPayerID, Source: "TEAM_REGISTRATION",
+		Reference: team.ID.String() + ":" + team.PaymentAttemptID.String(), IdempotencyKey: team.PaymentAttemptID.String(),
+		Description: "Team registration " + team.ID.String(), AmountMinor: team.PaymentAmountMinor, Currency: "THB", ExpiresAt: *team.PaymentExpiresAt,
+	}
+	payment, err := u.payments.EnsureInvoice(ctx, request)
+	if err != nil {
+		return ErrPaymentUnavailable
+	}
+	if payment.ID == uuid.Nil || payment.PayerAccountID != request.PayerAccountID || payment.Source != request.Source || payment.Reference != request.Reference || payment.AmountMinor != request.AmountMinor || payment.Currency != request.Currency || !payment.ExpiresAt.Equal(request.ExpiresAt) {
+		return ErrPaymentUnavailable
+	}
+	if team.PaymentID != nil && *team.PaymentID != payment.ID {
+		return ErrPaymentUnavailable
+	}
+	switch payment.Status {
+	case "UNPAID", "PAID", "EXPIRED", "CANCELLED":
+		return u.repo.ApplyPayment(ctx, team, payment.ID, payment.Status)
+	default:
+		return ErrPaymentUnavailable
+	}
+}
+
+// Durable attempts are recovered even if the captain closes the checkout or a
+// service restarts between payment confirmation and application submission.
+func (u *TeamLobbyUseCase) Run(ctx context.Context) {
+	ticker := time.NewTicker(10 * time.Second)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			teams, err := u.repo.Pending(ctx)
+			if err != nil {
+				log.Printf("list pending team submissions: %v", err)
+				continue
+			}
+			for i := range teams {
+				if ctx.Err() != nil {
+					return
+				}
+				if err := u.Reconcile(ctx, &teams[i]); err != nil {
+					log.Printf("reconcile team %s: %v", teams[i].ID, err)
+				}
+			}
+		}
+	}
 }

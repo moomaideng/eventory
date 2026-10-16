@@ -16,6 +16,7 @@ import (
 // mutate callback against a fixed current status so transition rules can be
 // exercised without Postgres, and records what the use case tried to persist.
 type statusRepositoryStub struct {
+	mockTournamentRepository
 	current models.TournamentStatus
 	err     error
 

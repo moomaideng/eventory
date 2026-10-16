@@ -14,6 +14,7 @@ import (
 )
 
 type tournamentRepoStub struct {
+	mockTournamentRepository
 	tournaments map[uuid.UUID]*models.Tournament
 }
 

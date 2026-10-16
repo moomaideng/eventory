@@ -10,6 +10,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/moomaideng/eventory/services/tournament/models"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 var ErrTournamentNotFound = errors.New("tournament not found")
@@ -31,6 +32,13 @@ type TournamentSearchItem struct {
 	RegisteredCount int64
 }
 
+// TournamentStatusHistory pairs a tournament's current status with its override
+// trail so the modal can render both from a single request.
+type TournamentStatusHistory struct {
+	CurrentStatus models.TournamentStatus
+	Changes       []models.TournamentStatusChange
+}
+
 type TournamentRepository interface {
 	Search(ctx context.Context, filters TournamentFilters) ([]TournamentSearchItem, int64, error)
 	GetPublishedByID(ctx context.Context, id uuid.UUID) (*models.Tournament, error)
@@ -38,6 +46,29 @@ type TournamentRepository interface {
 	Create(ctx context.Context, tournament *models.Tournament, funding *models.TournamentFunding) error
 	Update(ctx context.Context, tournament *models.Tournament) error
 	GetActiveTeamCount(ctx context.Context, tournamentID uuid.UUID) (acceptedCount int64, lockedOrAcceptedCount int64, err error)
+	ListOwned(ctx context.Context, organizerID uuid.UUID, page, pageSize int) ([]models.Tournament, int64, error)
+	GetOwned(ctx context.Context, organizerID, tournamentID uuid.UUID) (*models.Tournament, error)
+	ApplyOverride(
+		ctx context.Context,
+		accountID uuid.UUID,
+		actorDisplayName string,
+		tournamentID uuid.UUID,
+		reason string,
+		mutate func(current *models.Tournament) (models.TournamentStatus, error),
+	) (*models.TournamentStatusChange, error)
+	ListHistory(ctx context.Context, accountID, tournamentID uuid.UUID) (*TournamentStatusHistory, error)
+}
+
+type OrganizerDashboardRepository = TournamentRepository
+
+func NewOrganizerDashboardRepository(db *gorm.DB) OrganizerDashboardRepository {
+	return NewTournamentRepository(db)
+}
+
+type TournamentStatusRepository = TournamentRepository
+
+func NewTournamentStatusRepository(db *gorm.DB) TournamentStatusRepository {
+	return NewTournamentRepository(db)
 }
 
 type tournamentRepositoryImpl struct {
@@ -248,4 +279,127 @@ func escapeLikePattern(value string) string {
 // shown as the organizer is deterministic.
 func orderedStaff(db *gorm.DB) *gorm.DB {
 	return db.Order("tournament_staff.created_at ASC, tournament_staff.account_id ASC")
+}
+
+func (r *tournamentRepositoryImpl) staffOf(ctx context.Context, accountID uuid.UUID) *gorm.DB {
+	return r.db.WithContext(ctx).Model(&models.Tournament{}).
+		Joins("JOIN tournament_staff ON tournament_staff.tournament_id = tournaments.id").
+		Where("tournament_staff.account_id = ?", accountID)
+}
+
+func (r *tournamentRepositoryImpl) ListOwned(ctx context.Context, accountID uuid.UUID, page, pageSize int) ([]models.Tournament, int64, error) {
+	var total int64
+	if err := r.staffOf(ctx, accountID).Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+	tournaments := make([]models.Tournament, 0)
+	err := r.staffOf(ctx, accountID).
+		Preload("Staff", orderedStaff).Preload("Teams.Members").Preload("Funding").
+		Order("tournaments.start_at DESC, tournaments.id ASC").
+		Limit(pageSize).Offset((page - 1) * pageSize).Find(&tournaments).Error
+	return tournaments, total, err
+}
+
+func (r *tournamentRepositoryImpl) GetOwned(ctx context.Context, accountID, tournamentID uuid.UUID) (*models.Tournament, error) {
+	var tournament models.Tournament
+	err := r.staffOf(ctx, accountID).
+		Where("tournaments.id = ?", tournamentID).
+		Preload("Staff", orderedStaff).Preload("Funding").
+		Preload("Teams", func(db *gorm.DB) *gorm.DB { return db.Order("created_at DESC, id ASC") }).
+		Preload("Teams.Members", func(db *gorm.DB) *gorm.DB { return db.Order("joined_at ASC, id ASC") }).
+		First(&tournament).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, ErrTournamentNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &tournament, nil
+}
+
+// ownedTournaments scopes queries to tournaments where the user is an owner or admin.
+func ownedTournaments(tx *gorm.DB, accountID uuid.UUID) *gorm.DB {
+	return tx.Model(&models.Tournament{}).
+		Joins("JOIN tournament_staff ON tournament_staff.tournament_id = tournaments.id").
+		Where("tournament_staff.account_id = ? AND tournament_staff.role IN ?", accountID, []models.TournamentStaffRole{models.TournamentStaffRoleOwner, models.TournamentStaffRoleAdmin})
+}
+
+func (r *tournamentRepositoryImpl) ApplyOverride(
+	ctx context.Context,
+	accountID uuid.UUID,
+	actorDisplayName string,
+	tournamentID uuid.UUID,
+	reason string,
+	mutate func(current *models.Tournament) (models.TournamentStatus, error),
+) (*models.TournamentStatusChange, error) {
+	var change models.TournamentStatusChange
+
+	err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		var tournament models.Tournament
+
+		// Lock the row for the rest of the transaction so two concurrent
+		// overrides cannot both read the same FromStatus and clobber each
+		// other.
+		err := ownedTournaments(tx, accountID).
+			Clauses(clause.Locking{Strength: "UPDATE", Table: clause.Table{Name: "tournaments"}}).
+			Where("id = ?", tournamentID).
+			First(&tournament).Error
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return ErrTournamentNotFound
+		}
+		if err != nil {
+			return err
+		}
+
+		to, err := mutate(&tournament)
+		if err != nil {
+			return err
+		}
+
+		from := tournament.Status
+		if err := tx.Model(&tournament).Update("status", to).Error; err != nil {
+			return err
+		}
+
+		change = models.TournamentStatusChange{
+			TournamentID:     tournament.ID,
+			FromStatus:       from,
+			ToStatus:         to,
+			Reason:           reason,
+			ActorAccountID:   accountID,
+			ActorDisplayName: actorDisplayName,
+		}
+		return tx.Create(&change).Error
+	})
+	if err != nil {
+		return nil, err
+	}
+	return &change, nil
+}
+
+func (r *tournamentRepositoryImpl) ListHistory(
+	ctx context.Context,
+	accountID, tournamentID uuid.UUID,
+) (*TournamentStatusHistory, error) {
+	var tournament models.Tournament
+	err := ownedTournaments(r.db.WithContext(ctx), accountID).
+		Select("id", "status").
+		Where("id = ?", tournamentID).
+		First(&tournament).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, ErrTournamentNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	changes := make([]models.TournamentStatusChange, 0)
+	err = r.db.WithContext(ctx).
+		Where("tournament_id = ?", tournamentID).
+		Order("created_at DESC, id ASC").
+		Find(&changes).Error
+	if err != nil {
+		return nil, err
+	}
+	return &TournamentStatusHistory{CurrentStatus: tournament.Status, Changes: changes}, nil
 }

@@ -47,11 +47,15 @@ func NewAppWithAccountConn(db *gorm.DB, mongoDB *mongo.Database, cfg config.Conf
 
 func newApp(db *gorm.DB, mongoDB *mongo.Database, cfg config.Config, accountSvc ports.AccountService) *App {
 	payments := paymenthttp.New(cfg.PaymentURL, cfg.PaymentServiceKey)
-	submission := usecases.NewTeamSubmissionUseCase(repositories.NewTeamSubmissionRepository(db), payments)
-	return &App{HTTP: newHTTPRouter(db, mongoDB, cfg, accountSvc, submission), RunSubmissions: func(ctx context.Context) { submission.Run(ctx) }}
+	teamLobbyRepo := repositories.NewTeamLobbyRepository(db)
+	teamLobbyUseCase := usecases.NewTeamLobbyUseCase(teamLobbyRepo, accountSvc, payments)
+	return &App{
+		HTTP:           newHTTPRouter(db, mongoDB, cfg, accountSvc, teamLobbyUseCase),
+		RunSubmissions: func(ctx context.Context) { teamLobbyUseCase.Run(ctx) },
+	}
 }
 
-func newHTTPRouter(db *gorm.DB, mongoDB *mongo.Database, cfg config.Config, accountSvc ports.AccountService, submission *usecases.TeamSubmissionUseCase) http.Handler {
+func newHTTPRouter(db *gorm.DB, mongoDB *mongo.Database, cfg config.Config, accountSvc ports.AccountService, teamLobbyUseCase *usecases.TeamLobbyUseCase) http.Handler {
 	router := chi.NewMux()
 	router.Use(middlewares.RequestID)
 	router.Use(middlewares.AccessLog(cfg.Logging.SlowRequestMS))
@@ -107,15 +111,9 @@ func newHTTPRouter(db *gorm.DB, mongoDB *mongo.Database, cfg config.Config, acco
 	})
 
 	tournamentRepo := repositories.NewTournamentRepository(db)
-	teamLobbyRepo := repositories.NewTeamLobbyRepository(db)
-	organizerDashboardRepo := repositories.NewOrganizerDashboardRepository(db)
-	tournamentStatusRepo := repositories.NewTournamentStatusRepository(db)
 	tournamentStaffRepo := repositories.NewTournamentStaffRepository(db)
 
 	tournamentUseCase := usecases.NewTournamentUseCase(tournamentRepo, accountSvc)
-	teamLobbyUseCase := usecases.NewTeamLobbyUseCase(teamLobbyRepo, accountSvc).WithSubmission(submission)
-	dashboardUseCase := usecases.NewOrganizerDashboardUseCase(organizerDashboardRepo, accountSvc)
-	statusUseCase := usecases.NewTournamentStatusUseCase(tournamentStatusRepo, accountSvc)
 	staffUseCase := usecases.NewTournamentStaffUseCase(tournamentStaffRepo, accountSvc)
 
 	authMiddleware := middlewares.NewAuthMiddleware(api, cfg.SupabaseURL, cfg.Environment)
@@ -127,8 +125,8 @@ func newHTTPRouter(db *gorm.DB, mongoDB *mongo.Database, cfg config.Config, acco
 	resthandlers.RegisterTournamentRoutes(api, auth, organizer, tournamentUseCase)
 	resthandlers.RegisterTeamLobbyRoutes(api, auth, teamLobbyUseCase)
 	resthandlers.RegisterTournamentStaffRoutes(api, auth, staffUseCase)
-	resthandlers.RegisterOrganizerDashboardRoutes(api, auth, dashboardUseCase)
-	resthandlers.RegisterTournamentStatusRoutes(api, auth, organizer, statusUseCase)
+	resthandlers.RegisterOrganizerDashboardRoutes(api, auth, tournamentUseCase)
+	resthandlers.RegisterTournamentStatusRoutes(api, auth, organizer, tournamentUseCase)
 
 	if mongoDB != nil {
 		formRepo := repositories.NewRegistrationFormRepository(mongoDB)

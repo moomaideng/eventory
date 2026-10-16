@@ -59,6 +59,12 @@ func (s *teamLobbyRepositoryStub) RemoveMember(_ context.Context, _ uuid.UUID, _
 	return s.team, nil
 }
 func (s *teamLobbyRepositoryStub) Disband(_ context.Context, _ uuid.UUID) error { return nil }
+func (s *teamLobbyRepositoryStub) Pending(_ context.Context) ([]models.TournamentTeam, error) {
+	return nil, nil
+}
+func (s *teamLobbyRepositoryStub) ApplyPayment(_ context.Context, _ *models.TournamentTeam, _ uuid.UUID, _ string) error {
+	return nil
+}
 
 func TestCreateTeamLobby_InitializesCaptainAndInvite(t *testing.T) {
 	tournamentID := uuid.New()
