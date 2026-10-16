@@ -60,7 +60,7 @@ export function TeamSubmissionResult({ payment }: { payment: Payment }) {
             Retry verification
           </Button>
         )}
-        {team && team.inviteCode && (
+        {team && (
           <Link className="underline" href={`/lobbies/${team.inviteCode}`}>
             Return to team lobby
           </Link>

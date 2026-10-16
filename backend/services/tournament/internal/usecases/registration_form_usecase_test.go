@@ -2,7 +2,6 @@ package usecases_test
 
 import (
 	"context"
-	"errors"
 	"testing"
 
 	"github.com/google/uuid"
@@ -10,10 +9,11 @@ import (
 	"github.com/moomaideng/eventory/services/tournament/internal/repositories"
 	"github.com/moomaideng/eventory/services/tournament/internal/usecases"
 	"github.com/moomaideng/eventory/services/tournament/models"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 type tournamentRepoStub struct {
-	mockTournamentRepository
 	tournaments map[uuid.UUID]*models.Tournament
 }
 
@@ -119,23 +119,17 @@ func TestRegistrationFormUseCase_SaveForm(t *testing.T) {
 
 	t.Run("tournament not found", func(t *testing.T) {
 		_, err := uc.SaveForm(ctx, organizerID, uuid.New(), "Title", "Desc", nil)
-		if !errors.Is(err, usecases.ErrTournamentNotFound) {
-			t.Fatalf("expected ErrTournamentNotFound, got %v", err)
-		}
+		assert.ErrorIs(t, err, usecases.ErrTournamentNotFound)
 	})
 
 	t.Run("forbidden not owner", func(t *testing.T) {
 		_, err := uc.SaveForm(ctx, otherOrganizerID, tournamentID, "Title", "Desc", nil)
-		if !errors.Is(err, usecases.ErrNotTournamentOwner) {
-			t.Fatalf("expected ErrNotTournamentOwner, got %v", err)
-		}
+		assert.ErrorIs(t, err, usecases.ErrNotTournamentOwner)
 	})
 
 	t.Run("empty title", func(t *testing.T) {
 		_, err := uc.SaveForm(ctx, organizerID, tournamentID, "   ", "Desc", nil)
-		if !errors.Is(err, usecases.ErrInvalidFormTitle) {
-			t.Fatalf("expected ErrInvalidFormTitle, got %v", err)
-		}
+		assert.ErrorIs(t, err, usecases.ErrInvalidFormTitle)
 	})
 
 	t.Run("duplicate field IDs", func(t *testing.T) {
@@ -144,9 +138,7 @@ func TestRegistrationFormUseCase_SaveForm(t *testing.T) {
 			{ID: "f1", Label: "Field 2", Type: models.FieldTypeShortText},
 		}
 		_, err := uc.SaveForm(ctx, organizerID, tournamentID, "Title", "Desc", fields)
-		if !errors.Is(err, usecases.ErrDuplicateFieldID) {
-			t.Fatalf("expected ErrDuplicateFieldID, got %v", err)
-		}
+		assert.ErrorIs(t, err, usecases.ErrDuplicateFieldID)
 	})
 
 	t.Run("invalid field config", func(t *testing.T) {
@@ -154,9 +146,7 @@ func TestRegistrationFormUseCase_SaveForm(t *testing.T) {
 			{ID: "f1", Label: "Dropdown", Type: models.FieldTypeSelectOne}, // missing options
 		}
 		_, err := uc.SaveForm(ctx, organizerID, tournamentID, "Title", "Desc", fields)
-		if !errors.Is(err, forms.ErrInvalidFieldConfig) {
-			t.Fatalf("expected ErrInvalidFieldConfig, got %v", err)
-		}
+		assert.ErrorIs(t, err, forms.ErrInvalidFieldConfig)
 	})
 
 	t.Run("success save", func(t *testing.T) {
@@ -180,15 +170,9 @@ func TestRegistrationFormUseCase_SaveForm(t *testing.T) {
 			},
 		}
 		form, err := uc.SaveForm(ctx, organizerID, tournamentID, "Player Reg Form", "Rules", fields)
-		if err != nil {
-			t.Fatalf("SaveForm() error = %v", err)
-		}
-		if form.Title != "Player Reg Form" {
-			t.Fatalf("form title = %q, want %q", form.Title, "Player Reg Form")
-		}
-		if len(form.Fields) != 2 {
-			t.Fatalf("form fields count = %d, want 2", len(form.Fields))
-		}
+		require.NoError(t, err)
+		assert.Equal(t, "Player Reg Form", form.Title)
+		assert.Len(t, form.Fields, 2)
 	})
 }
 
@@ -217,18 +201,14 @@ func TestRegistrationFormUseCase_SubmitResponse(t *testing.T) {
 		{ID: "ign", Label: "In-game Name", Type: models.FieldTypeShortText, Required: true},
 		{ID: "age", Label: "Age", Type: models.FieldTypeNumber, Required: false},
 	})
-	if err != nil {
-		t.Fatalf("SaveForm() error = %v", err)
-	}
+	require.NoError(t, err)
 
 	t.Run("unrecognized field", func(t *testing.T) {
 		answers := []models.FieldAnswer{
 			{FieldID: "unknown", Value: "something"},
 		}
 		_, err := uc.SubmitResponse(ctx, accountID, tournamentID, answers)
-		if !errors.Is(err, usecases.ErrUnrecognizedField) {
-			t.Fatalf("expected ErrUnrecognizedField, got %v", err)
-		}
+		assert.ErrorIs(t, err, usecases.ErrUnrecognizedField)
 	})
 
 	t.Run("duplicate answer for field", func(t *testing.T) {
@@ -237,9 +217,7 @@ func TestRegistrationFormUseCase_SubmitResponse(t *testing.T) {
 			{FieldID: "ign", Value: "Player2"},
 		}
 		_, err := uc.SubmitResponse(ctx, accountID, tournamentID, answers)
-		if !errors.Is(err, usecases.ErrDuplicateFieldAnswer) {
-			t.Fatalf("expected ErrDuplicateFieldAnswer, got %v", err)
-		}
+		assert.ErrorIs(t, err, usecases.ErrDuplicateFieldAnswer)
 	})
 
 	t.Run("missing required field", func(t *testing.T) {
@@ -247,9 +225,7 @@ func TestRegistrationFormUseCase_SubmitResponse(t *testing.T) {
 			{FieldID: "age", Value: 20},
 		}
 		_, err := uc.SubmitResponse(ctx, accountID, tournamentID, answers)
-		if !errors.Is(err, forms.ErrFieldRequired) {
-			t.Fatalf("expected ErrFieldRequired, got %v", err)
-		}
+		assert.ErrorIs(t, err, forms.ErrFieldRequired)
 	})
 
 	t.Run("successful submission", func(t *testing.T) {
@@ -258,18 +234,10 @@ func TestRegistrationFormUseCase_SubmitResponse(t *testing.T) {
 			{FieldID: "age", Value: 28},
 		}
 		resp, err := uc.SubmitResponse(ctx, accountID, tournamentID, answers)
-		if err != nil {
-			t.Fatalf("SubmitResponse() error = %v", err)
-		}
-		if resp.TournamentID != tournamentID {
-			t.Fatalf("tournamentID = %v, want %v", resp.TournamentID, tournamentID)
-		}
-		if resp.AccountID != accountID {
-			t.Fatalf("accountID = %v, want %v", resp.AccountID, accountID)
-		}
-		if len(resp.Answers) != 2 {
-			t.Fatalf("answers count = %d, want 2", len(resp.Answers))
-		}
+		require.NoError(t, err)
+		assert.Equal(t, tournamentID, resp.TournamentID)
+		assert.Equal(t, accountID, resp.AccountID)
+		assert.Len(t, resp.Answers, 2)
 	})
 
 	t.Run("duplicate submission", func(t *testing.T) {
@@ -277,8 +245,6 @@ func TestRegistrationFormUseCase_SubmitResponse(t *testing.T) {
 			{FieldID: "ign", Value: "Faker"},
 		}
 		_, err := uc.SubmitResponse(ctx, accountID, tournamentID, answers)
-		if !errors.Is(err, usecases.ErrResponseAlreadyExists) {
-			t.Fatalf("expected ErrResponseAlreadyExists, got %v", err)
-		}
+		assert.ErrorIs(t, err, usecases.ErrResponseAlreadyExists)
 	})
 }

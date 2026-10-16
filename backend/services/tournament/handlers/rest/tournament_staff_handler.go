@@ -71,19 +71,14 @@ type RemoveStaffInput struct {
 	AccountID    uuid.UUID `path:"accountId" doc:"Staff member account ID to remove"`
 }
 
-func RegisterTournamentStaffRoutes(
-	api huma.API,
-	auth func(huma.Context, func(huma.Context)),
-	staffUseCase *usecases.TournamentStaffUseCase,
-) {
+func RegisterTournamentStaffRoutes(api huma.API, staffUseCase *usecases.TournamentStaffUseCase) {
 	huma.Register(api, huma.Operation{
 		OperationID: "invite-tournament-staff",
 		Method:      http.MethodPost,
-		Path:        "/api/v1/tournaments/{id}/staff",
+		Path:        "/tournaments/{id}/staff",
 		Summary:     "Invite a tournament staff member",
 		Description: "Invites an active user by their handle and assigns them an ADMIN or REFEREE role.",
 		Tags:        []string{"Tournament Staff"},
-		Middlewares: huma.Middlewares{auth},
 		Security:    []map[string][]string{{"bearer": {}}},
 	}, func(ctx context.Context, input *InviteStaffInput) (*CreateTournamentStaffOutput, error) {
 		callerID, err := authenticatedAccountID(ctx)
@@ -111,11 +106,10 @@ func RegisterTournamentStaffRoutes(
 	huma.Register(api, huma.Operation{
 		OperationID: "list-tournament-staff",
 		Method:      http.MethodGet,
-		Path:        "/api/v1/tournaments/{id}/staff",
+		Path:        "/tournaments/{id}/staff",
 		Summary:     "List tournament staff",
 		Description: "Lists all staff members (owner, admins, referees) assigned to a tournament.",
 		Tags:        []string{"Tournament Staff"},
-		Middlewares: huma.Middlewares{auth},
 		Security:    []map[string][]string{{"bearer": {}}},
 	}, func(ctx context.Context, input *ListStaffInput) (*TournamentStaffListOutput, error) {
 		callerID, err := authenticatedAccountID(ctx)
@@ -141,11 +135,10 @@ func RegisterTournamentStaffRoutes(
 	huma.Register(api, huma.Operation{
 		OperationID: "update-tournament-staff-role",
 		Method:      http.MethodPatch,
-		Path:        "/api/v1/tournaments/{id}/staff/{accountId}",
+		Path:        "/tournaments/{id}/staff/{accountId}",
 		Summary:     "Update staff member role",
 		Description: "Updates an existing staff member's role between ADMIN and REFEREE.",
 		Tags:        []string{"Tournament Staff"},
-		Middlewares: huma.Middlewares{auth},
 		Security:    []map[string][]string{{"bearer": {}}},
 	}, func(ctx context.Context, input *UpdateStaffRoleInput) (*TournamentStaffOutput, error) {
 		callerID, err := authenticatedAccountID(ctx)
@@ -172,11 +165,10 @@ func RegisterTournamentStaffRoutes(
 	huma.Register(api, huma.Operation{
 		OperationID: "remove-tournament-staff",
 		Method:      http.MethodDelete,
-		Path:        "/api/v1/tournaments/{id}/staff/{accountId}",
+		Path:        "/tournaments/{id}/staff/{accountId}",
 		Summary:     "Remove tournament staff member",
 		Description: "Removes an assigned staff member from the tournament.",
 		Tags:        []string{"Tournament Staff"},
-		Middlewares: huma.Middlewares{auth},
 		Security:    []map[string][]string{{"bearer": {}}},
 	}, func(ctx context.Context, input *RemoveStaffInput) (*EmptyTournamentStaffOutput, error) {
 		callerID, err := authenticatedAccountID(ctx)

@@ -180,15 +180,13 @@ export function TeamLobbyWorkspace({ inviteCode }: { inviteCode: string }) {
         />
 
         <div className="flex flex-col gap-6">
-          {lobby.inviteCode && lobby.status === "FORMING" ? (
-            <LobbyInviteCard
-              lobby={lobby}
-              pendingAction={pendingAction}
-              copied={copied}
-              onCopyInvite={copyInvite}
-              onRegenerateInvite={regenerateInvite}
-            />
-          ) : null}
+          <LobbyInviteCard
+            lobby={lobby}
+            pendingAction={pendingAction}
+            copied={copied}
+            onCopyInvite={copyInvite}
+            onRegenerateInvite={regenerateInvite}
+          />
 
           <LobbyDetailsCard
             lobby={lobby}

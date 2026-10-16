@@ -156,12 +156,11 @@ func (s *discoveryScenario) catalog(names string, total int) error {
 func (s *discoveryScenario) teams(name string) error {
 	tournament := s.tournaments[name]
 	for _, status := range []models.TournamentTeamStatus{models.TournamentTeamStatusAccepted, models.TournamentTeamStatusForming, models.TournamentTeamStatusLocked, models.TournamentTeamStatusRejected} {
-		inviteCode := fmt.Sprintf("INV%03d", len(s.privateValues))
-		team := models.TournamentTeam{ID: uuid.New(), TournamentID: tournament.ID, Name: string(status) + " Team", Status: status, InviteCode: &inviteCode}
+		team := models.TournamentTeam{ID: uuid.New(), TournamentID: tournament.ID, Name: string(status) + " Team", Status: status, InviteCode: uuid.NewString()[:32]}
 		if err := s.app.DB.Create(&team).Error; err != nil {
 			return err
 		}
-		s.privateValues = append(s.privateValues, *team.InviteCode)
+		s.privateValues = append(s.privateValues, team.InviteCode)
 		if status == models.TournamentTeamStatusAccepted {
 			s.acceptedID = team.ID
 		}

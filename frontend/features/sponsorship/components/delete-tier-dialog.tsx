@@ -16,8 +16,10 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Spinner } from "@/components/ui/spinner";
-import { type SponsorshipTier } from "@/features/sponsorship/utils";
-import { getErrorMessage } from "@/features/tournament-staff/utils";
+import {
+  getErrorMessage,
+  type SponsorshipTier,
+} from "@/features/sponsorship/utils";
 
 export function DeleteTierDialog({
   tournamentId,

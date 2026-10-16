@@ -136,7 +136,8 @@ func registrationFormHTTPError(err error) error {
 
 func RegisterRegistrationFormRoutes(
 	api huma.API,
-	auth, organizer func(huma.Context, func(huma.Context)),
+	authGroup huma.API,
+	organizerTournamentGroup huma.API,
 	formUseCase *usecases.RegistrationFormUseCase,
 ) {
 	huma.Register(api, huma.Operation{
@@ -154,14 +155,13 @@ func RegisterRegistrationFormRoutes(
 		return &GetRegistrationFormOutput{Body: toRegistrationFormResponse(form)}, nil
 	})
 
-	huma.Register(api, huma.Operation{
+	huma.Register(organizerTournamentGroup, huma.Operation{
 		OperationID: "save-registration-form",
 		Method:      http.MethodPut,
-		Path:        "/api/v1/tournaments/{tournamentId}/form",
+		Path:        "/{tournamentId}/form",
 		Summary:     "Create or update tournament registration form",
 		Description: "Configures or updates custom registration form fields. Only the organizing owner can perform this action.",
 		Tags:        []string{"Registration Forms"},
-		Middlewares: huma.Middlewares{auth, organizer},
 		Security:    []map[string][]string{{"bearer": {}}},
 	}, func(ctx context.Context, input *SaveRegistrationFormInput) (*SaveRegistrationFormOutput, error) {
 		profile, err := middlewares.GetOrganizerProfile(ctx)
@@ -183,14 +183,13 @@ func RegisterRegistrationFormRoutes(
 		return &SaveRegistrationFormOutput{Body: toRegistrationFormResponse(form)}, nil
 	})
 
-	huma.Register(api, huma.Operation{
+	huma.Register(authGroup, huma.Operation{
 		OperationID: "submit-form-response",
 		Method:      http.MethodPost,
-		Path:        "/api/v1/tournaments/{tournamentId}/form/responses",
+		Path:        "/tournaments/{tournamentId}/form/responses",
 		Summary:     "Submit answers for tournament registration form",
 		Description: "Submits answers for a tournament registration form. One submission per participant.",
 		Tags:        []string{"Registration Forms"},
-		Middlewares: huma.Middlewares{auth},
 		Security:    []map[string][]string{{"bearer": {}}},
 	}, func(ctx context.Context, input *SubmitFormResponseInput) (*SubmitFormResponseOutput, error) {
 		accountID, err := authenticatedAccountID(ctx)
@@ -208,14 +207,13 @@ func RegisterRegistrationFormRoutes(
 		}, nil
 	})
 
-	huma.Register(api, huma.Operation{
+	huma.Register(authGroup, huma.Operation{
 		OperationID: "get-my-form-response",
 		Method:      http.MethodGet,
-		Path:        "/api/v1/tournaments/{tournamentId}/form/responses/me",
+		Path:        "/tournaments/{tournamentId}/form/responses/me",
 		Summary:     "Get current user's submitted answers for a tournament",
 		Description: "Returns the authenticated participant's submitted answers for this tournament.",
 		Tags:        []string{"Registration Forms"},
-		Middlewares: huma.Middlewares{auth},
 		Security:    []map[string][]string{{"bearer": {}}},
 	}, func(ctx context.Context, input *GetMyFormResponseInput) (*GetMyFormResponseOutput, error) {
 		accountID, err := authenticatedAccountID(ctx)
@@ -230,14 +228,13 @@ func RegisterRegistrationFormRoutes(
 		return &GetMyFormResponseOutput{Body: toFormResponseItem(resp)}, nil
 	})
 
-	huma.Register(api, huma.Operation{
+	huma.Register(organizerTournamentGroup, huma.Operation{
 		OperationID: "list-form-responses",
 		Method:      http.MethodGet,
-		Path:        "/api/v1/tournaments/{tournamentId}/form/responses",
+		Path:        "/{tournamentId}/form/responses",
 		Summary:     "List all submitted responses for tournament",
 		Description: "Lists all participant responses for the tournament. Only the organizing owner can perform this action.",
 		Tags:        []string{"Registration Forms"},
-		Middlewares: huma.Middlewares{auth, organizer},
 		Security:    []map[string][]string{{"bearer": {}}},
 	}, func(ctx context.Context, input *ListFormResponsesInput) (*ListFormResponsesOutput, error) {
 		profile, err := middlewares.GetOrganizerProfile(ctx)
