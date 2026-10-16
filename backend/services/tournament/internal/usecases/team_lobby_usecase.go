@@ -12,6 +12,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/moomaideng/eventory/services/tournament/internal/ports"
+	"github.com/moomaideng/eventory/services/tournament/internal/repositories"
 	"github.com/moomaideng/eventory/services/tournament/models"
 )
 
@@ -28,21 +29,6 @@ var inviteCodeRegex = regexp.MustCompile(`^[A-Z0-9]{6}$`)
 
 func ValidateInviteCode(code string) bool {
 	return inviteCodeRegex.MatchString(code)
-}
-
-type TeamLobbyRepository interface {
-	FindTournamentByID(ctx context.Context, id uuid.UUID) (*models.Tournament, error)
-	FindByID(ctx context.Context, id uuid.UUID) (*models.TournamentTeam, error)
-	FindByInviteCode(ctx context.Context, inviteCode string) (*models.TournamentTeam, error)
-	FindActiveByTournamentAndAccount(ctx context.Context, tournamentID, accountID uuid.UUID) (*models.TournamentTeam, error)
-	Create(ctx context.Context, team *models.TournamentTeam, captain *models.TournamentTeamMember) (*models.TournamentTeam, error)
-	Join(ctx context.Context, teamID, accountID uuid.UUID) (*models.TournamentTeam, error)
-	RegenerateInvite(ctx context.Context, teamID uuid.UUID, inviteCode string) (*models.TournamentTeam, error)
-	Lock(ctx context.Context, teamID uuid.UUID) (*models.TournamentTeam, error)
-	RemoveMember(ctx context.Context, teamID, memberID uuid.UUID) (*models.TournamentTeam, error)
-	Disband(ctx context.Context, teamID uuid.UUID) error
-	Pending(ctx context.Context) ([]models.TournamentTeam, error)
-	ApplyPayment(ctx context.Context, team *models.TournamentTeam, paymentID uuid.UUID, status string) error
 }
 
 type TeamMemberView struct {
@@ -65,12 +51,12 @@ func NewTeamMemberViews(members []models.TournamentTeamMember, accounts map[uuid
 }
 
 type TeamLobbyUseCase struct {
-	repo       TeamLobbyRepository
+	repo       repositories.TeamLobbyRepository
 	accountSvc ports.AccountService
 	payments   ports.PaymentService
 }
 
-func NewTeamLobbyUseCase(repo TeamLobbyRepository, accountSvc ports.AccountService, payments ...ports.PaymentService) *TeamLobbyUseCase {
+func NewTeamLobbyUseCase(repo repositories.TeamLobbyRepository, accountSvc ports.AccountService, payments ...ports.PaymentService) *TeamLobbyUseCase {
 	var p ports.PaymentService
 	if len(payments) > 0 {
 		p = payments[0]
