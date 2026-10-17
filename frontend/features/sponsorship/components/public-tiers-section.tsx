@@ -21,17 +21,21 @@ export function PublicTiersSection({
   currency,
   status,
   endsAt,
+  sponsorMode = false,
 }: {
   tournamentId: string;
   currency: string;
   status: string;
   endsAt: string;
+  sponsorMode?: boolean;
 }) {
   const { authorizationHeader, isLoading: authLoading } = useAuth();
   const router = useRouter();
   const [selected, setSelected] = useState<SponsorshipTier | null>(null);
   const [beforeEnd] = useState(() => Date.now() < Date.parse(endsAt));
-  const sponsor = useSponsorProfile({ enabled: Boolean(selected) });
+  const sponsor = useSponsorProfile({
+    enabled: sponsorMode && Boolean(selected),
+  });
   const profileFailed =
     Boolean(sponsor.error) &&
     !(
@@ -94,9 +98,11 @@ export function PublicTiersSection({
             Sponsorship packages
           </h2>
           <p className="text-muted-foreground text-sm">
-            {open
-              ? "Back this tournament and get your brand in front of players and fans."
-              : "Sponsorship checkout is closed for this tournament."}
+            {sponsorMode
+              ? open
+                ? "Back this tournament and get your brand in front of players and fans."
+                : "Sponsorship checkout is closed for this tournament."
+              : "Sponsorship packages offered by the organizer."}
           </p>
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
@@ -106,26 +112,28 @@ export function PublicTiersSection({
               tier={tier}
               currency={currency}
               footer={
-                <Button
-                  disabled={
-                    !open ||
-                    tier.availableSlots === 0 ||
-                    authLoading ||
-                    selected?.id === tier.id
-                  }
-                  onClick={() => choose(tier)}
-                >
-                  {tier.availableSlots === 0
-                    ? "Sold out"
-                    : selected?.id === tier.id
-                      ? "Opening…"
-                      : "Sponsor this tournament"}
-                </Button>
+                sponsorMode && (
+                  <Button
+                    disabled={
+                      !open ||
+                      tier.availableSlots === 0 ||
+                      authLoading ||
+                      selected?.id === tier.id
+                    }
+                    onClick={() => choose(tier)}
+                  >
+                    {tier.availableSlots === 0
+                      ? "Sold out"
+                      : selected?.id === tier.id
+                        ? "Opening…"
+                        : "Sponsor this tournament"}
+                  </Button>
+                )
               }
             />
           ))}
         </div>
-        {authorizationHeader && (
+        {sponsorMode && authorizationHeader && (
           <p className="text-muted-foreground text-sm">
             Already started checkout?{" "}
             <Link
@@ -137,7 +145,7 @@ export function PublicTiersSection({
             .
           </p>
         )}
-        {selected && !sponsor.isLoading && profileFailed && (
+        {sponsorMode && selected && !sponsor.isLoading && profileFailed && (
           <Alert variant="destructive">
             <AlertTitle>Unable to load sponsor profile</AlertTitle>
             <AlertDescription>
@@ -152,7 +160,7 @@ export function PublicTiersSection({
         )}
       </section>
       <PublicSponsorsSection tournamentId={tournamentId} />
-      {selected && sponsor.profile && (
+      {sponsorMode && selected && sponsor.profile && (
         <SponsorshipCheckoutDialog
           key={selected.id}
           tournamentId={tournamentId}
@@ -162,7 +170,7 @@ export function PublicTiersSection({
           onClose={() => setSelected(null)}
         />
       )}
-      {selected && sponsor.needsOnboarding && !profileFailed && (
+      {sponsorMode && selected && sponsor.needsOnboarding && !profileFailed && (
         <SponsorOnboardingModal open onCancel={() => setSelected(null)} />
       )}
     </>
