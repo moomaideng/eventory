@@ -14,8 +14,8 @@ import (
 )
 
 // Statuses are spelled out here on purpose rather than taken from the model
-// constants: team and solo applications must use the same ACCEPTED/REJECTED
-// spelling, and a literal makes a drift between them fail these scenarios.
+// constants: a literal makes a rename of the stored spelling fail these
+// scenarios instead of silently following the constant.
 const (
 	statusAccepted = "ACCEPTED"
 	statusRejected = "REJECTED"
@@ -26,8 +26,7 @@ type reviewScenarioContext struct {
 	reviewer       *apptest.TestUser // who sends the review request
 	owner          *apptest.TestUser // tournament owner, used to read the dashboard
 	tournament     *models.Tournament
-	team           *models.TournamentTeam   // the application under review, in a team tournament
-	solo           *models.SoloRegistration // the application under review, in a solo tournament
+	team           *models.TournamentTeam // the application under review
 	statusBefore   string
 	acceptedBefore int
 	resp           *apptest.Response
@@ -113,6 +112,20 @@ func (s *reviewScenarioContext) createTournamentIn(mode models.TournamentRegistr
 // seedTeam writes a team with the given status straight into the database, so
 // these scenarios test the review decision rather than the lobby/payment flow.
 func (s *reviewScenarioContext) seedTeam(status models.TournamentTeamStatus) (*models.TournamentTeam, error) {
+	inviteCode := uuid.NewString()[:6]
+	return s.seedTeamWithCode(status, &inviteCode)
+}
+
+// seedSoloTeam writes the one-person team a solo registration creates: same
+// table and statuses as any team, but without an invite code.
+func (s *reviewScenarioContext) seedSoloTeam(status models.TournamentTeamStatus) (*models.TournamentTeam, error) {
+	return s.seedTeamWithCode(status, nil)
+}
+
+func (s *reviewScenarioContext) seedTeamWithCode(
+	status models.TournamentTeamStatus,
+	inviteCode *string,
+) (*models.TournamentTeam, error) {
 	captain := apptest.NewTestUser()
 	if err := s.persistActiveAccount(captain); err != nil {
 		return nil, err
@@ -121,7 +134,7 @@ func (s *reviewScenarioContext) seedTeam(status models.TournamentTeamStatus) (*m
 		ID:           uuid.New(),
 		TournamentID: s.tournament.ID,
 		Name:         "Team " + uuid.NewString()[:8],
-		InviteCode:   uuid.NewString()[:8],
+		InviteCode:   inviteCode,
 		Status:       status,
 	}
 	if status != models.TournamentTeamStatusForming {
@@ -140,29 +153,6 @@ func (s *reviewScenarioContext) seedTeam(status models.TournamentTeamStatus) (*m
 		return nil, fmt.Errorf("create team captain: %w", err)
 	}
 	return &team, nil
-}
-
-// seedSolo writes a solo registration with the given status straight into the
-// database, for the same reason as seedTeam.
-func (s *reviewScenarioContext) seedSolo(status models.SoloRegistrationStatus) (*models.SoloRegistration, error) {
-	player := apptest.NewTestUser()
-	if err := s.persistActiveAccount(player); err != nil {
-		return nil, err
-	}
-	solo := models.SoloRegistration{
-		ID:           uuid.New(),
-		TournamentID: s.tournament.ID,
-		AccountID:    player.ID,
-		Status:       status,
-	}
-	if status != models.SoloPaymentPending {
-		registeredAt := time.Now().UTC()
-		solo.RegisteredAt = &registeredAt
-	}
-	if err := app.DB.Create(&solo).Error; err != nil {
-		return nil, fmt.Errorf("create %s solo registration: %w", status, err)
-	}
-	return &solo, nil
 }
 
 // makeReviewerAnotherOrganizer lets a stranger, who does not manage the
@@ -232,50 +222,10 @@ func (s *reviewScenarioContext) anOrganizerManagesASoloTournamentThatStillHasOpe
 	return s.createTournamentIn(models.TournamentRegistrationModeSolo, 8)
 }
 
-func (s *reviewScenarioContext) aSoloPlayerIsAwaitingApprovalForThatTournament() error {
-	solo, err := s.seedSolo(models.SoloAwaitingApproval)
-	s.solo = solo
+func (s *reviewScenarioContext) aSoloPlayerHasLockedTheirApplicationForThatTournament() error {
+	team, err := s.seedSoloTeam(models.TournamentTeamStatusLocked)
+	s.team = team
 	return err
-}
-
-func (s *reviewScenarioContext) aSoloPlayerApplicationHasAlreadyBeenAccepted() error {
-	solo, err := s.seedSolo(models.SoloAccepted)
-	s.solo = solo
-	return err
-}
-
-func (s *reviewScenarioContext) anOrganizerReviewsASoloApplicationWhere(situation string) error {
-	switch situation {
-	case "the tournament has already reached its capacity":
-		if err := s.createTournamentIn(models.TournamentRegistrationModeSolo, 1); err != nil {
-			return err
-		}
-		if _, err := s.seedSolo(models.SoloAccepted); err != nil {
-			return err
-		}
-		return s.aSoloPlayerIsAwaitingApprovalForThatTournament()
-	case "the player has not completed payment yet":
-		if err := s.createTournamentIn(models.TournamentRegistrationModeSolo, 8); err != nil {
-			return err
-		}
-		solo, err := s.seedSolo(models.SoloPaymentPending)
-		s.solo = solo
-		return err
-	case "the application has already been accepted":
-		if err := s.createTournamentIn(models.TournamentRegistrationModeSolo, 8); err != nil {
-			return err
-		}
-		return s.aSoloPlayerApplicationHasAlreadyBeenAccepted()
-	case "the tournament is managed by another organizer":
-		if err := s.createTournamentIn(models.TournamentRegistrationModeSolo, 8); err != nil {
-			return err
-		}
-		if err := s.aSoloPlayerIsAwaitingApprovalForThatTournament(); err != nil {
-			return err
-		}
-		return s.makeReviewerAnotherOrganizer()
-	}
-	return fmt.Errorf("unknown solo review situation %q", situation)
 }
 
 // anAdminHasBeenAddedToThatTournamentsStaff makes an ADMIN of the tournament
@@ -299,14 +249,6 @@ func (s *reviewScenarioContext) anAdminHasBeenAddedToThatTournamentsStaff() erro
 
 // ---- When steps ----
 
-// entryID is the application under review, whichever kind it is.
-func (s *reviewScenarioContext) entryID() uuid.UUID {
-	if s.solo != nil {
-		return s.solo.ID
-	}
-	return s.team.ID
-}
-
 // review sends the decision and snapshots the state beforehand so the Then
 // steps can compare against it.
 func (s *reviewScenarioContext) review(decision, reason string) error {
@@ -322,7 +264,7 @@ func (s *reviewScenarioContext) review(decision, reason string) error {
 	if reason != "" {
 		body["reason"] = reason
 	}
-	path := fmt.Sprintf("/tournaments/%s/entries/%s/review", s.tournament.ID, s.entryID())
+	path := fmt.Sprintf("/tournaments/%s/entries/%s/review", s.tournament.ID, s.team.ID)
 	s.resp, err = s.client.Do(http.MethodPost, path, body, s.reviewer.AuthHeaders())
 	return err
 }
@@ -348,13 +290,6 @@ func (s *reviewScenarioContext) theOrganizerRejectsTheApplication() error {
 // applicationStatus reads the current status of the application under review
 // straight from the database.
 func (s *reviewScenarioContext) applicationStatus() (string, error) {
-	if s.solo != nil {
-		var solo models.SoloRegistration
-		if err := app.DB.First(&solo, "id = ?", s.solo.ID).Error; err != nil {
-			return "", fmt.Errorf("load solo registration: %w", err)
-		}
-		return string(solo.Status), nil
-	}
 	var team models.TournamentTeam
 	if err := app.DB.First(&team, "id = ?", s.team.ID).Error; err != nil {
 		return "", fmt.Errorf("load team: %w", err)
@@ -467,8 +402,8 @@ func InitializeScenario(sc *godog.ScenarioContext) {
 
 	sc.Before(func(ctx context.Context, _ *godog.Scenario) (context.Context, error) {
 		*s = reviewScenarioContext{client: apptest.NewClient(app.TournamentBaseURL())}
-		// CASCADE also clears solo_registrations and the review audit tables,
-		// which all reference tournaments or the rows truncated here.
+		// CASCADE also clears the review audit table, which references the
+		// tournaments and teams truncated here.
 		cleanup := "TRUNCATE tournament_staff, tournament_team_members, tournament_fundings, tournament_status_changes, tournament_teams, tournaments, sponsor_profiles, organizer_profiles, accounts CASCADE"
 		if err := app.DB.Exec(cleanup).Error; err != nil {
 			return ctx, fmt.Errorf("clean scenario database: %w", err)
@@ -485,9 +420,7 @@ func InitializeScenario(sc *godog.ScenarioContext) {
 	sc.Step(`^a team application has already been accepted$`, s.aTeamApplicationHasAlreadyBeenAccepted)
 	sc.Step(`^an organizer reviews an application where (.+)$`, s.anOrganizerReviewsAnApplicationWhere)
 	sc.Step(`^an organizer manages a solo tournament that still has open spots$`, s.anOrganizerManagesASoloTournamentThatStillHasOpenSpots)
-	sc.Step(`^a solo player is awaiting approval for that tournament$`, s.aSoloPlayerIsAwaitingApprovalForThatTournament)
-	sc.Step(`^a solo player application has already been accepted$`, s.aSoloPlayerApplicationHasAlreadyBeenAccepted)
-	sc.Step(`^an organizer reviews a solo application where (.+)$`, s.anOrganizerReviewsASoloApplicationWhere)
+	sc.Step(`^a solo player has locked their application for that tournament$`, s.aSoloPlayerHasLockedTheirApplicationForThatTournament)
 	sc.Step(`^an admin has been added to that tournament's staff$`, s.anAdminHasBeenAddedToThatTournamentsStaff)
 
 	// When

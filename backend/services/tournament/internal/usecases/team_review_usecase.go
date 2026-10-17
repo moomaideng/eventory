@@ -41,22 +41,7 @@ var reviewableStages = []models.TournamentStatus{
 	models.TournamentStatusRegistrationClosed,
 }
 
-// Team and solo applications share one set of review rules. ACCEPTED and
-// REJECTED are spelled the same for both kinds; the "waiting for the
-// organizer" status is not: LOCKED for teams, AWAITING_APPROVAL for solo
-// players. The scenarios in tests/application_review cover both kinds, so a
-// spelling drift would be caught there.
-var (
-	statusAccepted         = string(models.TournamentTeamStatusAccepted)
-	statusRejected         = string(models.TournamentTeamStatusRejected)
-	awaitingReviewStatuses = []string{
-		string(models.TournamentTeamStatusLocked),
-		string(models.SoloAwaitingApproval),
-	}
-)
-
-// ReviewResult is what one decision looks like to callers, whichever kind of
-// application it was made on.
+// ReviewResult is what one decision looks like to callers.
 type ReviewResult struct {
 	ID                  uuid.UUID
 	TournamentID        uuid.UUID
@@ -69,29 +54,21 @@ type ReviewResult struct {
 	CreatedAt           time.Time
 }
 
-// TeamReviewUseCase reviews team applications and solo applications alike.
-// The name is historical: it was written for teams first.
+// TeamReviewUseCase reviews applications. Solo players register as
+// one-person teams, so one set of rules covers both kinds of application.
 type TeamReviewUseCase struct {
-	teamRepo   repositories.TeamReviewRepository
-	soloRepo   repositories.SoloReviewRepository
+	repo       repositories.TeamReviewRepository
 	accountSvc ports.AccountService
 }
 
 func NewTeamReviewUseCase(
-	teamRepo repositories.TeamReviewRepository,
-	soloRepo repositories.SoloReviewRepository,
+	repo repositories.TeamReviewRepository,
 	accountSvc ports.AccountService,
 ) *TeamReviewUseCase {
-	return &TeamReviewUseCase{teamRepo: teamRepo, soloRepo: soloRepo, accountSvc: accountSvc}
+	return &TeamReviewUseCase{repo: repo, accountSvc: accountSvc}
 }
 
-// Review accepts or rejects an application (a team's or a solo player's),
-// recording who decided and why.
-//
-// The entry is looked up as a team first and as a solo registration if no
-// team has that ID. It deliberately does not depend on the tournament's
-// registration mode, which an organizer can still change after solo players
-// have registered.
+// Review accepts or rejects an application, recording who decided and why.
 //
 // A decision can be switched later (ACCEPTED <-> REJECTED); every decision is
 // kept in the audit trail. A paid applicant who gets rejected is NOT refunded
@@ -104,12 +81,12 @@ func (u *TeamReviewUseCase) Review(
 	accountID, tournamentID, entryID uuid.UUID,
 	rawDecision, rawReason string,
 ) (*ReviewResult, error) {
-	var to string
+	var to models.TournamentTeamStatus
 	switch ReviewDecision(strings.ToUpper(strings.TrimSpace(rawDecision))) {
 	case ReviewDecisionAccept:
-		to = statusAccepted
+		to = models.TournamentTeamStatusAccepted
 	case ReviewDecisionReject:
-		to = statusRejected
+		to = models.TournamentTeamStatusRejected
 	default:
 		return nil, ErrUnknownReviewDecision
 	}
@@ -124,61 +101,45 @@ func (u *TeamReviewUseCase) Review(
 		return nil, err
 	}
 
-	teamReview, err := u.teamRepo.ApplyReview(ctx, accountID, reviewer.DisplayName, tournamentID, entryID, reason,
+	review, err := u.repo.ApplyReview(ctx, accountID, reviewer.DisplayName, tournamentID, entryID, reason,
 		func(tournament *models.Tournament, team *models.TournamentTeam, acceptedEntries int) (models.TournamentTeamStatus, error) {
-			if err := checkReview(tournament, string(team.Status), to, acceptedEntries); err != nil {
+			if err := checkReview(tournament, team.Status, to, acceptedEntries); err != nil {
 				return "", err
 			}
-			return models.TournamentTeamStatus(to), nil
-		})
-	if err == nil {
-		return &ReviewResult{
-			ID:                  teamReview.ID,
-			TournamentID:        teamReview.TournamentID,
-			EntryID:             teamReview.TournamentTeamID,
-			FromStatus:          string(teamReview.FromStatus),
-			ToStatus:            string(teamReview.ToStatus),
-			Reason:              teamReview.Reason,
-			ReviewerAccountID:   teamReview.ReviewerAccountID,
-			ReviewerDisplayName: teamReview.ReviewerDisplayName,
-			CreatedAt:           teamReview.CreatedAt,
-		}, nil
-	}
-	if !errors.Is(err, repositories.ErrTeamEntryNotFound) {
-		return nil, translateReviewError(err)
-	}
-
-	// No team has this ID in the tournament; it may be a solo registration.
-	soloReview, err := u.soloRepo.ApplyReview(ctx, accountID, reviewer.DisplayName, tournamentID, entryID, reason,
-		func(tournament *models.Tournament, solo *models.SoloRegistration, acceptedEntries int) (models.SoloRegistrationStatus, error) {
-			if err := checkReview(tournament, string(solo.Status), to, acceptedEntries); err != nil {
-				return "", err
-			}
-			return models.SoloRegistrationStatus(to), nil
+			return to, nil
 		})
 	if err != nil {
 		return nil, translateReviewError(err)
 	}
+
 	return &ReviewResult{
-		ID:                  soloReview.ID,
-		TournamentID:        soloReview.TournamentID,
-		EntryID:             soloReview.SoloRegistrationID,
-		FromStatus:          string(soloReview.FromStatus),
-		ToStatus:            string(soloReview.ToStatus),
-		Reason:              soloReview.Reason,
-		ReviewerAccountID:   soloReview.ReviewerAccountID,
-		ReviewerDisplayName: soloReview.ReviewerDisplayName,
-		CreatedAt:           soloReview.CreatedAt,
+		ID:                  review.ID,
+		TournamentID:        review.TournamentID,
+		EntryID:             review.TournamentTeamID,
+		FromStatus:          string(review.FromStatus),
+		ToStatus:            string(review.ToStatus),
+		Reason:              review.Reason,
+		ReviewerAccountID:   review.ReviewerAccountID,
+		ReviewerDisplayName: review.ReviewerDisplayName,
+		CreatedAt:           review.CreatedAt,
 	}, nil
 }
 
-// checkReview holds the decision rules shared by both kinds of application.
-// It runs inside the repository's transaction, while the rows are locked.
-func checkReview(tournament *models.Tournament, from, to string, acceptedEntries int) error {
+// checkReview holds the decision rules. It runs inside the repository's
+// transaction, while the rows are locked.
+func checkReview(
+	tournament *models.Tournament,
+	from, to models.TournamentTeamStatus,
+	acceptedEntries int,
+) error {
 	if !slices.Contains(reviewableStages, tournament.Status) {
 		return ErrReviewNotAllowedInStage
 	}
-	if !slices.Contains(awaitingReviewStatuses, from) && from != statusAccepted && from != statusRejected {
+	switch from {
+	case models.TournamentTeamStatusLocked,
+		models.TournamentTeamStatusAccepted,
+		models.TournamentTeamStatusRejected:
+	default:
 		return ErrApplicationNotReviewable
 	}
 	if from == to {
@@ -186,7 +147,7 @@ func checkReview(tournament *models.Tournament, from, to string, acceptedEntries
 	}
 	// acceptedEntries never includes this application here (its status differs
 	// from the target), so a full tournament has no spot left for it.
-	if to == statusAccepted && acceptedEntries >= tournament.Capacity {
+	if to == models.TournamentTeamStatusAccepted && acceptedEntries >= tournament.Capacity {
 		return ErrTournamentFull
 	}
 	return nil
@@ -196,8 +157,7 @@ func translateReviewError(err error) error {
 	switch {
 	case errors.Is(err, repositories.ErrTournamentNotFound):
 		return ErrTournamentNotFound
-	case errors.Is(err, repositories.ErrTeamEntryNotFound),
-		errors.Is(err, repositories.ErrSoloNotFound):
+	case errors.Is(err, repositories.ErrTeamEntryNotFound):
 		return ErrTeamEntryNotFound
 	}
 	return err

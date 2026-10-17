@@ -13,7 +13,7 @@ import (
 
 type TeamReviewInput struct {
 	TournamentID uuid.UUID `path:"id" doc:"Tournament ID"`
-	EntryID      uuid.UUID `path:"entryId" doc:"Application ID: a team's ID, or a solo registration's ID"`
+	EntryID      uuid.UUID `path:"entryId" doc:"Application ID: the team's ID (a solo player registers as a one-person team)"`
 	Body         struct {
 		Decision string `json:"decision" enum:"ACCEPT,REJECT" doc:"Accept or reject the application"`
 		Reason   string `json:"reason,omitempty" maxLength:"500" doc:"Optional justification, mainly for rejections; recorded in the audit trail"`
@@ -22,7 +22,7 @@ type TeamReviewInput struct {
 
 type TeamReviewResponse struct {
 	ID           uuid.UUID `json:"id"`
-	FromStatus   string    `json:"fromStatus" enum:"LOCKED,AWAITING_APPROVAL,ACCEPTED,REJECTED"`
+	FromStatus   string    `json:"fromStatus" enum:"LOCKED,ACCEPTED,REJECTED"`
 	ToStatus     string    `json:"toStatus" enum:"ACCEPTED,REJECTED"`
 	Reason       string    `json:"reason"`
 	ReviewerID   uuid.UUID `json:"reviewerId"`
@@ -39,18 +39,24 @@ type TeamReviewOutput struct {
 	}
 }
 
-func RegisterTeamReviewRoutes(api huma.API, reviews *usecases.TeamReviewUseCase) {
+func RegisterTeamReviewRoutes(
+	api huma.API,
+	auth func(huma.Context, func(huma.Context)),
+	reviews *usecases.TeamReviewUseCase,
+) {
 	huma.Register(api, huma.Operation{
 		OperationID:   "review-application",
 		Method:        http.MethodPost,
-		Path:          "/tournaments/{id}/entries/{entryId}/review",
+		Path:          "/api/v1/tournaments/{id}/entries/{entryId}/review",
 		DefaultStatus: http.StatusOK,
 		Summary:       "Accept or reject an application",
-		Description: "Records an organizer's decision on a team or solo application " +
-			"that is waiting for review, enforcing the tournament's capacity. " +
+		Description: "Records an organizer's decision on a team application " +
+			"that is waiting for review (a solo player is a one-person team), " +
+			"enforcing the tournament's capacity. " +
 			"A decision may be switched later; every decision is kept in the audit trail.",
-		Tags:     []string{"Organizer dashboard"},
-		Security: []map[string][]string{{"bearer": {}}},
+		Tags:        []string{"Organizer dashboard"},
+		Middlewares: huma.Middlewares{auth},
+		Security:    []map[string][]string{{"bearer": {}}},
 	}, func(ctx context.Context, input *TeamReviewInput) (*TeamReviewOutput, error) {
 		accountID, err := authenticatedAccountID(ctx)
 		if err != nil {

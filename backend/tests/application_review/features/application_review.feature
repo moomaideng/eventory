@@ -64,46 +64,16 @@ Feature: Organizer application review
   # =========================================================================
   # 3. SOLO APPLICATIONS
   # =========================================================================
-  # A solo player's application waits for the organizer in AWAITING_APPROVAL,
-  # the solo counterpart of a team's LOCKED status. The same rules apply.
+  # A solo player registers as a one-person team, so their application is
+  # reviewed by the same rules as any team. One scenario guards that.
 
   @US3-6 @valid @solo
-  Scenario: Approve a solo player who is awaiting approval
+  Scenario: Approve a solo player's locked application
     Given an organizer manages a solo tournament that still has open spots
-    And a solo player is awaiting approval for that tournament
+    And a solo player has locked their application for that tournament
     When the organizer approves the application
     Then the application should be accepted
     And the accepted count on the dashboard should increase
-
-  @US3-6 @valid @solo
-  Scenario: Reject a solo player with a reason
-    Given an organizer manages a solo tournament that still has open spots
-    And a solo player is awaiting approval for that tournament
-    When the organizer rejects the application with a reason
-    Then the application should be rejected
-    And the accepted count on the dashboard should stay the same
-
-  @US3-6 @valid @solo
-  Scenario: Change an accepted solo player to rejected
-    Given an organizer manages a solo tournament that still has open spots
-    And a solo player application has already been accepted
-    When the organizer rejects the application
-    Then the application should be rejected
-    And the accepted count on the dashboard should decrease
-
-  @US3-6 @invalid @solo
-  Scenario Outline: Block a solo approval that cannot be applied
-    Given an organizer reviews a solo application where <situation>
-    When the organizer approves the application
-    Then the approval should be blocked
-    And the application should keep its previous status
-
-    Examples:
-      | situation                                        |
-      | the tournament has already reached its capacity  |
-      | the player has not completed payment yet         |
-      | the application has already been accepted        |
-      | the tournament is managed by another organizer   |
 
   # =========================================================================
   # 4. REVIEWING AS AN ADMIN
