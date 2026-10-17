@@ -235,3 +235,24 @@ export function plannedEventDetailsSchema(fundingDeadline: string) {
       }
     });
 }
+
+export const registrationRulesSchema = z
+  .object({
+    registrationMode: z.enum(["SOLO", "TEAM"]),
+    minTeamSize: z.coerce.number().int().min(1),
+    maxTeamSize: z.coerce.number().int().min(1),
+    capacity: z.coerce.number().int().min(1, "Capacity must be at least 1."),
+    entryFee: z.coerce.number().int().min(0, "Entry fee cannot be negative."),
+  })
+  .superRefine((data, ctx) => {
+    if (
+      data.registrationMode === "TEAM" &&
+      data.maxTeamSize < data.minTeamSize
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Maximum team size must be at least minimum team size.",
+        path: ["maxTeamSize"],
+      });
+    }
+  });
