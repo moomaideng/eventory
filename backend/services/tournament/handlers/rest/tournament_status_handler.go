@@ -54,16 +54,21 @@ type TournamentStatusHistoryOutput struct {
 	}
 }
 
-func RegisterTournamentStatusRoutes(api huma.API, statuses *usecases.TournamentStatusUseCase) {
+func RegisterTournamentStatusRoutes(
+	api huma.API,
+	auth, organizer func(huma.Context, func(huma.Context)),
+	tournaments *usecases.TournamentUseCase,
+) {
 	huma.Register(api, huma.Operation{
 		OperationID: "override-tournament-status",
 		Method:      http.MethodPatch,
-		Path:        "/tournaments/{id}/status",
+		Path:        "/api/v1/tournaments/{id}/status",
 		Summary:     "Override a tournament's status",
 		Description: "Manually moves an owned tournament to another lifecycle status, " +
 			"recording the previous status, the reason, the acting account, and a timestamp.",
-		Tags:     []string{"Organizer dashboard"},
-		Security: []map[string][]string{{"bearer": {}}},
+		Tags:        []string{"Organizer dashboard"},
+		Middlewares: huma.Middlewares{auth, organizer},
+		Security:    []map[string][]string{{"bearer": {}}},
 	}, func(ctx context.Context, input *OverrideTournamentStatusInput) (*OverrideTournamentStatusOutput, error) {
 		accountID, err := authenticatedAccountID(ctx)
 		if err != nil {
@@ -73,7 +78,7 @@ func RegisterTournamentStatusRoutes(api huma.API, statuses *usecases.TournamentS
 			return nil, tournamentStatusHTTPError(err)
 		}
 
-		result, err := statuses.Override(ctx, accountID, input.TournamentID, input.Body.Status, input.Body.Reason)
+		result, err := tournaments.Override(ctx, accountID, input.TournamentID, input.Body.Status, input.Body.Reason)
 		if err != nil {
 			return nil, tournamentStatusHTTPError(err)
 		}
@@ -88,10 +93,11 @@ func RegisterTournamentStatusRoutes(api huma.API, statuses *usecases.TournamentS
 	huma.Register(api, huma.Operation{
 		OperationID: "list-tournament-status-history",
 		Method:      http.MethodGet,
-		Path:        "/tournaments/{id}/status/history",
+		Path:        "/api/v1/tournaments/{id}/status/history",
 		Summary:     "List a tournament's status override history",
 		Description: "Returns the audit trail of manual status overrides for an owned tournament, newest first.",
 		Tags:        []string{"Organizer dashboard"},
+		Middlewares: huma.Middlewares{auth, organizer},
 		Security:    []map[string][]string{{"bearer": {}}},
 	}, func(ctx context.Context, input *TournamentStatusHistoryInput) (*TournamentStatusHistoryOutput, error) {
 		profile, err := middlewares.GetOrganizerProfile(ctx)
@@ -99,7 +105,7 @@ func RegisterTournamentStatusRoutes(api huma.API, statuses *usecases.TournamentS
 			return nil, tournamentStatusHTTPError(err)
 		}
 
-		detail, err := statuses.History(ctx, profile.AccountID, input.TournamentID)
+		detail, err := tournaments.History(ctx, profile.AccountID, input.TournamentID)
 		if err != nil {
 			return nil, tournamentStatusHTTPError(err)
 		}

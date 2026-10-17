@@ -3,12 +3,10 @@ package middlewares_test
 import (
 	"context"
 	"net/http"
-	"net/http/httptest"
 	"testing"
 
 	"github.com/danielgtaylor/huma/v2"
-	"github.com/danielgtaylor/huma/v2/adapters/humachi"
-	"github.com/go-chi/chi/v5"
+	"github.com/danielgtaylor/huma/v2/humatest"
 	"github.com/google/uuid"
 	sharedmiddlewares "github.com/moomaideng/eventory/internal/middlewares"
 	"github.com/moomaideng/eventory/services/tournament/internal/middlewares"
@@ -65,38 +63,48 @@ func TestOrganizerMiddleware_HTTPGuard(t *testing.T) {
 		accountID: {AccountID: accountID, OrganizerName: "Organizer One"},
 	}}
 
-	router := chi.NewMux()
-	api := humachi.New(router, huma.DefaultConfig("Test API", "1.0.0"))
+	_, api := humatest.New(t)
 	orgMiddleware := middlewares.NewOrganizerMiddleware(api, accountSvc)
-	group := huma.NewGroup(api, "/organizer-only")
-	group.UseMiddleware(func(ctx huma.Context, next func(huma.Context)) {
-		next(huma.WithContext(ctx, context.WithValue(ctx.Context(), sharedmiddlewares.UserSubContextKey, accountID.String())))
+
+	huma.Register(api, huma.Operation{
+		OperationID: "organizer-success",
+		Method:      http.MethodGet,
+		Path:        "/organizer-success",
+		Middlewares: huma.Middlewares{
+			func(ctx huma.Context, next func(huma.Context)) {
+				next(huma.WithContext(ctx, context.WithValue(ctx.Context(), sharedmiddlewares.UserSubContextKey, accountID.String())))
+			},
+			orgMiddleware.HumaMiddleware(),
+		},
+	}, func(ctx context.Context, input *struct{}) (*struct{}, error) {
+		return &struct{}{}, nil
 	})
-	group.UseMiddleware(orgMiddleware.HumaMiddleware())
-	huma.Register(group, huma.Operation{OperationID: "ok", Method: http.MethodGet, Path: ""},
-		func(ctx context.Context, input *struct{}) (*struct{}, error) { return &struct{}{}, nil })
 
-	req := httptest.NewRequest(http.MethodGet, "/organizer-only", nil)
-	rec := httptest.NewRecorder()
-	router.ServeHTTP(rec, req)
-	if rec.Code < 200 || rec.Code >= 300 {
-		t.Fatalf("expected 2xx for organizer, got %d", rec.Code)
-	}
-
-	missingRouter := chi.NewMux()
-	missingAPI := humachi.New(missingRouter, huma.DefaultConfig("Test API", "1.0.0"))
-	missingGroup := huma.NewGroup(missingAPI, "/organizer-only")
-	missingGroup.UseMiddleware(func(ctx huma.Context, next func(huma.Context)) {
-		next(huma.WithContext(ctx, context.WithValue(ctx.Context(), sharedmiddlewares.UserSubContextKey, uuid.New().String())))
+	huma.Register(api, huma.Operation{
+		OperationID: "organizer-forbidden",
+		Method:      http.MethodGet,
+		Path:        "/organizer-forbidden",
+		Middlewares: huma.Middlewares{
+			func(ctx huma.Context, next func(huma.Context)) {
+				next(huma.WithContext(ctx, context.WithValue(ctx.Context(), sharedmiddlewares.UserSubContextKey, uuid.New().String())))
+			},
+			orgMiddleware.HumaMiddleware(),
+		},
+	}, func(ctx context.Context, input *struct{}) (*struct{}, error) {
+		return &struct{}{}, nil
 	})
-	missingGroup.UseMiddleware(middlewares.NewOrganizerMiddleware(missingAPI, accountSvc).HumaMiddleware())
-	huma.Register(missingGroup, huma.Operation{OperationID: "missing", Method: http.MethodGet, Path: ""},
-		func(ctx context.Context, input *struct{}) (*struct{}, error) { return &struct{}{}, nil })
 
-	req = httptest.NewRequest(http.MethodGet, "/organizer-only", nil)
-	rec = httptest.NewRecorder()
-	missingRouter.ServeHTTP(rec, req)
-	if rec.Code != http.StatusForbidden {
-		t.Fatalf("expected 403 without organizer profile, got %d", rec.Code)
-	}
+	t.Run("authorized organizer profile allows access", func(t *testing.T) {
+		resp := api.Get("/organizer-success")
+		if resp.Code < 200 || resp.Code >= 300 {
+			t.Fatalf("expected 2xx for organizer, got %d", resp.Code)
+		}
+	})
+
+	t.Run("missing organizer profile returns forbidden", func(t *testing.T) {
+		resp := api.Get("/organizer-forbidden")
+		if resp.Code != http.StatusForbidden {
+			t.Fatalf("expected 403 without organizer profile, got %d", resp.Code)
+		}
+	})
 }

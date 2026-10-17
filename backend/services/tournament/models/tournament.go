@@ -71,6 +71,11 @@ type Tournament struct {
 	UpdatedAt            time.Time
 }
 
+// IsSolo reports whether this tournament is intended for solo participants.
+func (t *Tournament) IsSolo() bool {
+	return t.MinTeamSize == 1 && t.MaxTeamSize == 1
+}
+
 // StaffMember looks up a staff member by account ID in the tournament's preloaded staff list.
 func (t *Tournament) StaffMember(accountID uuid.UUID) (*TournamentStaff, bool) {
 	for i := range t.Staff {
@@ -98,7 +103,7 @@ type TournamentTeam struct {
 	TournamentID       uuid.UUID              `gorm:"type:uuid;not null;index;uniqueIndex:idx_tournament_team_name;index:idx_tournament_teams_status,priority:1"`
 	Tournament         Tournament             `gorm:"foreignKey:TournamentID;constraint:OnDelete:CASCADE;"`
 	Name               string                 `gorm:"type:varchar(120);not null;uniqueIndex:idx_tournament_team_name"`
-	InviteCode         string                 `gorm:"type:varchar(32);uniqueIndex"`
+	InviteCode         *string                `gorm:"type:varchar(6);uniqueIndex"`
 	Status             TournamentTeamStatus   `gorm:"type:varchar(16);not null;default:'FORMING';index:idx_tournament_teams_status,priority:2"`
 	Members            []TournamentTeamMember `gorm:"foreignKey:TournamentTeamID;constraint:OnDelete:CASCADE;"`
 	CreatedAt          time.Time

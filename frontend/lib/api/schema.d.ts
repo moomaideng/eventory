@@ -283,50 +283,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/tournaments/dummy": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * List Dummy Resources (MongoDB Example)
-         * @description Lists all dummy documents stored in MongoDB
-         */
-        get: operations["list-dummy-resources"];
-        put?: never;
-        /**
-         * Create Dummy Resource (MongoDB Example)
-         * @description Stores a dummy document in the secondary MongoDB database
-         */
-        post: operations["create-dummy-resource"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/tournaments/dummy/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get Dummy Resource (MongoDB Example)
-         * @description Retrieves a dummy document from MongoDB by its ID
-         */
-        get: operations["get-dummy-resource"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/tournaments/mine": {
         parameters: {
             query?: never;
@@ -355,6 +311,26 @@ export interface paths {
         get: operations["get-organizer-tournament-dashboard"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{id}/entries/{entryId}/review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Accept or reject an application
+         * @description Records an organizer's decision on a team application that is waiting for review (a solo player is a one-person team), enforcing the tournament's capacity. A decision may be switched later; every decision is kept in the audit trail.
+         */
+        post: operations["review-application"];
         delete?: never;
         options?: never;
         head?: never;
@@ -581,6 +557,94 @@ export interface paths {
         put?: never;
         post?: never;
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournamentId}/solo-register": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Register for a solo tournament
+         * @description Automatically creates and locks a 1-person team for a solo tournament, initiating payment if an entry fee is required.
+         */
+        post: operations["register-solo-tournament"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournamentId}/sponsorship-tiers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List a tournament's sponsorship tiers
+         * @description Returns the sponsorship packages of a published tournament in display order.
+         */
+        get: operations["list-sponsorship-tiers"];
+        put?: never;
+        /**
+         * Create a sponsorship tier
+         * @description Adds a sponsorship package to an owned tournament.
+         */
+        post: operations["create-sponsorship-tier"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournamentId}/sponsorship-tiers/manage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List sponsorship tiers for the owner
+         * @description Returns an owned tournament's sponsorship packages, including while it is unpublished.
+         */
+        get: operations["list-my-sponsorship-tiers"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournamentId}/sponsorship-tiers/{tierId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Update a sponsorship tier
+         * @description Replaces the details of a sponsorship package on an owned tournament.
+         */
+        put: operations["update-sponsorship-tier"];
+        post?: never;
+        /**
+         * Delete a sponsorship tier
+         * @description Removes a sponsorship package from an owned tournament.
+         */
+        delete: operations["delete-sponsorship-tier"];
         options?: never;
         head?: never;
         patch?: never;
@@ -840,18 +904,6 @@ export interface components {
             /** @description Sponsor company or organization name */
             sponsorName: string;
         };
-        CreateDummyRequest: {
-            /**
-             * Format: uri
-             * @description A URL to the JSON Schema for this object.
-             * @example https://example.com/schemas/CreateDummyRequest.json
-             */
-            readonly $schema?: string;
-            /** @description Optional content or notes */
-            content: string;
-            /** @description Title of the dummy resource */
-            title: string;
-        };
         CreateTeamLobbyRequest: {
             /**
              * Format: uri
@@ -921,30 +973,6 @@ export interface components {
              */
             startAt: string;
         };
-        DummyResponse: {
-            /**
-             * Format: uri
-             * @description A URL to the JSON Schema for this object.
-             * @example https://example.com/schemas/DummyResponse.json
-             */
-            readonly $schema?: string;
-            /** @description Dummy content */
-            content: string;
-            /**
-             * Format: date-time
-             * @description Created timestamp
-             */
-            createdAt: string;
-            /** @description MongoDB ObjectID hex string */
-            id: string;
-            /** @description Dummy title */
-            title: string;
-            /**
-             * Format: date-time
-             * @description Updated timestamp
-             */
-            updatedAt: string;
-        };
         FieldAnswer: {
             fieldId: string;
             value: unknown;
@@ -996,6 +1024,15 @@ export interface components {
             items: components["schemas"]["FormResponseItem"][] | null;
             /** Format: int64 */
             total: number;
+        };
+        ListSponsorshipTiersOutputBody: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/ListSponsorshipTiersOutputBody.json
+             */
+            readonly $schema?: string;
+            items: components["schemas"]["SponsorshipTierResponse"][] | null;
         };
         OrganizerDashboardEntry: {
             /** Format: date-time */
@@ -1120,6 +1157,62 @@ export interface components {
             /** @description Form title */
             title: string;
         };
+        SponsorshipTierBody: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/SponsorshipTierBody.json
+             */
+            readonly $schema?: string;
+            /** @description Tier name, e.g. Gold */
+            name: string;
+            /** @description What the sponsor receives */
+            perks: string[] | null;
+            /**
+             * Format: int64
+             * @description Price in whole currency units
+             */
+            price: number;
+            /**
+             * Format: int64
+             * @description How many sponsors can buy this tier
+             */
+            slots: number;
+            /**
+             * Format: int64
+             * @description Display order, lowest first
+             * @default 0
+             */
+            sortOrder: number;
+        };
+        SponsorshipTierResponse: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/SponsorshipTierResponse.json
+             */
+            readonly $schema?: string;
+            /** Format: date-time */
+            createdAt: string;
+            id: string;
+            name: string;
+            perks: string[] | null;
+            /**
+             * Format: int64
+             * @description Price in whole currency units
+             */
+            price: number;
+            /**
+             * Format: int64
+             * @description How many sponsors can buy this tier
+             */
+            slots: number;
+            /** Format: int64 */
+            sortOrder: number;
+            tournamentId: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
         SubmitFormResponseInputBody: {
             /**
              * Format: uri
@@ -1152,7 +1245,8 @@ export interface components {
             /** Format: date-time */
             createdAt: string;
             id: string;
-            inviteCode: string;
+            /** @description Six-character team invite code, or null if registration is closed/solo */
+            inviteCode?: string;
             members: components["schemas"]["TeamLobbyMemberResponse"][] | null;
             name: string;
             /** Format: date-time */
@@ -1163,6 +1257,46 @@ export interface components {
             tournament: components["schemas"]["TournamentResponse"];
             /** @enum {string} */
             viewerRole: "CAPTAIN" | "MEMBER" | "INVITEE";
+        };
+        TeamReviewInputBody: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/TeamReviewInputBody.json
+             */
+            readonly $schema?: string;
+            /**
+             * @description Accept or reject the application
+             * @enum {string}
+             */
+            decision: "ACCEPT" | "REJECT";
+            /** @description Optional justification, mainly for rejections; recorded in the audit trail */
+            reason?: string;
+        };
+        TeamReviewOutputBody: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/TeamReviewOutputBody.json
+             */
+            readonly $schema?: string;
+            entryId: string;
+            review: components["schemas"]["TeamReviewResponse"];
+            /** @enum {string} */
+            status: "ACCEPTED" | "REJECTED";
+            tournamentId: string;
+        };
+        TeamReviewResponse: {
+            /** Format: date-time */
+            createdAt: string;
+            /** @enum {string} */
+            fromStatus: "LOCKED" | "ACCEPTED" | "REJECTED";
+            id: string;
+            reason: string;
+            reviewerId: string;
+            reviewerName?: string;
+            /** @enum {string} */
+            toStatus: "ACCEPTED" | "REJECTED";
         };
         TournamentDetailsBody: {
             /**
@@ -2061,100 +2195,6 @@ export interface operations {
             };
         };
     };
-    "list-dummy-resources": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DummyResponse"][] | null;
-                };
-            };
-            /** @description Error */
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["ErrorModel"];
-                };
-            };
-        };
-    };
-    "create-dummy-resource": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["CreateDummyRequest"];
-            };
-        };
-        responses: {
-            /** @description Created */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DummyResponse"];
-                };
-            };
-            /** @description Error */
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["ErrorModel"];
-                };
-            };
-        };
-    };
-    "get-dummy-resource": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description Dummy resource ID */
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DummyResponse"];
-                };
-            };
-            /** @description Error */
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["ErrorModel"];
-                };
-            };
-        };
-    };
     "list-my-tournaments": {
         parameters: {
             query?: {
@@ -2205,6 +2245,44 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["OrganizerDashboardOutputBody"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "review-application": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Tournament ID */
+                id: string;
+                /** @description Application ID: the team's ID (a solo player registers as a one-person team) */
+                entryId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TeamReviewInputBody"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TeamReviewOutputBody"];
                 };
             };
             /** @description Error */
@@ -2716,6 +2794,208 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["TeamLobbyResponse"];
                 };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "register-solo-tournament": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Tournament UUID */
+                tournamentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TeamLobbyResponse"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "list-sponsorship-tiers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Tournament UUID */
+                tournamentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListSponsorshipTiersOutputBody"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "create-sponsorship-tier": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Tournament UUID */
+                tournamentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SponsorshipTierBody"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SponsorshipTierResponse"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "list-my-sponsorship-tiers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Tournament UUID */
+                tournamentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListSponsorshipTiersOutputBody"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "update-sponsorship-tier": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Tournament UUID */
+                tournamentId: string;
+                /** @description Sponsorship tier UUID */
+                tierId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SponsorshipTierBody"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SponsorshipTierResponse"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "delete-sponsorship-tier": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Tournament UUID */
+                tournamentId: string;
+                /** @description Sponsorship tier UUID */
+                tierId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Error */
             default: {

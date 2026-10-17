@@ -3,8 +3,10 @@ package usecases
 import (
 	"context"
 	"errors"
+	"slices"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/google/uuid"
 	"github.com/moomaideng/eventory/services/tournament/internal/ports"
@@ -27,6 +29,16 @@ var (
 	ErrTournamentCannotBeModified = errors.New("ongoing, completed, or cancelled tournaments cannot be modified")
 	ErrCapacityBelowAcceptedTeams = errors.New("capacity cannot be less than the number of accepted teams")
 	ErrRosterRulesLocked          = errors.New("team size and registration mode cannot be modified after teams have locked or been accepted")
+	ErrInvalidDashboardPage       = errors.New("invalid dashboard pagination")
+	ErrInvalidStatusTransition    = errors.New("this status change is not allowed")
+	ErrStatusUnchanged            = errors.New("tournament is already in that status")
+	ErrOverrideReasonRequired     = errors.New("a reason between 10 and 500 characters is required")
+	ErrUnknownStatus              = errors.New("unknown tournament status")
+)
+
+const (
+	overrideReasonMinLength = 10
+	overrideReasonMaxLength = 500
 )
 
 type CreateTournamentInput struct {
@@ -80,6 +92,50 @@ type TournamentSearchResult struct {
 	PageSize int
 }
 
+// TournamentView is the shared read model: persisted tournament + organizer display name.
+type TournamentView struct {
+	Tournament    models.Tournament
+	OrganizerName string
+}
+
+func NewTournamentView(tournament models.Tournament, organizerName string) TournamentView {
+	return TournamentView{
+		Tournament:    tournament,
+		OrganizerName: organizerName,
+	}
+}
+
+func NewTournamentViews(tournaments []models.Tournament, names map[uuid.UUID]string) []TournamentView {
+	views := make([]TournamentView, len(tournaments))
+	for i, tournament := range tournaments {
+		views[i] = NewTournamentView(tournament, names[tournament.ID])
+	}
+	return views
+}
+
+type TournamentFundingStats struct {
+	GoalAmount      int64
+	RaisedAmount    int64
+	RemainingAmount int64
+	SupporterCount  int
+	Percentage      float64
+}
+
+func NewFundingStats(funding *models.TournamentFunding) TournamentFundingStats {
+	stats := TournamentFundingStats{}
+	if funding == nil {
+		return stats
+	}
+	stats.GoalAmount = funding.GoalAmount
+	stats.RaisedAmount = funding.RaisedAmount
+	stats.SupporterCount = funding.SupporterCount
+	stats.RemainingAmount = max(stats.GoalAmount-stats.RaisedAmount, 0)
+	if stats.GoalAmount > 0 {
+		stats.Percentage = float64(stats.RaisedAmount) / float64(stats.GoalAmount) * 100
+	}
+	return stats
+}
+
 type TournamentSearchItem struct {
 	TournamentView
 	RegisteredCount int
@@ -89,6 +145,68 @@ type TournamentDetailsResult struct {
 	TournamentView
 	RegisteredCount int
 	Funding         TournamentFundingStats
+}
+
+type OrganizerDashboardMetrics struct {
+	TotalEntries          int
+	FormingEntries        int
+	LockedEntries         int
+	AcceptedEntries       int
+	RejectedEntries       int
+	ConfirmedParticipants int
+	AvailableSpots        int
+}
+
+// OrganizerTournamentSummary is the list-row read model. Tournament is the persisted
+// row with Teams and Funding cleared; those values live on Metrics and Funding.
+type OrganizerTournamentSummary struct {
+	Tournament    models.Tournament
+	OrganizerName string
+	Metrics       OrganizerDashboardMetrics
+	Funding       TournamentFundingStats
+}
+
+type OrganizerDashboardEntry struct {
+	ID        uuid.UUID
+	Name      string
+	Status    string
+	CreatedAt time.Time
+	Members   []TeamMemberView
+}
+
+func NewOrganizerDashboardEntry(team models.TournamentTeam, members []TeamMemberView) OrganizerDashboardEntry {
+	return OrganizerDashboardEntry{
+		ID: team.ID, Name: team.Name, Status: string(team.Status), CreatedAt: team.CreatedAt, Members: members,
+	}
+}
+
+// OrganizerDashboard is one owned tournament plus its enriched registrations.
+type OrganizerDashboard struct {
+	OrganizerTournamentSummary
+	Entries []OrganizerDashboardEntry
+}
+
+type OrganizerDashboardList struct {
+	Items    []OrganizerTournamentSummary
+	Total    int64
+	Page     int
+	PageSize int
+}
+
+type TournamentStatusOverride struct {
+	TournamentID uuid.UUID
+	FromStatus   models.TournamentStatus
+	ToStatus     models.TournamentStatus
+	Reason       string
+	Change       models.TournamentStatusChange
+}
+
+// TournamentStatusDetail describes where a tournament stands and where an
+// organizer may move it next.
+type TournamentStatusDetail struct {
+	CurrentStatus      models.TournamentStatus
+	AllowedTransitions []models.TournamentStatus
+	Changes            []models.TournamentStatusChange
 }
 
 type TournamentUseCase struct {
@@ -129,10 +247,10 @@ func (u *TournamentUseCase) Search(
 
 	status := models.TournamentStatus(strings.ToUpper(strings.TrimSpace(input.Status)))
 	validStatuses := map[models.TournamentStatus]bool{
-		"":                                      true,
-		models.TournamentStatusDraft:            true,
-		models.TournamentStatusCrowdfunding:     true,
-		models.TournamentStatusRegistrationOpen: true,
+		"":                                        true,
+		models.TournamentStatusDraft:              true,
+		models.TournamentStatusCrowdfunding:       true,
+		models.TournamentStatusRegistrationOpen:   true,
 		models.TournamentStatusRegistrationClosed: true,
 		models.TournamentStatusOngoing:            true,
 		models.TournamentStatusCompleted:          true,
@@ -214,6 +332,7 @@ func (u *TournamentUseCase) GetDetails(
 		}
 	}
 	tournament.Teams = acceptedTeams
+	registeredCount := len(acceptedTeams)
 
 	names, err := organizerNames(ctx, u.accountSvc, *tournament)
 	if err != nil {
@@ -222,7 +341,7 @@ func (u *TournamentUseCase) GetDetails(
 
 	return &TournamentDetailsResult{
 		TournamentView:  NewTournamentView(*tournament, names[tournament.ID]),
-		RegisteredCount: len(acceptedTeams),
+		RegisteredCount: registeredCount,
 		Funding:         NewFundingStats(tournament.Funding),
 	}, nil
 }
@@ -478,4 +597,193 @@ func parseCatalogDate(value string, endOfDay bool) (*time.Time, error) {
 		parsed = parsed.Add(24*time.Hour - time.Nanosecond)
 	}
 	return &parsed, nil
+}
+
+func (u *TournamentUseCase) List(ctx context.Context, organizerID uuid.UUID, page, pageSize int) (*OrganizerDashboardList, error) {
+	if page < 1 || pageSize < 1 || pageSize > 100 || page > 1000000 {
+		return nil, ErrInvalidDashboardPage
+	}
+	tournaments, total, err := u.tournamentRepo.ListOwned(ctx, organizerID, page, pageSize)
+	if err != nil {
+		return nil, err
+	}
+	names, err := organizerNames(ctx, u.accountSvc, tournaments...)
+	if err != nil {
+		return nil, err
+	}
+	items := make([]OrganizerTournamentSummary, 0, len(tournaments))
+	for _, tournament := range tournaments {
+		items = append(items, summarizeDashboard(tournament, names[tournament.ID]))
+	}
+	return &OrganizerDashboardList{Items: items, Total: total, Page: page, PageSize: pageSize}, nil
+}
+
+func (u *TournamentUseCase) Get(ctx context.Context, organizerID, tournamentID uuid.UUID) (*OrganizerDashboard, error) {
+	tournament, err := u.tournamentRepo.GetOwned(ctx, organizerID, tournamentID)
+	if errors.Is(err, repositories.ErrTournamentNotFound) {
+		return nil, ErrTournamentNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+	names, err := organizerNames(ctx, u.accountSvc, *tournament)
+	if err != nil {
+		return nil, err
+	}
+	summary := summarizeDashboard(*tournament, names[tournament.ID])
+
+	var allMembers []models.TournamentTeamMember
+	for _, team := range tournament.Teams {
+		allMembers = append(allMembers, team.Members...)
+	}
+	accounts, err := accountInfos(ctx, u.accountSvc, allMembers...)
+	if err != nil {
+		return nil, err
+	}
+	entries := make([]OrganizerDashboardEntry, 0, len(allMembers))
+	for _, team := range tournament.Teams {
+		if team.Status == models.TournamentTeamStatusForming || team.Status == models.TournamentTeamStatusPaymentPending {
+			continue
+		}
+		entries = append(entries, NewOrganizerDashboardEntry(team, NewTeamMemberViews(team.Members, accounts)))
+	}
+	return &OrganizerDashboard{OrganizerTournamentSummary: summary, Entries: entries}, nil
+}
+
+func summarizeDashboard(tournament models.Tournament, organizerName string) OrganizerTournamentSummary {
+	metrics := OrganizerDashboardMetrics{TotalEntries: len(tournament.Teams)}
+	participants := make(map[uuid.UUID]struct{})
+	for _, team := range tournament.Teams {
+		switch team.Status {
+		case models.TournamentTeamStatusForming, models.TournamentTeamStatusPaymentPending:
+			metrics.FormingEntries++
+		case models.TournamentTeamStatusLocked:
+			metrics.LockedEntries++
+		case models.TournamentTeamStatusAccepted:
+			metrics.AcceptedEntries++
+			for _, member := range team.Members {
+				participants[member.AccountID] = struct{}{}
+			}
+		case models.TournamentTeamStatusRejected:
+			metrics.RejectedEntries++
+		}
+	}
+	metrics.ConfirmedParticipants = len(participants)
+	metrics.AvailableSpots = max(tournament.Capacity-metrics.AcceptedEntries, 0)
+	tournament.Teams = nil
+	funding := tournament.Funding
+	tournament.Funding = nil
+	return OrganizerTournamentSummary{
+		Tournament:    tournament,
+		OrganizerName: organizerName,
+		Metrics:       metrics,
+		Funding:       NewFundingStats(funding),
+	}
+}
+
+// allowedTransitions maps each status to the statuses an organizer may manually
+// override it to.
+var allowedTransitions = map[models.TournamentStatus][]models.TournamentStatus{
+	models.TournamentStatusDraft: {
+		models.TournamentStatusRegistrationOpen,
+		models.TournamentStatusCancelled,
+	},
+	models.TournamentStatusCrowdfunding: {
+		models.TournamentStatusRegistrationOpen,
+		models.TournamentStatusCancelled,
+	},
+	models.TournamentStatusRegistrationOpen: {
+		models.TournamentStatusRegistrationClosed,
+		models.TournamentStatusOngoing, // skip ahead when registration is cut short
+		models.TournamentStatusCompleted,
+		models.TournamentStatusCancelled,
+	},
+	models.TournamentStatusRegistrationClosed: {
+		models.TournamentStatusRegistrationOpen, // reopen after a delay
+		models.TournamentStatusOngoing,
+		models.TournamentStatusCompleted,
+		models.TournamentStatusCancelled,
+	},
+	models.TournamentStatusOngoing: {
+		models.TournamentStatusRegistrationClosed, // started early by mistake
+		models.TournamentStatusCompleted,
+		models.TournamentStatusCancelled,
+	},
+	models.TournamentStatusCompleted: {}, // terminal
+	models.TournamentStatusCancelled: {}, // terminal
+}
+
+func (u *TournamentUseCase) Override(
+	ctx context.Context,
+	accountID, tournamentID uuid.UUID,
+	rawStatus, rawReason string,
+) (*TournamentStatusOverride, error) {
+	to := models.TournamentStatus(strings.ToUpper(strings.TrimSpace(rawStatus)))
+	if _, known := allowedTransitions[to]; !known {
+		return nil, ErrUnknownStatus
+	}
+
+	reason := strings.TrimSpace(rawReason)
+	if n := utf8.RuneCountInString(reason); n < overrideReasonMinLength || n > overrideReasonMaxLength {
+		return nil, ErrOverrideReasonRequired
+	}
+
+	actor, err := u.accountSvc.GetAccount(ctx, accountID)
+	if err != nil {
+		return nil, err
+	}
+	actorDisplayName := actor.DisplayName
+
+	var from models.TournamentStatus
+	change, err := u.tournamentRepo.ApplyOverride(ctx, accountID, actorDisplayName, tournamentID, reason,
+		func(current *models.Tournament) (models.TournamentStatus, error) {
+			from = current.Status
+			if current.Status == to {
+				return "", ErrStatusUnchanged
+			}
+			if !canTransition(current.Status, to) {
+				return "", ErrInvalidStatusTransition
+			}
+			return to, nil
+		})
+	if err != nil {
+		if errors.Is(err, repositories.ErrTournamentNotFound) {
+			return nil, ErrTournamentNotFound
+		}
+		return nil, err
+	}
+
+	return &TournamentStatusOverride{
+		TournamentID: tournamentID, FromStatus: from, ToStatus: to,
+		Reason: reason, Change: *change,
+	}, nil
+}
+
+func (u *TournamentUseCase) History(
+	ctx context.Context,
+	accountID, tournamentID uuid.UUID,
+) (*TournamentStatusDetail, error) {
+	history, err := u.tournamentRepo.ListHistory(ctx, accountID, tournamentID)
+	if err != nil {
+		if errors.Is(err, repositories.ErrTournamentNotFound) {
+			return nil, ErrTournamentNotFound
+		}
+		return nil, err
+	}
+	return &TournamentStatusDetail{
+		CurrentStatus:      history.CurrentStatus,
+		AllowedTransitions: AllowedTransitionsFrom(history.CurrentStatus),
+		Changes:            history.Changes,
+	}, nil
+}
+
+func canTransition(from, to models.TournamentStatus) bool {
+	return slices.Contains(allowedTransitions[from], to)
+}
+
+func AllowedTransitionsFrom(from models.TournamentStatus) []models.TournamentStatus {
+	allowed := allowedTransitions[from]
+	out := make([]models.TournamentStatus, len(allowed))
+	copy(out, allowed)
+	return out
 }

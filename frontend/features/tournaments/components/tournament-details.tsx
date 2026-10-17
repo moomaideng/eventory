@@ -2,6 +2,8 @@
 
 import React from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Users } from "lucide-react";
 import { $api } from "@/lib/api/client";
 import { useAuth } from "@/context/auth-context";
@@ -16,6 +18,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { PublicTiersSection } from "@/features/sponsorship";
 import { formatRegistrationType, formatTournamentStatus } from "../utils";
 import { TournamentAboutCard } from "./tournament-about-card";
 import { TournamentDetailsSkeleton } from "./tournament-details-skeleton";
@@ -23,6 +26,8 @@ import { TournamentFundingCard } from "./tournament-funding-card";
 import { TournamentRegisteredTeamsCard } from "./tournament-registered-teams-card";
 
 export function TournamentDetails({ tournamentId }: { tournamentId: string }) {
+  const router = useRouter();
+  const queryClient = useQueryClient();
   const { authorizationHeader } = useAuth();
   const { data, error, isLoading } = $api.useQuery(
     "get",
@@ -44,6 +49,10 @@ export function TournamentDetails({ tournamentId }: { tournamentId: string }) {
       retry: false,
       staleTime: 0,
     }
+  );
+  const soloRegisterMutation = $api.useMutation(
+    "post",
+    "/api/v1/tournaments/{tournamentId}/solo-register"
   );
 
   if (isLoading) return <TournamentDetailsSkeleton />;
@@ -79,11 +88,37 @@ export function TournamentDetails({ tournamentId }: { tournamentId: string }) {
   );
   const status = formatTournamentStatus(tournament.status);
   const registrationType = formatRegistrationType(tournament.registrationMode);
+  const isSolo = tournament.registrationMode === "SOLO";
   const canCreateTeam =
-    tournament.registrationMode === "TEAM" &&
+    !isSolo &&
     tournament.status === "REGISTRATION_OPEN" &&
     !isMyTeamLoading &&
     !myTeam;
+
+  const handleSoloRegister = async () => {
+    if (!authorizationHeader) {
+      router.push(`/login?redirect=/tournaments/${tournament.id}`);
+      return;
+    }
+    try {
+      const res = await soloRegisterMutation.mutateAsync({
+        params: { path: { tournamentId: tournament.id } },
+        headers: { Authorization: authorizationHeader },
+      });
+      if (res.paymentId) {
+        router.push(`/payments/${res.paymentId}/checkout`);
+      } else {
+        void queryClient.invalidateQueries({
+          queryKey: ["get", "/api/v1/tournaments/{tournamentId}"],
+        });
+        void queryClient.invalidateQueries({
+          queryKey: ["get", "/api/v1/tournaments/{tournamentId}/my-team"],
+        });
+      }
+    } catch {
+      // Handled by react-query state
+    }
+  };
 
   return (
     <main className="container mx-auto flex w-full max-w-7xl flex-1 flex-col gap-8 px-4 py-10 sm:px-8">
@@ -123,6 +158,49 @@ export function TournamentDetails({ tournamentId }: { tournamentId: string }) {
             Create a team
           </Button>
         ) : null}
+        {isSolo ? (
+          !authorizationHeader ? (
+            <Button
+              render={<Link href={`/login?redirect=/tournaments/${tournament.id}`} />}
+              nativeButton={false}
+              className="self-start"
+            >
+              Sign in to register
+            </Button>
+          ) : isMyTeamLoading ? (
+            <Button disabled className="self-start">
+              Checking eligibility
+            </Button>
+          ) : myTeam ? (
+            <Button disabled className="self-start">
+              {myTeam.status === "ACCEPTED"
+                ? "Already registered"
+                : myTeam.status === "PAYMENT_PENDING"
+                  ? "Payment pending"
+                  : myTeam.status === "REJECTED"
+                    ? "Application rejected"
+                    : "Registered"}
+            </Button>
+          ) : tournament.status !== "REGISTRATION_OPEN" ? (
+            <Button disabled className="self-start">
+              Registration closed
+            </Button>
+          ) : spotsLeft <= 0 ? (
+            <Button disabled className="self-start">
+              Tournament full
+            </Button>
+          ) : (
+            <Button
+              onClick={handleSoloRegister}
+              disabled={soloRegisterMutation.isPending}
+              className="self-start"
+            >
+              {soloRegisterMutation.isPending
+                ? "Registering..."
+                : "Register as an individual"}
+            </Button>
+          )
+        ) : null}
       </header>
 
       <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
@@ -132,6 +210,10 @@ export function TournamentDetails({ tournamentId }: { tournamentId: string }) {
             spotsLeft={spotsLeft}
             registrationType={registrationType}
           />
+          <PublicTiersSection
+            tournamentId={tournament.id}
+            currency={tournament.currency}
+          />
           <TournamentRegisteredTeamsCard teams={teams} />
         </div>
 
@@ -139,32 +221,38 @@ export function TournamentDetails({ tournamentId }: { tournamentId: string }) {
           {myTeam ? (
             <Card>
               <CardHeader>
-                <CardTitle>Your team</CardTitle>
+                <CardTitle>{isSolo ? "Your registration" : "Your team"}</CardTitle>
                 <CardDescription>
-                  Your registration team for this tournament.
+                  {isSolo
+                    ? "Your registration for this tournament."
+                    : "Your registration team for this tournament."}
                 </CardDescription>
               </CardHeader>
               <CardContent className="flex flex-col gap-3">
                 <div className="flex items-center justify-between gap-3">
                   <p className="font-medium">{myTeam.name}</p>
                   <Badge variant="outline" className="capitalize">
-                    {myTeam.status.toLowerCase()}
+                    {myTeam.status.toLowerCase().replace("_", " ")}
                   </Badge>
                 </div>
-                <p className="text-muted-foreground text-sm">
-                  {myTeam.members?.length ?? 0} of {tournament.maxTeamSize} players
-                </p>
+                {!isSolo && (
+                  <p className="text-muted-foreground text-sm">
+                    {myTeam.members?.length ?? 0} of {tournament.maxTeamSize} players
+                  </p>
+                )}
               </CardContent>
-              <CardFooter>
-                <Button
-                  render={<Link href={`/lobbies/${myTeam.inviteCode}`} />}
-                  nativeButton={false}
-                  className="w-full"
-                >
-                  <Users data-icon="inline-start" />
-                  Open team lobby
-                </Button>
-              </CardFooter>
+              {!isSolo && myTeam.inviteCode ? (
+                <CardFooter>
+                  <Button
+                    render={<Link href={`/lobbies/${myTeam.inviteCode}`} />}
+                    nativeButton={false}
+                    className="w-full"
+                  >
+                    <Users data-icon="inline-start" />
+                    Open team lobby
+                  </Button>
+                </CardFooter>
+              ) : null}
             </Card>
           ) : null}
 

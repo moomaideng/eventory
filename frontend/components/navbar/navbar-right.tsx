@@ -25,6 +25,7 @@ import {
   LogIn,
   Check,
   ReceiptText,
+  Settings,
 } from "lucide-react";
 
 const PERSONA_CONFIG: {
@@ -180,6 +181,10 @@ export function NavbarRight({
                 <DropdownMenuSeparator className="my-1.5" />
 
                 <DropdownMenuGroup>
+                  <DropdownMenuItem render={<Link href="/settings" />}>
+                    <Settings data-icon="inline-start" />
+                    Account settings
+                  </DropdownMenuItem>
                   <DropdownMenuItem render={<Link href="/payments" />}>
                     <ReceiptText data-icon="inline-start" />
                     My payments
