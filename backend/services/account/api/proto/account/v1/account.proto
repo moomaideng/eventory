@@ -16,6 +16,7 @@ message Account {
   string handle = 2;
   string display_name = 3;
   string status = 4;
+  string sponsor_name = 5;
 }
 
 message OrganizerProfile {

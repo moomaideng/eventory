@@ -187,14 +187,15 @@ func SeedTournaments(db *gorm.DB) error {
 		return err
 	}
 
+	// Totals start empty; only confirmed sponsorship pledges contribute funding.
 	funding := []models.TournamentFunding{
-		{ID: uuid.MustParse("55555555-0000-4000-8000-000000000001"), TournamentID: tournaments[0].ID, GoalAmount: 50000, RaisedAmount: 32500, SupporterCount: 24},
-		{ID: uuid.MustParse("55555555-0000-4000-8000-000000000002"), TournamentID: tournaments[1].ID, GoalAmount: 75000, RaisedAmount: 51000, SupporterCount: 31},
-		{ID: uuid.MustParse("55555555-0000-4000-8000-000000000003"), TournamentID: tournaments[2].ID, GoalAmount: 120000, RaisedAmount: 84000, SupporterCount: 47},
-		{ID: uuid.MustParse("55555555-0000-4000-8000-000000000004"), TournamentID: tournaments[3].ID, GoalAmount: 25000, RaisedAmount: 25000, SupporterCount: 19},
-		{ID: uuid.MustParse("55555555-0000-4000-8000-000000000005"), TournamentID: tournaments[4].ID, GoalAmount: 500000, RaisedAmount: 287500, SupporterCount: 83},
-		{ID: uuid.MustParse("55555555-0000-4000-8000-000000000006"), TournamentID: tournaments[5].ID, GoalAmount: 60000, RaisedAmount: 18000, SupporterCount: 12},
-		{ID: uuid.MustParse("55555555-0000-4000-8000-000000000007"), TournamentID: tournaments[6].ID, GoalAmount: 30000, RaisedAmount: 0, SupporterCount: 0},
+		{ID: uuid.MustParse("55555555-0000-4000-8000-000000000001"), TournamentID: tournaments[0].ID, GoalAmount: 50000},
+		{ID: uuid.MustParse("55555555-0000-4000-8000-000000000002"), TournamentID: tournaments[1].ID, GoalAmount: 75000},
+		{ID: uuid.MustParse("55555555-0000-4000-8000-000000000003"), TournamentID: tournaments[2].ID, GoalAmount: 120000},
+		{ID: uuid.MustParse("55555555-0000-4000-8000-000000000004"), TournamentID: tournaments[3].ID, GoalAmount: 25000},
+		{ID: uuid.MustParse("55555555-0000-4000-8000-000000000005"), TournamentID: tournaments[4].ID, GoalAmount: 500000},
+		{ID: uuid.MustParse("55555555-0000-4000-8000-000000000006"), TournamentID: tournaments[5].ID, GoalAmount: 60000},
+		{ID: uuid.MustParse("55555555-0000-4000-8000-000000000007"), TournamentID: tournaments[6].ID, GoalAmount: 30000},
 	}
 
 	if err := db.Clauses(clause.OnConflict{

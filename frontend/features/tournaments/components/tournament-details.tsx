@@ -23,7 +23,14 @@ import { TournamentDetailsSkeleton } from "./tournament-details-skeleton";
 import { TournamentFundingCard } from "./tournament-funding-card";
 import { TournamentRegisteredTeamsCard } from "./tournament-registered-teams-card";
 
-export function TournamentDetails({ tournamentId }: { tournamentId: string }) {
+export function TournamentDetails({
+  tournamentId,
+  sponsorMode = false,
+}: {
+  tournamentId: string;
+  sponsorMode?: boolean;
+}) {
+  const catalogPath = sponsorMode ? "/sponsor/tournaments" : "/tournaments";
   const { authorizationHeader } = useAuth();
   const { data, error, isLoading } = $api.useQuery(
     "get",
@@ -41,7 +48,7 @@ export function TournamentDetails({ tournamentId }: { tournamentId: string }) {
         : {},
     },
     {
-      enabled: Boolean(authorizationHeader),
+      enabled: Boolean(authorizationHeader) && !sponsorMode,
       retry: false,
       staleTime: 0,
     }
@@ -60,7 +67,7 @@ export function TournamentDetails({ tournamentId }: { tournamentId: string }) {
           </AlertDescription>
         </Alert>
         <Button
-          render={<Link href="/tournaments" />}
+          render={<Link href={catalogPath} />}
           nativeButton={false}
           variant="outline"
           className="self-start"
@@ -91,7 +98,7 @@ export function TournamentDetails({ tournamentId }: { tournamentId: string }) {
   return (
     <main className="container mx-auto flex w-full max-w-7xl flex-1 flex-col gap-8 px-4 py-10 sm:px-8">
       <Button
-        render={<Link href="/tournaments" />}
+        render={<Link href={catalogPath} />}
         nativeButton={false}
         variant="ghost"
         className="self-start"
@@ -118,7 +125,7 @@ export function TournamentDetails({ tournamentId }: { tournamentId: string }) {
             Hosted by {tournament.organizerName}
           </p>
         </div>
-        {canCreateTeam ? (
+        {!sponsorMode && canCreateTeam ? (
           <Button
             render={<Link href={`/tournaments/${tournament.id}/team`} />}
             nativeButton={false}
@@ -146,7 +153,7 @@ export function TournamentDetails({ tournamentId }: { tournamentId: string }) {
             </AlertDescription>
           </Alert>
         ) : null}
-        {isSolo && !isCrowdfunding ? (
+        {!sponsorMode && isSolo && !isCrowdfunding ? (
           tournament.status !== "REGISTRATION_OPEN" ? (
             <Button disabled className="self-start">
               Registration closed
@@ -249,22 +256,34 @@ export function TournamentDetails({ tournamentId }: { tournamentId: string }) {
 
       <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
         <div className="flex flex-col gap-6">
+          {sponsorMode && (
+            <PublicTiersSection
+              tournamentId={tournament.id}
+              currency={tournament.currency}
+              status={tournament.status}
+              endsAt={tournament.endAt}
+            />
+          )}
           <TournamentAboutCard
             tournament={tournament}
             spotsLeft={spotsLeft}
             registrationType={registrationType}
           />
-          <PublicTiersSection
-            tournamentId={tournament.id}
-            currency={tournament.currency}
-          />
+          {!sponsorMode && (
+            <PublicTiersSection
+              tournamentId={tournament.id}
+              currency={tournament.currency}
+              status={tournament.status}
+              endsAt={tournament.endAt}
+            />
+          )}
           {!isCrowdfunding ? (
             <TournamentRegisteredTeamsCard teams={teams} />
           ) : null}
         </div>
 
         <div className="flex flex-col gap-6 lg:sticky lg:top-24">
-          {myTeam ? (
+          {!sponsorMode && myTeam ? (
             <Card>
               <CardHeader>
                 <CardTitle>

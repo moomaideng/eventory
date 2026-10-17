@@ -28,7 +28,13 @@ import {
   type Tournament,
 } from "../utils";
 
-export function TournamentCard({ tournament }: { tournament: Tournament }) {
+export function TournamentCard({
+  tournament,
+  sponsorMode = false,
+}: {
+  tournament: Tournament;
+  sponsorMode?: boolean;
+}) {
   const seatsLeft = Math.max(
     0,
     tournament.capacity - tournament.registeredCount
@@ -97,12 +103,16 @@ export function TournamentCard({ tournament }: { tournament: Tournament }) {
           <span />
         )}
         <Button
-          render={<Link href={`/tournaments/${tournament.id}`} />}
+          render={
+            <Link
+              href={`${sponsorMode ? "/sponsor" : ""}/tournaments/${tournament.id}`}
+            />
+          }
           nativeButton={false}
           size="sm"
           variant="outline"
         >
-          View details
+          {sponsorMode ? "View packages" : "View details"}
           <ArrowUpRight data-icon="inline-end" />
         </Button>
       </CardFooter>

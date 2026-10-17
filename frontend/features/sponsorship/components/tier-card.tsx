@@ -28,7 +28,7 @@ export function TierCard({
         <CardDescription>{formatMoney(tier.price, currency)}</CardDescription>
         <CardAction>
           <Badge variant="secondary">
-            {tier.slots} {tier.slots === 1 ? "slot" : "slots"}
+            {tier.availableSlots} of {tier.slots} slots available
           </Badge>
         </CardAction>
       </CardHeader>

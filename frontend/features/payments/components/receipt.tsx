@@ -18,8 +18,16 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { Spinner } from "@/components/ui/spinner";
+import { SponsorshipResult } from "@/features/payments/components/sponsorship-result";
 
-export function Receipt({ paymentId }: { paymentId: string }) {
+export function Receipt({
+  paymentId,
+  sponsorMode = false,
+}: {
+  paymentId: string;
+  sponsorMode?: boolean;
+}) {
+  const basePath = sponsorMode ? "/sponsor/payments" : "/payments";
   const { authorizationHeader } = useAuth();
   const [downloading, setDownloading] = useState(false);
   const [downloadError, setDownloadError] = useState(false);
@@ -75,7 +83,7 @@ export function Receipt({ paymentId }: { paymentId: string }) {
           <Button variant="outline" onClick={() => void query.refetch()}>
             Try again
           </Button>
-          <Link href={`/payments/${paymentId}`} className="underline">
+          <Link href={`${basePath}/${paymentId}`} className="underline">
             Back to invoice
           </Link>
         </AlertDescription>
@@ -83,72 +91,84 @@ export function Receipt({ paymentId }: { paymentId: string }) {
     );
   const receipt = query.data;
   return (
-    <Card className="receipt-paper">
-      <CardHeader>
-        <div className="flex flex-col items-center gap-3 py-4 text-center">
-          <BadgeCheck aria-hidden="true" className="text-primary size-14" />
-          <h2 className="text-2xl font-semibold">Payment successful</h2>
-          <p className="w-full text-2xl font-semibold break-words tabular-nums sm:text-4xl">
-            {formatAmount(receipt)}
-          </p>
-          <p className="text-muted-foreground w-full text-sm break-words">
-            {receipt.description}
-          </p>
-        </div>
-      </CardHeader>
-      <CardContent className="flex flex-col gap-6">
-        <Separator />
-        <div>
-          <h3 className="font-medium">Receipt details</h3>
-          <CardDescription>
-            Paid at {formatPaymentDate(receipt.paidAt)} (UTC)
-          </CardDescription>
-        </div>
-        <dl className="grid gap-5 text-sm sm:grid-cols-2">
-          <div>
-            <dt className="text-muted-foreground">Reference</dt>
-            <dd className="break-all">
-              {receipt.source} / {receipt.reference}
-            </dd>
+    <div className="flex flex-col gap-6">
+      <SponsorshipResult
+        payment={{
+          id: receipt.invoiceId,
+          source: receipt.source,
+          reference: receipt.reference,
+          status: "PAID",
+        }}
+      />
+      <Card className="receipt-paper">
+        <CardHeader>
+          <div className="flex flex-col items-center gap-3 py-4 text-center">
+            <BadgeCheck aria-hidden="true" className="text-primary size-14" />
+            <h2 className="text-2xl font-semibold">Payment successful</h2>
+            <p className="w-full text-2xl font-semibold break-words tabular-nums sm:text-4xl">
+              {formatAmount(receipt)}
+            </p>
+            <p className="text-muted-foreground w-full text-sm break-words">
+              {receipt.description}
+            </p>
           </div>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-6">
+          <Separator />
           <div>
-            <dt className="text-muted-foreground">Receipt ID</dt>
-            <dd className="font-mono text-xs break-all">{receipt.id}</dd>
+            <h3 className="font-medium">Receipt details</h3>
+            <CardDescription>
+              Paid at {formatPaymentDate(receipt.paidAt)} (UTC)
+            </CardDescription>
           </div>
-          <div>
-            <dt className="text-muted-foreground">Invoice ID</dt>
-            <dd className="font-mono text-xs break-all">{receipt.invoiceId}</dd>
-          </div>
-          <div>
-            <dt className="text-muted-foreground">Payer account</dt>
-            <dd className="font-mono text-xs break-all">
-              {receipt.payerAccountId}
-            </dd>
-          </div>
-        </dl>
-        {downloadError && (
-          <Alert variant="destructive">
-            <AlertTitle>Could not download the PDF</AlertTitle>
-            <AlertDescription>Please try downloading again.</AlertDescription>
-          </Alert>
-        )}
-      </CardContent>
-      <CardFooter className="flex flex-wrap gap-3">
-        <Button disabled={downloading} onClick={() => void download()}>
-          {downloading ? (
-            <Spinner data-icon="inline-start" />
-          ) : (
-            <Download data-icon="inline-start" />
+          <dl className="grid gap-5 text-sm sm:grid-cols-2">
+            <div>
+              <dt className="text-muted-foreground">Reference</dt>
+              <dd className="break-all">
+                {receipt.source} / {receipt.reference}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-muted-foreground">Receipt ID</dt>
+              <dd className="font-mono text-xs break-all">{receipt.id}</dd>
+            </div>
+            <div>
+              <dt className="text-muted-foreground">Invoice ID</dt>
+              <dd className="font-mono text-xs break-all">
+                {receipt.invoiceId}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-muted-foreground">Payer account</dt>
+              <dd className="font-mono text-xs break-all">
+                {receipt.payerAccountId}
+              </dd>
+            </div>
+          </dl>
+          {downloadError && (
+            <Alert variant="destructive">
+              <AlertTitle>Could not download the PDF</AlertTitle>
+              <AlertDescription>Please try downloading again.</AlertDescription>
+            </Alert>
           )}
-          Download PDF
-        </Button>
-        <Link
-          href={`/payments/${paymentId}`}
-          className={buttonVariants({ variant: "outline" })}
-        >
-          View invoice
-        </Link>
-      </CardFooter>
-    </Card>
+        </CardContent>
+        <CardFooter className="flex flex-wrap gap-3">
+          <Button disabled={downloading} onClick={() => void download()}>
+            {downloading ? (
+              <Spinner data-icon="inline-start" />
+            ) : (
+              <Download data-icon="inline-start" />
+            )}
+            Download PDF
+          </Button>
+          <Link
+            href={`${basePath}/${paymentId}`}
+            className={buttonVariants({ variant: "outline" })}
+          >
+            View invoice
+          </Link>
+        </CardFooter>
+      </Card>
+    </div>
   );
 }
