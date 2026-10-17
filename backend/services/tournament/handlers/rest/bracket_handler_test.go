@@ -83,6 +83,7 @@ func (m *mockBracketRepoForHandler) RecordMatchResults(
 	_ context.Context,
 	_, matchID uuid.UUID,
 	rankUpdates map[uuid.UUID]int,
+	scoreUpdates map[uuid.UUID]*string,
 	advanceFlags map[uuid.UUID]bool,
 	targetMatchID *uuid.UUID,
 	advancingTeamIDs []uuid.UUID,
@@ -94,6 +95,9 @@ func (m *mockBracketRepoForHandler) RecordMatchResults(
 			if r, exists := rankUpdates[tID]; exists {
 				rank := r
 				match.Entries[i].FinalRank = &rank
+			}
+			if scoreUpdates != nil {
+				match.Entries[i].Score = scoreUpdates[tID]
 			}
 			match.Entries[i].Advances = advanceFlags[tID]
 		}
@@ -135,6 +139,16 @@ func TestBracketRoutes(t *testing.T) {
 					"name":           "Semifinal 1",
 					"venue":          "Arena A",
 					"stageLevel":     1,
+					"teamCount":      2,
+					"advancingCount": 1,
+					"targetMatchId":  "final",
+				},
+				{
+					"tempId":         "semi-2",
+					"name":           "Semifinal 2",
+					"venue":          "Arena B",
+					"stageLevel":     1,
+					"teamCount":      2,
 					"advancingCount": 1,
 					"targetMatchId":  "final",
 				},
@@ -143,6 +157,7 @@ func TestBracketRoutes(t *testing.T) {
 					"name":           "Championship",
 					"venue":          "Main Stage",
 					"stageLevel":     2,
+					"teamCount":      2,
 					"advancingCount": 0,
 				},
 			},
@@ -155,7 +170,7 @@ func TestBracketRoutes(t *testing.T) {
 			Matches []rest.MatchResponse `json:"matches"`
 		}
 		require.NoError(t, json.Unmarshal(resp.Body.Bytes(), &res))
-		assert.Equal(t, 2, len(res.Matches))
+		assert.Equal(t, 3, len(res.Matches))
 	})
 
 	t.Run("POST /tournaments/{id}/seed auto-distributes teams", func(t *testing.T) {
@@ -206,8 +221,8 @@ func TestBracketRoutes(t *testing.T) {
 
 		body := map[string]any{
 			"placements": []map[string]any{
-				{"teamId": team1ID.String(), "finalRank": 1},
-				{"teamId": team2ID.String(), "finalRank": 2},
+				{"teamId": team1ID.String(), "finalRank": 1, "score": "2"},
+				{"teamId": team2ID.String(), "finalRank": 2, "score": "1"},
 			},
 		}
 
@@ -219,6 +234,10 @@ func TestBracketRoutes(t *testing.T) {
 		assert.True(t, res.IsCompleted)
 		assert.Equal(t, 1, len(res.AdvancingTeams))
 		assert.Equal(t, team1ID, res.AdvancingTeams[0])
+		require.NotNil(t, repo.matchMap[matchID].Entries[0].Score)
+		assert.Equal(t, "2", *repo.matchMap[matchID].Entries[0].Score)
+		require.NotNil(t, repo.matchMap[matchID].Entries[1].Score)
+		assert.Equal(t, "1", *repo.matchMap[matchID].Entries[1].Score)
 	})
 
 	t.Run("GET /tournaments/{id}/bracket returns current bracket", func(t *testing.T) {

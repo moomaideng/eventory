@@ -14,6 +14,7 @@ type Match struct {
 	Name           string       `gorm:"type:varchar(160);not null"`
 	Venue          string       `gorm:"type:varchar(160);not null"`
 	StageLevel     int          `gorm:"not null;index"`
+	TeamCount      int          `gorm:"not null"`
 	AdvancingCount int          `gorm:"not null"`
 	TargetMatchID  *uuid.UUID   `gorm:"type:uuid;index"`
 	TargetMatch    *Match       `gorm:"foreignKey:TargetMatchID;constraint:OnDelete:SET NULL;"`
@@ -35,6 +36,7 @@ type MatchEntry struct {
 	TeamID    uuid.UUID      `gorm:"type:uuid;not null;index;uniqueIndex:idx_match_entry_team,priority:2"`
 	Team      TournamentTeam `gorm:"foreignKey:TeamID;constraint:OnDelete:CASCADE;"`
 	FinalRank *int           `gorm:"type:int"`
+	Score     *string        `gorm:"type:varchar(32)"`
 	Advances  bool           `gorm:"not null;default:false"`
 	CreatedAt time.Time
 	UpdatedAt time.Time

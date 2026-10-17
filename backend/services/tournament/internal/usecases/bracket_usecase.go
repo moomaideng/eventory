@@ -3,6 +3,7 @@ package usecases
 import (
 	"context"
 	"errors"
+	"sort"
 	"strings"
 
 	"github.com/google/uuid"
@@ -40,6 +41,11 @@ var (
 	ErrBracketUnknownTeamPlacement   = errors.New("team in placement is not a participant of this match")
 	ErrBracketInvalidPlacementRank   = errors.New("placement rank must be greater than or equal to 1")
 	ErrBracketDuplicatePlacementTeam = errors.New("duplicate team in placement list")
+	ErrBracketInvalidTeamCount       = errors.New("match team count must be at least 1")
+	ErrBracketAdvancingExceedsTeams  = errors.New("advancing count cannot exceed team count")
+	ErrBracketIncomingMismatchTarget = errors.New("total incoming advancing teams must match target match team count")
+	ErrBracketIncomingExceedsTarget  = ErrBracketIncomingMismatchTarget
+	ErrBracketSeedExceedsTeamCount   = errors.New("seeded teams exceed match team count")
 )
 
 type DefineBracketMatchInput struct {
@@ -47,6 +53,7 @@ type DefineBracketMatchInput struct {
 	Name           string
 	Venue          string
 	StageLevel     int
+	TeamCount      int
 	AdvancingCount int
 	TargetTempID   *string
 }
@@ -59,6 +66,7 @@ type Stage1SeedAssignment struct {
 type TeamPlacementInput struct {
 	TeamID    uuid.UUID
 	FinalRank int
+	Score     *string
 }
 
 type RecordMatchResultsResult struct {
@@ -131,6 +139,7 @@ func (u *BracketUseCase) ValidateBracketLayout(matches []DefineBracketMatchInput
 		return ErrBracketEmpty
 	}
 
+	hasStage1 := false
 	tempIDMap := make(map[string]DefineBracketMatchInput, len(matches))
 	for _, m := range matches {
 		tempID := strings.TrimSpace(m.TempID)
@@ -146,8 +155,17 @@ func (u *BracketUseCase) ValidateBracketLayout(matches []DefineBracketMatchInput
 		if m.StageLevel < 1 {
 			return ErrBracketInvalidStageLevel
 		}
+		if m.StageLevel == 1 {
+			hasStage1 = true
+		}
+		if m.TeamCount < 1 {
+			return ErrBracketInvalidTeamCount
+		}
 		if m.AdvancingCount < 0 {
 			return ErrBracketInvalidAdvancingCount
+		}
+		if m.AdvancingCount > m.TeamCount {
+			return ErrBracketAdvancingExceedsTeams
 		}
 		if m.TargetTempID != nil && strings.TrimSpace(*m.TargetTempID) != "" {
 			if m.AdvancingCount < 1 {
@@ -157,9 +175,14 @@ func (u *BracketUseCase) ValidateBracketLayout(matches []DefineBracketMatchInput
 		tempIDMap[tempID] = m
 	}
 
+	if !hasStage1 {
+		return ErrBracketNoStage1Matches
+	}
+
 	hasChampionship := false
 	inDegree := make(map[string]int, len(matches))
 	adj := make(map[string][]string, len(matches))
+	incomingAdvancing := make(map[string]int, len(matches))
 	for tempID := range tempIDMap {
 		inDegree[tempID] = 0
 	}
@@ -187,10 +210,33 @@ func (u *BracketUseCase) ValidateBracketLayout(matches []DefineBracketMatchInput
 
 		adj[tempID] = append(adj[tempID], targetID)
 		inDegree[targetID]++
+		incomingAdvancing[targetID] += m.AdvancingCount
 	}
 
 	if !hasChampionship {
 		return ErrBracketNoChampionshipMatch
+	}
+
+	// Validate stages in ascending order (Stage 1 -> Stage 2 -> Stage 3...)
+	sortedMatches := make([]DefineBracketMatchInput, 0, len(tempIDMap))
+	for _, m := range tempIDMap {
+		sortedMatches = append(sortedMatches, m)
+	}
+	sort.Slice(sortedMatches, func(i, j int) bool {
+		if sortedMatches[i].StageLevel != sortedMatches[j].StageLevel {
+			return sortedMatches[i].StageLevel < sortedMatches[j].StageLevel
+		}
+		return sortedMatches[i].TempID < sortedMatches[j].TempID
+	})
+
+	for _, m := range sortedMatches {
+		tempID := strings.TrimSpace(m.TempID)
+		if m.StageLevel > 1 {
+			totalIncoming := incomingAdvancing[tempID]
+			if totalIncoming != m.TeamCount {
+				return ErrBracketIncomingMismatchTarget
+			}
+		}
 	}
 
 	// Topological sort for cycle detection (Kahn's algorithm)
@@ -272,6 +318,7 @@ func (u *BracketUseCase) DefineBracket(
 			Name:           strings.TrimSpace(m.Name),
 			Venue:          strings.TrimSpace(m.Venue),
 			StageLevel:     m.StageLevel,
+			TeamCount:      m.TeamCount,
 			AdvancingCount: m.AdvancingCount,
 			TargetMatchID:  targetUUID,
 			IsCompleted:    false,
@@ -327,9 +374,11 @@ func (u *BracketUseCase) SeedStage1(
 	}
 
 	stage1MatchMap := make(map[uuid.UUID]bool, len(stage1Matches))
+	stage1MatchCap := make(map[uuid.UUID]int, len(stage1Matches))
 	stage1IDs := make([]uuid.UUID, 0, len(stage1Matches))
 	for _, m := range stage1Matches {
 		stage1MatchMap[m.ID] = true
+		stage1MatchCap[m.ID] = m.TeamCount
 		stage1IDs = append(stage1IDs, m.ID)
 	}
 
@@ -344,6 +393,9 @@ func (u *BracketUseCase) SeedStage1(
 		for _, a := range assignments {
 			if !stage1MatchMap[a.MatchID] {
 				return nil, ErrBracketInvalidSeedMatch
+			}
+			if len(a.TeamIDs) > stage1MatchCap[a.MatchID] {
+				return nil, ErrBracketSeedExceedsTeamCount
 			}
 			for _, teamID := range a.TeamIDs {
 				if !acceptedTeamMap[teamID] {
@@ -420,6 +472,7 @@ func (u *BracketUseCase) RecordMatchResults(
 	}
 
 	rankUpdates := make(map[uuid.UUID]int, len(placements))
+	scoreUpdates := make(map[uuid.UUID]*string, len(placements))
 	for _, p := range placements {
 		if !participantSet[p.TeamID] {
 			return nil, ErrBracketUnknownTeamPlacement
@@ -431,6 +484,7 @@ func (u *BracketUseCase) RecordMatchResults(
 			return nil, ErrBracketInvalidPlacementRank
 		}
 		rankUpdates[p.TeamID] = p.FinalRank
+		scoreUpdates[p.TeamID] = p.Score
 	}
 
 	advanceFlags := make(map[uuid.UUID]bool, len(match.Entries))
@@ -459,7 +513,7 @@ func (u *BracketUseCase) RecordMatchResults(
 	if err := u.repo.RecordMatchResults(
 		ctx,
 		tournamentID, matchID,
-		rankUpdates, advanceFlags,
+		rankUpdates, scoreUpdates, advanceFlags,
 		match.TargetMatchID, advancingTeamIDs,
 	); err != nil {
 		return nil, err

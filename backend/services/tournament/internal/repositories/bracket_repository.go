@@ -32,6 +32,7 @@ type BracketRepository interface {
 		ctx context.Context,
 		tournamentID, matchID uuid.UUID,
 		rankUpdates map[uuid.UUID]int,
+		scoreUpdates map[uuid.UUID]*string,
 		advanceFlags map[uuid.UUID]bool,
 		targetMatchID *uuid.UUID,
 		advancingTeamIDs []uuid.UUID,
@@ -220,20 +221,25 @@ func (r *bracketRepository) RecordMatchResults(
 	ctx context.Context,
 	tournamentID, matchID uuid.UUID,
 	rankUpdates map[uuid.UUID]int,
+	scoreUpdates map[uuid.UUID]*string,
 	advanceFlags map[uuid.UUID]bool,
 	targetMatchID *uuid.UUID,
 	advancingTeamIDs []uuid.UUID,
 ) error {
 	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		// Update final_rank and advances on current match entries
+		// Update final_rank, score, and advances on current match entries
 		for teamID, rank := range rankUpdates {
 			advances := advanceFlags[teamID]
+			updates := map[string]any{
+				"final_rank": rank,
+				"advances":   advances,
+			}
+			if scoreUpdates != nil {
+				updates["score"] = scoreUpdates[teamID]
+			}
 			if err := tx.Model(&models.MatchEntry{}).
 				Where("match_id = ? AND team_id = ?", matchID, teamID).
-				Updates(map[string]any{
-					"final_rank": rank,
-					"advances":   advances,
-				}).Error; err != nil {
+				Updates(updates).Error; err != nil {
 				return err
 			}
 		}

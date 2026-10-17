@@ -1063,6 +1063,11 @@ export interface components {
             targetMatchId?: string;
             /** @description Alias for targetMatchId */
             targetTempId?: string;
+            /**
+             * Format: int64
+             * @description Number of teams competing in this match (e.g. 2 for 1v1, 4 for FFA)
+             */
+            teamCount: number;
             /** @description Temporary identifier for this node (e.g. 'heat-1.1', 'semi-a') */
             tempId: string;
             /** @description Location/court/station details (e.g. 'Field 2', 'Arena Room A') */
@@ -1147,6 +1152,7 @@ export interface components {
             finalRank?: number;
             id: string;
             matchId: string;
+            score?: string;
             teamId: string;
             teamName?: string;
         };
@@ -1162,6 +1168,8 @@ export interface components {
             /** Format: int64 */
             stageLevel: number;
             targetMatchId?: string;
+            /** Format: int64 */
+            teamCount: number;
             tournamentId: string;
             /** Format: date-time */
             updatedAt: string;
@@ -1435,6 +1443,8 @@ export interface components {
              * @description Match placement (1st, 2nd, 3rd, etc.)
              */
             finalRank: number;
+            /** @description Match score or result string (e.g. '2', '16-14', '1:23.4') */
+            score?: string;
             /** @description Participating team ID */
             teamId: string;
         };

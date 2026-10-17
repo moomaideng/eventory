@@ -31,6 +31,7 @@ type mockBracketRepository struct {
 	getMatchErr             error
 	recordResultsErr        error
 	lastRecordedRankUpdates map[uuid.UUID]int
+	lastRecordedScores      map[uuid.UUID]*string
 	lastRecordedAdvances    map[uuid.UUID]bool
 	lastAdvancingTeamIDs    []uuid.UUID
 }
@@ -106,6 +107,7 @@ func (m *mockBracketRepository) RecordMatchResults(
 	_ context.Context,
 	_, _ uuid.UUID,
 	rankUpdates map[uuid.UUID]int,
+	scoreUpdates map[uuid.UUID]*string,
 	advanceFlags map[uuid.UUID]bool,
 	_ *uuid.UUID,
 	advancingTeamIDs []uuid.UUID,
@@ -114,6 +116,7 @@ func (m *mockBracketRepository) RecordMatchResults(
 		return m.recordResultsErr
 	}
 	m.lastRecordedRankUpdates = rankUpdates
+	m.lastRecordedScores = scoreUpdates
 	m.lastRecordedAdvances = advanceFlags
 	m.lastAdvancingTeamIDs = advancingTeamIDs
 	return nil
@@ -131,7 +134,7 @@ func TestDAGValidation(t *testing.T) {
 
 	t.Run("empty temp ID", func(t *testing.T) {
 		err := uc.ValidateBracketLayout([]usecases.DefineBracketMatchInput{
-			{TempID: "   ", Name: "Match 1", StageLevel: 1, AdvancingCount: 1},
+			{TempID: "   ", Name: "Match 1", StageLevel: 1, TeamCount: 2, AdvancingCount: 1},
 		})
 		if err != usecases.ErrBracketEmpty {
 			t.Fatalf("expected ErrBracketEmpty, got %v", err)
@@ -140,8 +143,8 @@ func TestDAGValidation(t *testing.T) {
 
 	t.Run("duplicate temp ID", func(t *testing.T) {
 		err := uc.ValidateBracketLayout([]usecases.DefineBracketMatchInput{
-			{TempID: "m1", Name: "Match 1", StageLevel: 1, AdvancingCount: 1},
-			{TempID: "m1", Name: "Match 2", StageLevel: 1, AdvancingCount: 1},
+			{TempID: "m1", Name: "Match 1", StageLevel: 1, TeamCount: 2, AdvancingCount: 1},
+			{TempID: "m1", Name: "Match 2", StageLevel: 1, TeamCount: 2, AdvancingCount: 1},
 		})
 		if err != usecases.ErrBracketDuplicateTempID {
 			t.Fatalf("expected ErrBracketDuplicateTempID, got %v", err)
@@ -150,7 +153,7 @@ func TestDAGValidation(t *testing.T) {
 
 	t.Run("empty match name", func(t *testing.T) {
 		err := uc.ValidateBracketLayout([]usecases.DefineBracketMatchInput{
-			{TempID: "m1", Name: "   ", StageLevel: 1, AdvancingCount: 1},
+			{TempID: "m1", Name: "   ", StageLevel: 1, TeamCount: 2, AdvancingCount: 1},
 		})
 		if err != usecases.ErrBracketEmptyMatchName {
 			t.Fatalf("expected ErrBracketEmptyMatchName, got %v", err)
@@ -159,7 +162,7 @@ func TestDAGValidation(t *testing.T) {
 
 	t.Run("invalid stage level", func(t *testing.T) {
 		err := uc.ValidateBracketLayout([]usecases.DefineBracketMatchInput{
-			{TempID: "m1", Name: "Match 1", StageLevel: 0, AdvancingCount: 1},
+			{TempID: "m1", Name: "Match 1", StageLevel: 0, TeamCount: 2, AdvancingCount: 1},
 		})
 		if err != usecases.ErrBracketInvalidStageLevel {
 			t.Fatalf("expected ErrBracketInvalidStageLevel, got %v", err)
@@ -168,7 +171,7 @@ func TestDAGValidation(t *testing.T) {
 
 	t.Run("invalid advancing count", func(t *testing.T) {
 		err := uc.ValidateBracketLayout([]usecases.DefineBracketMatchInput{
-			{TempID: "m1", Name: "Match 1", StageLevel: 1, AdvancingCount: -1},
+			{TempID: "m1", Name: "Match 1", StageLevel: 1, TeamCount: 2, AdvancingCount: -1},
 		})
 		if err != usecases.ErrBracketInvalidAdvancingCount {
 			t.Fatalf("expected ErrBracketInvalidAdvancingCount, got %v", err)
@@ -178,8 +181,8 @@ func TestDAGValidation(t *testing.T) {
 	t.Run("advancing count must be >= 1 if target is specified", func(t *testing.T) {
 		target := "final"
 		err := uc.ValidateBracketLayout([]usecases.DefineBracketMatchInput{
-			{TempID: "m1", Name: "Semi 1", StageLevel: 1, AdvancingCount: 0, TargetTempID: &target},
-			{TempID: "final", Name: "Final", StageLevel: 2, AdvancingCount: 0},
+			{TempID: "m1", Name: "Semi 1", StageLevel: 1, TeamCount: 2, AdvancingCount: 0, TargetTempID: &target},
+			{TempID: "final", Name: "Final", StageLevel: 2, TeamCount: 2, AdvancingCount: 0},
 		})
 		if err != usecases.ErrBracketAdvancingCountRequired {
 			t.Fatalf("expected ErrBracketAdvancingCountRequired, got %v", err)
@@ -189,7 +192,7 @@ func TestDAGValidation(t *testing.T) {
 	t.Run("self-targeting match", func(t *testing.T) {
 		self := "m1"
 		err := uc.ValidateBracketLayout([]usecases.DefineBracketMatchInput{
-			{TempID: "m1", Name: "Match 1", StageLevel: 1, AdvancingCount: 1, TargetTempID: &self},
+			{TempID: "m1", Name: "Match 1", StageLevel: 1, TeamCount: 2, AdvancingCount: 1, TargetTempID: &self},
 		})
 		if err != usecases.ErrBracketSelfTargetMatch {
 			t.Fatalf("expected ErrBracketSelfTargetMatch, got %v", err)
@@ -199,7 +202,7 @@ func TestDAGValidation(t *testing.T) {
 	t.Run("target not found", func(t *testing.T) {
 		target := "m99"
 		err := uc.ValidateBracketLayout([]usecases.DefineBracketMatchInput{
-			{TempID: "m1", Name: "Match 1", StageLevel: 1, AdvancingCount: 1, TargetTempID: &target},
+			{TempID: "m1", Name: "Match 1", StageLevel: 1, TeamCount: 2, AdvancingCount: 1, TargetTempID: &target},
 		})
 		if err != usecases.ErrBracketTargetMatchNotFound {
 			t.Fatalf("expected ErrBracketTargetMatchNotFound, got %v", err)
@@ -209,8 +212,8 @@ func TestDAGValidation(t *testing.T) {
 	t.Run("backward edge (lower stage level)", func(t *testing.T) {
 		target := "m1"
 		err := uc.ValidateBracketLayout([]usecases.DefineBracketMatchInput{
-			{TempID: "m1", Name: "Match 1", StageLevel: 1, AdvancingCount: 0},
-			{TempID: "m2", Name: "Match 2", StageLevel: 2, AdvancingCount: 1, TargetTempID: &target},
+			{TempID: "m1", Name: "Match 1", StageLevel: 1, TeamCount: 2, AdvancingCount: 0},
+			{TempID: "m2", Name: "Match 2", StageLevel: 2, TeamCount: 2, AdvancingCount: 1, TargetTempID: &target},
 		})
 		if err != usecases.ErrBracketTargetMustBeHigher {
 			t.Fatalf("expected ErrBracketTargetMustBeHigher, got %v", err)
@@ -220,8 +223,8 @@ func TestDAGValidation(t *testing.T) {
 	t.Run("same stage level edge", func(t *testing.T) {
 		target := "m2"
 		err := uc.ValidateBracketLayout([]usecases.DefineBracketMatchInput{
-			{TempID: "m1", Name: "Match 1", StageLevel: 1, AdvancingCount: 1, TargetTempID: &target},
-			{TempID: "m2", Name: "Match 2", StageLevel: 1, AdvancingCount: 0},
+			{TempID: "m1", Name: "Match 1", StageLevel: 1, TeamCount: 2, AdvancingCount: 1, TargetTempID: &target},
+			{TempID: "m2", Name: "Match 2", StageLevel: 1, TeamCount: 2, AdvancingCount: 0},
 		})
 		if err != usecases.ErrBracketTargetMustBeHigher {
 			t.Fatalf("expected ErrBracketTargetMustBeHigher, got %v", err)
@@ -232,8 +235,8 @@ func TestDAGValidation(t *testing.T) {
 		m2 := "m2"
 		m3 := "m3"
 		err := uc.ValidateBracketLayout([]usecases.DefineBracketMatchInput{
-			{TempID: "m1", Name: "Match 1", StageLevel: 1, AdvancingCount: 1, TargetTempID: &m2},
-			{TempID: "m2", Name: "Match 2", StageLevel: 2, AdvancingCount: 1, TargetTempID: &m3},
+			{TempID: "m1", Name: "Match 1", StageLevel: 1, TeamCount: 2, AdvancingCount: 1, TargetTempID: &m2},
+			{TempID: "m2", Name: "Match 2", StageLevel: 2, TeamCount: 2, AdvancingCount: 1, TargetTempID: &m3},
 		})
 		// m3 is missing
 		if err != usecases.ErrBracketTargetMatchNotFound {
@@ -241,12 +244,95 @@ func TestDAGValidation(t *testing.T) {
 		}
 	})
 
+	t.Run("invalid team count less than 1", func(t *testing.T) {
+		err := uc.ValidateBracketLayout([]usecases.DefineBracketMatchInput{
+			{TempID: "m1", Name: "Match 1", StageLevel: 1, TeamCount: 0, AdvancingCount: 0},
+		})
+		if err != usecases.ErrBracketInvalidTeamCount {
+			t.Fatalf("expected ErrBracketInvalidTeamCount, got %v", err)
+		}
+	})
+
+	t.Run("advancing count cannot exceed team count", func(t *testing.T) {
+		final := "final"
+		err := uc.ValidateBracketLayout([]usecases.DefineBracketMatchInput{
+			{TempID: "m1", Name: "Match 1", StageLevel: 1, TeamCount: 2, AdvancingCount: 3, TargetTempID: &final},
+			{TempID: "final", Name: "Final", StageLevel: 2, TeamCount: 3, AdvancingCount: 0},
+		})
+		if err != usecases.ErrBracketAdvancingExceedsTeams {
+			t.Fatalf("expected ErrBracketAdvancingExceedsTeams, got %v", err)
+		}
+	})
+
+	t.Run("valid single-team bye match advancing 1 team", func(t *testing.T) {
+		final := "final"
+		matches := []usecases.DefineBracketMatchInput{
+			{TempID: "bye-1", Name: "Bye Match 1", StageLevel: 1, TeamCount: 1, AdvancingCount: 1, TargetTempID: &final},
+			{TempID: "semi-2", Name: "Semifinal 2", StageLevel: 1, TeamCount: 2, AdvancingCount: 1, TargetTempID: &final},
+			{TempID: "final", Name: "Grand Final", StageLevel: 2, TeamCount: 2, AdvancingCount: 0},
+		}
+		if err := uc.ValidateBracketLayout(matches); err != nil {
+			t.Fatalf("expected valid layout with bye match, got %v", err)
+		}
+	})
+
+	t.Run("incoming advancing teams exceed target team count", func(t *testing.T) {
+		final := "final"
+		matches := []usecases.DefineBracketMatchInput{
+			{TempID: "heat-1", Name: "Heat 1", StageLevel: 1, TeamCount: 4, AdvancingCount: 2, TargetTempID: &final},
+			{TempID: "heat-2", Name: "Heat 2", StageLevel: 1, TeamCount: 4, AdvancingCount: 2, TargetTempID: &final},
+			{TempID: "final", Name: "Final", StageLevel: 2, TeamCount: 2, AdvancingCount: 0}, // Target team count is 2, but 2+2=4 incoming!
+		}
+		err := uc.ValidateBracketLayout(matches)
+		if err != usecases.ErrBracketIncomingMismatchTarget {
+			t.Fatalf("expected ErrBracketIncomingMismatchTarget, got %v", err)
+		}
+	})
+
+	t.Run("incoming advancing teams less than target team count", func(t *testing.T) {
+		final := "final"
+		matches := []usecases.DefineBracketMatchInput{
+			{TempID: "semi-1", Name: "Semifinal 1", StageLevel: 1, TeamCount: 2, AdvancingCount: 1, TargetTempID: &final},
+			{TempID: "final", Name: "Final", StageLevel: 2, TeamCount: 2, AdvancingCount: 0}, // Target team count is 2, but only 1 incoming!
+		}
+		err := uc.ValidateBracketLayout(matches)
+		if err != usecases.ErrBracketIncomingMismatchTarget {
+			t.Fatalf("expected ErrBracketIncomingMismatchTarget, got %v", err)
+		}
+	})
+
+	t.Run("no stage 1 matches", func(t *testing.T) {
+		err := uc.ValidateBracketLayout([]usecases.DefineBracketMatchInput{
+			{TempID: "final", Name: "Final", StageLevel: 2, TeamCount: 2, AdvancingCount: 0},
+		})
+		if err != usecases.ErrBracketNoStage1Matches {
+			t.Fatalf("expected ErrBracketNoStage1Matches, got %v", err)
+		}
+	})
+
+	t.Run("stage ordering catches stage 2 mismatch before stage 3 mismatch", func(t *testing.T) {
+		semi := "semi"
+		final := "final"
+		// Semi (Stage 2) has incoming 1 != teamCount 2.
+		// Final (Stage 3) has incoming 0 != teamCount 2.
+		// Stage 2 mismatch should be returned first.
+		matches := []usecases.DefineBracketMatchInput{
+			{TempID: "qf-1", Name: "QF 1", StageLevel: 1, TeamCount: 2, AdvancingCount: 1, TargetTempID: &semi},
+			{TempID: "semi", Name: "Semi", StageLevel: 2, TeamCount: 2, AdvancingCount: 1, TargetTempID: &final},
+			{TempID: "final", Name: "Final", StageLevel: 3, TeamCount: 2, AdvancingCount: 0},
+		}
+		err := uc.ValidateBracketLayout(matches)
+		if err != usecases.ErrBracketIncomingMismatchTarget {
+			t.Fatalf("expected ErrBracketIncomingMismatchTarget, got %v", err)
+		}
+	})
+
 	t.Run("valid 4-team single elimination bracket", func(t *testing.T) {
 		final := "final"
 		matches := []usecases.DefineBracketMatchInput{
-			{TempID: "semi-1", Name: "Semifinal 1", Venue: "Court A", StageLevel: 1, AdvancingCount: 1, TargetTempID: &final},
-			{TempID: "semi-2", Name: "Semifinal 2", Venue: "Court B", StageLevel: 1, AdvancingCount: 1, TargetTempID: &final},
-			{TempID: "final", Name: "Grand Final", Venue: "Main Arena", StageLevel: 2, AdvancingCount: 0, TargetTempID: nil},
+			{TempID: "semi-1", Name: "Semifinal 1", Venue: "Court A", StageLevel: 1, TeamCount: 2, AdvancingCount: 1, TargetTempID: &final},
+			{TempID: "semi-2", Name: "Semifinal 2", Venue: "Court B", StageLevel: 1, TeamCount: 2, AdvancingCount: 1, TargetTempID: &final},
+			{TempID: "final", Name: "Grand Final", Venue: "Main Arena", StageLevel: 2, TeamCount: 2, AdvancingCount: 0, TargetTempID: nil},
 		}
 		if err := uc.ValidateBracketLayout(matches); err != nil {
 			t.Fatalf("expected valid layout, got %v", err)
@@ -268,9 +354,9 @@ func TestDefineBracket(t *testing.T) {
 
 	final := "final"
 	validMatches := []usecases.DefineBracketMatchInput{
-		{TempID: "semi-1", Name: "Semifinal 1", Venue: "Court A", StageLevel: 1, AdvancingCount: 1, TargetTempID: &final},
-		{TempID: "semi-2", Name: "Semifinal 2", Venue: "Court B", StageLevel: 1, AdvancingCount: 1, TargetTempID: &final},
-		{TempID: "final", Name: "Grand Final", Venue: "Main Arena", StageLevel: 2, AdvancingCount: 0, TargetTempID: nil},
+		{TempID: "semi-1", Name: "Semifinal 1", Venue: "Court A", StageLevel: 1, TeamCount: 2, AdvancingCount: 1, TargetTempID: &final},
+		{TempID: "semi-2", Name: "Semifinal 2", Venue: "Court B", StageLevel: 1, TeamCount: 2, AdvancingCount: 1, TargetTempID: &final},
+		{TempID: "final", Name: "Grand Final", Venue: "Main Arena", StageLevel: 2, TeamCount: 2, AdvancingCount: 0, TargetTempID: nil},
 	}
 
 	t.Run("forbidden if not owner", func(t *testing.T) {
@@ -367,8 +453,8 @@ func TestSeedStage1(t *testing.T) {
 	match1ID := uuid.New()
 	match2ID := uuid.New()
 	stage1Matches := []models.Match{
-		{ID: match1ID, TournamentID: tournamentID, Name: "Match 1", StageLevel: 1},
-		{ID: match2ID, TournamentID: tournamentID, Name: "Match 2", StageLevel: 1},
+		{ID: match1ID, TournamentID: tournamentID, Name: "Match 1", StageLevel: 1, TeamCount: 2},
+		{ID: match2ID, TournamentID: tournamentID, Name: "Match 2", StageLevel: 1, TeamCount: 2},
 	}
 
 	team1ID := uuid.New()
@@ -479,6 +565,27 @@ func TestSeedStage1(t *testing.T) {
 			t.Fatalf("expected ErrBracketInvalidSeedTeam, got %v", err)
 		}
 	})
+
+	t.Run("rejects assignment exceeding match team count", func(t *testing.T) {
+		repo := &mockBracketRepository{
+			tournament: tourn,
+			staffRole:  &ownerRole,
+			stage1Matches: []models.Match{
+				{ID: match1ID, StageLevel: 1, TeamCount: 2},
+			},
+			acceptedTeams: acceptedTeams,
+		}
+		uc := usecases.NewBracketUseCase(repo)
+
+		assignments := []usecases.Stage1SeedAssignment{
+			{MatchID: match1ID, TeamIDs: []uuid.UUID{team1ID, team2ID, team3ID}},
+		}
+
+		_, err := uc.SeedStage1(context.Background(), ownerID, tournamentID, assignments)
+		if err != usecases.ErrBracketSeedExceedsTeamCount {
+			t.Fatalf("expected ErrBracketSeedExceedsTeamCount, got %v", err)
+		}
+	})
 }
 
 func TestRecordMatchResults(t *testing.T) {
@@ -528,9 +635,11 @@ func TestRecordMatchResults(t *testing.T) {
 		}
 		uc := usecases.NewBracketUseCase(repo)
 
+		score1 := "2"
+		score2 := "1"
 		placements := []usecases.TeamPlacementInput{
-			{TeamID: team1ID, FinalRank: 1},
-			{TeamID: team2ID, FinalRank: 2},
+			{TeamID: team1ID, FinalRank: 1, Score: &score1},
+			{TeamID: team2ID, FinalRank: 2, Score: &score2},
 		}
 
 		result, err := uc.RecordMatchResults(context.Background(), refereeID, tournamentID, matchID, placements)
@@ -549,6 +658,12 @@ func TestRecordMatchResults(t *testing.T) {
 		}
 		if repo.lastRecordedAdvances[team2ID] != false {
 			t.Errorf("expected team 2 to have advances=false")
+		}
+		if repo.lastRecordedScores[team1ID] == nil || *repo.lastRecordedScores[team1ID] != "2" {
+			t.Errorf("expected team 1 score to be '2', got %v", repo.lastRecordedScores[team1ID])
+		}
+		if repo.lastRecordedScores[team2ID] == nil || *repo.lastRecordedScores[team2ID] != "1" {
+			t.Errorf("expected team 2 score to be '1', got %v", repo.lastRecordedScores[team2ID])
 		}
 	})
 

@@ -18,6 +18,7 @@ type DefineBracketMatchItem struct {
 	Name           string  `json:"name" minLength:"1" maxLength:"160" doc:"Display label (e.g. 'Heat 1.1', 'Quarterfinal B')"`
 	Venue          string  `json:"venue" maxLength:"160" doc:"Location/court/station details (e.g. 'Field 2', 'Arena Room A')"`
 	StageLevel     int     `json:"stageLevel" minimum:"1" doc:"Integer representing progression depth (1, 2, 3...)"`
+	TeamCount      int     `json:"teamCount" minimum:"1" doc:"Number of teams competing in this match (e.g. 1 for bye/solo, 2 for 1v1, 4 for FFA)"`
 	AdvancingCount int     `json:"advancingCount" minimum:"0" doc:"Integer N specifying how many top teams advance to the target match"`
 	TargetMatchID  *string `json:"targetMatchId,omitempty" doc:"Temporary identifier pointing to the target match node (null for final/championship match)"`
 	TargetTempID   *string `json:"targetTempId,omitempty" doc:"Alias for targetMatchId"`
@@ -38,6 +39,7 @@ type MatchEntryResponse struct {
 	TeamID    uuid.UUID `json:"teamId"`
 	TeamName  string    `json:"teamName,omitempty"`
 	FinalRank *int      `json:"finalRank,omitempty"`
+	Score     *string   `json:"score,omitempty"`
 	Advances  bool      `json:"advances"`
 	CreatedAt time.Time `json:"createdAt"`
 }
@@ -48,6 +50,7 @@ type MatchResponse struct {
 	Name           string               `json:"name"`
 	Venue          string               `json:"venue"`
 	StageLevel     int                  `json:"stageLevel"`
+	TeamCount      int                  `json:"teamCount"`
 	AdvancingCount int                  `json:"advancingCount"`
 	TargetMatchID  *uuid.UUID           `json:"targetMatchId,omitempty"`
 	IsCompleted    bool                 `json:"isCompleted"`
@@ -90,6 +93,7 @@ type SeedTournamentOutput struct {
 type TeamPlacementItem struct {
 	TeamID    uuid.UUID `json:"teamId" doc:"Participating team ID"`
 	FinalRank int       `json:"finalRank" minimum:"1" doc:"Match placement (1st, 2nd, 3rd, etc.)"`
+	Score     *string   `json:"score,omitempty" maxLength:"32" doc:"Match score or result string (e.g. '2', '16-14', '1:23.4')"`
 }
 
 type RecordMatchResultsRequest struct {
@@ -151,6 +155,7 @@ func RegisterBracketRoutes(
 				Name:           m.Name,
 				Venue:          m.Venue,
 				StageLevel:     m.StageLevel,
+				TeamCount:      m.TeamCount,
 				AdvancingCount: m.AdvancingCount,
 				TargetTempID:   target,
 			})
@@ -222,6 +227,7 @@ func RegisterBracketRoutes(
 			placements = append(placements, usecases.TeamPlacementInput{
 				TeamID:    p.TeamID,
 				FinalRank: p.FinalRank,
+				Score:     p.Score,
 			})
 		}
 
@@ -275,6 +281,7 @@ func toMatchResponses(matches []models.Match) []MatchResponse {
 				TeamID:    e.TeamID,
 				TeamName:  teamName,
 				FinalRank: e.FinalRank,
+				Score:     e.Score,
 				Advances:  e.Advances,
 				CreatedAt: e.CreatedAt,
 			})
@@ -286,6 +293,7 @@ func toMatchResponses(matches []models.Match) []MatchResponse {
 			Name:           m.Name,
 			Venue:          m.Venue,
 			StageLevel:     m.StageLevel,
+			TeamCount:      m.TeamCount,
 			AdvancingCount: m.AdvancingCount,
 			TargetMatchID:  m.TargetMatchID,
 			IsCompleted:    m.IsCompleted,
@@ -322,7 +330,11 @@ func bracketHTTPError(err error) error {
 		errors.Is(err, usecases.ErrBracketDuplicateTempID),
 		errors.Is(err, usecases.ErrBracketEmptyMatchName),
 		errors.Is(err, usecases.ErrBracketInvalidStageLevel),
+		errors.Is(err, usecases.ErrBracketInvalidTeamCount),
 		errors.Is(err, usecases.ErrBracketInvalidAdvancingCount),
+		errors.Is(err, usecases.ErrBracketAdvancingExceedsTeams),
+		errors.Is(err, usecases.ErrBracketIncomingMismatchTarget),
+		errors.Is(err, usecases.ErrBracketIncomingExceedsTarget),
 		errors.Is(err, usecases.ErrBracketAdvancingCountRequired),
 		errors.Is(err, usecases.ErrBracketSelfTargetMatch),
 		errors.Is(err, usecases.ErrBracketTargetMatchNotFound),
@@ -334,6 +346,7 @@ func bracketHTTPError(err error) error {
 		errors.Is(err, usecases.ErrBracketInvalidSeedMatch),
 		errors.Is(err, usecases.ErrBracketInvalidSeedTeam),
 		errors.Is(err, usecases.ErrBracketDuplicateSeedTeam),
+		errors.Is(err, usecases.ErrBracketSeedExceedsTeamCount),
 		errors.Is(err, usecases.ErrBracketNoParticipants),
 		errors.Is(err, usecases.ErrBracketMissingTeamPlacement),
 		errors.Is(err, usecases.ErrBracketUnknownTeamPlacement),
