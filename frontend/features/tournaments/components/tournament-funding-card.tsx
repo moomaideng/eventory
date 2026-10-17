@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import type { components } from "@/lib/api/schema";
-import { formatMoney, formatPercentage } from "../utils";
+import { formatMoney, formatPercentage, formatTournamentDate } from "../utils";
 
 type Funding = components["schemas"]["TournamentFundingResponse"];
 
@@ -52,6 +52,11 @@ export function TournamentFundingCard({ funding }: { funding: Funding }) {
           </ProgressValue>
         </Progress>
         <Separator />
+        {funding.deadline ? (
+          <p className="text-muted-foreground text-sm">
+            Funding deadline: {formatTournamentDate(funding.deadline)}
+          </p>
+        ) : null}
         <div className="grid grid-cols-2 gap-4">
           <div className="flex flex-col gap-1">
             <p className="text-muted-foreground text-xs">Supporters</p>

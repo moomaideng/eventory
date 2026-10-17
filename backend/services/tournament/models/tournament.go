@@ -12,8 +12,7 @@ const (
 	// TODO(US3-1): Draft overlaps with Tournament.Published == false.
 	// Published = visibility, Status = lifecycle stage; they only collide at draft.
 	// US3-1: HOOF owns the decision — until then, nothing sets DRAFT.
-	TournamentStatusDraft TournamentStatus = "DRAFT"
-	// TODO(US5-1): No crowdfunding flow exists yet. Nothing sets this status.
+	TournamentStatusDraft        TournamentStatus = "DRAFT"
 	TournamentStatusCrowdfunding TournamentStatus = "CROWDFUNDING"
 
 	TournamentStatusRegistrationOpen   TournamentStatus = "REGISTRATION_OPEN"
@@ -127,8 +126,9 @@ type TournamentFunding struct {
 	ID             uuid.UUID `gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
 	TournamentID   uuid.UUID `gorm:"type:uuid;not null;uniqueIndex"`
 	GoalAmount     int64     `gorm:"not null;default:0"`
-	RaisedAmount   int64     `gorm:"not null;default:0"`
-	SupporterCount int       `gorm:"not null;default:0"`
+	Deadline       *time.Time
+	RaisedAmount   int64 `gorm:"not null;default:0"`
+	SupporterCount int   `gorm:"not null;default:0"`
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
 }

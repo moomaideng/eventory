@@ -123,6 +123,9 @@ func TestCreateTeamLobby_RejectsUnavailableTournamentState(t *testing.T) {
 		{
 			name: "closed registration", tournament: &models.Tournament{ID: tournamentID, Status: models.TournamentStatusRegistrationClosed, RegistrationMode: models.TournamentRegistrationModeTeam}, want: usecases.ErrRegistrationNotOpen,
 		},
+		{
+			name: "crowdfunding registration", tournament: &models.Tournament{ID: tournamentID, Status: models.TournamentStatusCrowdfunding, RegistrationMode: models.TournamentRegistrationModeTeam}, want: usecases.ErrRegistrationNotOpen,
+		},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {

@@ -270,7 +270,7 @@ export interface paths {
          * @description Creates a new tournament for the authenticated organizer. Requires an active organizer profile.
          *
          *     ### Rules & Defaults:
-         *     - **Status & Visibility:** Defaults to `REGISTRATION_OPEN` and `published: true`.
+         *     - **Status & Visibility:** Published immediately. Defaults to `REGISTRATION_OPEN`; valid fundingGoal and fundingDeadline start in `CROWDFUNDING`.
          *     - **Currency:** Defaulted to `THB`.
          *     - **Registration Mode:** If `SOLO`, `minTeamSize` and `maxTeamSize` are automatically set to `1`. If `TEAM`, requires `1 <= minTeamSize <= maxTeamSize`.
          *     - **Date Integrity (400):** Requires `registrationDeadline < startAt < endAt`.
@@ -452,6 +452,7 @@ export interface paths {
          *     - **Capacity Floor (409 Conflict):** `capacity` cannot be reduced below the number of currently accepted teams/participants (`capacity >= acceptedCount`).
          *     - **Roster Freezing (409 Conflict):** Once any team has locked or been accepted into the tournament (`lockedOrAcceptedCount > 0`), `registrationMode`, `minTeamSize`, and `maxTeamSize` cannot be altered.
          *     - **Date Integrity (400 Bad Request):** Merged dates must maintain `registrationDeadline < startAt < endAt`.
+         *     - **Crowdfunding:** The owner may edit the goal and funding deadline only while the campaign is active; the funding deadline must remain before registration closes. Planned event dates and location can be updated during this stage.
          *     - **Field Validation (400 Bad Request):** If provided, `name`, `game`, and `location` cannot be empty or whitespace; `entryFee` cannot be negative.
          */
         patch: operations["update-tournament"];
@@ -939,6 +940,16 @@ export interface components {
              * @default 0
              */
             entryFee: number;
+            /**
+             * Format: date-time
+             * @description Crowdfunding deadline before registrationDeadline; requires fundingGoal
+             */
+            fundingDeadline?: string;
+            /**
+             * Format: int64
+             * @description Crowdfunding goal in THB; requires fundingDeadline
+             */
+            fundingGoal?: number;
             /** @description Game title */
             game: string;
             /** @description Location or 'Online' */
@@ -1312,6 +1323,11 @@ export interface components {
         TournamentFundingResponse: {
             currency: string;
             /**
+             * Format: date-time
+             * @description Crowdfunding deadline when this tournament is crowdfunding
+             */
+            deadline?: string;
+            /**
              * Format: int64
              * @description Funding goal in whole currency units
              */
@@ -1479,6 +1495,16 @@ export interface components {
              * @description New entry fee
              */
             entryFee?: number;
+            /**
+             * Format: date-time
+             * @description New crowdfunding deadline while the campaign is active
+             */
+            fundingDeadline?: string;
+            /**
+             * Format: int64
+             * @description New crowdfunding goal while the campaign is active
+             */
+            fundingGoal?: number;
             /** @description New game title */
             game?: string;
             /** @description New location */
