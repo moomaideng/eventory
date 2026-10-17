@@ -275,7 +275,9 @@ export function DashboardOverview({ summary }: { summary: OrganizerSummary }) {
                   </div>
                   <div className="flex flex-col gap-1">
                     <span className="text-muted-foreground text-xs">
-                      Still needed
+                      {tournament.status === "CROWDFUNDING"
+                        ? "Still needed"
+                        : "Goal shortfall"}
                     </span>
                     <span className="text-sm font-semibold">
                       {formatMoney(funding.remainingAmount, funding.currency)}

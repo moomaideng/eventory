@@ -59,9 +59,9 @@ func TestOrganizerDashboardOwnershipPostgres(t *testing.T) {
 				Role:      models.TournamentStaffRoleAdmin,
 			},
 		},
-		Name: "Private draft", Game: "Chess",
+		Name: "Private tournament", Game: "Chess",
 		StartsAt: time.Now(), EndsAt: time.Now().Add(time.Hour), RegistrationDeadline: time.Now(),
-		Capacity: 8, Status: models.TournamentStatusRegistrationOpen, Published: false,
+		Capacity: 8, Status: models.TournamentStatusCrowdfunding, Published: false,
 	}
 	if err := tx.Create(&tournament).Error; err != nil {
 		t.Fatal(err)
@@ -85,9 +85,30 @@ func TestOrganizerDashboardOwnershipPostgres(t *testing.T) {
 	if savedFunding.GoalAmount != 2500 || savedFunding.Deadline == nil || !savedFunding.Deadline.Equal(fundingDeadline) {
 		t.Fatalf("funding update was not persisted: %+v", savedFunding)
 	}
+	change, err := repo.ApplyOverride(ctx, organizerID, "Owner", tournament.ID, "Ready for the next stage",
+		func(current *models.Tournament) (models.TournamentStatus, error) {
+			if current.OwnerID() != organizerID || current.Funding == nil || current.Funding.GoalAmount != 2500 {
+				return "", errors.New("status transition did not load owner and funding")
+			}
+			return models.TournamentStatusRegistrationClosed, nil
+		})
+	if err != nil || change.FromStatus != models.TournamentStatusCrowdfunding || change.ToStatus != models.TournamentStatusRegistrationClosed {
+		t.Fatalf("status override should use the current owner and funding: change=%+v err=%v", change, err)
+	}
+	tournament.Name = "Stale plan edit"
+	if err := repo.Update(ctx, &tournament); !errors.Is(err, repositories.ErrTournamentStateChanged) {
+		t.Fatalf("stale event plan must not overwrite a new status: %v", err)
+	}
+	var afterOverride models.Tournament
+	if err := tx.First(&afterOverride, "id = ?", tournament.ID).Error; err != nil {
+		t.Fatal(err)
+	}
+	if afterOverride.Status != models.TournamentStatusRegistrationClosed || afterOverride.Name == "Stale plan edit" {
+		t.Fatalf("status and event details changed after stale update: %+v", afterOverride)
+	}
 	items, total, err := repo.ListOwned(ctx, organizerID, 1, 12)
 	if err != nil || total != 1 || len(items) != 1 || items[0].ID != tournament.ID || items[0].Published {
-		t.Fatalf("owner should see their draft: total=%d items=%+v err=%v", total, items, err)
+		t.Fatalf("owner should see their unpublished tournament: total=%d items=%+v err=%v", total, items, err)
 	}
 	items, total, err = repo.ListOwned(ctx, adminID, 1, 12)
 	if err != nil || total != 1 || len(items) != 1 || items[0].ID != tournament.ID {

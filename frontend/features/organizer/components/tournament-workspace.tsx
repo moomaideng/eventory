@@ -16,6 +16,7 @@ import {
 import { DashboardOverview } from "@/features/organizer/components/dashboard-overview";
 import { FundingSettingsDialog } from "@/features/organizer/components/funding-settings-dialog";
 import { PlannedEventDetailsDialog } from "@/features/organizer/components/planned-event-details-dialog";
+import { RegistrationRulesDialog } from "@/features/organizer/components/registration-rules-dialog";
 import { RegistrationTable } from "@/features/organizer/components/registration-table";
 import { StatusControlDialog } from "@/features/organizer/components/status-control-dialog";
 import { dashboardQueryOptions, statusLabel } from "@/features/organizer/utils";
@@ -113,6 +114,20 @@ export function TournamentWorkspace({
                         fundingDeadline={data.summary.funding.deadline}
                       />
                     ) : null}
+                    {isOwner &&
+                    data.summary.tournament.status === "CROWDFUNDING" ? (
+                      <RegistrationRulesDialog
+                        tournamentId={tournamentId}
+                        rules={{
+                          registrationMode:
+                            data.summary.tournament.registrationMode,
+                          minTeamSize: data.summary.tournament.minTeamSize,
+                          maxTeamSize: data.summary.tournament.maxTeamSize,
+                          capacity: data.summary.tournament.capacity,
+                          entryFee: data.summary.tournament.entryFee,
+                        }}
+                      />
+                    ) : null}
                     {isOwner ? (
                       data.summary.tournament.status === "CROWDFUNDING" &&
                       data.summary.funding.deadline ? (
@@ -130,6 +145,7 @@ export function TournamentWorkspace({
                       <StatusControlDialog
                         tournamentId={tournamentId}
                         currentStatus={data.summary.tournament.status}
+                        funding={data.summary.funding}
                       />
                     ) : (
                       <LeaveTournamentDialog

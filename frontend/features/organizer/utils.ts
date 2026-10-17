@@ -56,5 +56,5 @@ export const TERMINAL_WARNING: Record<string, string> = {
   COMPLETED:
     "A completed tournament becomes a read-only archive. You will not be able to reopen it.",
   CANCELLED:
-    "Cancelling refunds every entrant and sponsor. You will not be able to revive this tournament.",
+    "Cancelling closes the tournament and cannot be undone. Refunds are not processed by this action.",
 };

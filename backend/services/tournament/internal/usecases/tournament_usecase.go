@@ -3,6 +3,7 @@ package usecases
 import (
 	"context"
 	"errors"
+	"fmt"
 	"slices"
 	"strings"
 	"time"
@@ -36,6 +37,9 @@ var (
 	ErrStatusUnchanged            = errors.New("tournament is already in that status")
 	ErrOverrideReasonRequired     = errors.New("a reason between 10 and 500 characters is required")
 	ErrUnknownStatus              = errors.New("unknown tournament status")
+	ErrCrowdfundingGoalNotReached = errors.New("funding goal has not been reached")
+	ErrCrowdfundingPlanIncomplete = errors.New("event details or registration rules are incomplete")
+	ErrTournamentStateChanged     = errors.New("tournament status changed; refresh and try again")
 )
 
 const (
@@ -471,8 +475,7 @@ func (u *TournamentUseCase) UpdateTournament(
 		return nil, ErrNotTournamentOwner
 	}
 
-	// CANCELLED is terminal too (US3-3): cancelling refunds entrants, so the
-	// tournament must not be re-configured afterwards.
+	// CANCELLED is terminal: the event cannot be re-configured afterwards.
 	if tournament.Status == models.TournamentStatusOngoing ||
 		tournament.Status == models.TournamentStatusCompleted ||
 		tournament.Status == models.TournamentStatusCancelled {
@@ -615,6 +618,9 @@ func (u *TournamentUseCase) UpdateTournament(
 	}
 
 	if err := u.tournamentRepo.Update(ctx, tournament); err != nil {
+		if errors.Is(err, repositories.ErrTournamentStateChanged) {
+			return nil, ErrTournamentStateChanged
+		}
 		return nil, err
 	}
 	return tournament, nil
@@ -754,6 +760,15 @@ func (u *TournamentUseCase) Override(
 	accountID, tournamentID uuid.UUID,
 	rawStatus, rawReason string,
 ) (*TournamentStatusOverride, error) {
+	return u.OverrideWithForce(ctx, accountID, tournamentID, rawStatus, rawReason, false)
+}
+
+func (u *TournamentUseCase) OverrideWithForce(
+	ctx context.Context,
+	accountID, tournamentID uuid.UUID,
+	rawStatus, rawReason string,
+	force bool,
+) (*TournamentStatusOverride, error) {
 	to := models.TournamentStatus(strings.ToUpper(strings.TrimSpace(rawStatus)))
 	if _, known := allowedTransitions[to]; !known {
 		return nil, ErrUnknownStatus
@@ -780,6 +795,22 @@ func (u *TournamentUseCase) Override(
 			if !canTransition(current.Status, to) {
 				return "", ErrInvalidStatusTransition
 			}
+			if force && (current.Status != models.TournamentStatusCrowdfunding || to != models.TournamentStatusRegistrationOpen) {
+				return "", ErrInvalidStatusTransition
+			}
+			if current.Status == models.TournamentStatusCrowdfunding {
+				if current.OwnerID() != accountID {
+					return "", ErrNotTournamentOwner
+				}
+				if to == models.TournamentStatusRegistrationOpen {
+					if problem := crowdfundingPlanProblem(current, time.Now()); problem != "" {
+						return "", fmt.Errorf("%w: %s", ErrCrowdfundingPlanIncomplete, problem)
+					}
+					if !force && current.Funding.RaisedAmount < current.Funding.GoalAmount {
+						return "", ErrCrowdfundingGoalNotReached
+					}
+				}
+			}
 			return to, nil
 		})
 	if err != nil {
@@ -793,6 +824,41 @@ func (u *TournamentUseCase) Override(
 		TournamentID: tournamentID, FromStatus: from, ToStatus: to,
 		Reason: reason, Change: *change,
 	}, nil
+}
+
+func crowdfundingPlanProblem(t *models.Tournament, now time.Time) string {
+	if !t.Published || t.Funding == nil || t.Funding.GoalAmount <= 0 || t.Funding.Deadline == nil {
+		return "the crowdfunding setup is incomplete"
+	}
+	if strings.TrimSpace(t.Name) == "" || strings.TrimSpace(t.Game) == "" {
+		return "the tournament name or game is missing"
+	}
+	if strings.TrimSpace(t.Location) == "" {
+		return "add an event location"
+	}
+	if t.Capacity < 1 || t.EntryFee < 0 {
+		return "set a valid capacity and entry fee"
+	}
+	if !t.RegistrationDeadline.After(now) {
+		return "set a future registration deadline"
+	}
+	if !t.RegistrationDeadline.Before(t.StartsAt) || !t.StartsAt.Before(t.EndsAt) {
+		return "set the registration deadline before the event start and the event end after the start"
+	}
+	if !t.Funding.Deadline.Before(t.RegistrationDeadline) {
+		return "set the funding deadline before registration closes"
+	}
+	switch t.RegistrationMode {
+	case models.TournamentRegistrationModeSolo:
+		if t.MinTeamSize == 1 && t.MaxTeamSize == 1 {
+			return ""
+		}
+	case models.TournamentRegistrationModeTeam:
+		if t.MinTeamSize >= 1 && t.MaxTeamSize >= t.MinTeamSize {
+			return ""
+		}
+	}
+	return "set a valid registration mode and team size"
 }
 
 func (u *TournamentUseCase) History(

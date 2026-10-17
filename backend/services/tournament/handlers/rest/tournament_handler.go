@@ -327,6 +327,7 @@ func tournamentHTTPError(err error) error {
 	case errors.Is(err, usecases.ErrCapacityBelowAcceptedTeams),
 		errors.Is(err, usecases.ErrRosterRulesLocked),
 		errors.Is(err, usecases.ErrTournamentCannotBeModified),
+		errors.Is(err, usecases.ErrTournamentStateChanged),
 		errors.Is(err, usecases.ErrCrowdfundingClosed):
 		return huma.Error409Conflict(err.Error(), err)
 	case errors.Is(err, usecases.ErrInvalidTournamentDates),
