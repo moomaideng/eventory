@@ -20,6 +20,12 @@ type accountScenarioContext struct {
 
 	existingProfileName  string
 	existingProfileEmail string
+
+	// US1-4: snapshot before an update, and the values we expect after it.
+	primaryBefore   handlers.AccountResponse
+	primaryExpected handlers.AccountResponse
+	// US1-4: HTTP status the failing row is expected to return (0 = default 422).
+	expectedFailStatus int
 }
 
 func (s *accountScenarioContext) theEventoryAPIServiceIsRunning() error {
@@ -348,8 +354,12 @@ func (s *accountScenarioContext) theUpdateShouldFail() error {
 	if s.resp == nil {
 		return fmt.Errorf("no HTTP response captured")
 	}
-	if s.resp.StatusCode != http.StatusUnprocessableEntity {
-		return fmt.Errorf("expected update to fail with 422, got %d: %s", s.resp.StatusCode, s.resp.Body)
+	want := s.expectedFailStatus
+	if want == 0 {
+		want = http.StatusUnprocessableEntity // default used by the US1-3 scenarios
+	}
+	if s.resp.StatusCode != want {
+		return fmt.Errorf("expected update to fail with %d, got %d: %s", want, s.resp.StatusCode, s.resp.Body)
 	}
 	return nil
 }
@@ -386,6 +396,151 @@ func (s *accountScenarioContext) theirExistingRoleProfileInformationShouldStayTh
 		return fmt.Errorf("unknown role %q", role)
 	}
 	return nil
+}
+
+// ---- US1-4: primary account profile ----
+
+func (s *accountScenarioContext) getMyAccount() (handlers.AccountResponse, error) {
+	var out handlers.AccountResponse
+	resp, err := s.client.Do(http.MethodGet, "/accounts/me", nil, s.currentUser.AuthHeaders())
+	if err != nil {
+		return out, err
+	}
+	if resp.StatusCode != http.StatusOK {
+		return out, fmt.Errorf("expected 200 from GET /accounts/me, got %d: %s", resp.StatusCode, resp.Body)
+	}
+	if err := resp.JSON(&out); err != nil {
+		return out, fmt.Errorf("failed to parse account response: %w", err)
+	}
+	return out, nil
+}
+
+func ptrValue(p *string) string {
+	if p == nil {
+		return ""
+	}
+	return *p
+}
+
+func samePrimaryProfile(want, got handlers.AccountResponse) error {
+	if got.DisplayName != want.DisplayName ||
+		got.Handle != want.Handle ||
+		ptrValue(got.Phone) != ptrValue(want.Phone) ||
+		ptrValue(got.AvatarURL) != ptrValue(want.AvatarURL) {
+		return fmt.Errorf(
+			"expected profile %q/%q/%q/%q, got %q/%q/%q/%q",
+			want.DisplayName, want.Handle, ptrValue(want.Phone), ptrValue(want.AvatarURL),
+			got.DisplayName, got.Handle, ptrValue(got.Phone), ptrValue(got.AvatarURL),
+		)
+	}
+	return nil
+}
+
+func (s *accountScenarioContext) theAccountOwnerIsSignedInWithAnActiveAccount() error {
+	if err := s.anActiveOnboardedUserWithDisplayNameAndHandle("Primary Owner", "primary_owner"); err != nil {
+		return err
+	}
+
+	// Give every editable field a value so "stay the same" is a real check.
+	phone := "+66800000000"
+	avatar := "https://example.com/avatar-old.png"
+	resp, err := s.client.Do(http.MethodPatch, "/accounts/me", handlers.UpdateAccountRequest{
+		Phone:     &phone,
+		AvatarURL: &avatar,
+	}, s.currentUser.AuthHeaders())
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("expected 200 when seeding phone and avatar, got %d: %s", resp.StatusCode, resp.Body)
+	}
+
+	before, err := s.getMyAccount()
+	if err != nil {
+		return err
+	}
+	s.primaryBefore = before
+	return nil
+}
+
+func (s *accountScenarioContext) theyUpdateAllPrimaryProfileFieldsWithValidInformation() error {
+	name := "Primary Owner Updated"
+	handle := "primary_owner_v2"
+	phone := "+66811112222"
+	avatar := "https://example.com/avatar-new.png"
+
+	resp, err := s.client.Do(http.MethodPatch, "/accounts/me", handlers.UpdateAccountRequest{
+		DisplayName: &name,
+		Handle:      &handle,
+		Phone:       &phone,
+		AvatarURL:   &avatar,
+	}, s.currentUser.AuthHeaders())
+	if err != nil {
+		return err
+	}
+	s.resp = resp
+	s.primaryExpected = handlers.AccountResponse{
+		DisplayName: name,
+		Handle:      handle,
+		Phone:       &phone,
+		AvatarURL:   &avatar,
+	}
+	return nil
+}
+
+func (s *accountScenarioContext) theUpdateShouldSucceed() error {
+	if s.resp == nil {
+		return fmt.Errorf("no HTTP response captured")
+	}
+	if s.resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("expected update to succeed with 200, got %d: %s", s.resp.StatusCode, s.resp.Body)
+	}
+	return nil
+}
+
+func (s *accountScenarioContext) viewingTheirPrimaryProfileShouldShowTheNewInformation() error {
+	// Fetch again instead of trusting the PATCH response: proves it was saved.
+	got, err := s.getMyAccount()
+	if err != nil {
+		return err
+	}
+	return samePrimaryProfile(s.primaryExpected, got)
+}
+
+func (s *accountScenarioContext) theyUpdateTheirPrimaryProfileWith(change string) error {
+	var body handlers.UpdateAccountRequest
+
+	switch change {
+	case "a handle another member is already using":
+		const takenHandle = "taken_by_other"
+		if err := s.anotherActiveOnboardedUserWithHandle(takenHandle); err != nil {
+			return err
+		}
+		handle := takenHandle
+		body.Handle = &handle
+		s.expectedFailStatus = http.StatusConflict
+	case "a display name that is completely cleared":
+		empty := ""
+		body.DisplayName = &empty
+		s.expectedFailStatus = http.StatusUnprocessableEntity
+	default:
+		return fmt.Errorf("unknown primary profile change %q", change)
+	}
+
+	resp, err := s.client.Do(http.MethodPatch, "/accounts/me", body, s.currentUser.AuthHeaders())
+	if err != nil {
+		return err
+	}
+	s.resp = resp
+	return nil
+}
+
+func (s *accountScenarioContext) theirExistingPrimaryProfileInformationShouldStayTheSame() error {
+	got, err := s.getMyAccount()
+	if err != nil {
+		return err
+	}
+	return samePrimaryProfile(s.primaryBefore, got)
 }
 
 func (s *accountScenarioContext) anUnauthenticatedRequestIsSentToGetMe() error {
@@ -661,6 +816,24 @@ func InitializeScenario(sc *godog.ScenarioContext) {
 	})
 	sc.Step(`^their existing (organizer|sponsor) profile information should stay the same$`, func(role string) error {
 		return s.theirExistingRoleProfileInformationShouldStayTheSame(role)
+	})
+	sc.Step(`^the account owner is signed in with an active account$`, func() error {
+		return s.theAccountOwnerIsSignedInWithAnActiveAccount()
+	})
+	sc.Step(`^they update their display name, phone number, avatar and handle with valid information$`, func() error {
+		return s.theyUpdateAllPrimaryProfileFieldsWithValidInformation()
+	})
+	sc.Step(`^the update should succeed$`, func() error {
+		return s.theUpdateShouldSucceed()
+	})
+	sc.Step(`^viewing their primary profile should show the new information$`, func() error {
+		return s.viewingTheirPrimaryProfileShouldShowTheNewInformation()
+	})
+	sc.Step(`^they update their primary profile with (a handle another member is already using|a display name that is completely cleared)$`, func(change string) error {
+		return s.theyUpdateTheirPrimaryProfileWith(change)
+	})
+	sc.Step(`^their existing primary profile information should stay the same$`, func() error {
+		return s.theirExistingPrimaryProfileInformationShouldStayTheSame()
 	})
 	sc.Step(`^an unauthenticated request is sent to "GET /me"$`, func() error {
 		return s.anUnauthenticatedRequestIsSentToGetMe()

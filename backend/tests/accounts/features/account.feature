@@ -49,6 +49,7 @@ Feature: Account Management and Profiles
       | Prime Sponsor  | prime_sponsor   |
 
   # [VALID] Read personal account details
+  @US1-4 @valid
   Scenario: Retrieve current authenticated account profile
     Given an active onboarded user with display name "Alice Gamer" and handle "alice_gamer"
     When the user requests their current account details via "GET /me"
@@ -96,6 +97,20 @@ Feature: Account Management and Profiles
     And the sponsor contact email should be "sponsor@redbull.co.th"
 
   # =========================================================================
+  # US1-4
+  # As an account owner, I want to view and update my primary account profile
+  # so that my information stays accurate.
+  # =========================================================================
+
+  # [VALID] Update every editable field and see it reflected
+  @US1-4 @valid
+  Scenario: Update and view primary profile details
+    Given the account owner is signed in with an active account
+    When they update their display name, phone number, avatar and handle with valid information
+    Then the update should succeed
+    And viewing their primary profile should show the new information
+
+  # =========================================================================
   # 2. INVALID (NEGATIVE) SCENARIOS - Validation, Conflict & Security Guards
   # =========================================================================
 
@@ -110,6 +125,18 @@ Feature: Account Management and Profiles
       | role      | name field         |
       | organizer | organization name  |
       | sponsor   | company name       |
+
+  @US1-4 @invalid
+  Scenario Outline: Reject primary profile update with invalid information
+    Given the account owner is signed in with an active account
+    When they update their primary profile with <invalid change>
+    Then the update should fail
+    And their existing primary profile information should stay the same
+
+    Examples:
+      | invalid change                              |
+      | a handle another member is already using    |
+      | a display name that is completely cleared   |
 
   # [INVALID] Guard: Reject organizer profile creation if still in ONBOARDING (Expect 403 Forbidden)
   Scenario: Reject organizer profile creation when account is still in ONBOARDING
