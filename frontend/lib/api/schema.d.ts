@@ -300,6 +300,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/tournaments/{id}/bracket": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * View tournament bracket
+         * @description Returns all bracket matches and team participant entries for a tournament.
+         */
+        get: operations["get-tournament-bracket"];
+        put?: never;
+        /**
+         * Define bracket layout
+         * @description Bulk-creates the entire bracket match graph structure before launch. The graph must be an acyclic converging DAG where edges point forward to higher stage levels.
+         */
+        post: operations["define-tournament-bracket"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/tournaments/{id}/dashboard": {
         parameters: {
             query?: never;
@@ -331,6 +355,46 @@ export interface paths {
          * @description Records an organizer's decision on a team application that is waiting for review (a solo player is a one-person team), enforcing the tournament's capacity. A decision may be switched later; every decision is kept in the audit trail.
          */
         post: operations["review-application"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{id}/matches/{matchId}/results": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Record match results and advance winners
+         * @description Records final match rankings, flags the top N teams as advancing, automatically inserts them into the target match node, and marks the current match completed.
+         */
+        post: operations["record-match-results"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{id}/seed": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Seed Stage 1 matches
+         * @description Distributes the tournament's accepted teams across Stage 1 matches. If assignments are omitted, teams are auto-distributed round-robin.
+         */
+        post: operations["seed-tournament-stage1"];
         delete?: never;
         options?: never;
         head?: never;
@@ -904,6 +968,15 @@ export interface components {
             /** @description Sponsor company or organization name */
             sponsorName: string;
         };
+        BracketResponse: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/BracketResponse.json
+             */
+            readonly $schema?: string;
+            matches: components["schemas"]["MatchResponse"][] | null;
+        };
         CreateTeamLobbyRequest: {
             /**
              * Format: uri
@@ -973,6 +1046,43 @@ export interface components {
              */
             startAt: string;
         };
+        DefineBracketMatchItem: {
+            /**
+             * Format: int64
+             * @description Integer N specifying how many top teams advance to the target match
+             */
+            advancingCount: number;
+            /** @description Display label (e.g. 'Heat 1.1', 'Quarterfinal B') */
+            name: string;
+            /**
+             * Format: int64
+             * @description Integer representing progression depth (1, 2, 3...)
+             */
+            stageLevel: number;
+            /** @description Temporary identifier pointing to the target match node (null for final/championship match) */
+            targetMatchId?: string;
+            /** @description Alias for targetMatchId */
+            targetTempId?: string;
+            /**
+             * Format: int64
+             * @description Number of teams competing in this match (e.g. 2 for 1v1, 4 for FFA)
+             */
+            teamCount: number;
+            /** @description Temporary identifier for this node (e.g. 'heat-1.1', 'semi-a') */
+            tempId: string;
+            /** @description Location/court/station details (e.g. 'Field 2', 'Arena Room A') */
+            venue: string;
+        };
+        DefineBracketRequest: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/DefineBracketRequest.json
+             */
+            readonly $schema?: string;
+            /** @description List of matches defining the bracket DAG */
+            matches: components["schemas"]["DefineBracketMatchItem"][] | null;
+        };
         FieldAnswer: {
             fieldId: string;
             value: unknown;
@@ -1033,6 +1143,43 @@ export interface components {
              */
             readonly $schema?: string;
             items: components["schemas"]["SponsorshipTierResponse"][] | null;
+        };
+        MatchEntryResponse: {
+            advances: boolean;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: int64 */
+            finalRank?: number;
+            id: string;
+            matchId: string;
+            score?: string;
+            teamId: string;
+            teamName?: string;
+        };
+        MatchResponse: {
+            /** Format: int64 */
+            advancingCount: number;
+            /** Format: date-time */
+            createdAt: string;
+            entries: components["schemas"]["MatchEntryResponse"][] | null;
+            id: string;
+            isCompleted: boolean;
+            name: string;
+            /** Format: int64 */
+            stageLevel: number;
+            targetMatchId?: string;
+            /** Format: int64 */
+            teamCount: number;
+            tournamentId: string;
+            /** Format: date-time */
+            updatedAt: string;
+            venue: string;
+        };
+        MatchSeedAssignmentItem: {
+            /** @description Stage 1 match ID */
+            matchId: string;
+            /** @description Accepted tournament team IDs assigned to this match */
+            teamIds: string[] | null;
         };
         OrganizerDashboardEntry: {
             /** Format: date-time */
@@ -1126,6 +1273,28 @@ export interface components {
             status: string;
             tournamentId: string;
         };
+        RecordMatchResultsRequest: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/RecordMatchResultsRequest.json
+             */
+            readonly $schema?: string;
+            /** @description Ordered placements of the match's existing participants */
+            placements: components["schemas"]["TeamPlacementItem"][] | null;
+        };
+        RecordMatchResultsResponse: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/RecordMatchResultsResponse.json
+             */
+            readonly $schema?: string;
+            advancingTeams: string[] | null;
+            isCompleted: boolean;
+            matchId: string;
+            targetMatchId?: string;
+        };
         RegistrationFormResponse: {
             /**
              * Format: uri
@@ -1156,6 +1325,16 @@ export interface components {
             fields: components["schemas"]["FormField"][] | null;
             /** @description Form title */
             title: string;
+        };
+        SeedTournamentRequest: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/SeedTournamentRequest.json
+             */
+            readonly $schema?: string;
+            /** @description Optional explicit assignments of teams to Stage 1 matches. If omitted or empty, teams are auto-distributed round-robin. */
+            assignments?: components["schemas"]["MatchSeedAssignmentItem"][] | null;
         };
         SponsorshipTierBody: {
             /**
@@ -1257,6 +1436,17 @@ export interface components {
             tournament: components["schemas"]["TournamentResponse"];
             /** @enum {string} */
             viewerRole: "CAPTAIN" | "MEMBER" | "INVITEE";
+        };
+        TeamPlacementItem: {
+            /**
+             * Format: int64
+             * @description Match placement (1st, 2nd, 3rd, etc.)
+             */
+            finalRank: number;
+            /** @description Match score or result string (e.g. '2', '16-14', '1:23.4') */
+            score?: string;
+            /** @description Participating team ID */
+            teamId: string;
         };
         TeamReviewInputBody: {
             /**
@@ -2227,6 +2417,74 @@ export interface operations {
             };
         };
     };
+    "get-tournament-bracket": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Tournament ID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BracketResponse"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "define-tournament-bracket": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Tournament ID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DefineBracketRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BracketResponse"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
     "get-organizer-tournament-dashboard": {
         parameters: {
             query?: never;
@@ -2283,6 +2541,80 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TeamReviewOutputBody"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "record-match-results": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Tournament ID */
+                id: string;
+                /** @description Match ID */
+                matchId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RecordMatchResultsRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecordMatchResultsResponse"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "seed-tournament-stage1": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Tournament ID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SeedTournamentRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BracketResponse"];
                 };
             };
             /** @description Error */

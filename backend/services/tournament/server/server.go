@@ -114,11 +114,13 @@ func newHTTPRouter(db *gorm.DB, mongoDB *mongo.Database, cfg config.Config, acco
 	tournamentStaffRepo := repositories.NewTournamentStaffRepository(db)
 	teamReviewRepo := repositories.NewTeamReviewRepository(db)
 	sponsorshipTierRepo := repositories.NewSponsorshipTierRepository(db)
+	bracketRepo := repositories.NewBracketRepository(db)
 
 	tournamentUseCase := usecases.NewTournamentUseCase(tournamentRepo, accountSvc)
 	staffUseCase := usecases.NewTournamentStaffUseCase(tournamentStaffRepo, accountSvc)
 	teamReviewUseCase := usecases.NewTeamReviewUseCase(teamReviewRepo, accountSvc)
 	sponsorshipTierUseCase := usecases.NewSponsorshipTierUseCase(sponsorshipTierRepo, tournamentRepo)
+	bracketUseCase := usecases.NewBracketUseCase(bracketRepo)
 
 	authMiddleware := middlewares.NewAuthMiddleware(api, cfg.SupabaseURL, cfg.Environment)
 	organizerMiddleware := tournamentmiddlewares.NewOrganizerMiddleware(api, accountSvc)
@@ -133,6 +135,7 @@ func newHTTPRouter(db *gorm.DB, mongoDB *mongo.Database, cfg config.Config, acco
 	resthandlers.RegisterTournamentStatusRoutes(api, auth, organizer, tournamentUseCase)
 	resthandlers.RegisterSponsorshipTierRoutes(api, auth, organizer, sponsorshipTierUseCase)
 	resthandlers.RegisterTeamReviewRoutes(api, auth, teamReviewUseCase)
+	resthandlers.RegisterBracketRoutes(api, auth, bracketUseCase)
 
 	if mongoDB != nil {
 		formRepo := repositories.NewRegistrationFormRepository(mongoDB)
