@@ -4,9 +4,10 @@ import type { DashboardEntry } from "@/features/organizer/utils";
 
 /**
  * The decisions that make sense from each entry status. An application waits
- * for the organizer as LOCKED (a team) or AWAITING_APPROVAL (a solo player);
- * forming and payment-pending applicants have nothing to review yet. This only
- * decides which buttons to offer; the server still checks every transition.
+ * for the organizer as LOCKED (a solo player is a one-person team, so the same
+ * status applies); forming and payment-pending applicants have nothing to
+ * review yet. This only decides which buttons to offer; the server still
+ * checks every transition.
  */
 export function ReviewActions({
   tournamentId,
@@ -15,8 +16,7 @@ export function ReviewActions({
   tournamentId: string;
   entry: Pick<DashboardEntry, "id" | "name" | "status">;
 }) {
-  const awaitingReview =
-    entry.status === "LOCKED" || entry.status === "AWAITING_APPROVAL";
+  const awaitingReview = entry.status === "LOCKED";
   const canAccept = awaitingReview || entry.status === "REJECTED";
   const canReject = awaitingReview || entry.status === "ACCEPTED";
 

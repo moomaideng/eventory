@@ -328,7 +328,7 @@ export interface paths {
         put?: never;
         /**
          * Accept or reject an application
-         * @description Records an organizer's decision on a team or solo application that is waiting for review, enforcing the tournament's capacity. A decision may be switched later; every decision is kept in the audit trail.
+         * @description Records an organizer's decision on a team application that is waiting for review (a solo player is a one-person team), enforcing the tournament's capacity. A decision may be switched later; every decision is kept in the audit trail.
          */
         post: operations["review-application"];
         delete?: never;
@@ -1290,7 +1290,7 @@ export interface components {
             /** Format: date-time */
             createdAt: string;
             /** @enum {string} */
-            fromStatus: "LOCKED" | "AWAITING_APPROVAL" | "ACCEPTED" | "REJECTED";
+            fromStatus: "LOCKED" | "ACCEPTED" | "REJECTED";
             id: string;
             reason: string;
             reviewerId: string;
@@ -2265,7 +2265,7 @@ export interface operations {
             path: {
                 /** @description Tournament ID */
                 id: string;
-                /** @description Application ID: a team's ID, or a solo registration's ID */
+                /** @description Application ID: the team's ID (a solo player registers as a one-person team) */
                 entryId: string;
             };
             cookie?: never;
