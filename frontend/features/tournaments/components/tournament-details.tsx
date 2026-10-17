@@ -216,6 +216,7 @@ export function TournamentDetails({
         <div className="flex flex-col gap-6">
           {sponsorMode && (
             <PublicTiersSection
+              sponsorMode
               tournamentId={tournament.id}
               currency={tournament.currency}
               status={tournament.status}
