@@ -54,7 +54,7 @@ func (r *accountRepositoryImpl) FindByIDs(ctx context.Context, ids []uuid.UUID) 
 		return nil, nil
 	}
 	var accounts []models.Account
-	if err := r.db.WithContext(ctx).Where("id IN ?", ids).Find(&accounts).Error; err != nil {
+	if err := r.db.WithContext(ctx).Preload("SponsorProfile").Where("id IN ?", ids).Find(&accounts).Error; err != nil {
 		return nil, err
 	}
 	return accounts, nil

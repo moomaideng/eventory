@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { TeamSubmissionResult } from "@/features/payments/components/team-submission-result";
+import { SponsorshipResult } from "@/features/payments/components/sponsorship-result";
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Info } from "lucide-react";
@@ -23,7 +24,14 @@ import { PaymentStatus } from "@/features/payments/components/payment-display";
 import { useInvoice } from "@/features/payments/hooks/use-invoice";
 import { formatAmount, formatPaymentDate } from "@/features/payments/utils";
 
-export function MockCheckout({ paymentId }: { paymentId: string }) {
+export function MockCheckout({
+  paymentId,
+  sponsorMode = false,
+}: {
+  paymentId: string;
+  sponsorMode?: boolean;
+}) {
+  const basePath = sponsorMode ? "/sponsor/payments" : "/payments";
   const { authorizationHeader } = useAuth();
   const queryClient = useQueryClient();
   const [lastResult, setLastResult] = useState<"FAILED" | "CANCELLED" | null>(
@@ -69,7 +77,7 @@ export function MockCheckout({ paymentId }: { paymentId: string }) {
           <Button variant="outline" onClick={() => void paymentQuery.refetch()}>
             Try again
           </Button>
-          <Link href="/payments" className="underline">
+          <Link href={basePath} className="underline">
             Back to my payments
           </Link>
         </AlertDescription>
@@ -79,6 +87,7 @@ export function MockCheckout({ paymentId }: { paymentId: string }) {
   return (
     <div className="flex flex-col gap-6">
       <TeamSubmissionResult payment={payment} />
+      <SponsorshipResult payment={payment} />
       <Alert>
         <Info />
         <AlertTitle>Demo checkout</AlertTitle>
@@ -179,8 +188,8 @@ export function MockCheckout({ paymentId }: { paymentId: string }) {
             <Link
               href={
                 payment.status === "PAID"
-                  ? `/payments/${payment.id}/receipt`
-                  : payment.invoicePath
+                  ? `${basePath}/${payment.id}/receipt`
+                  : `${basePath}/${payment.id}`
               }
               className={buttonVariants({ variant: "outline" })}
             >
@@ -189,7 +198,7 @@ export function MockCheckout({ paymentId }: { paymentId: string }) {
           )}
         </CardFooter>
       </Card>
-      <Link href={payment.invoicePath} className="text-sm underline">
+      <Link href={`${basePath}/${payment.id}`} className="text-sm underline">
         Back to invoice
       </Link>
     </div>

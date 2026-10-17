@@ -403,8 +403,8 @@ func (u *TournamentUseCase) CreateTournament(
 	// are currently being finalized by the team.
 	funding := &models.TournamentFunding{
 		GoalAmount:     1000,
-		RaisedAmount:   500,
-		SupporterCount: 1,
+		RaisedAmount:   0,
+		SupporterCount: 0,
 	}
 
 	tournament := &models.Tournament{

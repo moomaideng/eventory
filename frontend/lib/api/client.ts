@@ -5,7 +5,7 @@ import type { paths } from "@/lib/api/schema";
 /**
  * Type-safe OpenAPI client using openapi-fetch.
  */
-const apiBaseUrl =
+export const apiBaseUrl =
   typeof window === "undefined"
     ? process.env.INTERNAL_API_URL || process.env.NEXT_PUBLIC_API_URL
     : process.env.NEXT_PUBLIC_API_URL;

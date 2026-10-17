@@ -28,7 +28,13 @@ import {
   type Tournament,
 } from "../utils";
 
-export function TournamentCard({ tournament }: { tournament: Tournament }) {
+export function TournamentCard({
+  tournament,
+  sponsorMode = false,
+}: {
+  tournament: Tournament;
+  sponsorMode?: boolean;
+}) {
   const seatsLeft = Math.max(
     0,
     tournament.capacity - tournament.registeredCount
@@ -67,7 +73,9 @@ export function TournamentCard({ tournament }: { tournament: Tournament }) {
           </div>
           <div className="flex items-start gap-2">
             <WalletCards className="text-muted-foreground mt-0.5 size-4 shrink-0" />
-            <span>{formatEntryFee(tournament.entryFee, tournament.currency)}</span>
+            <span>
+              {formatEntryFee(tournament.entryFee, tournament.currency)}
+            </span>
           </div>
           <div className="flex items-start gap-2">
             <MapPin className="text-muted-foreground mt-0.5 size-4 shrink-0" />
@@ -83,12 +91,16 @@ export function TournamentCard({ tournament }: { tournament: Tournament }) {
           </span>
         </div>
         <Button
-          render={<Link href={`/tournaments/${tournament.id}`} />}
+          render={
+            <Link
+              href={`${sponsorMode ? "/sponsor" : ""}/tournaments/${tournament.id}`}
+            />
+          }
           nativeButton={false}
           size="sm"
           variant="outline"
         >
-          View details
+          {sponsorMode ? "View packages" : "View details"}
           <ArrowUpRight data-icon="inline-end" />
         </Button>
       </CardFooter>

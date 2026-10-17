@@ -8,11 +8,13 @@ import (
 	"github.com/google/uuid"
 	"github.com/moomaideng/eventory/services/tournament/models"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 var (
 	ErrSponsorshipTierNotFound      = errors.New("sponsorship tier not found")
 	ErrSponsorshipTierNameDuplicate = errors.New("sponsorship tier name already used in this tournament")
+	ErrSponsorshipTierInUse         = errors.New("this package has a pending or confirmed sponsorship and cannot be changed")
 )
 
 // SponsorshipTierRepository persists sponsorship tier packages (US5-4).
@@ -39,7 +41,26 @@ func (r *sponsorshipTierRepository) List(ctx context.Context, tournamentID uuid.
 		Where("tournament_id = ?", tournamentID).
 		Order("sort_order ASC, price DESC, created_at ASC").
 		Find(&tiers).Error
-	return tiers, err
+	if err != nil {
+		return nil, err
+	}
+	var counts []struct {
+		TierID   uuid.UUID
+		Reserved int
+	}
+	if err := r.db.WithContext(ctx).Model(&models.SponsorshipPledge{}).Select("tier_id, COUNT(*) AS reserved").
+		Where("tournament_id = ? AND status IN ?", tournamentID, []models.PledgeStatus{models.PledgePending, models.PledgeConfirmed}).Group("tier_id").Scan(&counts).Error; err != nil {
+		return nil, err
+	}
+	byTier := make(map[uuid.UUID]int, len(counts))
+	for _, count := range counts {
+		byTier[count.TierID] = count.Reserved
+	}
+	for i := range tiers {
+		tiers[i].AvailableSlots = max(tiers[i].Slots-byTier[tiers[i].ID], 0)
+		tiers[i].Locked = byTier[tiers[i].ID] > 0
+	}
+	return tiers, nil
 }
 
 func (r *sponsorshipTierRepository) Get(ctx context.Context, tournamentID, tierID uuid.UUID) (*models.SponsorshipTier, error) {
@@ -61,18 +82,41 @@ func (r *sponsorshipTierRepository) Create(ctx context.Context, tier *models.Spo
 }
 
 func (r *sponsorshipTierRepository) Update(ctx context.Context, tier *models.SponsorshipTier) error {
-	return translateTierError(r.db.WithContext(ctx).Omit("Tournament").Save(tier).Error)
+	return translateTierError(r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := lockUnusedTier(tx, tier.TournamentID, tier.ID); err != nil {
+			return err
+		}
+		return tx.Omit("Tournament").Save(tier).Error
+	}))
 }
 
 func (r *sponsorshipTierRepository) Delete(ctx context.Context, tournamentID, tierID uuid.UUID) error {
-	result := r.db.WithContext(ctx).
-		Where("id = ? AND tournament_id = ?", tierID, tournamentID).
-		Delete(&models.SponsorshipTier{})
-	if result.Error != nil {
-		return result.Error
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := lockUnusedTier(tx, tournamentID, tierID); err != nil {
+			return err
+		}
+		// Closed, unpaid attempts no longer reserve capacity or need their draft logos.
+		if err := tx.Where("tier_id = ?", tierID).Delete(&models.SponsorshipPledge{}).Error; err != nil {
+			return err
+		}
+		return tx.Delete(&models.SponsorshipTier{}, "id = ?", tierID).Error
+	})
+}
+
+func lockUnusedTier(tx *gorm.DB, tournamentID, tierID uuid.UUID) error {
+	var tier models.SponsorshipTier
+	if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&tier, "id = ? AND tournament_id = ?", tierID, tournamentID).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return ErrSponsorshipTierNotFound
+		}
+		return err
 	}
-	if result.RowsAffected == 0 {
-		return ErrSponsorshipTierNotFound
+	var count int64
+	if err := tx.Model(&models.SponsorshipPledge{}).Where("tier_id = ? AND status IN ?", tierID, []models.PledgeStatus{models.PledgePending, models.PledgeConfirmed}).Count(&count).Error; err != nil {
+		return err
+	}
+	if count > 0 {
+		return ErrSponsorshipTierInUse
 	}
 	return nil
 }

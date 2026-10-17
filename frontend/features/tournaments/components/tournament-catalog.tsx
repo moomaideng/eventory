@@ -20,7 +20,11 @@ import { TournamentCard } from "./tournament-card";
 import { TournamentFiltersCard } from "./tournament-filters-card";
 import { TournamentGridSkeleton } from "./tournament-grid-skeleton";
 
-export function TournamentCatalog() {
+export function TournamentCatalog({
+  sponsorMode = false,
+}: {
+  sponsorMode?: boolean;
+}) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -41,7 +45,13 @@ export function TournamentCatalog() {
     startTo,
   } = parsedFilters.success
     ? parsedFilters.data
-    : { page: 1, maxEntryFee: undefined, q: undefined, startFrom: undefined, startTo: undefined };
+    : {
+        page: 1,
+        maxEntryFee: undefined,
+        q: undefined,
+        startFrom: undefined,
+        startTo: undefined,
+      };
 
   const { data, error, isLoading, isFetching } = $api.useQuery(
     "get",
@@ -111,11 +121,14 @@ export function TournamentCatalog() {
     <div className="container mx-auto flex w-full max-w-7xl flex-1 flex-col gap-8 px-4 py-12 sm:px-8">
       <div className="flex flex-col gap-2">
         <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
-          Find your next tournament
+          {sponsorMode
+            ? "Find tournaments to sponsor"
+            : "Find your next tournament"}
         </h1>
         <p className="text-muted-foreground max-w-2xl">
-          Search published competitions and narrow the list to events that fit
-          your schedule and budget.
+          {sponsorMode
+            ? "Browse tournaments, view their sponsorship packages, and choose where to showcase your brand."
+            : "Search published competitions and narrow the list to events that fit your schedule and budget."}
         </p>
       </div>
 
@@ -171,7 +184,11 @@ export function TournamentCatalog() {
       ) : (
         <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
           {items.map((tournament) => (
-            <TournamentCard key={tournament.id} tournament={tournament} />
+            <TournamentCard
+              key={tournament.id}
+              tournament={tournament}
+              sponsorMode={sponsorMode}
+            />
           ))}
         </div>
       )}

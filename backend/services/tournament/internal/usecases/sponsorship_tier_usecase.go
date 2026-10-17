@@ -83,6 +83,7 @@ func (u *SponsorshipTierUseCase) Create(
 	if err := u.tiers.Create(ctx, tier); err != nil {
 		return nil, mapTierError(err)
 	}
+	tier.AvailableSlots = tier.Slots
 	return tier, nil
 }
 
@@ -104,13 +105,11 @@ func (u *SponsorshipTierUseCase) Update(
 	if err := u.tiers.Update(ctx, tier); err != nil {
 		return nil, mapTierError(err)
 	}
+	tier.AvailableSlots = tier.Slots
 	return tier, nil
 }
 
 // Delete removes a tier.
-//
-// TODO(US5-5): refuse once a sponsor has paid for this tier. Pledges do not
-// exist yet, so every tier is currently safe to delete.
 func (u *SponsorshipTierUseCase) Delete(ctx context.Context, accountID, tournamentID, tierID uuid.UUID) error {
 	if err := u.requireEditable(ctx, accountID, tournamentID); err != nil {
 		return err
