@@ -173,13 +173,28 @@ func TestBracketRoutes(t *testing.T) {
 		assert.Equal(t, 3, len(res.Matches))
 	})
 
+	t.Run("POST /tournaments/{id}/bracket resets bracket with empty matches", func(t *testing.T) {
+		body := map[string]any{
+			"matches": []map[string]any{},
+		}
+
+		resp := api.Post("/api/v1/tournaments/"+tournamentID.String()+"/bracket", body)
+		assert.Equal(t, http.StatusCreated, resp.Code)
+
+		var res struct {
+			Matches []rest.MatchResponse `json:"matches"`
+		}
+		require.NoError(t, json.Unmarshal(resp.Body.Bytes(), &res))
+		assert.Equal(t, 0, len(res.Matches))
+	})
+
 	t.Run("POST /tournaments/{id}/seed auto-distributes teams", func(t *testing.T) {
 		stage1MatchID := uuid.New()
 		team1ID := uuid.New()
 		team2ID := uuid.New()
 
 		repo.stage1Matches = []models.Match{
-			{ID: stage1MatchID, TournamentID: tournamentID, Name: "Heat 1", StageLevel: 1},
+			{ID: stage1MatchID, TournamentID: tournamentID, Name: "Heat 1", StageLevel: 1, TeamCount: 2},
 		}
 		repo.acceptedTeams = []models.TournamentTeam{
 			{ID: team1ID, TournamentID: tournamentID, Name: "Team 1", Status: models.TournamentTeamStatusAccepted},

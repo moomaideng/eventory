@@ -2,6 +2,7 @@ package usecases_test
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/google/uuid"
@@ -438,6 +439,40 @@ func TestDefineBracket(t *testing.T) {
 			}
 		}
 	})
+
+	t.Run("success resetting/clearing bracket with empty matches", func(t *testing.T) {
+		repo := &mockBracketRepository{
+			tournament: baseTournament,
+			staffRole:  &ownerRole,
+		}
+		uc := usecases.NewBracketUseCase(repo)
+
+		result, err := uc.DefineBracket(context.Background(), ownerID, tournamentID, []usecases.DefineBracketMatchInput{})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if len(result) != 0 {
+			t.Fatalf("expected 0 saved matches, got %d", len(result))
+		}
+	})
+
+	t.Run("fails when stage 1 capacity does not match accepted teams count", func(t *testing.T) {
+		repo := &mockBracketRepository{
+			tournament: baseTournament,
+			staffRole:  &ownerRole,
+			acceptedTeams: []models.TournamentTeam{
+				{ID: uuid.New(), Name: "T1", Status: models.TournamentTeamStatusAccepted},
+				{ID: uuid.New(), Name: "T2", Status: models.TournamentTeamStatusAccepted},
+				{ID: uuid.New(), Name: "T3", Status: models.TournamentTeamStatusAccepted},
+			},
+		}
+		uc := usecases.NewBracketUseCase(repo)
+
+		_, err := uc.DefineBracket(context.Background(), ownerID, tournamentID, validMatches)
+		if !errors.Is(err, usecases.ErrBracketStage1CapacityMismatch) {
+			t.Fatalf("expected ErrBracketStage1CapacityMismatch, got %v", err)
+		}
+	})
 }
 
 func TestSeedStage1(t *testing.T) {
@@ -568,11 +603,9 @@ func TestSeedStage1(t *testing.T) {
 
 	t.Run("rejects assignment exceeding match team count", func(t *testing.T) {
 		repo := &mockBracketRepository{
-			tournament: tourn,
-			staffRole:  &ownerRole,
-			stage1Matches: []models.Match{
-				{ID: match1ID, StageLevel: 1, TeamCount: 2},
-			},
+			tournament:    tourn,
+			staffRole:     &ownerRole,
+			stage1Matches: stage1Matches,
 			acceptedTeams: acceptedTeams,
 		}
 		uc := usecases.NewBracketUseCase(repo)
@@ -584,6 +617,24 @@ func TestSeedStage1(t *testing.T) {
 		_, err := uc.SeedStage1(context.Background(), ownerID, tournamentID, assignments)
 		if err != usecases.ErrBracketSeedExceedsTeamCount {
 			t.Fatalf("expected ErrBracketSeedExceedsTeamCount, got %v", err)
+		}
+	})
+
+	t.Run("fails when stage 1 capacity does not match accepted teams count", func(t *testing.T) {
+		repo := &mockBracketRepository{
+			tournament:    tourn,
+			staffRole:     &ownerRole,
+			stage1Matches: stage1Matches,
+			acceptedTeams: []models.TournamentTeam{
+				{ID: team1ID, Name: "Team Alpha", Status: models.TournamentTeamStatusAccepted},
+				{ID: team2ID, Name: "Team Beta", Status: models.TournamentTeamStatusAccepted},
+			},
+		}
+		uc := usecases.NewBracketUseCase(repo)
+
+		_, err := uc.SeedStage1(context.Background(), ownerID, tournamentID, nil)
+		if !errors.Is(err, usecases.ErrBracketStage1CapacityMismatch) {
+			t.Fatalf("expected ErrBracketStage1CapacityMismatch, got %v", err)
 		}
 	})
 }

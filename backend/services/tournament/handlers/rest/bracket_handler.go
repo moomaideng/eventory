@@ -25,7 +25,7 @@ type DefineBracketMatchItem struct {
 }
 
 type DefineBracketRequest struct {
-	Matches []DefineBracketMatchItem `json:"matches" minItems:"1" doc:"List of matches defining the bracket DAG"`
+	Matches []DefineBracketMatchItem `json:"matches" doc:"List of matches defining the bracket DAG (empty list clears/resets bracket)"`
 }
 
 type DefineBracketInput struct {
@@ -351,7 +351,8 @@ func bracketHTTPError(err error) error {
 		errors.Is(err, usecases.ErrBracketMissingTeamPlacement),
 		errors.Is(err, usecases.ErrBracketUnknownTeamPlacement),
 		errors.Is(err, usecases.ErrBracketInvalidPlacementRank),
-		errors.Is(err, usecases.ErrBracketDuplicatePlacementTeam):
+		errors.Is(err, usecases.ErrBracketDuplicatePlacementTeam),
+		errors.Is(err, usecases.ErrBracketStage1CapacityMismatch):
 		return huma.Error400BadRequest(err.Error(), err)
 	default:
 		return huma.Error500InternalServerError("Tournament bracket operation failed", err)

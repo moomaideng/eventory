@@ -46,6 +46,7 @@ var (
 	ErrBracketIncomingMismatchTarget = errors.New("total incoming advancing teams must match target match team count")
 	ErrBracketIncomingExceedsTarget  = ErrBracketIncomingMismatchTarget
 	ErrBracketSeedExceedsTeamCount   = errors.New("seeded teams exceed match team count")
+	ErrBracketStage1CapacityMismatch = errors.New("total Stage 1 match slots must equal the number of accepted teams")
 )
 
 type DefineBracketMatchInput struct {
@@ -292,8 +293,32 @@ func (u *BracketUseCase) DefineBracket(
 		return nil, ErrBracketAlreadyCompleted
 	}
 
+	if len(matches) == 0 {
+		if err := u.repo.SaveBracketLayout(ctx, tournamentID, []models.Match{}); err != nil {
+			return nil, err
+		}
+		return []models.Match{}, nil
+	}
+
 	if err := u.ValidateBracketLayout(matches); err != nil {
 		return nil, err
+	}
+
+	// Validate Stage 1 capacity against accepted teams count if any accepted teams exist
+	acceptedTeams, err := u.repo.GetAcceptedTeams(ctx, tournamentID)
+	if err != nil {
+		return nil, err
+	}
+	if len(acceptedTeams) > 0 {
+		stage1TotalCap := 0
+		for _, m := range matches {
+			if m.StageLevel == 1 {
+				stage1TotalCap += m.TeamCount
+			}
+		}
+		if stage1TotalCap != len(acceptedTeams) {
+			return nil, ErrBracketStage1CapacityMismatch
+		}
 	}
 
 	// Assign real UUIDs to each match
@@ -376,10 +401,16 @@ func (u *BracketUseCase) SeedStage1(
 	stage1MatchMap := make(map[uuid.UUID]bool, len(stage1Matches))
 	stage1MatchCap := make(map[uuid.UUID]int, len(stage1Matches))
 	stage1IDs := make([]uuid.UUID, 0, len(stage1Matches))
+	stage1TotalCap := 0
 	for _, m := range stage1Matches {
 		stage1MatchMap[m.ID] = true
 		stage1MatchCap[m.ID] = m.TeamCount
 		stage1IDs = append(stage1IDs, m.ID)
+		stage1TotalCap += m.TeamCount
+	}
+
+	if stage1TotalCap != len(acceptedTeams) {
+		return nil, ErrBracketStage1CapacityMismatch
 	}
 
 	acceptedTeamMap := make(map[uuid.UUID]bool, len(acceptedTeams))

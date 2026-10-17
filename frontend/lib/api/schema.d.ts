@@ -1065,7 +1065,7 @@ export interface components {
             targetTempId?: string;
             /**
              * Format: int64
-             * @description Number of teams competing in this match (e.g. 2 for 1v1, 4 for FFA)
+             * @description Number of teams competing in this match (e.g. 1 for bye/solo, 2 for 1v1, 4 for FFA)
              */
             teamCount: number;
             /** @description Temporary identifier for this node (e.g. 'heat-1.1', 'semi-a') */
@@ -1080,7 +1080,7 @@ export interface components {
              * @example https://example.com/schemas/DefineBracketRequest.json
              */
             readonly $schema?: string;
-            /** @description List of matches defining the bracket DAG */
+            /** @description List of matches defining the bracket DAG (empty list clears/resets bracket) */
             matches: components["schemas"]["DefineBracketMatchItem"][] | null;
         };
         FieldAnswer: {
