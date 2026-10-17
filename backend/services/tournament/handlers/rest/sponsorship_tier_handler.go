@@ -9,7 +9,6 @@ import (
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/google/uuid"
 	"github.com/moomaideng/eventory/services/tournament/internal/middlewares"
-	"github.com/moomaideng/eventory/services/tournament/internal/repositories"
 	"github.com/moomaideng/eventory/services/tournament/internal/usecases"
 	"github.com/moomaideng/eventory/services/tournament/models"
 )
@@ -229,7 +228,7 @@ func sponsorshipTierHTTPError(err error) error {
 		return huma.Error404NotFound("Sponsorship tier not found")
 	case errors.Is(err, usecases.ErrSponsorshipTierNameDuplicate):
 		return huma.Error409Conflict(err.Error())
-	case errors.Is(err, repositories.ErrSponsorshipTierInUse):
+	case errors.Is(err, usecases.ErrSponsorshipTierInUse):
 		return huma.Error409Conflict(err.Error())
 	case errors.Is(err, usecases.ErrSponsorshipClosed):
 		return huma.Error409Conflict(err.Error())

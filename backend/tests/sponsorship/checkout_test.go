@@ -55,6 +55,12 @@ func TestSponsorshipCheckout(t *testing.T) {
 	if got := post(sponsor, uuid.New(), []byte("not an image")).StatusCode; got != 422 {
 		t.Fatalf("spoofed image: %d", got)
 	}
+	missingTier := app.TournamentBaseURL() + s.tiersPath() + "/" + uuid.NewString() + "/checkout"
+	if got := uploadPledge(t, missingTier, sponsor, uuid.New(), logo).StatusCode; got != 404 {
+		t.Fatalf("missing package should map to 404, got %d", got)
+	}
+	mustAPI(t, s.client, "GET", "/tournaments/"+uuid.NewString()+"/sponsors", nil, nil, 404)
+	mustAPI(t, s.client, "GET", "/tournaments/sponsorships/"+uuid.NewString()+"/logo", nil, nil, 404)
 	firstID, secondID := uuid.New(), uuid.New()
 	var first, second *apptest.Response
 	var wg sync.WaitGroup
@@ -80,6 +86,8 @@ func TestSponsorshipCheckout(t *testing.T) {
 	if err := first.JSON(&pledge); err != nil || pledge.ID != winnerID || pledge.PaymentID == uuid.Nil || pledge.Status != "PENDING" {
 		t.Fatalf("checkout: %s, %v", first.Body, err)
 	}
+	mustAPI(t, s.client, "PUT", s.tiersPath()+"/"+s.tierIDs["Gold"].String(), map[string]any{"name": "Changed", "price": 1, "slots": 9, "perks": []string{"Changed"}}, s.owner, 409)
+	mustAPI(t, s.client, "DELETE", s.tiersPath()+"/"+s.tierIDs["Gold"].String(), nil, s.owner, 409)
 	if retried := post(winner, winnerID, logo); retried.StatusCode != 200 {
 		t.Fatalf("retry: %s", retried.Body)
 	}

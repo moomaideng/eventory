@@ -3,11 +3,13 @@ package usecases
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/moomaideng/eventory/services/tournament/internal/ports"
+	"github.com/moomaideng/eventory/services/tournament/internal/repositories"
 	"github.com/moomaideng/eventory/services/tournament/models"
 )
 
@@ -15,6 +17,25 @@ type sponsorshipPaymentStub struct{ payment *ports.RegistrationPayment }
 
 func (s sponsorshipPaymentStub) EnsureInvoice(context.Context, ports.RegistrationPaymentRequest) (*ports.RegistrationPayment, error) {
 	return s.payment, nil
+}
+
+func TestSponsorshipRepositoryErrorsBecomeDomainErrors(t *testing.T) {
+	unexpected := errors.New("database unavailable")
+	for _, tc := range []struct{ repository, domain error }{
+		{repositories.ErrPledgeNotFound, ErrSponsorshipNotFound},
+		{repositories.ErrTournamentNotFound, ErrTournamentNotFound},
+		{repositories.ErrSponsorshipTierNotFound, ErrSponsorshipTierNotFound},
+		{repositories.ErrSponsorshipTierNameDuplicate, ErrSponsorshipTierNameDuplicate},
+		{ErrSponsorRequired, ErrSponsorRequired},
+		{unexpected, unexpected},
+	} {
+		if got := mapSponsorshipError(fmt.Errorf("lookup: %w", tc.repository)); !errors.Is(got, tc.domain) {
+			t.Errorf("want %v, got %v", tc.domain, got)
+		}
+	}
+	if mapSponsorshipError(nil) != nil {
+		t.Fatal("successful operation returned an error")
+	}
 }
 
 func TestSponsorshipRejectsMismatchedPayment(t *testing.T) {

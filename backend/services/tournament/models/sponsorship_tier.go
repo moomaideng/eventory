@@ -25,4 +25,5 @@ type SponsorshipTier struct {
 	UpdatedAt      time.Time
 	AvailableSlots int  `gorm:"-"`
 	Locked         bool `gorm:"-"`
+	ReservedSlots  int  `gorm:"-"`
 }

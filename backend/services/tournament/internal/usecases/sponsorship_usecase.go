@@ -13,10 +13,11 @@ import (
 )
 
 var (
-	ErrSponsorRequired    = errors.New("complete your sponsor profile before sponsoring")
-	ErrTierSoldOut        = errors.New("this sponsorship package has no available slots")
-	ErrAlreadySponsored   = errors.New("you have already purchased this sponsorship package")
-	ErrInvalidSponsorship = errors.New("invalid sponsorship request")
+	ErrSponsorRequired     = errors.New("complete your sponsor profile before sponsoring")
+	ErrTierSoldOut         = errors.New("this sponsorship package has no available slots")
+	ErrAlreadySponsored    = errors.New("you have already purchased this sponsorship package")
+	ErrInvalidSponsorship  = errors.New("invalid sponsorship request")
+	ErrSponsorshipNotFound = errors.New("sponsorship not found")
 )
 
 const SponsorshipPaymentSource = "SPONSORSHIP"
@@ -65,16 +66,16 @@ func (u *SponsorshipUseCase) Start(ctx context.Context, input StartSponsorship) 
 		return u.GetOwned(ctx, input.PayerID, existing.ID)
 	}
 	if !errors.Is(err, repositories.ErrPledgeNotFound) {
-		return nil, err
+		return nil, mapSponsorshipError(err)
 	}
 	tx, err := u.repo.Begin(ctx)
 	if err != nil {
-		return nil, err
+		return nil, mapSponsorshipError(err)
 	}
 	defer tx.Rollback()
 	tournament, tier, err := tx.LockTier(input.TournamentID, input.TierID)
 	if err != nil {
-		return nil, err
+		return nil, mapSponsorshipError(err)
 	}
 	now := time.Now().UTC().Truncate(time.Microsecond)
 	if !sponsorshipOpen(tournament, now) {
@@ -82,20 +83,20 @@ func (u *SponsorshipUseCase) Start(ctx context.Context, input StartSponsorship) 
 	}
 	existing, err = tx.FindActive(tier.ID, input.PayerID)
 	if err != nil {
-		return nil, err
+		return nil, mapSponsorshipError(err)
 	}
 	if existing != nil {
 		if existing.Status == models.PledgeConfirmed {
 			return nil, ErrAlreadySponsored
 		}
 		if err := tx.Commit(); err != nil {
-			return nil, err
+			return nil, mapSponsorshipError(err)
 		}
 		return u.GetOwned(ctx, input.PayerID, existing.ID)
 	}
 	reserved, err := tx.Reserved(tier.ID)
 	if err != nil {
-		return nil, err
+		return nil, mapSponsorshipError(err)
 	}
 	if reserved >= int64(tier.Slots) {
 		return nil, ErrTierSoldOut
@@ -113,10 +114,10 @@ func (u *SponsorshipUseCase) Start(ctx context.Context, input StartSponsorship) 
 		AmountMinor: tier.Price * 100, Currency: tournament.Currency, Status: models.PledgePending, ExpiresAt: expires,
 	}
 	if err := tx.Create(pledge, &models.SponsorshipLogo{PledgeID: pledge.ID, ContentType: contentType, Data: input.Logo}); err != nil {
-		return nil, err
+		return nil, mapSponsorshipError(err)
 	}
 	if err := tx.Commit(); err != nil {
-		return nil, err
+		return nil, mapSponsorshipError(err)
 	}
 	return u.GetOwned(ctx, input.PayerID, pledge.ID)
 }
@@ -135,30 +136,34 @@ func sponsorshipOpen(t *models.Tournament, now time.Time) bool {
 func (u *SponsorshipUseCase) GetOwned(ctx context.Context, payerID, pledgeID uuid.UUID) (*models.SponsorshipPledge, error) {
 	pledge, err := u.repo.Get(ctx, pledgeID)
 	if err != nil {
-		return nil, err
+		return nil, mapSponsorshipError(err)
 	}
 	if pledge.PayerAccountID != payerID {
-		return nil, repositories.ErrPledgeNotFound
+		return nil, ErrSponsorshipNotFound
 	}
 	if err := u.Reconcile(ctx, pledge); err != nil {
 		return nil, err
 	}
-	return u.repo.Get(ctx, pledgeID)
+	pledge, err = u.repo.Get(ctx, pledgeID)
+	return pledge, mapSponsorshipError(err)
 }
 
 func (u *SponsorshipUseCase) ListPublic(ctx context.Context, tournamentID uuid.UUID) ([]models.SponsorshipPledge, error) {
 	if _, err := u.tournaments.GetPublishedByID(ctx, tournamentID); err != nil {
-		return nil, err
+		return nil, mapSponsorshipError(err)
 	}
-	return u.repo.ListConfirmed(ctx, tournamentID)
+	pledges, err := u.repo.ListConfirmed(ctx, tournamentID)
+	return pledges, mapSponsorshipError(err)
 }
 
 func (u *SponsorshipUseCase) ListOwned(ctx context.Context, payerID uuid.UUID, page, limit int) ([]repositories.OwnedSponsorship, int64, error) {
-	return u.repo.ListOwned(ctx, payerID, page, limit)
+	items, total, err := u.repo.ListOwned(ctx, payerID, page, limit)
+	return items, total, mapSponsorshipError(err)
 }
 
 func (u *SponsorshipUseCase) Logo(ctx context.Context, pledgeID uuid.UUID) (*models.SponsorshipLogo, error) {
-	return u.repo.Logo(ctx, pledgeID)
+	logo, err := u.repo.Logo(ctx, pledgeID)
+	return logo, mapSponsorshipError(err)
 }
 
 func (u *SponsorshipUseCase) Reconcile(ctx context.Context, pledge *models.SponsorshipPledge) error {
@@ -200,22 +205,29 @@ func (u *SponsorshipUseCase) Reconcile(ctx context.Context, pledge *models.Spons
 	}
 	tx, err := u.repo.Begin(ctx)
 	if err != nil {
-		return err
+		return mapSponsorshipError(err)
 	}
 	defer tx.Rollback()
 	if _, _, err := tx.LockTier(pledge.TournamentID, pledge.TierID); err != nil {
-		return err
+		return mapSponsorshipError(err)
 	}
 	changed, err := tx.SaveResult(pledge)
 	if err != nil {
-		return err
+		return mapSponsorshipError(err)
 	}
 	if changed && pledge.Status == models.PledgeConfirmed {
 		if err := tx.RefreshFunding(pledge.TournamentID); err != nil {
-			return err
+			return mapSponsorshipError(err)
 		}
 	}
-	return tx.Commit()
+	return mapSponsorshipError(tx.Commit())
+}
+
+func mapSponsorshipError(err error) error {
+	if errors.Is(err, repositories.ErrPledgeNotFound) {
+		return ErrSponsorshipNotFound
+	}
+	return mapTierError(err)
 }
 
 func (u *SponsorshipUseCase) Run(ctx context.Context) {
