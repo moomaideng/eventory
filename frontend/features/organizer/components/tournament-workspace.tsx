@@ -66,6 +66,7 @@ export function TournamentWorkspace({
         <div className="motion-safe:animate-in motion-safe:fade-in-0 flex min-w-0 flex-col gap-8 motion-safe:duration-300">
           {(() => {
             const isOwner = data.summary.role === "OWNER";
+            const canReview = isOwner || data.summary.role === "ADMIN";
             return (
               <>
                 <header className="flex flex-col items-start justify-between gap-5 sm:flex-row sm:items-center">
@@ -154,6 +155,8 @@ export function TournamentWorkspace({
                       key={tournamentId}
                       entries={data.entries ?? []}
                       metrics={data.summary.metrics}
+                      tournamentId={tournamentId}
+                      canReview={canReview}
                     />
                   </TabsContent>
 

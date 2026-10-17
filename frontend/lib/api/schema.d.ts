@@ -317,6 +317,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/tournaments/{id}/entries/{entryId}/review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Accept or reject an application
+         * @description Records an organizer's decision on a team application that is waiting for review (a solo player is a one-person team), enforcing the tournament's capacity. A decision may be switched later; every decision is kept in the audit trail.
+         */
+        post: operations["review-application"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/tournaments/{id}/staff": {
         parameters: {
             query?: never;
@@ -1237,6 +1257,46 @@ export interface components {
             tournament: components["schemas"]["TournamentResponse"];
             /** @enum {string} */
             viewerRole: "CAPTAIN" | "MEMBER" | "INVITEE";
+        };
+        TeamReviewInputBody: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/TeamReviewInputBody.json
+             */
+            readonly $schema?: string;
+            /**
+             * @description Accept or reject the application
+             * @enum {string}
+             */
+            decision: "ACCEPT" | "REJECT";
+            /** @description Optional justification, mainly for rejections; recorded in the audit trail */
+            reason?: string;
+        };
+        TeamReviewOutputBody: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/TeamReviewOutputBody.json
+             */
+            readonly $schema?: string;
+            entryId: string;
+            review: components["schemas"]["TeamReviewResponse"];
+            /** @enum {string} */
+            status: "ACCEPTED" | "REJECTED";
+            tournamentId: string;
+        };
+        TeamReviewResponse: {
+            /** Format: date-time */
+            createdAt: string;
+            /** @enum {string} */
+            fromStatus: "LOCKED" | "ACCEPTED" | "REJECTED";
+            id: string;
+            reason: string;
+            reviewerId: string;
+            reviewerName?: string;
+            /** @enum {string} */
+            toStatus: "ACCEPTED" | "REJECTED";
         };
         TournamentDetailsBody: {
             /**
@@ -2185,6 +2245,44 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["OrganizerDashboardOutputBody"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "review-application": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Tournament ID */
+                id: string;
+                /** @description Application ID: the team's ID (a solo player registers as a one-person team) */
+                entryId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TeamReviewInputBody"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TeamReviewOutputBody"];
                 };
             };
             /** @description Error */

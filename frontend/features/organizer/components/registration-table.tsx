@@ -23,6 +23,7 @@ import {
   DashboardPagination,
   DashboardStatus,
 } from "@/features/organizer/components/dashboard-shared";
+import { ReviewActions } from "@/features/organizer/components/review-actions";
 import type {
   DashboardEntry,
   OrganizerSummary,
@@ -32,9 +33,13 @@ import { formatDate, initials } from "@/features/tournaments/utils";
 export function RegistrationTable({
   entries,
   metrics,
+  tournamentId,
+  canReview,
 }: {
   entries: DashboardEntry[];
   metrics: OrganizerSummary["metrics"];
+  tournamentId: string;
+  canReview: boolean;
 }) {
   const [requestedPage, setPage] = useState(1);
   const pages = Math.max(1, Math.ceil(entries.length / 10));
@@ -89,14 +94,19 @@ export function RegistrationTable({
             </TableCaption>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-1/3 sm:w-1/4">Entry</TableHead>
-                <TableHead className="hidden w-32 sm:table-cell">
+                <TableHead className="w-1/2 sm:w-1/4">Entry</TableHead>
+                <TableHead className="hidden w-44 sm:table-cell">
                   Status
                 </TableHead>
                 <TableHead>Participants</TableHead>
                 <TableHead className="hidden w-32 lg:table-cell">
                   Created
                 </TableHead>
+                {canReview ? (
+                  <TableHead className="hidden w-44 sm:table-cell">
+                    Actions
+                  </TableHead>
+                ) : null}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -114,6 +124,14 @@ export function RegistrationTable({
                         <span className="sm:hidden">
                           <DashboardStatus status={entry.status} />
                         </span>
+                        {canReview ? (
+                          <div className="pt-2 sm:hidden">
+                            <ReviewActions
+                              tournamentId={tournamentId}
+                              entry={entry}
+                            />
+                          </div>
+                        ) : null}
                       </div>
                     </div>
                   </TableCell>
@@ -146,6 +164,14 @@ export function RegistrationTable({
                   <TableCell className="text-muted-foreground hidden align-top lg:table-cell">
                     {formatDate(entry.createdAt)}
                   </TableCell>
+                  {canReview ? (
+                    <TableCell className="hidden align-top whitespace-normal sm:table-cell">
+                      <ReviewActions
+                        tournamentId={tournamentId}
+                        entry={entry}
+                      />
+                    </TableCell>
+                  ) : null}
                 </TableRow>
               ))}
             </TableBody>
