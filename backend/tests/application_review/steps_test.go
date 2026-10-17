@@ -29,6 +29,7 @@ type reviewScenarioContext struct {
 	team           *models.TournamentTeam // the application under review
 	statusBefore   string
 	acceptedBefore int
+	reasonSent     string // the reason sent with the last decision
 	resp           *apptest.Response
 }
 
@@ -264,6 +265,7 @@ func (s *reviewScenarioContext) review(decision, reason string) error {
 	if reason != "" {
 		body["reason"] = reason
 	}
+	s.reasonSent = reason
 	path := fmt.Sprintf("/tournaments/%s/entries/%s/review", s.tournament.ID, s.team.ID)
 	s.resp, err = s.client.Do(http.MethodPost, path, body, s.reviewer.AuthHeaders())
 	return err
@@ -335,6 +337,32 @@ func (s *reviewScenarioContext) expectDecision(want string) error {
 	if got != want {
 		return fmt.Errorf("expected application status %s, got %s", want, got)
 	}
+	return s.expectAuditRow(want)
+}
+
+// expectAuditRow checks what the reject dialog promises: the decision is
+// recorded once, with who made it, what changed and why.
+func (s *reviewScenarioContext) expectAuditRow(want string) error {
+	var rows []models.TournamentTeamReview
+	if err := app.DB.Where("tournament_team_id = ?", s.team.ID).Find(&rows).Error; err != nil {
+		return fmt.Errorf("load review audit rows: %w", err)
+	}
+	if len(rows) != 1 {
+		return fmt.Errorf("expected exactly 1 audit row, got %d", len(rows))
+	}
+	row := rows[0]
+	switch {
+	case string(row.FromStatus) != s.statusBefore:
+		return fmt.Errorf("audit from-status: expected %s, got %s", s.statusBefore, row.FromStatus)
+	case string(row.ToStatus) != want:
+		return fmt.Errorf("audit to-status: expected %s, got %s", want, row.ToStatus)
+	case row.ReviewerAccountID != s.reviewer.ID:
+		return fmt.Errorf("audit reviewer: expected %s, got %s", s.reviewer.ID, row.ReviewerAccountID)
+	case row.ReviewerDisplayName != s.reviewer.DisplayName:
+		return fmt.Errorf("audit reviewer name: expected %q, got %q", s.reviewer.DisplayName, row.ReviewerDisplayName)
+	case row.Reason != s.reasonSent:
+		return fmt.Errorf("audit reason: expected %q, got %q", s.reasonSent, row.Reason)
+	}
 	return nil
 }
 
@@ -393,6 +421,15 @@ func (s *reviewScenarioContext) theApplicationShouldKeepItsPreviousStatus() erro
 	}
 	if got != s.statusBefore {
 		return fmt.Errorf("expected application to stay %s, got %s", s.statusBefore, got)
+	}
+	// A blocked decision must leave no audit row behind either.
+	var count int64
+	if err := app.DB.Model(&models.TournamentTeamReview{}).
+		Where("tournament_team_id = ?", s.team.ID).Count(&count).Error; err != nil {
+		return fmt.Errorf("count review audit rows: %w", err)
+	}
+	if count != 0 {
+		return fmt.Errorf("expected no audit row for a blocked decision, got %d", count)
 	}
 	return nil
 }
