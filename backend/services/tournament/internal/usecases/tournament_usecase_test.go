@@ -85,7 +85,7 @@ func baseTournament(ownerID uuid.UUID) *models.Tournament {
 				Role:      models.TournamentStaffRoleOwner,
 			},
 		},
-		Name:        "Original Name",
+		Name:                 "Original Name",
 		Description:          "Original Description",
 		Game:                 "Original Game",
 		Location:             "Original Location",
@@ -235,7 +235,7 @@ func TestCreateTournament_Success(t *testing.T) {
 	organizerID := uuid.New()
 	now := time.Now()
 
-	t.Run("solo tournament coerces team size and creates funding stub", func(t *testing.T) {
+	t.Run("solo tournament opens registration without fake funding", func(t *testing.T) {
 		repo := &mockTournamentRepository{}
 		useCase := usecases.NewTournamentUseCase(repo, newStubAccountService())
 		in := validCreateInput(now)
@@ -248,9 +248,25 @@ func TestCreateTournament_Success(t *testing.T) {
 		}
 		if len(got.Staff) != 1 || got.Staff[0].AccountID != organizerID || got.Staff[0].Role != models.TournamentStaffRoleOwner || got.Currency != "THB" || !got.Published ||
 			got.Status != models.TournamentStatusRegistrationOpen ||
-			got.MinTeamSize != 1 || got.MaxTeamSize != 1 ||
-			repo.createdFunding == nil || repo.createdFunding.GoalAmount != 1000 {
+			got.MinTeamSize != 1 || got.MaxTeamSize != 1 || repo.createdFunding != nil {
 			t.Fatalf("unexpected tournament state: %+v", got)
+		}
+	})
+
+	t.Run("crowdfunding starts with configured goal and zero raised", func(t *testing.T) {
+		repo := &mockTournamentRepository{}
+		input := validCreateInput(now)
+		goal := int64(25000)
+		deadline := now.Add(12 * time.Hour)
+		input.FundingGoal, input.FundingDeadline = &goal, &deadline
+		got, err := usecases.NewTournamentUseCase(repo, newStubAccountService()).CreateTournament(context.Background(), organizerID, input)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if got.Status != models.TournamentStatusCrowdfunding || !got.Published || repo.createdFunding == nil ||
+			repo.createdFunding.GoalAmount != goal || repo.createdFunding.RaisedAmount != 0 ||
+			repo.createdFunding.SupporterCount != 0 || repo.createdFunding.Deadline == nil || !repo.createdFunding.Deadline.Equal(deadline) {
+			t.Fatalf("unexpected crowdfunding state: tournament=%+v funding=%+v", got, repo.createdFunding)
 		}
 	})
 
@@ -287,6 +303,20 @@ func TestCreateTournament_ValidationErrors(t *testing.T) {
 		{name: "invalid mode", modify: func(in *usecases.CreateTournamentInput) { in.RegistrationMode = "SQUAD" }, wantErr: usecases.ErrInvalidRegistrationMode},
 		{name: "team mode min > max", modify: func(in *usecases.CreateTournamentInput) { in.MinTeamSize, in.MaxTeamSize = 5, 3 }, wantErr: usecases.ErrInvalidTeamSize},
 		{name: "team mode min < 1", modify: func(in *usecases.CreateTournamentInput) { in.MinTeamSize = 0 }, wantErr: usecases.ErrInvalidTeamSize},
+		{name: "funding goal without deadline", modify: func(in *usecases.CreateTournamentInput) { in.FundingGoal = ptr(int64(1000)) }, wantErr: usecases.ErrInvalidCrowdfunding},
+		{name: "funding deadline without goal", modify: func(in *usecases.CreateTournamentInput) { in.FundingDeadline = ptr(now.Add(time.Hour)) }, wantErr: usecases.ErrInvalidCrowdfunding},
+		{name: "zero funding goal", modify: func(in *usecases.CreateTournamentInput) {
+			in.FundingGoal = ptr(int64(0))
+			in.FundingDeadline = ptr(now.Add(time.Hour))
+		}, wantErr: usecases.ErrInvalidCrowdfunding},
+		{name: "past funding deadline", modify: func(in *usecases.CreateTournamentInput) {
+			in.FundingGoal = ptr(int64(1000))
+			in.FundingDeadline = ptr(now.Add(-time.Hour))
+		}, wantErr: usecases.ErrInvalidCrowdfunding},
+		{name: "funding after registration deadline", modify: func(in *usecases.CreateTournamentInput) {
+			in.FundingGoal = ptr(int64(1000))
+			in.FundingDeadline = ptr(in.RegistrationDeadline)
+		}, wantErr: usecases.ErrInvalidCrowdfunding},
 	}
 
 	for _, tt := range tests {
@@ -554,6 +584,61 @@ func TestUpdateTournament_Success(t *testing.T) {
 			t.Fatalf("failed transition to TEAM: %+v, err: %v", teamUpdated, err)
 		}
 	})
+}
+
+func TestUpdateCrowdfundingConfiguration(t *testing.T) {
+	ownerID := uuid.New()
+	tournamentID := uuid.New()
+	now := time.Now()
+	makeCampaign := func() *models.Tournament {
+		tournament := baseTournament(ownerID)
+		tournament.ID = tournamentID
+		tournament.Status = models.TournamentStatusCrowdfunding
+		deadline := now.Add(8 * time.Hour)
+		tournament.Funding = &models.TournamentFunding{GoalAmount: 1000, Deadline: &deadline}
+		return tournament
+	}
+
+	t.Run("owner changes goal and deadline", func(t *testing.T) {
+		repo := &mockTournamentRepository{details: makeCampaign()}
+		goal := int64(3000)
+		deadline := now.Add(12 * time.Hour)
+		updated, err := usecases.NewTournamentUseCase(repo, newStubAccountService()).UpdateTournament(
+			context.Background(), ownerID, tournamentID,
+			usecases.UpdateTournamentInput{FundingGoal: &goal, FundingDeadline: &deadline},
+		)
+		if err != nil || updated.Funding.GoalAmount != goal || !updated.Funding.Deadline.Equal(deadline) || repo.updatedTournament == nil {
+			t.Fatalf("funding update failed: tournament=%+v err=%v", updated, err)
+		}
+	})
+
+	tests := []struct {
+		name   string
+		setup  func(*models.Tournament)
+		caller uuid.UUID
+		input  usecases.UpdateTournamentInput
+		want   error
+	}{
+		{"not owner", nil, uuid.New(), usecases.UpdateTournamentInput{FundingGoal: ptr(int64(3000))}, usecases.ErrNotTournamentOwner},
+		{"zero goal", nil, ownerID, usecases.UpdateTournamentInput{FundingGoal: ptr(int64(0))}, usecases.ErrInvalidCrowdfunding},
+		{"deadline after registration", nil, ownerID, usecases.UpdateTournamentInput{FundingDeadline: ptr(now.Add(30 * time.Hour))}, usecases.ErrInvalidCrowdfunding},
+		{"registration deadline moved before funding deadline", nil, ownerID, usecases.UpdateTournamentInput{RegistrationDeadline: ptr(now.Add(4 * time.Hour))}, usecases.ErrInvalidCrowdfunding},
+		{"registration is open", func(tm *models.Tournament) { tm.Status = models.TournamentStatusRegistrationOpen }, ownerID, usecases.UpdateTournamentInput{FundingGoal: ptr(int64(3000))}, usecases.ErrCrowdfundingClosed},
+		{"campaign expired", func(tm *models.Tournament) { expired := now.Add(-time.Hour); tm.Funding.Deadline = &expired }, ownerID, usecases.UpdateTournamentInput{FundingGoal: ptr(int64(3000))}, usecases.ErrCrowdfundingClosed},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			tournament := makeCampaign()
+			if test.setup != nil {
+				test.setup(tournament)
+			}
+			repo := &mockTournamentRepository{details: tournament}
+			_, err := usecases.NewTournamentUseCase(repo, newStubAccountService()).UpdateTournament(context.Background(), test.caller, tournamentID, test.input)
+			if !errors.Is(err, test.want) || repo.updatedTournament != nil {
+				t.Fatalf("expected %v without update, got %v", test.want, err)
+			}
+		})
+	}
 }
 
 func TestTournamentUseCase_RepositoryErrors(t *testing.T) {

@@ -228,7 +228,20 @@ func (r *tournamentRepositoryImpl) Update(
 	ctx context.Context,
 	tournament *models.Tournament,
 ) error {
-	return r.db.WithContext(ctx).Omit("Staff").Save(tournament).Error
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := tx.Omit("Staff", "Funding").Save(tournament).Error; err != nil {
+			return err
+		}
+		if tournament.Funding != nil {
+			return tx.Model(&models.TournamentFunding{}).
+				Where("tournament_id = ?", tournament.ID).
+				Updates(map[string]any{
+					"goal_amount": tournament.Funding.GoalAmount,
+					"deadline":    tournament.Funding.Deadline,
+				}).Error
+		}
+		return nil
+	})
 }
 
 func (r *tournamentRepositoryImpl) GetActiveTeamCount(

@@ -18,18 +18,18 @@ import {
 import { Input } from "@/components/ui/input";
 
 export interface HostTournamentScheduleCardProps {
+  crowdfunding?: boolean;
   registrationDeadline: string;
   onRegistrationDeadlineChange: (value: string) => void;
   startAt: string;
   onStartAtChange: (value: string) => void;
   endAt: string;
   onEndAtChange: (value: string) => void;
-  errors: Partial<
-    Record<"registrationDeadline" | "startAt" | "endAt", string>
-  >;
+  errors: Partial<Record<"registrationDeadline" | "startAt" | "endAt", string>>;
 }
 
 export function HostTournamentScheduleCard({
+  crowdfunding = false,
   registrationDeadline,
   onRegistrationDeadlineChange,
   startAt,
@@ -43,7 +43,9 @@ export function HostTournamentScheduleCard({
       <CardHeader>
         <CardTitle className="text-lg">Tournament Schedule</CardTitle>
         <CardDescription>
-          Specify registration closing and the tournament running timeframe. Invariant: Registration Deadline &lt; Start Time &lt; End Time.
+          {crowdfunding
+            ? "Add tentative dates for planning. You can update them while crowdfunding is active. The funding deadline must come before registration closes."
+            : "Set the registration deadline and event dates. Registration must close before the event starts."}
         </CardDescription>
       </CardHeader>
       <CardContent>

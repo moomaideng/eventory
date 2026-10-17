@@ -7,18 +7,15 @@ import { $api } from "@/lib/api/client";
 import { RegistrationFormBuilder } from "@/features/registration-form/components/registration-form-builder";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   DashboardError,
   DashboardLoading,
   RefreshDashboard,
 } from "@/features/organizer/components/dashboard-shared";
 import { DashboardOverview } from "@/features/organizer/components/dashboard-overview";
+import { FundingSettingsDialog } from "@/features/organizer/components/funding-settings-dialog";
+import { PlannedEventDetailsDialog } from "@/features/organizer/components/planned-event-details-dialog";
 import { RegistrationTable } from "@/features/organizer/components/registration-table";
 import { StatusControlDialog } from "@/features/organizer/components/status-control-dialog";
 import { dashboardQueryOptions, statusLabel } from "@/features/organizer/utils";
@@ -100,6 +97,35 @@ export function TournamentWorkspace({
                     </div>
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
+                    {isOwner &&
+                    data.summary.tournament.status === "CROWDFUNDING" &&
+                    data.summary.funding.deadline ? (
+                      <PlannedEventDetailsDialog
+                        tournamentId={tournamentId}
+                        details={{
+                          location: data.summary.tournament.location,
+                          description: data.summary.tournament.description,
+                          registrationDeadline:
+                            data.summary.tournament.registrationDeadline,
+                          startAt: data.summary.tournament.startAt,
+                          endAt: data.summary.tournament.endAt,
+                        }}
+                        fundingDeadline={data.summary.funding.deadline}
+                      />
+                    ) : null}
+                    {isOwner ? (
+                      data.summary.tournament.status === "CROWDFUNDING" &&
+                      data.summary.funding.deadline ? (
+                        <FundingSettingsDialog
+                          tournamentId={tournamentId}
+                          goal={data.summary.funding.goalAmount}
+                          deadline={data.summary.funding.deadline}
+                          registrationDeadline={
+                            data.summary.tournament.registrationDeadline
+                          }
+                        />
+                      ) : null
+                    ) : null}
                     {isOwner ? (
                       <StatusControlDialog
                         tournamentId={tournamentId}
@@ -140,9 +166,12 @@ export function TournamentWorkspace({
                   <TabsContent value="dashboard" keepMounted>
                     <div className="flex flex-wrap items-center justify-between gap-4">
                       <div>
-                        <h2 className="text-xl font-semibold tracking-tight">Overview & Metrics</h2>
+                        <h2 className="text-xl font-semibold tracking-tight">
+                          Overview & Metrics
+                        </h2>
                         <p className="text-muted-foreground text-sm">
-                          Live participant pipeline, capacity, and crowdfunding metrics.
+                          Live participant pipeline, capacity, and crowdfunding
+                          metrics.
                         </p>
                       </div>
                       <RefreshDashboard
