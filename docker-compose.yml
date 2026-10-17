@@ -77,7 +77,9 @@ services:
       - rabbitmq_data:/var/lib/rabbitmq
     healthcheck:
       test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
-      interval: 2s
+      start_period: 20s
+      start_interval: 1s
+      interval: 5s
       timeout: 5s
       retries: 30
 
@@ -305,10 +307,11 @@ services:
           "--output-document=/dev/null",
           "http://127.0.0.1:8084/ready",
         ]
-      interval: 2s
+      start_period: 120s
+      start_interval: 1s
+      interval: 5s
       timeout: 5s
       retries: 30
-      start_period: 120s
     depends_on:
       postgres:
         condition: service_healthy
