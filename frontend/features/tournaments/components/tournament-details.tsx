@@ -89,6 +89,7 @@ export function TournamentDetails({ tournamentId }: { tournamentId: string }) {
   const status = formatTournamentStatus(tournament.status);
   const registrationType = formatRegistrationType(tournament.registrationMode);
   const isSolo = tournament.registrationMode === "SOLO";
+  const isCrowdfunding = tournament.status === "CROWDFUNDING";
   const canCreateTeam =
     !isSolo &&
     tournament.status === "REGISTRATION_OPEN" &&
@@ -138,7 +139,7 @@ export function TournamentDetails({ tournamentId }: { tournamentId: string }) {
           <Badge variant="outline" className="capitalize">
             {status}
           </Badge>
-          <Badge variant="outline">{registrationType}</Badge>
+          {!isCrowdfunding ? <Badge variant="outline">{registrationType}</Badge> : null}
         </div>
         <div className="flex flex-col gap-2">
           <h1 className="max-w-4xl text-3xl font-bold tracking-tight sm:text-5xl">
@@ -158,10 +159,21 @@ export function TournamentDetails({ tournamentId }: { tournamentId: string }) {
             Create a team
           </Button>
         ) : null}
-        {isSolo ? (
+        {isCrowdfunding ? (
+          <Alert>
+            <AlertTitle>Funding stage</AlertTitle>
+            <AlertDescription>
+              Sponsorship is open. Participant registration will open after this
+              stage.
+            </AlertDescription>
+          </Alert>
+        ) : null}
+        {isSolo && !isCrowdfunding ? (
           !authorizationHeader ? (
             <Button
-              render={<Link href={`/login?redirect=/tournaments/${tournament.id}`} />}
+              render={
+                <Link href={`/login?redirect=/tournaments/${tournament.id}`} />
+              }
               nativeButton={false}
               className="self-start"
             >
@@ -214,14 +226,18 @@ export function TournamentDetails({ tournamentId }: { tournamentId: string }) {
             tournamentId={tournament.id}
             currency={tournament.currency}
           />
-          <TournamentRegisteredTeamsCard teams={teams} />
+          {!isCrowdfunding ? (
+            <TournamentRegisteredTeamsCard teams={teams} />
+          ) : null}
         </div>
 
         <div className="flex flex-col gap-6 lg:sticky lg:top-24">
           {myTeam ? (
             <Card>
               <CardHeader>
-                <CardTitle>{isSolo ? "Your registration" : "Your team"}</CardTitle>
+                <CardTitle>
+                  {isSolo ? "Your registration" : "Your team"}
+                </CardTitle>
                 <CardDescription>
                   {isSolo
                     ? "Your registration for this tournament."
@@ -237,7 +253,8 @@ export function TournamentDetails({ tournamentId }: { tournamentId: string }) {
                 </div>
                 {!isSolo && (
                   <p className="text-muted-foreground text-sm">
-                    {myTeam.members?.length ?? 0} of {tournament.maxTeamSize} players
+                    {myTeam.members?.length ?? 0} of {tournament.maxTeamSize}{" "}
+                    players
                   </p>
                 )}
               </CardContent>
@@ -256,7 +273,9 @@ export function TournamentDetails({ tournamentId }: { tournamentId: string }) {
             </Card>
           ) : null}
 
-          <TournamentFundingCard funding={funding} />
+          {funding.goalAmount > 0 ? (
+            <TournamentFundingCard funding={funding} />
+          ) : null}
         </div>
       </div>
     </main>

@@ -26,6 +26,8 @@ var (
 	ErrInvalidTournamentCapacity  = errors.New("tournament capacity must be at least 1")
 	ErrInvalidRegistrationMode    = errors.New("invalid registration mode: must be SOLO or TEAM")
 	ErrInvalidTeamSize            = errors.New("minimum team size must be at least 1 and less than or equal to maximum team size")
+	ErrInvalidCrowdfunding        = errors.New("crowdfunding requires a positive funding goal and a deadline after now but before the registration deadline")
+	ErrCrowdfundingClosed         = errors.New("funding can only be changed while crowdfunding is active")
 	ErrTournamentCannotBeModified = errors.New("ongoing, completed, or cancelled tournaments cannot be modified")
 	ErrCapacityBelowAcceptedTeams = errors.New("capacity cannot be less than the number of accepted teams")
 	ErrRosterRulesLocked          = errors.New("team size and registration mode cannot be modified after teams have locked or been accepted")
@@ -54,6 +56,8 @@ type CreateTournamentInput struct {
 	MinTeamSize          int
 	MaxTeamSize          int
 	Capacity             int
+	FundingGoal          *int64
+	FundingDeadline      *time.Time
 }
 
 type UpdateTournamentInput struct {
@@ -69,6 +73,8 @@ type UpdateTournamentInput struct {
 	MinTeamSize          *int
 	MaxTeamSize          *int
 	Capacity             *int
+	FundingGoal          *int64
+	FundingDeadline      *time.Time
 }
 
 var catalogLocation = time.FixedZone("Asia/Bangkok", 7*60*60)
@@ -115,6 +121,7 @@ func NewTournamentViews(tournaments []models.Tournament, names map[uuid.UUID]str
 
 type TournamentFundingStats struct {
 	GoalAmount      int64
+	Deadline        *time.Time
 	RaisedAmount    int64
 	RemainingAmount int64
 	SupporterCount  int
@@ -127,6 +134,7 @@ func NewFundingStats(funding *models.TournamentFunding) TournamentFundingStats {
 		return stats
 	}
 	stats.GoalAmount = funding.GoalAmount
+	stats.Deadline = funding.Deadline
 	stats.RaisedAmount = funding.RaisedAmount
 	stats.SupporterCount = funding.SupporterCount
 	stats.RemainingAmount = max(stats.GoalAmount-stats.RaisedAmount, 0)
@@ -347,9 +355,8 @@ func (u *TournamentUseCase) GetDetails(
 }
 
 // CreateTournament initializes and persists a new tournament record for an organizer.
-// It applies default status REGISTRATION_OPEN, published=true, hardcoded currency "THB",
-// automatically coerces solo tournaments to min/max team size of 1, and creates an initial
-// funding stub. It strictly validates that registrationDeadline < startsAt < endsAt.
+// A funding goal and deadline launch a published crowdfunding tournament;
+// otherwise registration opens immediately. Both paths validate their dates.
 func (u *TournamentUseCase) CreateTournament(
 	ctx context.Context,
 	accountID uuid.UUID,
@@ -399,12 +406,15 @@ func (u *TournamentUseCase) CreateTournament(
 	// In the future, currency selection may be expanded based on team consensus.
 	currency := "THB"
 
-	// [TODO]: Initialize default funding stub for now; funding features and schemas
-	// are currently being finalized by the team.
-	funding := &models.TournamentFunding{
-		GoalAmount:     1000,
-		RaisedAmount:   500,
-		SupporterCount: 1,
+	var funding *models.TournamentFunding
+	status := models.TournamentStatusRegistrationOpen
+	if input.FundingGoal != nil || input.FundingDeadline != nil {
+		if input.FundingGoal == nil || input.FundingDeadline == nil ||
+			!validFunding(*input.FundingGoal, *input.FundingDeadline, input.RegistrationDeadline) {
+			return nil, ErrInvalidCrowdfunding
+		}
+		funding = &models.TournamentFunding{GoalAmount: *input.FundingGoal, Deadline: input.FundingDeadline}
+		status = models.TournamentStatusCrowdfunding
 	}
 
 	tournament := &models.Tournament{
@@ -427,7 +437,7 @@ func (u *TournamentUseCase) CreateTournament(
 		MinTeamSize:          minTeamSize,
 		MaxTeamSize:          maxTeamSize,
 		Capacity:             input.Capacity,
-		Status:               models.TournamentStatusRegistrationOpen,
+		Status:               status,
 		Published:            true,
 	}
 
@@ -435,6 +445,10 @@ func (u *TournamentUseCase) CreateTournament(
 		return nil, err
 	}
 	return tournament, nil
+}
+
+func validFunding(goal int64, deadline, registrationDeadline time.Time) bool {
+	return goal > 0 && deadline.After(time.Now()) && deadline.Before(registrationDeadline)
 }
 
 // UpdateTournament modifies mutable tournament attributes subject to strict safety invariants.
@@ -542,6 +556,28 @@ func (u *TournamentUseCase) UpdateTournament(
 
 	if !newDeadline.Before(newStartsAt) || !newStartsAt.Before(newEndsAt) {
 		return nil, ErrInvalidTournamentDates
+	}
+	if input.FundingGoal != nil || input.FundingDeadline != nil {
+		if tournament.Status != models.TournamentStatusCrowdfunding || tournament.Funding == nil ||
+			tournament.Funding.Deadline == nil || !tournament.Funding.Deadline.After(time.Now()) {
+			return nil, ErrCrowdfundingClosed
+		}
+		goal := tournament.Funding.GoalAmount
+		if input.FundingGoal != nil {
+			goal = *input.FundingGoal
+		}
+		deadline := *tournament.Funding.Deadline
+		if input.FundingDeadline != nil {
+			deadline = *input.FundingDeadline
+		}
+		if !validFunding(goal, deadline, newDeadline) {
+			return nil, ErrInvalidCrowdfunding
+		}
+		tournament.Funding.GoalAmount = goal
+		tournament.Funding.Deadline = &deadline
+	} else if tournament.Status == models.TournamentStatusCrowdfunding && tournament.Funding != nil && tournament.Funding.Deadline != nil &&
+		!tournament.Funding.Deadline.Before(newDeadline) {
+		return nil, ErrInvalidCrowdfunding
 	}
 	tournament.RegistrationDeadline = newDeadline
 	tournament.StartsAt = newStartsAt
