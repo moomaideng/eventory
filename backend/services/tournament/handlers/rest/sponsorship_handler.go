@@ -10,7 +10,6 @@ import (
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/google/uuid"
-	"github.com/moomaideng/eventory/services/tournament/internal/repositories"
 	"github.com/moomaideng/eventory/services/tournament/internal/usecases"
 	"github.com/moomaideng/eventory/services/tournament/models"
 )
@@ -184,11 +183,11 @@ func sponsorshipHTTPError(err error) error {
 		return mapped
 	}
 	switch {
-	case errors.Is(err, repositories.ErrPledgeNotFound):
+	case errors.Is(err, usecases.ErrSponsorshipNotFound):
 		return huma.Error404NotFound(err.Error())
-	case errors.Is(err, repositories.ErrTournamentNotFound), errors.Is(err, usecases.ErrTournamentNotFound):
+	case errors.Is(err, usecases.ErrTournamentNotFound):
 		return huma.Error404NotFound("Tournament not found")
-	case errors.Is(err, repositories.ErrSponsorshipTierNotFound):
+	case errors.Is(err, usecases.ErrSponsorshipTierNotFound):
 		return huma.Error404NotFound("Sponsorship package not found")
 	case errors.Is(err, usecases.ErrSponsorRequired):
 		return huma.Error403Forbidden(err.Error())

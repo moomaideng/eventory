@@ -99,7 +99,7 @@ func (r *sponsorshipRepository) Logo(ctx context.Context, pledgeID uuid.UUID) (*
 
 func (tx *sponsorshipTransaction) LockTier(tournamentID, tierID uuid.UUID) (*models.Tournament, *models.SponsorshipTier, error) {
 	var tournament models.Tournament
-	if err := tx.db.Clauses(clause.Locking{Strength: "UPDATE"}).First(&tournament, "id = ?", tournamentID).Error; err != nil {
+	if err := tx.db.Clauses(clause.Locking{Strength: "UPDATE"}).Preload("Staff").First(&tournament, "id = ?", tournamentID).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			err = ErrTournamentNotFound
 		}
