@@ -185,7 +185,17 @@ export function NavbarRight({
                     <Settings data-icon="inline-start" />
                     Account settings
                   </DropdownMenuItem>
-                  <DropdownMenuItem render={<Link href="/payments" />}>
+                  <DropdownMenuItem
+                    render={
+                      <Link
+                        href={
+                          activeRole === "sponsor"
+                            ? "/sponsor/payments"
+                            : "/payments"
+                        }
+                      />
+                    }
+                  >
                     <ReceiptText data-icon="inline-start" />
                     My payments
                   </DropdownMenuItem>

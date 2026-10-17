@@ -49,13 +49,17 @@ func newApp(db *gorm.DB, mongoDB *mongo.Database, cfg config.Config, accountSvc 
 	payments := paymenthttp.New(cfg.PaymentURL, cfg.PaymentServiceKey)
 	teamLobbyRepo := repositories.NewTeamLobbyRepository(db)
 	teamLobbyUseCase := usecases.NewTeamLobbyUseCase(teamLobbyRepo, accountSvc, payments)
+	sponsorships := usecases.NewSponsorshipUseCase(repositories.NewSponsorshipRepository(db), repositories.NewTournamentRepository(db), accountSvc, payments)
 	return &App{
-		HTTP:           newHTTPRouter(db, mongoDB, cfg, accountSvc, teamLobbyUseCase),
-		RunSubmissions: func(ctx context.Context) { teamLobbyUseCase.Run(ctx) },
+		HTTP: newHTTPRouter(db, mongoDB, cfg, accountSvc, teamLobbyUseCase, sponsorships),
+		RunSubmissions: func(ctx context.Context) {
+			go sponsorships.Run(ctx)
+			teamLobbyUseCase.Run(ctx)
+		},
 	}
 }
 
-func newHTTPRouter(db *gorm.DB, mongoDB *mongo.Database, cfg config.Config, accountSvc ports.AccountService, teamLobbyUseCase *usecases.TeamLobbyUseCase) http.Handler {
+func newHTTPRouter(db *gorm.DB, mongoDB *mongo.Database, cfg config.Config, accountSvc ports.AccountService, teamLobbyUseCase *usecases.TeamLobbyUseCase, sponsorships *usecases.SponsorshipUseCase) http.Handler {
 	router := chi.NewMux()
 	router.Use(middlewares.RequestID)
 	router.Use(middlewares.AccessLog(cfg.Logging.SlowRequestMS))
@@ -130,6 +134,7 @@ func newHTTPRouter(db *gorm.DB, mongoDB *mongo.Database, cfg config.Config, acco
 	resthandlers.RegisterOrganizerDashboardRoutes(api, auth, tournamentUseCase)
 	resthandlers.RegisterTournamentStatusRoutes(api, auth, organizer, tournamentUseCase)
 	resthandlers.RegisterSponsorshipTierRoutes(api, auth, organizer, sponsorshipTierUseCase)
+	resthandlers.RegisterSponsorshipRoutes(api, auth, sponsorships)
 
 	if mongoDB != nil {
 		formRepo := repositories.NewRegistrationFormRepository(mongoDB)

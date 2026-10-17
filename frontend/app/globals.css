@@ -120,6 +120,11 @@
   --shadow-2xl: 0 1px 3px 0px hsl(0 0% 0% / 0.25);
 }
 
+/* Dark labels keep the sponsorship actions readable on the green button in either theme. */
+.sponsorship-surface {
+  --primary-foreground: oklch(0.1897 0.0025 145.4744);
+}
+
 /* Keep the receipt as white paper inside either application theme. */
 .receipt-paper {
   --card: oklch(1 0 0);

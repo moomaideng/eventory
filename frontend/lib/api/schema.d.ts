@@ -300,6 +300,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/tournaments/sponsorships/mine": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List the signed-in account's sponsorships */
+        get: operations["list-my-sponsorships"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/sponsorships/{id}/logo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get a confirmed sponsor's logo */
+        get: operations["get-sponsor-logo"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/sponsorships/{id}/refresh": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Verify an owned sponsorship payment */
+        post: operations["refresh-my-sponsorship"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/tournaments/{id}/dashboard": {
         parameters: {
             query?: never;
@@ -562,6 +613,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/tournaments/{tournamentId}/sponsors": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List confirmed sponsors of a published tournament */
+        get: operations["list-tournament-sponsors"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/tournaments/{tournamentId}/sponsorship-tiers": {
         parameters: {
             query?: never;
@@ -625,6 +693,23 @@ export interface paths {
          * @description Removes a sponsorship package from an owned tournament.
          */
         delete: operations["delete-sponsorship-tier"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournamentId}/sponsorship-tiers/{tierId}/checkout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reserve a sponsorship slot with brand assets and start checkout */
+        post: operations["start-sponsorship-checkout"];
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -994,6 +1079,15 @@ export interface components {
              */
             role: "ADMIN" | "REFEREE";
         };
+        "List-tournament-sponsorsResponse": {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/List-tournament-sponsorsResponse.json
+             */
+            readonly $schema?: string;
+            items: components["schemas"]["SponsorResponse"][] | null;
+        };
         ListFormResponsesOutputBody: {
             /**
              * Format: uri
@@ -1106,6 +1200,31 @@ export interface components {
             status: string;
             tournamentId: string;
         };
+        OwnedSponsorshipResponse: {
+            /** Format: int64 */
+            amountMinor: number;
+            currency: string;
+            /** Format: date-time */
+            expiresAt: string;
+            id: string;
+            paymentId?: string;
+            /** @enum {string} */
+            status: "PENDING" | "CONFIRMED" | "CANCELLED" | "EXPIRED";
+            tierName: string;
+            tournamentId: string;
+            tournamentName: string;
+        };
+        OwnedSponsorshipsOutputBody: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/OwnedSponsorshipsOutputBody.json
+             */
+            readonly $schema?: string;
+            items: components["schemas"]["OwnedSponsorshipResponse"][] | null;
+            /** Format: int64 */
+            total: number;
+        };
         RegistrationFormResponse: {
             /**
              * Format: uri
@@ -1136,6 +1255,28 @@ export interface components {
             fields: components["schemas"]["FormField"][] | null;
             /** @description Form title */
             title: string;
+        };
+        SponsorResponse: {
+            id: string;
+            logoPath: string;
+            sponsorName: string;
+            tierName: string;
+            websiteUrl: string;
+        };
+        SponsorshipResponse: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/SponsorshipResponse.json
+             */
+            readonly $schema?: string;
+            /** Format: date-time */
+            expiresAt: string;
+            id: string;
+            paymentId?: string;
+            /** @enum {string} */
+            status: "PENDING" | "CONFIRMED" | "CANCELLED" | "EXPIRED";
+            tournamentId: string;
         };
         SponsorshipTierBody: {
             /**
@@ -1172,9 +1313,16 @@ export interface components {
              * @example https://example.com/schemas/SponsorshipTierResponse.json
              */
             readonly $schema?: string;
+            /**
+             * Format: int64
+             * @description Slots remaining after pending and confirmed checkouts
+             */
+            availableSlots: number;
             /** Format: date-time */
             createdAt: string;
             id: string;
+            /** @description A pending or confirmed checkout prevents editing or deletion */
+            locked: boolean;
             name: string;
             perks: string[] | null;
             /**
@@ -2167,6 +2315,104 @@ export interface operations {
             };
         };
     };
+    "list-my-sponsorships": {
+        parameters: {
+            query?: {
+                page?: number;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OwnedSponsorshipsOutputBody"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "get-sponsor-logo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Sponsor logo */
+            200: {
+                headers: {
+                    "Cache-Control"?: string;
+                    "Content-Type"?: string;
+                    "X-Content-Type-Options"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "image/jpeg": string;
+                    "image/png": string;
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "refresh-my-sponsorship": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SponsorshipResponse"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
     "get-organizer-tournament-dashboard": {
         parameters: {
             query?: never;
@@ -2740,6 +2986,38 @@ export interface operations {
             };
         };
     };
+    "list-tournament-sponsors": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Tournament UUID */
+                tournamentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["List-tournament-sponsorsResponse"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
     "list-sponsorship-tiers": {
         parameters: {
             query?: never;
@@ -2898,6 +3176,47 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "start-sponsorship-checkout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tournamentId: string;
+                tierId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "multipart/form-data": {
+                    /** Format: binary */
+                    logo: string;
+                    requestId: string;
+                    websiteUrl: string;
+                };
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SponsorshipResponse"];
+                };
             };
             /** @description Error */
             default: {

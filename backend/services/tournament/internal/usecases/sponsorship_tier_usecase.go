@@ -14,6 +14,7 @@ import (
 var (
 	ErrSponsorshipTierNotFound      = errors.New("sponsorship tier not found")
 	ErrSponsorshipTierNameDuplicate = errors.New("a tier with this name already exists in this tournament")
+	ErrSponsorshipTierInUse         = errors.New("this package has a pending or confirmed sponsorship and cannot be changed")
 	ErrInvalidSponsorshipTierName   = errors.New("tier name is required and must be at most 80 characters")
 	ErrInvalidSponsorshipTierPrice  = errors.New("tier price must be greater than zero")
 	ErrInvalidSponsorshipTierSlots  = errors.New("tier must have at least one slot")
@@ -52,7 +53,7 @@ func (u *SponsorshipTierUseCase) ListPublic(ctx context.Context, tournamentID uu
 	if _, err := u.tournaments.GetPublishedByID(ctx, tournamentID); err != nil {
 		return nil, mapTierError(err)
 	}
-	return u.tiers.List(ctx, tournamentID)
+	return u.listTiers(ctx, tournamentID)
 }
 
 // ListForOwner returns an owned tournament's tiers, published or not, so the
@@ -65,7 +66,19 @@ func (u *SponsorshipTierUseCase) ListForOwner(ctx context.Context, accountID, to
 	if !isTournamentOrganizer(tournament, accountID) {
 		return nil, ErrTournamentNotFound
 	}
-	return u.tiers.List(ctx, tournamentID)
+	return u.listTiers(ctx, tournamentID)
+}
+
+func (u *SponsorshipTierUseCase) listTiers(ctx context.Context, tournamentID uuid.UUID) ([]models.SponsorshipTier, error) {
+	tiers, err := u.tiers.List(ctx, tournamentID)
+	if err != nil {
+		return nil, mapTierError(err)
+	}
+	for i := range tiers {
+		tiers[i].AvailableSlots = max(tiers[i].Slots-tiers[i].ReservedSlots, 0)
+		tiers[i].Locked = tiers[i].ReservedSlots > 0
+	}
+	return tiers, nil
 }
 
 func (u *SponsorshipTierUseCase) Create(
@@ -83,6 +96,7 @@ func (u *SponsorshipTierUseCase) Create(
 	if err := u.tiers.Create(ctx, tier); err != nil {
 		return nil, mapTierError(err)
 	}
+	tier.AvailableSlots = tier.Slots
 	return tier, nil
 }
 
@@ -91,31 +105,61 @@ func (u *SponsorshipTierUseCase) Update(
 	accountID, tournamentID, tierID uuid.UUID,
 	input SponsorshipTierInput,
 ) (*models.SponsorshipTier, error) {
-	if err := u.requireEditable(ctx, accountID, tournamentID); err != nil {
-		return nil, err
+	tx, err := u.tiers.Begin(ctx)
+	if err != nil {
+		return nil, mapTierError(err)
 	}
-	tier, err := u.tiers.Get(ctx, tournamentID, tierID)
+	defer tx.Rollback()
+	tier, err := u.lockEditableTier(tx, accountID, tournamentID, tierID)
 	if err != nil {
 		return nil, mapTierError(err)
 	}
 	if err := applyTierInput(tier, input); err != nil {
 		return nil, err
 	}
-	if err := u.tiers.Update(ctx, tier); err != nil {
+	if err := tx.UpdateTier(tier); err != nil {
 		return nil, mapTierError(err)
 	}
+	if err := tx.Commit(); err != nil {
+		return nil, mapTierError(err)
+	}
+	tier.AvailableSlots = tier.Slots
 	return tier, nil
 }
 
 // Delete removes a tier.
-//
-// TODO(US5-5): refuse once a sponsor has paid for this tier. Pledges do not
-// exist yet, so every tier is currently safe to delete.
 func (u *SponsorshipTierUseCase) Delete(ctx context.Context, accountID, tournamentID, tierID uuid.UUID) error {
-	if err := u.requireEditable(ctx, accountID, tournamentID); err != nil {
-		return err
+	tx, err := u.tiers.Begin(ctx)
+	if err != nil {
+		return mapTierError(err)
 	}
-	return mapTierError(u.tiers.Delete(ctx, tournamentID, tierID))
+	defer tx.Rollback()
+	if _, err := u.lockEditableTier(tx, accountID, tournamentID, tierID); err != nil {
+		return mapTierError(err)
+	}
+	// Only closed attempts remain, so their draft branding can be removed with the package.
+	if err := tx.DeleteTier(tierID); err != nil {
+		return mapTierError(err)
+	}
+	return mapTierError(tx.Commit())
+}
+
+func (u *SponsorshipTierUseCase) lockEditableTier(tx repositories.SponsorshipTierTransaction, accountID, tournamentID, tierID uuid.UUID) (*models.SponsorshipTier, error) {
+	tournament, tier, err := tx.LockTier(tournamentID, tierID)
+	if err != nil {
+		return nil, err
+	}
+	if err := checkTierEditable(tournament, accountID); err != nil {
+		return nil, err
+	}
+	reserved, err := tx.Reserved(tierID)
+	if err != nil {
+		return nil, err
+	}
+	if reserved > 0 {
+		return nil, ErrSponsorshipTierInUse
+	}
+	return tier, nil
 }
 
 // requireEditable checks the caller owns the tournament and that it still
@@ -126,6 +170,10 @@ func (u *SponsorshipTierUseCase) requireEditable(ctx context.Context, accountID,
 	if err != nil {
 		return mapTierError(err)
 	}
+	return checkTierEditable(tournament, accountID)
+}
+
+func checkTierEditable(tournament *models.Tournament, accountID uuid.UUID) error {
 	if !isTournamentOrganizer(tournament, accountID) {
 		return ErrTournamentNotFound
 	}
