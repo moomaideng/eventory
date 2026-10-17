@@ -13,7 +13,10 @@ import (
 	"gorm.io/gorm/clause"
 )
 
-var ErrTournamentNotFound = errors.New("tournament not found")
+var (
+	ErrTournamentNotFound     = errors.New("tournament not found")
+	ErrTournamentStateChanged = errors.New("tournament status changed during update")
+)
 
 type TournamentFilters struct {
 	Query       string
@@ -229,8 +232,27 @@ func (r *tournamentRepositoryImpl) Update(
 	tournament *models.Tournament,
 ) error {
 	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		if err := tx.Omit("Staff", "Funding").Save(tournament).Error; err != nil {
-			return err
+		result := tx.Model(&models.Tournament{}).
+			Where("id = ? AND status = ?", tournament.ID, tournament.Status).
+			Updates(map[string]any{
+				"name":                  tournament.Name,
+				"description":           tournament.Description,
+				"game":                  tournament.Game,
+				"location":              tournament.Location,
+				"start_at":              tournament.StartsAt,
+				"end_at":                tournament.EndsAt,
+				"registration_deadline": tournament.RegistrationDeadline,
+				"entry_fee":             tournament.EntryFee,
+				"registration_mode":     tournament.RegistrationMode,
+				"min_team_size":         tournament.MinTeamSize,
+				"max_team_size":         tournament.MaxTeamSize,
+				"capacity":              tournament.Capacity,
+			})
+		if result.Error != nil {
+			return result.Error
+		}
+		if result.RowsAffected == 0 {
+			return ErrTournamentStateChanged
 		}
 		if tournament.Funding != nil {
 			return tx.Model(&models.TournamentFunding{}).
@@ -344,12 +366,24 @@ func (r *tournamentRepositoryImpl) ApplyOverride(
 		err := ownedTournaments(tx, accountID).
 			Clauses(clause.Locking{Strength: "UPDATE", Table: clause.Table{Name: "tournaments"}}).
 			Where("id = ?", tournamentID).
+			Preload("Staff", orderedStaff).
 			First(&tournament).Error
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return ErrTournamentNotFound
 		}
 		if err != nil {
 			return err
+		}
+		if tournament.Status == models.TournamentStatusCrowdfunding {
+			var funding models.TournamentFunding
+			err = tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+				Where("tournament_id = ?", tournament.ID).First(&funding).Error
+			if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+				return err
+			}
+			if err == nil {
+				tournament.Funding = &funding
+			}
 		}
 
 		to, err := mutate(&tournament)

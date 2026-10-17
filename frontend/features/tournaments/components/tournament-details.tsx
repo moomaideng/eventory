@@ -139,7 +139,9 @@ export function TournamentDetails({ tournamentId }: { tournamentId: string }) {
           <Badge variant="outline" className="capitalize">
             {status}
           </Badge>
-          {!isCrowdfunding ? <Badge variant="outline">{registrationType}</Badge> : null}
+          {!isCrowdfunding ? (
+            <Badge variant="outline">{registrationType}</Badge>
+          ) : null}
         </div>
         <div className="flex flex-col gap-2">
           <h1 className="max-w-4xl text-3xl font-bold tracking-tight sm:text-5xl">
@@ -168,8 +170,21 @@ export function TournamentDetails({ tournamentId }: { tournamentId: string }) {
             </AlertDescription>
           </Alert>
         ) : null}
+        {tournament.status === "CANCELLED" ? (
+          <Alert>
+            <AlertTitle>Tournament cancelled</AlertTitle>
+            <AlertDescription>
+              This event will not take place. Participant registration is
+              closed.
+            </AlertDescription>
+          </Alert>
+        ) : null}
         {isSolo && !isCrowdfunding ? (
-          !authorizationHeader ? (
+          tournament.status !== "REGISTRATION_OPEN" ? (
+            <Button disabled className="self-start">
+              Registration closed
+            </Button>
+          ) : !authorizationHeader ? (
             <Button
               render={
                 <Link href={`/login?redirect=/tournaments/${tournament.id}`} />
@@ -192,10 +207,6 @@ export function TournamentDetails({ tournamentId }: { tournamentId: string }) {
                   : myTeam.status === "REJECTED"
                     ? "Application rejected"
                     : "Registered"}
-            </Button>
-          ) : tournament.status !== "REGISTRATION_OPEN" ? (
-            <Button disabled className="self-start">
-              Registration closed
             </Button>
           ) : spotsLeft <= 0 ? (
             <Button disabled className="self-start">
@@ -274,7 +285,10 @@ export function TournamentDetails({ tournamentId }: { tournamentId: string }) {
           ) : null}
 
           {funding.goalAmount > 0 ? (
-            <TournamentFundingCard funding={funding} />
+            <TournamentFundingCard
+              funding={funding}
+              status={tournament.status}
+            />
           ) : null}
         </div>
       </div>
