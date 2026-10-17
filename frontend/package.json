@@ -12,6 +12,7 @@
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "test:payments": "node --experimental-strip-types --test features/payments/payments.test.mjs",
+    "test:sponsorship": "node --experimental-strip-types --test features/sponsorship/sponsorship.test.mjs",
     "format": "prettier --write .",
     "openapi:generate": "node ../scripts/merge-openapi.mjs && openapi-typescript ./.openapi.merged.json -o ./lib/api/schema.d.ts"
   },

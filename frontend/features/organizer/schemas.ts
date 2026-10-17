@@ -73,6 +73,9 @@ export const createTournamentFormSchema = z
       .int("Entry fee must be a whole number.")
       .min(0, "Entry fee cannot be negative.")
       .default(0),
+    crowdfunding: z.boolean(),
+    fundingGoal: z.coerce.number().int("Funding goal must be a whole number."),
+    fundingDeadline: z.string(),
     registrationDeadline: z
       .string()
       .min(1, "Registration deadline is required."),
@@ -80,7 +83,37 @@ export const createTournamentFormSchema = z
     endAt: z.string().min(1, "Tournament end time is required."),
   })
   .superRefine((data, ctx) => {
-    if (data.registrationMode === "TEAM" && data.minTeamSize > data.maxTeamSize) {
+    if (data.crowdfunding) {
+      const fundingDeadline = new Date(data.fundingDeadline).getTime();
+      const registrationDeadline = new Date(
+        data.registrationDeadline
+      ).getTime();
+      if (data.fundingGoal <= 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Enter a funding goal above 0.",
+          path: ["fundingGoal"],
+        });
+      }
+      if (
+        !data.fundingDeadline ||
+        Number.isNaN(fundingDeadline) ||
+        fundingDeadline <= Date.now() ||
+        (!Number.isNaN(registrationDeadline) &&
+          fundingDeadline >= registrationDeadline)
+      ) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message:
+            "Choose a future funding deadline before registration closes.",
+          path: ["fundingDeadline"],
+        });
+      }
+    }
+    if (
+      data.registrationMode === "TEAM" &&
+      data.minTeamSize > data.maxTeamSize
+    ) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message: "Maximum team size must be at least minimum team size.",
@@ -136,3 +169,90 @@ export const createTournamentFormSchema = z
 export type CreateTournamentFormInput = z.infer<
   typeof createTournamentFormSchema
 >;
+
+export function fundingSettingsSchema(registrationDeadline: string) {
+  return z
+    .object({
+      fundingGoal: z.coerce
+        .number()
+        .int("Funding goal must be a whole number.")
+        .positive("Enter a funding goal above 0."),
+      fundingDeadline: z.string().min(1, "Choose a funding deadline."),
+    })
+    .superRefine((data, ctx) => {
+      const deadline = new Date(data.fundingDeadline).getTime();
+      if (
+        Number.isNaN(deadline) ||
+        deadline <= Date.now() ||
+        deadline >= new Date(registrationDeadline).getTime()
+      ) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message:
+            "Choose a future funding deadline before registration closes.",
+          path: ["fundingDeadline"],
+        });
+      }
+    });
+}
+
+export function plannedEventDetailsSchema(fundingDeadline: string) {
+  return z
+    .object({
+      location: z.string().trim().min(1, "Enter a planned location.").max(160),
+      description: z.string().trim().max(4000),
+      registrationDeadline: z
+        .string()
+        .min(1, "Choose a registration deadline."),
+      startAt: z.string().min(1, "Choose a planned start time."),
+      endAt: z.string().min(1, "Choose a planned end time."),
+    })
+    .superRefine((data, ctx) => {
+      const funding = new Date(fundingDeadline).getTime();
+      const registration = new Date(data.registrationDeadline).getTime();
+      const start = new Date(data.startAt).getTime();
+      const end = new Date(data.endAt).getTime();
+      if (Number.isNaN(registration) || registration <= funding) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Registration must close after the funding deadline.",
+          path: ["registrationDeadline"],
+        });
+      }
+      if (Number.isNaN(start) || start <= registration) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "The event must start after registration closes.",
+          path: ["startAt"],
+        });
+      }
+      if (Number.isNaN(end) || end <= start) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "The event must end after it starts.",
+          path: ["endAt"],
+        });
+      }
+    });
+}
+
+export const registrationRulesSchema = z
+  .object({
+    registrationMode: z.enum(["SOLO", "TEAM"]),
+    minTeamSize: z.coerce.number().int().min(1),
+    maxTeamSize: z.coerce.number().int().min(1),
+    capacity: z.coerce.number().int().min(1, "Capacity must be at least 1."),
+    entryFee: z.coerce.number().int().min(0, "Entry fee cannot be negative."),
+  })
+  .superRefine((data, ctx) => {
+    if (
+      data.registrationMode === "TEAM" &&
+      data.maxTeamSize < data.minTeamSize
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Maximum team size must be at least minimum team size.",
+        path: ["maxTeamSize"],
+      });
+    }
+  });

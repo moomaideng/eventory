@@ -1,0 +1,151 @@
+package repositories_test
+
+import (
+	"context"
+	"errors"
+	"os"
+	"testing"
+	"time"
+
+	"github.com/google/uuid"
+	"github.com/moomaideng/eventory/services/tournament/internal/repositories"
+	"github.com/moomaideng/eventory/services/tournament/models"
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
+)
+
+func TestOrganizerDashboardOwnershipPostgres(t *testing.T) {
+	dsn := os.Getenv("TEST_DATABASE_DSN")
+	if dsn == "" {
+		t.Skip("set TEST_DATABASE_DSN to run the PostgreSQL ownership integration test")
+	}
+	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	sqlDB, err := db.DB()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer sqlDB.Close()
+	tx := db.Begin()
+	if tx.Error != nil {
+		t.Fatal(tx.Error)
+	}
+	defer tx.Rollback()
+	schema := "dashboard_test_" + uuid.New().String()[:8]
+	if err := tx.Exec("CREATE SCHEMA " + schema).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := tx.Exec("SET LOCAL search_path TO " + schema).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := tx.AutoMigrate(models.All()...); err != nil {
+		t.Fatal(err)
+	}
+
+	organizerID := uuid.New()
+	otherOrganizerID := uuid.New()
+	adminID := uuid.New()
+	tournament := models.Tournament{
+		ID: uuid.New(),
+		Staff: []models.TournamentStaff{
+			{
+				AccountID: organizerID,
+				Role:      models.TournamentStaffRoleOwner,
+			},
+			{
+				AccountID: adminID,
+				Role:      models.TournamentStaffRoleAdmin,
+			},
+		},
+		Name: "Private tournament", Game: "Chess",
+		StartsAt: time.Now(), EndsAt: time.Now().Add(time.Hour), RegistrationDeadline: time.Now(),
+		Capacity: 8, Status: models.TournamentStatusCrowdfunding, Published: false,
+	}
+	if err := tx.Create(&tournament).Error; err != nil {
+		t.Fatal(err)
+	}
+	repo := repositories.NewTournamentRepository(tx)
+	ctx := context.Background()
+	fundingDeadline := time.Now().Add(12 * time.Hour).Truncate(time.Microsecond)
+	funding := models.TournamentFunding{TournamentID: tournament.ID, GoalAmount: 1000, Deadline: &fundingDeadline}
+	if err := tx.Create(&funding).Error; err != nil {
+		t.Fatal(err)
+	}
+	tournament.Funding = &funding
+	tournament.Funding.GoalAmount = 2500
+	if err := repo.Update(ctx, &tournament); err != nil {
+		t.Fatalf("updating tournament funding: %v", err)
+	}
+	var savedFunding models.TournamentFunding
+	if err := tx.Where("tournament_id = ?", tournament.ID).First(&savedFunding).Error; err != nil {
+		t.Fatal(err)
+	}
+	if savedFunding.GoalAmount != 2500 || savedFunding.Deadline == nil || !savedFunding.Deadline.Equal(fundingDeadline) {
+		t.Fatalf("funding update was not persisted: %+v", savedFunding)
+	}
+	change, err := repo.ApplyOverride(ctx, organizerID, "Owner", tournament.ID, "Ready for the next stage",
+		func(current *models.Tournament) (models.TournamentStatus, error) {
+			if current.OwnerID() != organizerID || current.Funding == nil || current.Funding.GoalAmount != 2500 {
+				return "", errors.New("status transition did not load owner and funding")
+			}
+			return models.TournamentStatusRegistrationClosed, nil
+		})
+	if err != nil || change.FromStatus != models.TournamentStatusCrowdfunding || change.ToStatus != models.TournamentStatusRegistrationClosed {
+		t.Fatalf("status override should use the current owner and funding: change=%+v err=%v", change, err)
+	}
+	tournament.Name = "Stale plan edit"
+	if err := repo.Update(ctx, &tournament); !errors.Is(err, repositories.ErrTournamentStateChanged) {
+		t.Fatalf("stale event plan must not overwrite a new status: %v", err)
+	}
+	var afterOverride models.Tournament
+	if err := tx.First(&afterOverride, "id = ?", tournament.ID).Error; err != nil {
+		t.Fatal(err)
+	}
+	if afterOverride.Status != models.TournamentStatusRegistrationClosed || afterOverride.Name == "Stale plan edit" {
+		t.Fatalf("status and event details changed after stale update: %+v", afterOverride)
+	}
+	items, total, err := repo.ListOwned(ctx, organizerID, 1, 12)
+	if err != nil || total != 1 || len(items) != 1 || items[0].ID != tournament.ID || items[0].Published {
+		t.Fatalf("owner should see their unpublished tournament: total=%d items=%+v err=%v", total, items, err)
+	}
+	items, total, err = repo.ListOwned(ctx, adminID, 1, 12)
+	if err != nil || total != 1 || len(items) != 1 || items[0].ID != tournament.ID {
+		t.Fatalf("admin should see tournament: total=%d items=%+v err=%v", total, items, err)
+	}
+	if _, err := repo.GetOwned(ctx, adminID, tournament.ID); err != nil {
+		t.Fatalf("admin cannot read dashboard: %v", err)
+	}
+	items, total, err = repo.ListOwned(ctx, otherOrganizerID, 1, 12)
+	if err != nil || total != 0 || len(items) != 0 {
+		t.Fatalf("non-owner list must be empty: total=%d items=%+v err=%v", total, items, err)
+	}
+	if _, err := repo.GetOwned(ctx, organizerID, tournament.ID); err != nil {
+		t.Fatalf("owner cannot read dashboard: %v", err)
+	}
+	if _, err := repo.GetOwned(ctx, otherOrganizerID, tournament.ID); !errors.Is(err, repositories.ErrTournamentNotFound) {
+		t.Fatalf("non-owner dashboard: error=%v, want not found", err)
+	}
+	if _, err := repo.GetOwned(ctx, organizerID, uuid.New()); !errors.Is(err, repositories.ErrTournamentNotFound) {
+		t.Fatalf("missing dashboard: error=%v, want not found", err)
+	}
+	items, total, err = repo.ListOwned(ctx, organizerID, 2, 1)
+	if err != nil || total != 1 || len(items) != 0 {
+		t.Fatalf("pagination: total=%d items=%+v err=%v", total, items, err)
+	}
+
+	// Remove the admin staff member (hard delete, simulates leave/removal)
+	if err := tx.Where("tournament_id = ? AND account_id = ?", tournament.ID, adminID).Delete(&models.TournamentStaff{}).Error; err != nil {
+		t.Fatalf("failed to delete admin: %v", err)
+	}
+
+	// Removed admin must NOT see the tournament in ListOwned or GetOwned
+	items, total, err = repo.ListOwned(ctx, adminID, 1, 12)
+	if err != nil || total != 0 || len(items) != 0 {
+		t.Fatalf("removed admin list must be empty: total=%d items=%+v err=%v", total, items, err)
+	}
+	if _, err := repo.GetOwned(ctx, adminID, tournament.ID); !errors.Is(err, repositories.ErrTournamentNotFound) {
+		t.Fatalf("removed admin dashboard: error=%v, want not found", err)
+	}
+}

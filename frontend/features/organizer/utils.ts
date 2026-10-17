@@ -16,6 +16,13 @@ export const dashboardQueryOptions = {
   refetchInterval: 30_000,
 } as const;
 
+export function toLocalInput(value: string) {
+  const date = new Date(value);
+  return new Date(date.getTime() - date.getTimezoneOffset() * 60_000)
+    .toISOString()
+    .slice(0, 16);
+}
+
 export function statusLabel(status: string) {
   if (status === "LOCKED") return "Waiting for approval";
   if (status === "PAYMENT_PENDING") return "Awaiting payment";
@@ -56,5 +63,5 @@ export const TERMINAL_WARNING: Record<string, string> = {
   COMPLETED:
     "A completed tournament becomes a read-only archive. You will not be able to reopen it.",
   CANCELLED:
-    "Cancelling refunds every entrant and sponsor. You will not be able to revive this tournament.",
+    "Cancelling closes the tournament and cannot be undone. Refunds are not processed by this action.",
 };

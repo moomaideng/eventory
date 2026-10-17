@@ -63,17 +63,25 @@ type OrganizerDashboardOutput struct {
 	}
 }
 
-func RegisterOrganizerDashboardRoutes(api huma.API, dashboard *usecases.OrganizerDashboardUseCase) {
+func RegisterOrganizerDashboardRoutes(
+	api huma.API,
+	auth func(huma.Context, func(huma.Context)),
+	tournaments *usecases.TournamentUseCase,
+) {
 	huma.Register(api, huma.Operation{
-		OperationID: "list-my-tournaments", Method: http.MethodGet, Path: "/tournaments/mine",
-		Summary: "List the current organizer's tournaments", Tags: []string{"Organizer dashboard"},
-		Security: []map[string][]string{{"bearer": {}}},
+		OperationID: "list-my-tournaments",
+		Method:      http.MethodGet,
+		Path:        "/api/v1/tournaments/mine",
+		Summary:     "List the current organizer's tournaments",
+		Tags:        []string{"Organizer dashboard"},
+		Middlewares: huma.Middlewares{auth},
+		Security:    []map[string][]string{{"bearer": {}}},
 	}, func(ctx context.Context, input *OrganizerTournamentListInput) (*OrganizerTournamentListOutput, error) {
 		accountID, err := authenticatedAccountID(ctx)
 		if err != nil {
 			return nil, err
 		}
-		result, err := dashboard.List(ctx, accountID, input.Page, input.PageSize)
+		result, err := tournaments.List(ctx, accountID, input.Page, input.PageSize)
 		if err != nil {
 			return nil, organizerDashboardHTTPError(err)
 		}
@@ -87,15 +95,19 @@ func RegisterOrganizerDashboardRoutes(api huma.API, dashboard *usecases.Organize
 	})
 
 	huma.Register(api, huma.Operation{
-		OperationID: "get-organizer-tournament-dashboard", Method: http.MethodGet, Path: "/tournaments/{id}/dashboard",
-		Summary: "View an owned tournament's dashboard and registrations", Tags: []string{"Organizer dashboard"},
-		Security: []map[string][]string{{"bearer": {}}},
+		OperationID: "get-organizer-tournament-dashboard",
+		Method:      http.MethodGet,
+		Path:        "/api/v1/tournaments/{id}/dashboard",
+		Summary:     "View an owned tournament's dashboard and registrations",
+		Tags:        []string{"Organizer dashboard"},
+		Middlewares: huma.Middlewares{auth},
+		Security:    []map[string][]string{{"bearer": {}}},
 	}, func(ctx context.Context, input *OrganizerDashboardInput) (*OrganizerDashboardOutput, error) {
 		accountID, err := authenticatedAccountID(ctx)
 		if err != nil {
 			return nil, err
 		}
-		result, err := dashboard.Get(ctx, accountID, input.TournamentID)
+		result, err := tournaments.Get(ctx, accountID, input.TournamentID)
 		if err != nil {
 			return nil, organizerDashboardHTTPError(err)
 		}
@@ -153,6 +165,7 @@ func toOrganizerSummary(result usecases.OrganizerTournamentSummary, accountID uu
 		},
 		Funding: TournamentFundingResponse{
 			GoalAmount: result.Funding.GoalAmount, RaisedAmount: result.Funding.RaisedAmount,
+			Deadline:        result.Funding.Deadline,
 			RemainingAmount: result.Funding.RemainingAmount, SupporterCount: result.Funding.SupporterCount,
 			Percentage: result.Funding.Percentage, Currency: result.Tournament.Currency,
 		},

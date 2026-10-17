@@ -98,6 +98,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return undefined;
   }, [devUser, session?.accessToken]);
 
+  // Temporary console log to inspect auth token
+  useEffect(() => {
+    if (session?.accessToken) {
+      console.log("[AUTH TOKEN]:", session.accessToken);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (window as any).__AUTH_TOKEN__ = session.accessToken;
+    } else if (devUser) {
+      console.log("[AUTH TOKEN (dev)]:", "dev-token");
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (window as any).__AUTH_TOKEN__ = "dev-token";
+    }
+  }, [session?.accessToken, devUser]);
+
   // TanStack Query integration via openapi-react-query client ($api)
   // Queries /api/v1/accounts/me with bearer token (both real JWT and dev-token)
   const {

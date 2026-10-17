@@ -12,6 +12,7 @@ import (
 )
 
 type dashboardRepositoryStub struct {
+	mockTournamentRepository
 	tournament models.Tournament
 	accountID  uuid.UUID
 	err        error
@@ -42,7 +43,7 @@ func TestOrganizerDashboardCountsConfirmedParticipantsAndEntryStates(t *testing.
 		Funding: &models.TournamentFunding{GoalAmount: 100, RaisedAmount: 150, SupporterCount: 3},
 	}}
 	accountID := uuid.New()
-	result, err := usecases.NewOrganizerDashboardUseCase(repo, newStubAccountService()).Get(context.Background(), accountID, uuid.New())
+	result, err := usecases.NewTournamentUseCase(repo, newStubAccountService()).Get(context.Background(), accountID, uuid.New())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -67,7 +68,7 @@ func TestOrganizerDashboardCountsConfirmedParticipantsAndEntryStates(t *testing.
 func TestOrganizerDashboardEmptyAndZeroGoal(t *testing.T) {
 	for _, funding := range []*models.TournamentFunding{nil, {RaisedAmount: 50}} {
 		repo := &dashboardRepositoryStub{tournament: models.Tournament{Capacity: 16, Funding: funding}}
-		result, err := usecases.NewOrganizerDashboardUseCase(repo, newStubAccountService()).Get(context.Background(), uuid.New(), uuid.New())
+		result, err := usecases.NewTournamentUseCase(repo, newStubAccountService()).Get(context.Background(), uuid.New(), uuid.New())
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -79,7 +80,7 @@ func TestOrganizerDashboardEmptyAndZeroGoal(t *testing.T) {
 
 func TestOrganizerDashboardNotOwnedOrMissing(t *testing.T) {
 	repo := &dashboardRepositoryStub{err: repositories.ErrTournamentNotFound}
-	_, err := usecases.NewOrganizerDashboardUseCase(repo, newStubAccountService()).Get(context.Background(), uuid.New(), uuid.New())
+	_, err := usecases.NewTournamentUseCase(repo, newStubAccountService()).Get(context.Background(), uuid.New(), uuid.New())
 	if !errors.Is(err, usecases.ErrTournamentNotFound) {
 		t.Fatalf("error = %v, want not found", err)
 	}
@@ -87,7 +88,7 @@ func TestOrganizerDashboardNotOwnedOrMissing(t *testing.T) {
 
 func TestOrganizerDashboardListPaginationAndOwnership(t *testing.T) {
 	repo := &dashboardRepositoryStub{}
-	u := usecases.NewOrganizerDashboardUseCase(repo, newStubAccountService())
+	u := usecases.NewTournamentUseCase(repo, newStubAccountService())
 	accountID := uuid.New()
 	result, err := u.List(context.Background(), accountID, 2, 12)
 	if err != nil || result.Page != 2 || result.PageSize != 12 || result.Total != 1 || repo.accountID != accountID {
@@ -116,7 +117,7 @@ func TestOrganizerDashboardResolvesOwnerOrganizerName(t *testing.T) {
 	}
 	repo := &dashboardRepositoryStub{tournament: tournament}
 	accountSvc := newStubAccountService().withOrganizer(ownerID, "Super Esports Org")
-	uc := usecases.NewOrganizerDashboardUseCase(repo, accountSvc)
+	uc := usecases.NewTournamentUseCase(repo, accountSvc)
 
 	// Admin views tournament dashboard
 	result, err := uc.Get(context.Background(), adminID, tournamentID)

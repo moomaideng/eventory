@@ -28,12 +28,19 @@ import {
   type Tournament,
 } from "../utils";
 
-export function TournamentCard({ tournament }: { tournament: Tournament }) {
+export function TournamentCard({
+  tournament,
+  sponsorMode = false,
+}: {
+  tournament: Tournament;
+  sponsorMode?: boolean;
+}) {
   const seatsLeft = Math.max(
     0,
     tournament.capacity - tournament.registeredCount
   );
   const status = formatTournamentStatus(tournament.status);
+  const isCrowdfunding = tournament.status === "CROWDFUNDING";
 
   return (
     <Card className="flex h-full flex-col justify-between">
@@ -51,44 +58,61 @@ export function TournamentCard({ tournament }: { tournament: Tournament }) {
         <p className="text-muted-foreground line-clamp-3 text-sm">
           {tournament.description}
         </p>
-        <div className="flex flex-col gap-2 text-sm">
-          <div className="flex items-start gap-2">
-            <CalendarDays className="text-muted-foreground mt-0.5 size-4 shrink-0" />
-            <span>{formatTournamentDate(tournament.startAt)}</span>
+        {isCrowdfunding ? (
+          <p className="text-muted-foreground text-sm">
+            Fundraising now. Event dates and registration details are still
+            being planned.
+          </p>
+        ) : (
+          <div className="flex flex-col gap-2 text-sm">
+            <div className="flex items-start gap-2">
+              <CalendarDays className="text-muted-foreground mt-0.5 size-4 shrink-0" />
+              <span>{formatTournamentDate(tournament.startAt)}</span>
+            </div>
+            <div className="flex items-start gap-2">
+              <Clock3 className="text-muted-foreground mt-0.5 size-4 shrink-0" />
+              <span>
+                {formatRegistrationStatus(
+                  tournament.status,
+                  tournament.registrationDeadline
+                )}
+              </span>
+            </div>
+            <div className="flex items-start gap-2">
+              <WalletCards className="text-muted-foreground mt-0.5 size-4 shrink-0" />
+              <span>
+                {formatEntryFee(tournament.entryFee, tournament.currency)}
+              </span>
+            </div>
+            <div className="flex items-start gap-2">
+              <MapPin className="text-muted-foreground mt-0.5 size-4 shrink-0" />
+              <span>{tournament.location}</span>
+            </div>
           </div>
-          <div className="flex items-start gap-2">
-            <Clock3 className="text-muted-foreground mt-0.5 size-4 shrink-0" />
-            <span>
-              {formatRegistrationStatus(
-                tournament.status,
-                tournament.registrationDeadline
-              )}
-            </span>
-          </div>
-          <div className="flex items-start gap-2">
-            <WalletCards className="text-muted-foreground mt-0.5 size-4 shrink-0" />
-            <span>{formatEntryFee(tournament.entryFee, tournament.currency)}</span>
-          </div>
-          <div className="flex items-start gap-2">
-            <MapPin className="text-muted-foreground mt-0.5 size-4 shrink-0" />
-            <span>{tournament.location}</span>
-          </div>
-        </div>
+        )}
       </CardContent>
       <CardFooter className="flex justify-between gap-3">
-        <div className="text-muted-foreground flex items-center gap-2 text-sm">
-          <Users className="size-4" />
-          <span>
-            {seatsLeft} of {tournament.capacity} spots available
-          </span>
-        </div>
+        {!isCrowdfunding ? (
+          <div className="text-muted-foreground flex items-center gap-2 text-sm">
+            <Users className="size-4" />
+            <span>
+              {seatsLeft} of {tournament.capacity} spots available
+            </span>
+          </div>
+        ) : (
+          <span />
+        )}
         <Button
-          render={<Link href={`/tournaments/${tournament.id}`} />}
+          render={
+            <Link
+              href={`${sponsorMode ? "/sponsor" : ""}/tournaments/${tournament.id}`}
+            />
+          }
           nativeButton={false}
           size="sm"
           variant="outline"
         >
-          View details
+          {sponsorMode ? "View packages" : "View details"}
           <ArrowUpRight data-icon="inline-end" />
         </Button>
       </CardFooter>

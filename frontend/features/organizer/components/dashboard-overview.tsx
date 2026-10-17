@@ -29,14 +29,22 @@ function getTimeRemaining(deadlineStr: string, status: string) {
     case "ONGOING":
       return { value: "In progress", detail: "Tournament underway" };
     case "REGISTRATION_CLOSED":
-      return { value: "Registration closed", detail: "No new entries accepted" };
+      return {
+        value: "Registration closed",
+        detail: "No new entries accepted",
+      };
   }
 
   const now = Date.now();
   const deadline = new Date(deadlineStr).getTime();
   const diffMs = deadline - now;
   if (diffMs <= 0) {
-    return { value: "Registration closed", detail: "Passed deadline" };
+    return status === "CROWDFUNDING"
+      ? {
+          value: "Funding deadline passed",
+          detail: "Registration is still closed",
+        }
+      : { value: "Registration closed", detail: "Passed deadline" };
   }
   const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
   const diffDays = Math.floor(diffHours / 24);
@@ -75,7 +83,9 @@ export function DashboardOverview({ summary }: { summary: OrganizerSummary }) {
         : "entries";
 
   const timeRemaining = getTimeRemaining(
-    tournament.registrationDeadline,
+    tournament.status === "CROWDFUNDING" && funding.deadline
+      ? funding.deadline
+      : tournament.registrationDeadline,
     tournament.status
   );
 
@@ -101,7 +111,10 @@ export function DashboardOverview({ summary }: { summary: OrganizerSummary }) {
       icon: ShieldCheck,
     },
     {
-      label: "Time remaining",
+      label:
+        tournament.status === "CROWDFUNDING"
+          ? "Funding time left"
+          : "Time remaining",
       value: timeRemaining.value,
       detail: timeRemaining.detail,
       icon: Timer,
@@ -142,6 +155,7 @@ export function DashboardOverview({ summary }: { summary: OrganizerSummary }) {
   ];
 
   const progressValue = Math.min(Math.max(funding.percentage, 0), 100);
+  const hasFunding = funding.goalAmount > 0;
 
   return (
     <div className="flex flex-col gap-10">
@@ -150,12 +164,14 @@ export function DashboardOverview({ summary }: { summary: OrganizerSummary }) {
         {organizerMetrics.map(({ label, value, detail, icon: Icon }) => (
           <div
             key={label}
-            className="bg-card flex min-w-0 flex-col gap-3 rounded-xl border border-border/50 p-4 shadow-xs sm:p-5"
+            className="bg-card border-border/50 flex min-w-0 flex-col gap-3 rounded-xl border p-4 shadow-xs sm:p-5"
           >
             <div className="bg-primary/10 text-primary flex size-8 items-center justify-center rounded-lg">
               <Icon className="size-4" aria-hidden="true" />
             </div>
-            <dt className="text-muted-foreground text-xs sm:text-sm">{label}</dt>
+            <dt className="text-muted-foreground text-xs sm:text-sm">
+              {label}
+            </dt>
             <dd className="flex flex-col gap-0.5">
               <span className="text-2xl font-bold tracking-tight tabular-nums sm:text-3xl">
                 {value}
@@ -167,18 +183,33 @@ export function DashboardOverview({ summary }: { summary: OrganizerSummary }) {
       </dl>
 
       {/* Middle Zone: Event overview & Funding in a distinct surface container */}
-      <div className="bg-card/30 rounded-2xl border border-border/50 p-6 shadow-xs sm:p-8">
-        <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_22rem] lg:gap-10">
+      <div className="bg-card/30 border-border/50 rounded-2xl border p-6 shadow-xs sm:p-8">
+        <div
+          className={
+            hasFunding
+              ? "grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_22rem] lg:gap-10"
+              : "grid items-start"
+          }
+        >
           {/* Left Column: Event overview */}
           <div className="flex flex-col gap-5">
             <div className="flex items-center gap-2 text-base font-semibold">
-              <CalendarDays className="size-4 text-muted-foreground" aria-hidden="true" />
+              <CalendarDays
+                className="text-muted-foreground size-4"
+                aria-hidden="true"
+              />
               <h2>Event overview</h2>
             </div>
 
             {tournament.description ? (
               <p className="text-muted-foreground text-sm leading-relaxed">
                 {tournament.description}
+              </p>
+            ) : null}
+
+            {tournament.status === "CROWDFUNDING" ? (
+              <p className="text-muted-foreground text-sm">
+                These event details are tentative while crowdfunding is active.
               </p>
             ) : null}
 
@@ -198,46 +229,64 @@ export function DashboardOverview({ summary }: { summary: OrganizerSummary }) {
           </div>
 
           {/* Right Column: Funding (with subtle vertical divider on desktop) */}
-          <div className="flex flex-col gap-5 lg:border-l lg:border-border/40 lg:pl-10">
-            <div className="flex items-center gap-2 text-base font-semibold">
-              <ReceiptText className="size-4 text-muted-foreground" aria-hidden="true" />
-              <h2>Funding</h2>
-            </div>
-
-            <div className="flex flex-col gap-4">
-              <div className="flex flex-col gap-0.5">
-                <span className="text-3xl font-bold tracking-tight">
-                  {formatMoney(funding.raisedAmount, funding.currency)}
-                </span>
-                <span className="text-muted-foreground text-xs">
-                  raised of {formatMoney(funding.goalAmount, funding.currency)}
-                </span>
+          {hasFunding ? (
+            <div className="lg:border-border/40 flex flex-col gap-5 lg:border-l lg:pl-10">
+              <div className="flex items-center gap-2 text-base font-semibold">
+                <ReceiptText
+                  className="text-muted-foreground size-4"
+                  aria-hidden="true"
+                />
+                <h2>Funding</h2>
               </div>
 
-              <div className="flex flex-col gap-1.5">
-                <div className="flex items-center justify-between text-xs text-muted-foreground">
-                  <span>Funding goal</span>
-                  <span>{formatPercentage(funding.percentage)}</span>
-                </div>
-                <Progress value={progressValue} className="h-1.5" />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4 border-t border-border/40 pt-3">
-                <div className="flex flex-col gap-1">
-                  <span className="text-muted-foreground text-xs">Supporters</span>
-                  <span className="text-sm font-semibold">
-                    {numberFormatter.format(funding.supporterCount)}
+              <div className="flex flex-col gap-4">
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-3xl font-bold tracking-tight">
+                    {formatMoney(funding.raisedAmount, funding.currency)}
+                  </span>
+                  <span className="text-muted-foreground text-xs">
+                    raised of{" "}
+                    {formatMoney(funding.goalAmount, funding.currency)}
                   </span>
                 </div>
-                <div className="flex flex-col gap-1">
-                  <span className="text-muted-foreground text-xs">Still needed</span>
-                  <span className="text-sm font-semibold">
-                    {formatMoney(funding.remainingAmount, funding.currency)}
-                  </span>
+
+                <div className="flex flex-col gap-1.5">
+                  <div className="text-muted-foreground flex items-center justify-between text-xs">
+                    <span>Funding goal</span>
+                    <span>{formatPercentage(funding.percentage)}</span>
+                  </div>
+                  <Progress value={progressValue} className="h-1.5" />
+                </div>
+
+                {funding.deadline ? (
+                  <p className="text-muted-foreground text-xs">
+                    Funding deadline: {formatTournamentDate(funding.deadline)}
+                  </p>
+                ) : null}
+
+                <div className="border-border/40 grid grid-cols-2 gap-4 border-t pt-3">
+                  <div className="flex flex-col gap-1">
+                    <span className="text-muted-foreground text-xs">
+                      Supporters
+                    </span>
+                    <span className="text-sm font-semibold">
+                      {numberFormatter.format(funding.supporterCount)}
+                    </span>
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <span className="text-muted-foreground text-xs">
+                      {tournament.status === "CROWDFUNDING"
+                        ? "Still needed"
+                        : "Goal shortfall"}
+                    </span>
+                    <span className="text-sm font-semibold">
+                      {formatMoney(funding.remainingAmount, funding.currency)}
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
+          ) : null}
         </div>
       </div>
     </div>

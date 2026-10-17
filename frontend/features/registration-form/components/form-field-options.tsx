@@ -131,7 +131,10 @@ export function FormFieldOptions({ field, onUpdate }: FormFieldOptionsProps) {
 
   const handleAddOption = (autoEdit = false) => {
     const currentOptions = field.config.options;
-    const newId = `opt_${Date.now()}`;
+    const newId =
+      typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+        ? `opt_${crypto.randomUUID()}`
+        : `opt_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
     const newOption: FormFieldOption = {
       id: newId,
       label: `Option ${currentOptions.length + 1}`,

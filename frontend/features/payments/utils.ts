@@ -3,7 +3,7 @@ import type { components } from "@/lib/api/schema";
 export type Payment = components["schemas"]["PaymentResponse"];
 
 export function formatAmount(
-  payment: Pick<Payment, "amountMinor" | "currency">
+  payment: { amountMinor: number; currency: string }
 ) {
   const minor = BigInt(payment.amountMinor);
   const fraction = (minor % BigInt(100)).toString().padStart(2, "0");

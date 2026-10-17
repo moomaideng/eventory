@@ -15,7 +15,13 @@ import {
   type Payment,
 } from "@/features/payments/utils";
 
-export function PaymentHistoryTable({ payments }: { payments: Payment[] }) {
+export function PaymentHistoryTable({
+  payments,
+  sponsorMode = false,
+}: {
+  payments: Payment[];
+  sponsorMode?: boolean;
+}) {
   return (
     <Table>
       <TableCaption>
@@ -38,7 +44,7 @@ export function PaymentHistoryTable({ payments }: { payments: Payment[] }) {
             <TableCell className="whitespace-normal">
               <p className="max-w-48 break-words sm:max-w-64">
                 <Link
-                  href={`/payments/${payment.id}`}
+                  href={`${sponsorMode ? "/sponsor" : ""}/payments/${payment.id}`}
                   aria-label={`View invoice: ${payment.description}`}
                   className="focus-visible:after:outline-ring after:absolute after:inset-0 focus-visible:outline-none focus-visible:after:outline-2 focus-visible:after:-outline-offset-2"
                 >

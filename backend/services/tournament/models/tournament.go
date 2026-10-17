@@ -12,8 +12,7 @@ const (
 	// TODO(US3-1): Draft overlaps with Tournament.Published == false.
 	// Published = visibility, Status = lifecycle stage; they only collide at draft.
 	// US3-1: HOOF owns the decision — until then, nothing sets DRAFT.
-	TournamentStatusDraft TournamentStatus = "DRAFT"
-	// TODO(US5-1): No crowdfunding flow exists yet. Nothing sets this status.
+	TournamentStatusDraft        TournamentStatus = "DRAFT"
 	TournamentStatusCrowdfunding TournamentStatus = "CROWDFUNDING"
 
 	TournamentStatusRegistrationOpen   TournamentStatus = "REGISTRATION_OPEN"
@@ -66,9 +65,15 @@ type Tournament struct {
 	Published            bool                       `gorm:"not null;default:false;index:idx_tournaments_public_start,priority:1"`
 	Staff                []TournamentStaff          `gorm:"foreignKey:TournamentID;constraint:OnDelete:CASCADE;"`
 	Teams                []TournamentTeam           `gorm:"foreignKey:TournamentID;constraint:OnDelete:CASCADE;"`
+	Matches              []Match                    `gorm:"foreignKey:TournamentID;constraint:OnDelete:CASCADE;"`
 	Funding              *TournamentFunding         `gorm:"foreignKey:TournamentID;constraint:OnDelete:CASCADE;"`
 	CreatedAt            time.Time
 	UpdatedAt            time.Time
+}
+
+// IsSolo reports whether this tournament is intended for solo participants.
+func (t *Tournament) IsSolo() bool {
+	return t.MinTeamSize == 1 && t.MaxTeamSize == 1
 }
 
 // StaffMember looks up a staff member by account ID in the tournament's preloaded staff list.
@@ -98,7 +103,7 @@ type TournamentTeam struct {
 	TournamentID       uuid.UUID              `gorm:"type:uuid;not null;index;uniqueIndex:idx_tournament_team_name;index:idx_tournament_teams_status,priority:1"`
 	Tournament         Tournament             `gorm:"foreignKey:TournamentID;constraint:OnDelete:CASCADE;"`
 	Name               string                 `gorm:"type:varchar(120);not null;uniqueIndex:idx_tournament_team_name"`
-	InviteCode         string                 `gorm:"type:varchar(32);uniqueIndex"`
+	InviteCode         *string                `gorm:"type:varchar(6);uniqueIndex"`
 	Status             TournamentTeamStatus   `gorm:"type:varchar(16);not null;default:'FORMING';index:idx_tournament_teams_status,priority:2"`
 	Members            []TournamentTeamMember `gorm:"foreignKey:TournamentTeamID;constraint:OnDelete:CASCADE;"`
 	CreatedAt          time.Time
@@ -122,8 +127,9 @@ type TournamentFunding struct {
 	ID             uuid.UUID `gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
 	TournamentID   uuid.UUID `gorm:"type:uuid;not null;uniqueIndex"`
 	GoalAmount     int64     `gorm:"not null;default:0"`
-	RaisedAmount   int64     `gorm:"not null;default:0"`
-	SupporterCount int       `gorm:"not null;default:0"`
+	Deadline       *time.Time
+	RaisedAmount   int64 `gorm:"not null;default:0"`
+	SupporterCount int   `gorm:"not null;default:0"`
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
 }

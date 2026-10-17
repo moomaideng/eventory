@@ -21,6 +21,7 @@ import { Textarea } from "@/components/ui/textarea";
 
 export interface HostTournamentGeneralCardProps {
   organizerName?: string;
+  crowdfunding?: boolean;
   name: string;
   onNameChange: (value: string) => void;
   game: string;
@@ -34,6 +35,7 @@ export interface HostTournamentGeneralCardProps {
 
 export function HostTournamentGeneralCard({
   organizerName,
+  crowdfunding = false,
   name,
   onNameChange,
   game,
@@ -49,9 +51,11 @@ export function HostTournamentGeneralCard({
       <CardHeader>
         <CardTitle className="text-lg">General Information</CardTitle>
         <CardDescription>
-          {organizerName
-            ? `Set tournament identity and rules published under ${organizerName}.`
-            : "Provide the tournament title, game discipline, venue or server location, and competition rules."}
+          {crowdfunding
+            ? "Add a title and description for supporters. The planned venue and event details can be updated later."
+            : organizerName
+              ? `Set tournament identity and rules published under ${organizerName}.`
+              : "Provide the tournament title, game discipline, venue or server location, and competition rules."}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -84,7 +88,9 @@ export function HostTournamentGeneralCard({
 
           <Field data-invalid={Boolean(errors.location)}>
             <div className="flex items-center justify-between">
-              <FieldLabel htmlFor="tournament-location">Location</FieldLabel>
+              <FieldLabel htmlFor="tournament-location">
+                {crowdfunding ? "Planned location" : "Location"}
+              </FieldLabel>
               <Button
                 type="button"
                 variant="outline"
