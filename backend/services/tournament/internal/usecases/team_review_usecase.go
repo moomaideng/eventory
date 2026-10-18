@@ -70,10 +70,9 @@ func NewTeamReviewUseCase(
 
 // Review accepts or rejects an application, recording who decided and why.
 //
-// A decision can be switched later (ACCEPTED <-> REJECTED); every decision is
-// kept in the audit trail. A paid applicant who gets rejected is NOT refunded
-// here: refunds belong to US7-2, and switching such an applicant back to
-// ACCEPTED must be revisited once that story automates them.
+// NOTE(design): Review is a one-time decision. Only applications waiting in
+// LOCKED status can be reviewed. Once decided (ACCEPTED or REJECTED), the decision
+// is final and cannot be switched.
 //
 // TODO(sprint-next): notify the applicant. No notification system exists yet.
 func (u *TeamReviewUseCase) Review(
@@ -127,6 +126,10 @@ func (u *TeamReviewUseCase) Review(
 
 // checkReview holds the decision rules. It runs inside the repository's
 // transaction, while the rows are locked.
+//
+// NOTE(design): Review is a one-time decision: only applications in LOCKED status
+// can be reviewed. Once decided (ACCEPTED or REJECTED), the decision is final
+// to prevent flip-flopping and maintain audit integrity.
 func checkReview(
 	tournament *models.Tournament,
 	from, to models.TournamentTeamStatus,
@@ -135,11 +138,7 @@ func checkReview(
 	if !slices.Contains(reviewableStages, tournament.Status) {
 		return ErrReviewNotAllowedInStage
 	}
-	switch from {
-	case models.TournamentTeamStatusLocked,
-		models.TournamentTeamStatusAccepted,
-		models.TournamentTeamStatusRejected:
-	default:
+	if from != models.TournamentTeamStatusLocked {
 		return ErrApplicationNotReviewable
 	}
 	if from == to {

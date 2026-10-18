@@ -300,14 +300,20 @@ func teamLobbyHTTPError(err error) error {
 		return huma.Error403Forbidden("Only the team captain can perform this action", err)
 	case errors.Is(err, repositories.ErrAlreadyInTournamentLobby):
 		return huma.Error409Conflict("You are already in a team for this tournament", err)
-	case errors.Is(err, usecases.ErrNotSoloTournament),
-		errors.Is(err, usecases.ErrRegistrationNotOpen),
-		errors.Is(err, repositories.ErrTeamLobbyNotForming),
-		errors.Is(err, repositories.ErrTeamLobbyFull),
-		errors.Is(err, repositories.ErrRosterBelowMinimum),
-		errors.Is(err, repositories.ErrTournamentRegistrationClosed),
-		errors.Is(err, repositories.ErrCannotRemoveCaptain),
-		errors.Is(err, repositories.ErrCannotDisbandLobby):
+	case errors.Is(err, usecases.ErrNotSoloTournament):
+		return huma.Error409Conflict("This tournament requires a team and does not support solo registration", err)
+	case errors.Is(err, usecases.ErrRegistrationNotOpen),
+		errors.Is(err, repositories.ErrTournamentRegistrationClosed):
+		return huma.Error409Conflict("Tournament registration is closed or the deadline has passed", err)
+	case errors.Is(err, repositories.ErrTeamLobbyFull):
+		return huma.Error409Conflict("Tournament or team lobby is full", err)
+	case errors.Is(err, repositories.ErrRosterBelowMinimum):
+		return huma.Error409Conflict("Team roster does not meet the minimum requirement", err)
+	case errors.Is(err, repositories.ErrCannotRemoveCaptain):
+		return huma.Error409Conflict("Cannot remove the team captain", err)
+	case errors.Is(err, repositories.ErrCannotDisbandLobby):
+		return huma.Error409Conflict("Cannot disband team lobby at this stage", err)
+	case errors.Is(err, repositories.ErrTeamLobbyNotForming):
 		return huma.Error409Conflict("Team lobby state does not allow this action", err)
 	default:
 		return huma.Error500InternalServerError("Team lobby operation failed", err)

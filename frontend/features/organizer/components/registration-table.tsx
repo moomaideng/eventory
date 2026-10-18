@@ -24,6 +24,7 @@ import {
   DashboardStatus,
 } from "@/features/organizer/components/dashboard-shared";
 import { ReviewActions } from "@/features/organizer/components/review-actions";
+import { ViewFormAnswersDialog } from "@/features/organizer/components/view-form-answers-dialog";
 import type {
   DashboardEntry,
   OrganizerSummary,
@@ -102,11 +103,9 @@ export function RegistrationTable({
                 <TableHead className="hidden w-32 lg:table-cell">
                   Created
                 </TableHead>
-                {canReview ? (
-                  <TableHead className="hidden w-44 sm:table-cell">
-                    Actions
-                  </TableHead>
-                ) : null}
+                <TableHead className="hidden w-56 sm:table-cell">
+                  Actions
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -124,14 +123,21 @@ export function RegistrationTable({
                         <span className="sm:hidden">
                           <DashboardStatus status={entry.status} />
                         </span>
-                        {canReview ? (
-                          <div className="pt-2 sm:hidden">
+                        <div className="flex flex-wrap items-center gap-2 pt-2 sm:hidden">
+                          {entry.members?.[0]?.accountId ? (
+                            <ViewFormAnswersDialog
+                              tournamentId={tournamentId}
+                              accountId={entry.members[0].accountId}
+                              applicantName={entry.name}
+                            />
+                          ) : null}
+                          {canReview ? (
                             <ReviewActions
                               tournamentId={tournamentId}
                               entry={entry}
                             />
-                          </div>
-                        ) : null}
+                          ) : null}
+                        </div>
                       </div>
                     </div>
                   </TableCell>
@@ -164,14 +170,23 @@ export function RegistrationTable({
                   <TableCell className="text-muted-foreground hidden align-top lg:table-cell">
                     {formatDate(entry.createdAt)}
                   </TableCell>
-                  {canReview ? (
-                    <TableCell className="hidden align-top whitespace-normal sm:table-cell">
-                      <ReviewActions
-                        tournamentId={tournamentId}
-                        entry={entry}
-                      />
-                    </TableCell>
-                  ) : null}
+                  <TableCell className="hidden align-top whitespace-normal sm:table-cell">
+                    <div className="flex flex-wrap items-center gap-2">
+                      {entry.members?.[0]?.accountId ? (
+                        <ViewFormAnswersDialog
+                          tournamentId={tournamentId}
+                          accountId={entry.members[0].accountId}
+                          applicantName={entry.name}
+                        />
+                      ) : null}
+                      {canReview ? (
+                        <ReviewActions
+                          tournamentId={tournamentId}
+                          entry={entry}
+                        />
+                      ) : null}
+                    </div>
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>

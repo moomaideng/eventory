@@ -2,8 +2,6 @@
 
 import React from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Users } from "lucide-react";
 import { $api } from "@/lib/api/client";
 import { useAuth } from "@/context/auth-context";
@@ -26,8 +24,6 @@ import { TournamentFundingCard } from "./tournament-funding-card";
 import { TournamentRegisteredTeamsCard } from "./tournament-registered-teams-card";
 
 export function TournamentDetails({ tournamentId }: { tournamentId: string }) {
-  const router = useRouter();
-  const queryClient = useQueryClient();
   const { authorizationHeader } = useAuth();
   const { data, error, isLoading } = $api.useQuery(
     "get",
@@ -49,10 +45,6 @@ export function TournamentDetails({ tournamentId }: { tournamentId: string }) {
       retry: false,
       staleTime: 0,
     }
-  );
-  const soloRegisterMutation = $api.useMutation(
-    "post",
-    "/api/v1/tournaments/{tournamentId}/solo-register"
   );
 
   if (isLoading) return <TournamentDetailsSkeleton />;
@@ -95,31 +87,6 @@ export function TournamentDetails({ tournamentId }: { tournamentId: string }) {
     tournament.status === "REGISTRATION_OPEN" &&
     !isMyTeamLoading &&
     !myTeam;
-
-  const handleSoloRegister = async () => {
-    if (!authorizationHeader) {
-      router.push(`/login?redirect=/tournaments/${tournament.id}`);
-      return;
-    }
-    try {
-      const res = await soloRegisterMutation.mutateAsync({
-        params: { path: { tournamentId: tournament.id } },
-        headers: { Authorization: authorizationHeader },
-      });
-      if (res.paymentId) {
-        router.push(`/payments/${res.paymentId}/checkout`);
-      } else {
-        void queryClient.invalidateQueries({
-          queryKey: ["get", "/api/v1/tournaments/{tournamentId}"],
-        });
-        void queryClient.invalidateQueries({
-          queryKey: ["get", "/api/v1/tournaments/{tournamentId}/my-team"],
-        });
-      }
-    } catch {
-      // Handled by react-query state
-    }
-  };
 
   return (
     <main className="container mx-auto flex w-full max-w-7xl flex-1 flex-col gap-8 px-4 py-10 sm:px-8">
@@ -199,28 +166,82 @@ export function TournamentDetails({ tournamentId }: { tournamentId: string }) {
               Checking eligibility
             </Button>
           ) : myTeam ? (
-            <Button disabled className="self-start">
-              {myTeam.status === "ACCEPTED"
-                ? "Already registered"
-                : myTeam.status === "PAYMENT_PENDING"
-                  ? "Payment pending"
-                  : myTeam.status === "REJECTED"
-                    ? "Application rejected"
-                    : "Registered"}
-            </Button>
+            <div className="flex max-w-xl flex-col gap-3">
+              {myTeam.status === "LOCKED" ? (
+                <>
+                  <Alert>
+                    <AlertTitle>Registration submitted</AlertTitle>
+                    <AlertDescription>
+                      Your registration has been submitted and is currently awaiting organizer review.
+                    </AlertDescription>
+                  </Alert>
+                  <Button disabled className="self-start">
+                    Awaiting review
+                  </Button>
+                </>
+              ) : myTeam.status === "PAYMENT_PENDING" ? (
+                <>
+                  <Alert>
+                    <AlertTitle>Payment pending</AlertTitle>
+                    <AlertDescription>
+                      Please complete your entry fee payment to finalize your registration.
+                    </AlertDescription>
+                  </Alert>
+                  {myTeam.paymentId ? (
+                    <Button
+                      render={<Link href={`/payments/${myTeam.paymentId}/checkout`} />}
+                      nativeButton={false}
+                      className="self-start"
+                    >
+                      Complete payment
+                    </Button>
+                  ) : (
+                    <Button disabled className="self-start">
+                      Payment pending
+                    </Button>
+                  )}
+                </>
+              ) : myTeam.status === "ACCEPTED" ? (
+                <>
+                  <Alert className="border-emerald-500/40 text-emerald-800 dark:text-emerald-200">
+                    <AlertTitle>Registration confirmed</AlertTitle>
+                    <AlertDescription>
+                      You are confirmed to participate in this tournament!
+                    </AlertDescription>
+                  </Alert>
+                  <Button disabled className="self-start">
+                    Confirmed
+                  </Button>
+                </>
+              ) : myTeam.status === "REJECTED" ? (
+                <>
+                  <Alert variant="destructive">
+                    <AlertTitle>Application rejected</AlertTitle>
+                    <AlertDescription>
+                      Your application was not accepted for this tournament.
+                    </AlertDescription>
+                  </Alert>
+                  <Button disabled className="self-start">
+                    Application rejected
+                  </Button>
+                </>
+              ) : (
+                <Button disabled className="self-start">
+                  Registered
+                </Button>
+              )}
+            </div>
           ) : spotsLeft <= 0 ? (
             <Button disabled className="self-start">
               Tournament full
             </Button>
           ) : (
             <Button
-              onClick={handleSoloRegister}
-              disabled={soloRegisterMutation.isPending}
+              render={<Link href={`/tournaments/${tournament.id}/form`} />}
+              nativeButton={false}
               className="self-start"
             >
-              {soloRegisterMutation.isPending
-                ? "Registering..."
-                : "Register as an individual"}
+              Register as an individual
             </Button>
           )
         ) : null}

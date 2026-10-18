@@ -352,7 +352,7 @@ export interface paths {
         put?: never;
         /**
          * Accept or reject an application
-         * @description Records an organizer's decision on a team application that is waiting for review (a solo player is a one-person team), enforcing the tournament's capacity. A decision may be switched later; every decision is kept in the audit trail.
+         * @description Records an organizer's decision on a team application that is waiting for review (a solo player is a one-person team), enforcing the tournament's capacity. A decision is final once made (one-time action on locked applications).
          */
         post: operations["review-application"];
         delete?: never;
