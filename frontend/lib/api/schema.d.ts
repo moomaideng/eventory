@@ -464,7 +464,7 @@ export interface paths {
         head?: never;
         /**
          * Override a tournament's status
-         * @description Manually moves an owned tournament to another lifecycle status, recording the previous status, the reason, the acting account, and a timestamp.
+         * @description Manually moves an owned tournament to another lifecycle status, recording the previous status, the reason, the acting account, and a timestamp. Opening registration from crowdfunding requires complete event details and a met funding goal, unless the owner explicitly force-starts it.
          */
         patch: operations["override-tournament-status"];
         trace?: never;
@@ -1265,6 +1265,8 @@ export interface components {
              * @example https://example.com/schemas/OverrideTournamentStatusInputBody.json
              */
             readonly $schema?: string;
+            /** @description Allow a crowdfunding owner to open registration before the funding goal is reached; a reason is still required */
+            force?: boolean;
             /** @description Why the status is being overridden; recorded in the audit trail */
             reason: string;
             /**
