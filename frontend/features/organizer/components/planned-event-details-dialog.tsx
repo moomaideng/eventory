@@ -27,14 +27,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
+import { toLocalInput } from "@/features/organizer/utils";
 import { plannedEventDetailsSchema } from "../schemas";
-
-function toLocalInput(value: string) {
-  const date = new Date(value);
-  return new Date(date.getTime() - date.getTimezoneOffset() * 60_000)
-    .toISOString()
-    .slice(0, 16);
-}
 
 type Details = {
   location: string;
