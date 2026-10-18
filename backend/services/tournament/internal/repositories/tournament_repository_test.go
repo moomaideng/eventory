@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/moomaideng/eventory/services/tournament/models"
 	"github.com/moomaideng/eventory/services/tournament/internal/repositories"
+	"github.com/moomaideng/eventory/services/tournament/models"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
@@ -68,6 +68,23 @@ func TestOrganizerDashboardOwnershipPostgres(t *testing.T) {
 	}
 	repo := repositories.NewTournamentRepository(tx)
 	ctx := context.Background()
+	fundingDeadline := time.Now().Add(12 * time.Hour).Truncate(time.Microsecond)
+	funding := models.TournamentFunding{TournamentID: tournament.ID, GoalAmount: 1000, Deadline: &fundingDeadline}
+	if err := tx.Create(&funding).Error; err != nil {
+		t.Fatal(err)
+	}
+	tournament.Funding = &funding
+	tournament.Funding.GoalAmount = 2500
+	if err := repo.Update(ctx, &tournament); err != nil {
+		t.Fatalf("updating tournament funding: %v", err)
+	}
+	var savedFunding models.TournamentFunding
+	if err := tx.Where("tournament_id = ?", tournament.ID).First(&savedFunding).Error; err != nil {
+		t.Fatal(err)
+	}
+	if savedFunding.GoalAmount != 2500 || savedFunding.Deadline == nil || !savedFunding.Deadline.Equal(fundingDeadline) {
+		t.Fatalf("funding update was not persisted: %+v", savedFunding)
+	}
 	items, total, err := repo.ListOwned(ctx, organizerID, 1, 12)
 	if err != nil || total != 1 || len(items) != 1 || items[0].ID != tournament.ID || items[0].Published {
 		t.Fatalf("owner should see their draft: total=%d items=%+v err=%v", total, items, err)

@@ -2,10 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import {
-  ArrowLeft,
-  Trophy,
-} from "lucide-react";
+import { ArrowLeft, Trophy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useOrganizerProfile } from "../hooks/use-organizer-profile";
@@ -29,6 +26,9 @@ export function HostTournamentWorkspace() {
     registrationDeadline: "",
     startAt: "",
     endAt: "",
+    crowdfunding: false,
+    fundingGoal: 0,
+    fundingDeadline: "",
   });
 
   if (isLoading) {
@@ -60,7 +60,7 @@ export function HostTournamentWorkspace() {
           size="sm"
           render={<Link href="/organizer" />}
           nativeButton={false}
-          className="self-start text-muted-foreground hover:text-foreground"
+          className="text-muted-foreground hover:text-foreground self-start"
         >
           <ArrowLeft data-icon="inline-start" />
           My Tournaments
@@ -105,6 +105,9 @@ export function HostTournamentWorkspace() {
             entryFee={draft.entryFee}
             registrationDeadline={draft.registrationDeadline}
             startAt={draft.startAt}
+            crowdfunding={draft.crowdfunding}
+            fundingGoal={draft.fundingGoal}
+            fundingDeadline={draft.fundingDeadline}
             organizerName={profile?.organizerName}
           />
         </div>

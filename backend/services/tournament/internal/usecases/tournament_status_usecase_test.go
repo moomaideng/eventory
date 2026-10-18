@@ -117,8 +117,7 @@ func TestOverrideRejectsForbiddenTransitions(t *testing.T) {
 		{"cancel a completed tournament", models.TournamentStatusCompleted, models.TournamentStatusCancelled},
 		// Cancelling triggers refunds that flipping a status cannot reverse.
 		{"revive a cancelled tournament", models.TournamentStatusCancelled, models.TournamentStatusRegistrationOpen},
-		// DRAFT and CROWDFUNDING are declared placeholders; no screen handles
-		// them, so a tournament must never be moved into one.
+		// A running tournament cannot move back to its draft or funding stage.
 		{"regress to draft", models.TournamentStatusRegistrationOpen, models.TournamentStatusDraft},
 		{"regress to crowdfunding", models.TournamentStatusOngoing, models.TournamentStatusCrowdfunding},
 	}
