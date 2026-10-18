@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { AlertCircle, HandCoins, Pencil, Plus, Trash2 } from "lucide-react";
+import { AlertCircle, Archive, HandCoins, Pencil, Plus } from "lucide-react";
 import { useAuth } from "@/context/auth-context";
 import { $api } from "@/lib/api/client";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -35,7 +35,12 @@ export function SponsorshipTierSection({
 }) {
   const [dialog, setDialog] = useState<DialogState>({ kind: "closed" });
   const { authorizationHeader, isLoading: authLoading } = useAuth();
-  const { data, error, isLoading: queryLoading, refetch } = $api.useQuery(
+  const {
+    data,
+    error,
+    isLoading: queryLoading,
+    refetch,
+  } = $api.useQuery(
     "get",
     "/api/v1/tournaments/{tournamentId}/sponsorship-tiers/manage",
     {
@@ -49,7 +54,10 @@ export function SponsorshipTierSection({
   const close = () => setDialog({ kind: "closed" });
 
   return (
-    <section className="flex min-w-0 flex-col gap-6" aria-labelledby="tiers-heading">
+    <section
+      className="flex min-w-0 flex-col gap-6"
+      aria-labelledby="tiers-heading"
+    >
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex min-w-0 flex-col gap-1">
           <h2 id="tiers-heading" className="text-xl font-bold tracking-tight">
@@ -60,7 +68,10 @@ export function SponsorshipTierSection({
           </p>
         </div>
         {editable && !isLoading ? (
-          <Button size="sm" onClick={() => setDialog({ kind: "form", tier: null })}>
+          <Button
+            size="sm"
+            onClick={() => setDialog({ kind: "form", tier: null })}
+          >
             <Plus data-icon="inline-start" />
             New tier
           </Button>
@@ -110,6 +121,7 @@ export function SponsorshipTierSection({
                     <Button
                       variant="outline"
                       size="sm"
+                      disabled={tier.locked}
                       onClick={() => setDialog({ kind: "form", tier })}
                     >
                       <Pencil data-icon="inline-start" />
@@ -118,11 +130,17 @@ export function SponsorshipTierSection({
                     <Button
                       variant="ghost"
                       size="sm"
+                      disabled={tier.locked}
                       onClick={() => setDialog({ kind: "delete", tier })}
                     >
-                      <Trash2 data-icon="inline-start" />
-                      Delete
+                      <Archive data-icon="inline-start" />
+                      Archive
                     </Button>
+                    {tier.locked && (
+                      <span className="text-muted-foreground text-xs">
+                        Locked by a pending or confirmed sponsorship.
+                      </span>
+                    )}
                   </>
                 ) : null
               }

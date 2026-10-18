@@ -64,16 +64,17 @@ export function DeleteTierDialog({
     <AlertDialog open={open} onOpenChange={handleOpenChange}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Delete {tier.name} tier</AlertDialogTitle>
+          <AlertDialogTitle>Archive {tier.name} tier</AlertDialogTitle>
           <AlertDialogDescription>
-            Sponsors will no longer see this package on your tournament page.
+            Sponsors will no longer see or purchase this package. Existing
+            checkout and payment history will be kept.
           </AlertDialogDescription>
         </AlertDialogHeader>
 
         {deleteMutation.isError ? (
           <Alert variant="destructive">
             <AlertCircle />
-            <AlertTitle>Delete failed</AlertTitle>
+            <AlertTitle>Archive failed</AlertTitle>
             <AlertDescription>
               {getErrorMessage(deleteMutation.error)}
             </AlertDescription>
@@ -92,7 +93,7 @@ export function DeleteTierDialog({
             {deleteMutation.isPending ? (
               <Spinner data-icon="inline-start" />
             ) : null}
-            Delete tier
+            Archive tier
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

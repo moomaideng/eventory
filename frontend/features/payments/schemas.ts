@@ -9,6 +9,11 @@ export const teamPaymentReferenceSchema = z
 
 export const paymentIdSchema = z.uuid();
 
+export const sponsorPaymentRouteSchema = z.tuple([
+  paymentIdSchema,
+  z.enum(["checkout", "receipt"]).optional(),
+]);
+
 const optionalDate = z.union([z.literal(""), z.iso.date()]);
 
 export const historyDatesSchema = z

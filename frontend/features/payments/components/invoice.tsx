@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { TeamSubmissionResult } from "@/features/payments/components/team-submission-result";
+import { SponsorshipResult } from "@/features/payments/components/sponsorship-result";
 import { useInvoice } from "@/features/payments/hooks/use-invoice";
 import { formatAmount } from "@/features/payments/utils";
 import { InvoiceDetails } from "@/features/payments/components/invoice-details";
@@ -18,7 +19,14 @@ import {
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 
-export function Invoice({ paymentId }: { paymentId: string }) {
+export function Invoice({
+  paymentId,
+  sponsorMode = false,
+}: {
+  paymentId: string;
+  sponsorMode?: boolean;
+}) {
+  const basePath = sponsorMode ? "/sponsor/payments" : "/payments";
   const query = useInvoice(paymentId);
   if (query.isPending)
     return <Skeleton className="h-80 w-full" aria-label="Loading invoice" />;
@@ -31,7 +39,7 @@ export function Invoice({ paymentId }: { paymentId: string }) {
           <Button variant="outline" onClick={() => void query.refetch()}>
             Try again
           </Button>
-          <Link href="/payments" className="underline">
+          <Link href={basePath} className="underline">
             Back to my payments
           </Link>
         </AlertDescription>
@@ -41,6 +49,7 @@ export function Invoice({ paymentId }: { paymentId: string }) {
   return (
     <div className="flex flex-col gap-6">
       <TeamSubmissionResult payment={invoice} />
+      <SponsorshipResult payment={invoice} />
       <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
         <Card>
           <CardHeader>
@@ -72,7 +81,7 @@ export function Invoice({ paymentId }: { paymentId: string }) {
                 {invoice.status === "PAID"
                   ? "Invoice paid"
                   : invoice.status === "CANCELLED"
-                    ? "This payment attempt is closed. Return to the team lobby to retry."
+                    ? "Payment attempt closed"
                     : invoice.status === "EXPIRED"
                       ? "Payment deadline has passed"
                       : "Payment is due"}
@@ -81,7 +90,7 @@ export function Invoice({ paymentId }: { paymentId: string }) {
                 {invoice.status === "PAID"
                   ? "Your receipt is available below."
                   : invoice.status === "CANCELLED"
-                    ? "This payment attempt is closed. Return to the team lobby to retry."
+                    ? "No payment was made. Return to the tournament or team lobby to start again."
                     : invoice.status === "EXPIRED"
                       ? "This invoice can no longer be paid. Contact the requesting service for a new payment request."
                       : "Complete payment before the deadline. Failed or cancelled payments can be retried."}
@@ -90,20 +99,23 @@ export function Invoice({ paymentId }: { paymentId: string }) {
           </CardContent>
           <CardFooter className="flex flex-wrap gap-3">
             {invoice.status === "UNPAID" && (
-              <Link href={invoice.checkoutPath} className={buttonVariants()}>
+              <Link
+                href={`${basePath}/${invoice.id}/checkout`}
+                className={buttonVariants()}
+              >
                 Proceed to checkout
               </Link>
             )}
             {invoice.status === "PAID" && (
               <Link
-                href={`/payments/${invoice.id}/receipt`}
+                href={`${basePath}/${invoice.id}/receipt`}
                 className={buttonVariants()}
               >
                 View receipt
               </Link>
             )}
             <Link
-              href="/payments"
+              href={basePath}
               className={buttonVariants({ variant: "outline" })}
             >
               My payments

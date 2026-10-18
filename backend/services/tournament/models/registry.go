@@ -12,5 +12,7 @@ func All() []any {
 		&SponsorshipTier{},
 		&Match{},
 		&MatchEntry{},
+		&SponsorshipPledge{},
+		&SponsorshipLogo{},
 	}
 }

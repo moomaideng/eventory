@@ -66,10 +66,11 @@ func TestTournamentOpenAPISpec(t *testing.T) {
 	accSvc := &dummyAccountSvc{}
 	teamLobbyRepo := repositories.NewTeamLobbyRepository(db)
 	teamLobbyUseCase := usecases.NewTeamLobbyUseCase(teamLobbyRepo, accSvc, nil)
+	sponsorships := usecases.NewSponsorshipUseCase(repositories.NewSponsorshipRepository(db), repositories.NewTournamentRepository(db), accSvc, nil)
 	opts := options.Client().ApplyURI("mongodb://localhost:27017").SetServerSelectionTimeout(50 * time.Millisecond)
 	client, _ := mongo.Connect(opts)
 	mongoDB := client.Database("tournament_db")
-	tournamentRouter := newHTTPRouter(db, mongoDB, tournamentCfg, accSvc, teamLobbyUseCase)
+	tournamentRouter := newHTTPRouter(db, mongoDB, tournamentCfg, accSvc, teamLobbyUseCase, sponsorships)
 
 	tournamentDoc, err := fetchOpenAPI(tournamentRouter)
 	require.NoError(t, err)
@@ -81,6 +82,7 @@ func TestTournamentOpenAPISpec(t *testing.T) {
 	assert.Contains(t, paths, "/api/v1/tournaments/{id}/bracket")
 	assert.Contains(t, paths, "/api/v1/tournaments/{id}/seed")
 	assert.Contains(t, paths, "/api/v1/tournaments/{id}/matches/{matchId}/results")
+	assert.Contains(t, paths, "/api/v1/tournaments/sponsorships/mine")
 
 	// If UPDATE_OPENAPI=1, merge account, tournament, and payment into frontend/.openapi.merged.json
 	if os.Getenv("UPDATE_OPENAPI") == "1" {
