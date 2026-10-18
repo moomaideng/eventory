@@ -186,6 +186,64 @@ func TestSponsorshipCheckout(t *testing.T) {
 	}
 }
 
+func TestSponsorshipCrowdfundingLaunch(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
+	pg := apptest.StartPostgres(ctx, t)
+	app := apptest.NewApp(t, pg.DSN)
+	s := &tierScenario{app: app, client: apptest.NewClient(app.TournamentBaseURL()), tierIDs: map[string]uuid.UUID{}}
+	owner, err := s.organizer("Campaign Host")
+	if err != nil {
+		t.Fatal(err)
+	}
+	s.owner = owner
+	now := time.Now().UTC().Truncate(time.Second)
+	deadline := now.Add(24 * time.Hour)
+	created := mustAPI(t, s.client, "POST", "/tournaments", map[string]any{
+		"name": "Crowdfunded Sponsor Cup", "description": "A funded tournament", "game": "Chess", "location": "Online",
+		"startAt": now.Add(72 * time.Hour), "endAt": now.Add(80 * time.Hour), "registrationDeadline": now.Add(48 * time.Hour),
+		"registrationMode": "SOLO", "entryFee": 0, "minTeamSize": 1, "maxTeamSize": 1, "capacity": 8,
+		"fundingGoal": 10000, "fundingDeadline": deadline,
+	}, owner, http.StatusCreated)
+	if err := created.JSON(&s.tournament); err != nil || s.tournament.Status != models.TournamentStatusCrowdfunding {
+		t.Fatalf("create crowdfunding tournament: %s, %v", created.Body, err)
+	}
+	if err := s.given("Gold", 0); err != nil {
+		t.Fatal(err)
+	}
+	path := "/tournaments/" + s.tournament.ID.String()
+	launch := map[string]any{"status": "REGISTRATION_OPEN", "reason": "Event details are ready for registration"}
+	mustAPI(t, s.client, "PATCH", path+"/status", launch, owner, http.StatusUnprocessableEntity)
+
+	var imageBuffer bytes.Buffer
+	if err := png.Encode(&imageBuffer, image.NewRGBA(image.Rect(0, 0, 2, 2))); err != nil {
+		t.Fatal(err)
+	}
+	sponsor := createSponsor(t, app, "Campaign Sponsor", true)
+	checkout := uploadPledge(t, app.TournamentBaseURL()+s.tiersPath()+"/"+s.tierIDs["Gold"].String()+"/checkout", sponsor, uuid.New(), imageBuffer.Bytes())
+	var pledge struct {
+		ID        uuid.UUID `json:"id"`
+		PaymentID uuid.UUID `json:"paymentId"`
+	}
+	if err := checkout.JSON(&pledge); err != nil || checkout.StatusCode != http.StatusOK || pledge.PaymentID == uuid.Nil {
+		t.Fatalf("crowdfunding checkout: %s, %v", checkout.Body, err)
+	}
+	payments := apptest.NewClient(app.PaymentServer.URL + "/api/v1")
+	mustAPI(t, payments, "POST", "/payments/"+pledge.PaymentID.String()+"/mock-result", map[string]string{"result": "SUCCEEDED"}, sponsor, http.StatusOK)
+	for range 2 {
+		mustAPI(t, s.client, "POST", "/tournaments/sponsorships/"+pledge.ID.String()+"/refresh", nil, sponsor, http.StatusOK)
+	}
+	mustAPI(t, s.client, "PATCH", path, map[string]string{"description": "Final event details confirmed"}, owner, http.StatusOK)
+	var funding models.TournamentFunding
+	if err := app.DB.First(&funding, "tournament_id = ?", s.tournament.ID).Error; err != nil {
+		t.Fatal(err)
+	}
+	if funding.GoalAmount != 10000 || funding.RaisedAmount != 10000 || funding.SupporterCount != 1 || funding.Deadline == nil || !funding.Deadline.Equal(deadline) {
+		t.Fatalf("payment or event edit changed the campaign terms or totals: %+v", funding)
+	}
+	mustAPI(t, s.client, "PATCH", path+"/status", launch, owner, http.StatusOK)
+}
+
 func createSponsor(t *testing.T, app *apptest.App, name string, profile bool) *apptest.TestUser {
 	t.Helper()
 	u := apptest.NewTestUser()
