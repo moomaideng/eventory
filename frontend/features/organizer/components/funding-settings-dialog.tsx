@@ -26,14 +26,8 @@ import {
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
+import { toLocalInput } from "@/features/organizer/utils";
 import { fundingSettingsSchema } from "../schemas";
-
-function toLocalInput(value: string) {
-  const date = new Date(value);
-  return new Date(date.getTime() - date.getTimezoneOffset() * 60_000)
-    .toISOString()
-    .slice(0, 16);
-}
 
 export function FundingSettingsDialog({
   tournamentId,
