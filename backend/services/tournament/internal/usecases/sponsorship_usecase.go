@@ -77,6 +77,9 @@ func (u *SponsorshipUseCase) Start(ctx context.Context, input StartSponsorship) 
 	if err != nil {
 		return nil, mapSponsorshipError(err)
 	}
+	if tier.Archived {
+		return nil, ErrSponsorshipTierNotFound
+	}
 	now := time.Now().UTC().Truncate(time.Microsecond)
 	if !sponsorshipOpen(tournament, now) {
 		return nil, ErrSponsorshipClosed

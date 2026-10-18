@@ -30,7 +30,10 @@ import {
   sponsorshipBrandSchema,
   sponsorshipCheckoutSchema,
 } from "@/features/sponsorship/schemas";
-import type { SponsorshipTier } from "@/features/sponsorship/utils";
+import {
+  checkoutErrorFallback,
+  type SponsorshipTier,
+} from "@/features/sponsorship/utils";
 import { formatMoney } from "@/features/tournaments/utils";
 
 export function SponsorshipCheckoutDialog({
@@ -94,13 +97,10 @@ export function SponsorshipCheckoutDialog({
           body,
         }
       );
-      const result: unknown = await response.json();
+      const result: unknown = await response.json().catch(() => null);
       if (!response.ok) {
         setSubmitError(
-          extractProblemMessage(
-            result,
-            "Unable to start checkout. Please retry."
-          )
+          extractProblemMessage(result, checkoutErrorFallback(response.status))
         );
         return;
       }
@@ -219,8 +219,9 @@ export function SponsorshipCheckoutDialog({
             </Field>
           </FieldGroup>
           <p className="text-muted-foreground text-sm">
-            Continuing reserves one slot for up to 15 minutes. If checkout is
-            interrupted, resume it from My payments.
+            Complete payment within 15 minutes. Verification outages may keep
+            the slot reserved longer. Resume interrupted checkout from My
+            payments.
           </p>
           {submitError && (
             <Alert variant="destructive">

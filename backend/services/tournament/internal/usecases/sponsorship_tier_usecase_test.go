@@ -26,7 +26,7 @@ func newMockTierRepo() *mockTierRepo {
 func (m *mockTierRepo) List(_ context.Context, tournamentID uuid.UUID) ([]models.SponsorshipTier, error) {
 	var list []models.SponsorshipTier
 	for _, tier := range m.tiers {
-		if tier.TournamentID == tournamentID {
+		if tier.TournamentID == tournamentID && !tier.Archived {
 			copy := *tier
 			copy.ReservedSlots = int(m.reserved[tier.ID])
 			list = append(list, copy)
@@ -46,7 +46,7 @@ func (m *mockTierRepo) Get(_ context.Context, tournamentID, tierID uuid.UUID) (*
 
 func (m *mockTierRepo) Create(_ context.Context, tier *models.SponsorshipTier) error {
 	for _, existing := range m.tiers {
-		if existing.TournamentID == tier.TournamentID && existing.Name == tier.Name {
+		if existing.TournamentID == tier.TournamentID && existing.Name == tier.Name && !existing.Archived {
 			return repositories.ErrSponsorshipTierNameDuplicate
 		}
 	}
@@ -83,8 +83,8 @@ func (tx *mockTierTransaction) UpdateTier(tier *models.SponsorshipTier) error {
 	return nil
 }
 
-func (tx *mockTierTransaction) DeleteTier(tierID uuid.UUID) error {
-	delete(tx.repo.tiers, tierID)
+func (tx *mockTierTransaction) ArchiveTier(tierID uuid.UUID) error {
+	tx.repo.tiers[tierID].Archived = true
 	return nil
 }
 
@@ -206,8 +206,18 @@ func TestSponsorshipTierUseCase_UpdateAndDelete(t *testing.T) {
 		if err := uc.Delete(context.Background(), ownerID, tournamentID, tier.ID); err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if len(repo.tiers) != 0 {
-			t.Fatalf("expected tier deleted, %d remain", len(repo.tiers))
+		if len(repo.tiers) != 1 || !repo.tiers[tier.ID].Archived {
+			t.Fatal("expected the archived tier to remain stored")
+		}
+		listed, err := uc.ListForOwner(context.Background(), ownerID, tournamentID)
+		if err != nil || len(listed) != 0 {
+			t.Fatalf("archived tier still listed: %+v, %v", listed, err)
+		}
+		if _, err := uc.Update(context.Background(), ownerID, tournamentID, tier.ID, input); !errors.Is(err, usecases.ErrSponsorshipTierNotFound) {
+			t.Fatalf("archived tier should not be editable: %v", err)
+		}
+		if err := uc.Delete(context.Background(), ownerID, tournamentID, tier.ID); !errors.Is(err, usecases.ErrSponsorshipTierNotFound) {
+			t.Fatalf("archived tier should not be removable again: %v", err)
 		}
 	})
 

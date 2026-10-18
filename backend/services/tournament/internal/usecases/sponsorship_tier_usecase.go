@@ -127,7 +127,7 @@ func (u *SponsorshipTierUseCase) Update(
 	return tier, nil
 }
 
-// Delete removes a tier.
+// Delete archives a tier so invoices and closed checkouts keep their purchase context.
 func (u *SponsorshipTierUseCase) Delete(ctx context.Context, accountID, tournamentID, tierID uuid.UUID) error {
 	tx, err := u.tiers.Begin(ctx)
 	if err != nil {
@@ -137,8 +137,7 @@ func (u *SponsorshipTierUseCase) Delete(ctx context.Context, accountID, tourname
 	if _, err := u.lockEditableTier(tx, accountID, tournamentID, tierID); err != nil {
 		return mapTierError(err)
 	}
-	// Only closed attempts remain, so their draft branding can be removed with the package.
-	if err := tx.DeleteTier(tierID); err != nil {
+	if err := tx.ArchiveTier(tierID); err != nil {
 		return mapTierError(err)
 	}
 	return mapTierError(tx.Commit())
@@ -151,6 +150,9 @@ func (u *SponsorshipTierUseCase) lockEditableTier(tx repositories.SponsorshipTie
 	}
 	if err := checkTierEditable(tournament, accountID); err != nil {
 		return nil, err
+	}
+	if tier.Archived {
+		return nil, ErrSponsorshipTierNotFound
 	}
 	reserved, err := tx.Reserved(tierID)
 	if err != nil {

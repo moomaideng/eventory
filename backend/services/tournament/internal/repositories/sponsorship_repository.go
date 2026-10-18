@@ -26,20 +26,6 @@ type OwnedSponsorship struct {
 	TournamentName string
 }
 
-func (r *sponsorshipRepository) ListOwned(ctx context.Context, payerID uuid.UUID, page, limit int) ([]OwnedSponsorship, int64, error) {
-	query := r.db.WithContext(ctx).Model(&models.SponsorshipPledge{}).Where("payer_account_id = ?", payerID)
-	var total int64
-	if err := query.Count(&total).Error; err != nil {
-		return nil, 0, err
-	}
-	items := make([]OwnedSponsorship, 0)
-	err := query.Select("sponsorship_pledges.*, tournaments.name AS tournament_name").
-		Joins("JOIN tournaments ON tournaments.id = sponsorship_pledges.tournament_id").
-		Order("sponsorship_pledges.created_at DESC, sponsorship_pledges.id DESC").
-		Offset((page - 1) * limit).Limit(limit).Scan(&items).Error
-	return items, total, err
-}
-
 // The use case evaluates rules while these rows are locked; persistence owns the transaction.
 type SponsorshipTransaction interface {
 	LockTier(tournamentID, tierID uuid.UUID) (*models.Tournament, *models.SponsorshipTier, error)
@@ -86,6 +72,20 @@ func (r *sponsorshipRepository) ListConfirmed(ctx context.Context, tournamentID 
 	return pledges, err
 }
 
+func (r *sponsorshipRepository) ListOwned(ctx context.Context, payerID uuid.UUID, page, limit int) ([]OwnedSponsorship, int64, error) {
+	query := r.db.WithContext(ctx).Model(&models.SponsorshipPledge{}).Where("payer_account_id = ?", payerID)
+	var total int64
+	if err := query.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+	items := make([]OwnedSponsorship, 0)
+	err := query.Select("sponsorship_pledges.*, tournaments.name AS tournament_name").
+		Joins("JOIN tournaments ON tournaments.id = sponsorship_pledges.tournament_id").
+		Order("sponsorship_pledges.created_at DESC, sponsorship_pledges.id DESC").
+		Offset((page - 1) * limit).Limit(limit).Scan(&items).Error
+	return items, total, err
+}
+
 func (r *sponsorshipRepository) Logo(ctx context.Context, pledgeID uuid.UUID) (*models.SponsorshipLogo, error) {
 	var logo models.SponsorshipLogo
 	err := r.db.WithContext(ctx).Joins("JOIN sponsorship_pledges p ON p.id = sponsorship_logos.pledge_id").
@@ -106,6 +106,7 @@ func (tx *sponsorshipTransaction) LockTier(tournamentID, tierID uuid.UUID) (*mod
 		return nil, nil, err
 	}
 	var tier models.SponsorshipTier
+	// Archived packages must remain loadable for historical payment reconciliation.
 	err := tx.db.Clauses(clause.Locking{Strength: "UPDATE"}).First(&tier, "id = ? AND tournament_id = ?", tierID, tournamentID).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		err = ErrSponsorshipTierNotFound

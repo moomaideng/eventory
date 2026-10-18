@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { AlertCircle, HandCoins, Pencil, Plus, Trash2 } from "lucide-react";
+import { AlertCircle, Archive, HandCoins, Pencil, Plus } from "lucide-react";
 import { useAuth } from "@/context/auth-context";
 import { $api } from "@/lib/api/client";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -133,8 +133,8 @@ export function SponsorshipTierSection({
                       disabled={tier.locked}
                       onClick={() => setDialog({ kind: "delete", tier })}
                     >
-                      <Trash2 data-icon="inline-start" />
-                      Delete
+                      <Archive data-icon="inline-start" />
+                      Archive
                     </Button>
                     {tier.locked && (
                       <span className="text-muted-foreground text-xs">
