@@ -65,6 +65,7 @@ export function TournamentWorkspace({
           {(() => {
             const isOwner = data.summary.role === "OWNER";
             const canReview = isOwner || data.summary.role === "ADMIN";
+            const isSolo = data.summary.tournament.registrationMode === "SOLO";
             return (
               <>
                 <header className="flex flex-col items-start justify-between gap-5 sm:flex-row sm:items-center">
@@ -168,7 +169,7 @@ export function TournamentWorkspace({
                 <Tabs defaultValue="dashboard">
                   <TabsList>
                     <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
-                    {isOwner ? (
+                    {isOwner && isSolo ? (
                       <TabsTrigger value="form">Registration Form</TabsTrigger>
                     ) : null}
                     {isOwner ? (
@@ -205,7 +206,7 @@ export function TournamentWorkspace({
                     />
                   </TabsContent>
 
-                  {isOwner ? (
+                  {isOwner && isSolo ? (
                     <TabsContent value="form" keepMounted>
                       <RegistrationFormBuilder tournamentId={tournamentId} />
                     </TabsContent>

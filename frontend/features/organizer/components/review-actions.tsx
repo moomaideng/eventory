@@ -3,11 +3,11 @@ import { RejectApplicationDialog } from "@/features/organizer/components/reject-
 import type { DashboardEntry } from "@/features/organizer/utils";
 
 /**
- * The decisions that make sense from each entry status. An application waits
- * for the organizer as LOCKED (a solo player is a one-person team, so the same
- * status applies); forming and payment-pending applicants have nothing to
- * review yet. This only decides which buttons to offer; the server still
- * checks every transition.
+ * Review decisions for participant applications.
+ *
+ * NOTE(design): Review is a one-time decision on LOCKED applications only.
+ * Once an entry is ACCEPTED or REJECTED, the decision is final
+ * and no further review action buttons are presented.
  */
 export function ReviewActions({
   tournamentId,
@@ -16,28 +16,20 @@ export function ReviewActions({
   tournamentId: string;
   entry: Pick<DashboardEntry, "id" | "name" | "status">;
 }) {
-  const awaitingReview = entry.status === "LOCKED";
-  const canAccept = awaitingReview || entry.status === "REJECTED";
-  const canReject = awaitingReview || entry.status === "ACCEPTED";
-
-  if (!canAccept && !canReject) return null;
+  if (entry.status !== "LOCKED") return null;
 
   return (
     <div className="flex flex-wrap gap-2">
-      {canAccept ? (
-        <AcceptApplicationDialog
-          tournamentId={tournamentId}
-          teamId={entry.id}
-          teamName={entry.name}
-        />
-      ) : null}
-      {canReject ? (
-        <RejectApplicationDialog
-          tournamentId={tournamentId}
-          teamId={entry.id}
-          teamName={entry.name}
-        />
-      ) : null}
+      <AcceptApplicationDialog
+        tournamentId={tournamentId}
+        teamId={entry.id}
+        teamName={entry.name}
+      />
+      <RejectApplicationDialog
+        tournamentId={tournamentId}
+        teamId={entry.id}
+        teamName={entry.name}
+      />
     </div>
   );
 }

@@ -85,9 +85,9 @@ func SeedTournaments(db *gorm.DB) error {
 			Description: "A development sample for an upcoming solo or duo strategy tournament.",
 			Game:        "Teamfight Tactics", Location: "Bangkok", StartsAt: now.AddDate(0, 0, 28).Add(10 * time.Hour),
 			EndsAt: now.AddDate(0, 0, 28).Add(17 * time.Hour), RegistrationDeadline: now.AddDate(0, 0, 24),
-			RegistrationMode: models.TournamentRegistrationModeSolo, MinTeamSize: 1, MaxTeamSize: 2,
+			RegistrationMode: models.TournamentRegistrationModeSolo, MinTeamSize: 1, MaxTeamSize: 1,
 			EntryFee: 150, Currency: "THB", Capacity: 48,
-			Status: models.TournamentStatusRegistrationOpen, Published: false,
+			Status: models.TournamentStatusRegistrationOpen, Published: true,
 		},
 	}
 

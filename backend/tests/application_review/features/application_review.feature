@@ -35,13 +35,13 @@ Feature: Organizer application review
     Then the application should be rejected
     And the accepted count on the dashboard should stay the same
 
-  @US3-6 @valid
-  Scenario: Change an accepted application to rejected
+  @US3-6 @invalid
+  Scenario: Block re-evaluating an already accepted application
     Given an organizer manages a tournament that still has open spots
     And a team application has already been accepted
     When the organizer rejects the application
-    Then the application should be rejected
-    And the accepted count on the dashboard should decrease
+    Then the approval should be blocked
+    And the application should keep its previous status
 
   # =========================================================================
   # 2. INVALID (NEGATIVE) SCENARIO

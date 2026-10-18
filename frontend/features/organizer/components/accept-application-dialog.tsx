@@ -58,8 +58,8 @@ export function AcceptApplicationDialog({
         <AlertDialogHeader>
           <AlertDialogTitle>Accept this application?</AlertDialogTitle>
           <AlertDialogDescription>
-            <span className="font-medium">{teamName}</span> will take one place
-            in this tournament. You can still reject it later.
+            <span className="font-medium">{teamName}</span> will be confirmed
+            for a spot in this tournament. This decision is final.
           </AlertDialogDescription>
         </AlertDialogHeader>
 

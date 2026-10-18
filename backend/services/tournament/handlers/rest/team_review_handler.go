@@ -53,7 +53,7 @@ func RegisterTeamReviewRoutes(
 		Description: "Records an organizer's decision on a team application " +
 			"that is waiting for review (a solo player is a one-person team), " +
 			"enforcing the tournament's capacity. " +
-			"A decision may be switched later; every decision is kept in the audit trail.",
+			"A decision is final once made (one-time action on locked applications).",
 		Tags:        []string{"Organizer dashboard"},
 		Middlewares: huma.Middlewares{auth},
 		Security:    []map[string][]string{{"bearer": {}}},

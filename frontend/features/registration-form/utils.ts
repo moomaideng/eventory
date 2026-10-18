@@ -54,3 +54,19 @@ export function validateAnswer(field: FormField, value: AnswerValue | undefined)
     }
   }
 }
+
+/** Prepares field answers into types expected by the API (e.g. number for NUMBER fields). */
+export function formatAnswerForApi(field: FormField, value: AnswerValue | undefined): unknown {
+  if (value === undefined || value === null) return null;
+  if (field.type === "NUMBER") {
+    if (typeof value === "string" && value.trim() !== "") {
+      const n = Number(value.trim());
+      return Number.isFinite(n) ? n : null;
+    }
+    return null;
+  }
+  if (field.type === "SELECT_MULTIPLE") {
+    return Array.isArray(value) ? value : [];
+  }
+  return typeof value === "string" ? value : "";
+}
