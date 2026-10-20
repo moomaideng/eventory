@@ -18,7 +18,7 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-admin}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password123}
       POSTGRES_DB: postgres
-      POSTGRES_MULTIPLE_DATABASES: account_db,tournament_db,payment_db
+      POSTGRES_MULTIPLE_DATABASES: account_db,tournament_db,payment_db,notification_db
     ports:
       - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
     volumes:
@@ -63,6 +63,30 @@ services:
       interval: 5s
       timeout: 5s
       retries: 30
+
+  rabbitmq:
+    image: rabbitmq:4-management-alpine
+    profiles: [infra]
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-eventory}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-eventory}
+    ports:
+      - "127.0.0.1:${RABBITMQ_PORT:-5672}:5672"
+      - "127.0.0.1:${RABBITMQ_MANAGEMENT_PORT:-15672}:15672"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+
+  mailpit:
+    image: axllent/mailpit:v1
+    profiles: [infra]
+    ports:
+      - "127.0.0.1:${MAILPIT_SMTP_PORT:-1025}:1025"
+      - "127.0.0.1:${MAILPIT_UI_PORT:-8025}:8025"
 
   traefik:
     image: traefik:v3.7.12
@@ -244,6 +268,58 @@ services:
       - traefik.http.routers.payment.entrypoints=web
       - traefik.http.services.payment.loadbalancer.server.port=8083
 
+  notification-migrate:
+    <<: *backend-dev
+    profiles: [apps]
+    entrypoint: ["go", "run", "./services/notification/cmd/migrate"]
+    environment:
+      ENVIRONMENT: development
+      DB_DSN: postgresql://${POSTGRES_USER:-admin}:${POSTGRES_PASSWORD:-password123}@postgres:5432/notification_db?sslmode=disable
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  notification:
+    <<: *backend-dev
+    profiles: [apps]
+    environment:
+      SERVICE: notification
+      ENVIRONMENT: development
+      HTTP_PORT: "8084"
+      DB_DSN: postgresql://${POSTGRES_USER:-admin}:${POSTGRES_PASSWORD:-password123}@postgres:5432/notification_db?sslmode=disable
+      AMQP_URL: amqp://${RABBITMQ_USER:-eventory}:${RABBITMQ_PASSWORD:-eventory}@rabbitmq:5672/
+      SMTP_HOST: mailpit
+      SMTP_PORT: "1025"
+      SMTP_STARTTLS: "false"
+      PUBLIC_WEB_URL: http://localhost:${FRONTEND_PORT:-3000}
+    ports:
+      - "127.0.0.1:8084:8084"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "wget",
+          "--no-verbose",
+          "--tries=1",
+          "--output-document=/dev/null",
+          "http://127.0.0.1:8084/ready",
+        ]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+      start_period: 120s
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      mailpit:
+        condition: service_started
+      notification-migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
   frontend:
     image: eventory-frontend:local
     profiles: [web]
@@ -279,6 +355,7 @@ networks:
 volumes:
   postgres_data:
   mongo_data:
+  rabbitmq_data:
   go_mod_cache:
   go_build_cache:
   frontend_node_modules:

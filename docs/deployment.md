@@ -26,16 +26,16 @@ If `verify` fails, nothing is published or deployed.
 | | Local | Production |
 | --- | --- | --- |
 | Compose file | `docker-compose.yml` | `docker-compose.production.yml` |
-| Database | Postgres container with `account_db` and `tournament_db` | Postgres 18 container on the server, same two databases |
+| Database | Postgres container with `account_db`, `tournament_db`, `payment_db`, and `notification_db` | Postgres 18 container on the server, with the same four databases |
 | Images | Built on your machine | Pulled from GHCR, tagged by commit |
 | Public site | Traefik on port 8080, website on port 3000 | Traefik on ports 80 and 443, with a Let's Encrypt certificate |
 | Server | your machine | Oracle cloud server |
 
-Account and Tournament are separate images built from `backend/Dockerfile` with `SERVICE=account` or `SERVICE=tournament`. Each image contains `./api`, `./migrate`, and `./seed`. The API does not change the schema.
+Account, Tournament, Payment, and Notification are separate images built from `backend/Dockerfile` with their respective `SERVICE` value. Each image contains `./api`, `./migrate`, and `./seed`. The API does not change the schema.
 
-Production Postgres is `postgres:18` in `docker-compose.production.yml`. The first start of an empty volume runs `docker/postgres/init-databases.sh` and creates `account_db` and `tournament_db`. Account and Tournament reach it at `postgres:5432` on the Compose network. Port 5432 is not published. Supabase is still only for login. The database password is `PROD_POSTGRES_PASSWORD`. Use letters and numbers so it can sit in the connection string.
+Production Postgres is `postgres:18` in `docker-compose.production.yml`. The first start of an empty volume runs `docker/postgres/init-databases.sh` and creates `account_db`, `tournament_db`, `payment_db`, and `notification_db`. Deployment runs the same script explicitly before migrations so existing volumes gain missing databases. Services reach Postgres at `postgres:5432` on the Compose network. Port 5432 is not published. Supabase is still only for login. The database password is `PROD_POSTGRES_PASSWORD`. Use letters and numbers so it can sit in the connection string.
 
-Deploy waits until Postgres is healthy, runs `./migrate` for Account, then Tournament, then starts the APIs.
+Deploy waits until Postgres, MongoDB, and RabbitMQ are healthy, runs `init-databases.sh` inside the Postgres container to ensure all four service databases exist, runs migrations for Account, Tournament, Payment, and Notification, then starts the services.
 
 Traefik is the public edge for `eventory.ddns.net`. It listens on ports 80 and 443, redirects HTTP to HTTPS, and gets the certificate from Let's Encrypt (TLS challenge). The contact email is GitHub secret `PROD_ACME_EMAIL`, written to the server as `ACME_EMAIL`. Certificates are stored in the `traefik_letsencrypt` volume.
 
@@ -53,6 +53,12 @@ Set once, in the repository settings. Without these, deployment fails.
 | `PROD_SUPABASE_PUBLISHABLE_KEY` | Login checks, browser side |
 | `PROD_API_URL` | Public origin `https://eventory.ddns.net`, also written as the CORS origin |
 | `PROD_ACME_EMAIL` | Contact email for the Let's Encrypt account |
+| `PROD_RABBITMQ_PASSWORD` | Password for the internal production RabbitMQ user |
+| `PROD_SMTP_HOST` | SMTP relay hostname for notification email |
+| `PROD_SMTP_PORT` | SMTP relay port |
+| `PROD_SMTP_USERNAME` | SMTP relay username |
+| `PROD_SMTP_PASSWORD` | SMTP relay password |
+| `PROD_SMTP_FROM_ADDRESS` | Verified From address for Eventory email |
 | `PROD_POSTGRES_PASSWORD` | Password for the Postgres container. User is `admin` |
 | `PROD_MONGO_PASSWORD` | Password for the MongoDB container. User is `admin` |
 | `ORACLE_HOST` | Server address |

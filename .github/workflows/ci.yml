@@ -37,6 +37,9 @@ jobs:
           go build -o bin/payment ./services/payment/cmd/api
           go build -o bin/payment-migrate ./services/payment/cmd/migrate
           go build -o bin/payment-seed ./services/payment/cmd/seed
+          go build -o bin/notification ./services/notification/cmd/api
+          go build -o bin/notification-migrate ./services/notification/cmd/migrate
+          go build -o bin/notification-seed ./services/notification/cmd/seed
 
       - uses: actions/setup-node@v5
         with:
@@ -109,6 +112,17 @@ jobs:
             ghcr.io/moomaideng/eventory-payment:latest
             ghcr.io/moomaideng/eventory-payment:${{ github.sha }}
 
+      - name: Build and push notification image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          platforms: linux/arm64
+          push: true
+          build-args: SERVICE=notification
+          tags: |
+            ghcr.io/moomaideng/eventory-notification:latest
+            ghcr.io/moomaideng/eventory-notification:${{ github.sha }}
+
       - name: Check frontend production configuration
         env:
           PROD_SUPABASE_URL: ${{ secrets.PROD_SUPABASE_URL }}
@@ -151,6 +165,12 @@ jobs:
           PROD_API_URL: ${{ secrets.PROD_API_URL }}
           PROD_ACME_EMAIL: ${{ secrets.PROD_ACME_EMAIL }}
           PROD_PAYMENT_SERVICE_KEY: ${{ secrets.PROD_PAYMENT_SERVICE_KEY }}
+          PROD_RABBITMQ_PASSWORD: ${{ secrets.PROD_RABBITMQ_PASSWORD }}
+          PROD_SMTP_HOST: ${{ secrets.PROD_SMTP_HOST }}
+          PROD_SMTP_PORT: ${{ secrets.PROD_SMTP_PORT }}
+          PROD_SMTP_USERNAME: ${{ secrets.PROD_SMTP_USERNAME }}
+          PROD_SMTP_PASSWORD: ${{ secrets.PROD_SMTP_PASSWORD }}
+          PROD_SMTP_FROM_ADDRESS: ${{ secrets.PROD_SMTP_FROM_ADDRESS }}
         run: |
           test -n "$ORACLE_HOST" || (echo "::error::Missing ORACLE_HOST" && exit 1)
           test -n "$ORACLE_USER" || (echo "::error::Missing ORACLE_USER" && exit 1)
@@ -161,6 +181,12 @@ jobs:
           test -n "$PROD_API_URL" || (echo "::error::Missing PROD_API_URL" && exit 1)
           test -n "$PROD_ACME_EMAIL" || (echo "::error::Missing PROD_ACME_EMAIL" && exit 1)
           test "${#PROD_PAYMENT_SERVICE_KEY}" -ge 32 || (echo "::error::PROD_PAYMENT_SERVICE_KEY must contain at least 32 characters" && exit 1)
+          test -n "$PROD_RABBITMQ_PASSWORD" || (echo "::error::Missing PROD_RABBITMQ_PASSWORD" && exit 1)
+          test -n "$PROD_SMTP_HOST" || (echo "::error::Missing PROD_SMTP_HOST" && exit 1)
+          test -n "$PROD_SMTP_PORT" || (echo "::error::Missing PROD_SMTP_PORT" && exit 1)
+          test -n "$PROD_SMTP_USERNAME" || (echo "::error::Missing PROD_SMTP_USERNAME" && exit 1)
+          test -n "$PROD_SMTP_PASSWORD" || (echo "::error::Missing PROD_SMTP_PASSWORD" && exit 1)
+          test -n "$PROD_SMTP_FROM_ADDRESS" || (echo "::error::Missing PROD_SMTP_FROM_ADDRESS" && exit 1)
 
       - name: Configure SSH
         env:
@@ -193,6 +219,12 @@ jobs:
           PROD_API_URL: ${{ secrets.PROD_API_URL }}
           PROD_ACME_EMAIL: ${{ secrets.PROD_ACME_EMAIL }}
           PROD_PAYMENT_SERVICE_KEY: ${{ secrets.PROD_PAYMENT_SERVICE_KEY }}
+          PROD_RABBITMQ_PASSWORD: ${{ secrets.PROD_RABBITMQ_PASSWORD }}
+          PROD_SMTP_HOST: ${{ secrets.PROD_SMTP_HOST }}
+          PROD_SMTP_PORT: ${{ secrets.PROD_SMTP_PORT }}
+          PROD_SMTP_USERNAME: ${{ secrets.PROD_SMTP_USERNAME }}
+          PROD_SMTP_PASSWORD: ${{ secrets.PROD_SMTP_PASSWORD }}
+          PROD_SMTP_FROM_ADDRESS: ${{ secrets.PROD_SMTP_FROM_ADDRESS }}
           ORACLE_HOST: ${{ secrets.ORACLE_HOST }}
           ORACLE_USER: ${{ secrets.ORACLE_USER }}
         run: |
@@ -204,6 +236,13 @@ jobs:
             printf 'CORS_ALLOWED_ORIGINS=%s\n' "$PROD_API_URL"
             printf 'ACME_EMAIL=%s\n' "$PROD_ACME_EMAIL"
             printf 'PAYMENT_SERVICE_KEY=%s\n' "$PROD_PAYMENT_SERVICE_KEY"
+            printf 'RABBITMQ_PASSWORD=%s\n' "$PROD_RABBITMQ_PASSWORD"
+            printf 'SMTP_HOST=%s\n' "$PROD_SMTP_HOST"
+            printf 'SMTP_PORT=%s\n' "$PROD_SMTP_PORT"
+            printf 'SMTP_USERNAME=%s\n' "$PROD_SMTP_USERNAME"
+            printf 'SMTP_PASSWORD=%s\n' "$PROD_SMTP_PASSWORD"
+            printf 'SMTP_FROM_ADDRESS=%s\n' "$PROD_SMTP_FROM_ADDRESS"
+            printf 'PUBLIC_WEB_URL=%s\n' "$PROD_API_URL"
           } | ssh "$ORACLE_USER@$ORACLE_HOST" 'umask 077; cat > /opt/eventory/.env'
 
       - name: Log Oracle in to GitHub Container Registry
@@ -224,12 +263,13 @@ jobs:
             set -eu
             cd /opt/eventory
             sudo docker compose --env-file .env -f docker-compose.yml pull
-            sudo docker compose --env-file .env -f docker-compose.yml up -d --wait postgres mongodb
+            sudo docker compose --env-file .env -f docker-compose.yml up -d --wait postgres mongodb rabbitmq
             sudo docker compose --env-file .env -f docker-compose.yml exec -T postgres bash /docker-entrypoint-initdb.d/01-init-databases.sh
             sudo docker compose --env-file .env -f docker-compose.yml run --rm account-migrate
             sudo docker compose --env-file .env -f docker-compose.yml run --rm tournament-migrate
             sudo docker compose --env-file .env -f docker-compose.yml run --rm payment-migrate
-            sudo docker compose --env-file .env -f docker-compose.yml up -d --remove-orphans postgres mongodb account tournament payment traefik frontend
+            sudo docker compose --env-file .env -f docker-compose.yml run --rm notification-migrate
+            sudo docker compose --env-file .env -f docker-compose.yml up -d --remove-orphans postgres mongodb rabbitmq account tournament payment notification traefik frontend
           '
 
       - name: Verify deployment

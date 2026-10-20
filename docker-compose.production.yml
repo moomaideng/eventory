@@ -15,7 +15,7 @@ services:
       POSTGRES_USER: admin
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
       POSTGRES_DB: postgres
-      POSTGRES_MULTIPLE_DATABASES: account_db,tournament_db,payment_db
+      POSTGRES_MULTIPLE_DATABASES: account_db,tournament_db,payment_db,notification_db
     volumes:
       - postgres_data:/var/lib/postgresql
       - ./docker/postgres/init-databases.sh:/docker-entrypoint-initdb.d/01-init-databases.sh:ro
@@ -38,6 +38,20 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+    restart: unless-stopped
+
+  rabbitmq:
+    image: rabbitmq:4-alpine
+    environment:
+      RABBITMQ_DEFAULT_USER: eventory
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:?RABBITMQ_PASSWORD is required}
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
     restart: unless-stopped
 
   traefik:
@@ -231,6 +245,60 @@ services:
       - traefik.http.services.payment.loadbalancer.server.port=8083
     restart: unless-stopped
 
+  notification-migrate:
+    <<: *migrate
+    image: ghcr.io/moomaideng/eventory-notification:${IMAGE_TAG:?IMAGE_TAG is required}
+    command: ["./migrate"]
+    environment:
+      ENVIRONMENT: production
+      DB_DSN: postgresql://admin:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@postgres:5432/notification_db?sslmode=disable
+
+  notification:
+    image: ghcr.io/moomaideng/eventory-notification:${IMAGE_TAG:?IMAGE_TAG is required}
+    environment:
+      ENVIRONMENT: production
+      HTTP_PORT: "8084"
+      DB_DSN: postgresql://admin:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@postgres:5432/notification_db?sslmode=disable
+      AMQP_HOST: rabbitmq
+      AMQP_PORT: "5672"
+      AMQP_USERNAME: eventory
+      AMQP_PASSWORD: ${RABBITMQ_PASSWORD:?RABBITMQ_PASSWORD is required}
+      SMTP_HOST: ${SMTP_HOST:?SMTP_HOST is required}
+      SMTP_PORT: ${SMTP_PORT:?SMTP_PORT is required}
+      SMTP_USERNAME: ${SMTP_USERNAME:?SMTP_USERNAME is required}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:?SMTP_PASSWORD is required}
+      SMTP_FROM_ADDRESS: ${SMTP_FROM_ADDRESS:?SMTP_FROM_ADDRESS is required}
+      SMTP_FROM_NAME: Eventory
+      SMTP_STARTTLS: "true"
+      SMTP_TIMEOUT: "10s"
+      PUBLIC_WEB_URL: ${PUBLIC_WEB_URL:?PUBLIC_WEB_URL is required}
+      RETRY_DELAYS: 30s,5m,30m
+      CONSUMER_PREFETCH: "1"
+      PROCESSING_LEASE: "20s"
+      BROKER_RECONNECT_DELAY: "5s"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "wget",
+          "--no-verbose",
+          "--tries=1",
+          "--output-document=/dev/null",
+          "http://127.0.0.1:8084/ready",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      notification-migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
   frontend:
     image: ghcr.io/moomaideng/eventory-frontend:${IMAGE_TAG:?IMAGE_TAG is required}
     environment:
@@ -269,4 +337,5 @@ networks:
 volumes:
   postgres_data:
   mongo_data:
+  rabbitmq_data:
   traefik_letsencrypt:

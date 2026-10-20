@@ -18,13 +18,17 @@ flowchart LR
     TOUR --> PG2[("Postgres<br/>tournament_db")]
     TOUR --> MONGO[("MongoDB<br/>tournament_db")]
     TOUR -->|gRPC| ACC
+    TOUR -.->|registration.submitted| MQ["RabbitMQ"]
+    MQ --> NOTIFY["Notification Service"]
+    NOTIFY --> NPG[("Postgres<br/>notification_db")]
+    NOTIFY --> SMTP["SMTP / Mailpit"]
 ```
 
 | Part | What it does | Where |
 | --- | --- | --- |
 | **Frontend** | The pages you see and click | `frontend/` |
-| **Account / Tournament** | Backend services | `backend/services/*`, Compose profile `apps` |
-| **Traefik, Postgres & MongoDB** | API Gateway and databases | Compose profile `infra` |
+| **Account / Tournament / Notification** | Backend services | `backend/services/*`, Compose profile `apps` |
+| **Traefik, Postgres, MongoDB, RabbitMQ & Mailpit** | Gateway, data, messaging, and local email | Compose profile `infra` |
 | **Supabase** | Google login | external |
 
 ---
@@ -53,6 +57,10 @@ Then open:
 | http://localhost:8080/health | Gateway health check |
 | http://localhost:8081/docs | Account OpenAPI |
 | http://localhost:8082/docs | Tournament OpenAPI |
+| http://localhost:8025 | Mailpit email inbox |
+| http://localhost:15672 | RabbitMQ management (`eventory` / `eventory`) |
+| http://localhost:8083/docs | Payment OpenAPI |
+| http://localhost:8084/ready | Notification readiness |
 
 Useful tasks:
 
@@ -66,6 +74,7 @@ task dev:backend  # infra+apps only (no host Next.js)
 task build        # rebuild images when a Dockerfile changes
 task db:reset     # stop the stack and delete the local Postgres volume
 task test         # backend tests, frontend lint, frontend typecheck
+task notification:smoke # publish a sample registration email to Mailpit
 ```
 
 `task dev` leaves the containers running after you stop Next.js with Ctrl+C. `task down` stops them.
@@ -92,6 +101,7 @@ Removing a package archives it rather than deleting its checkout records. Archiv
 | **[Frontend](frontend/README.md)** | Working on pages and UI |
 | **[Backend](backend/README.md)** | Working on the API and database |
 | **[Deployment](docs/deployment.md)** | How code reaches the live server |
+| **[Notification](docs/notification-service.md)** | Event contract, retry policy, references, and smoke test |
 
 ---
 
@@ -102,6 +112,7 @@ Removing a package archives it rather than deleting its checkout records. Archiv
 | Frontend | Next.js 16, React 19, TypeScript, Tailwind CSS v4, shadcn/ui |
 | Backend | Go 1.26, Huma v2, Chi router, GORM, gRPC |
 | Database | PostgreSQL 18 |
+| Messaging & email | RabbitMQ, SMTP (Mailpit locally) |
 | Auth | Supabase |
 | Sponsor logos | PostgreSQL (`bytea`) |
 | Frontend ↔ backend | OpenAPI types + TanStack Query |
