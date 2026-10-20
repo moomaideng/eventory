@@ -1,0 +1,43 @@
+logging {
+  level  = "info"
+  format = "logfmt"
+}
+
+// Discover every container on the host. Filtering happens in the
+// discovery.relabel.
+discovery.docker "containers" {
+  host = "unix:///var/run/docker.sock"
+}
+
+// Keep-list: only containers labeled eventory.logs=true reach Loki
+// (set per service in Compose).
+discovery.relabel "keep_list" {
+  targets = []
+
+  rule {
+    source_labels = ["__meta_docker_container_label_eventory_logs"]
+    regex         = "true"
+    action        = "keep"
+  }
+
+  rule {
+    source_labels = ["__meta_docker_container_label_com_docker_compose_service"]
+    target_label  = "compose_service"
+  }
+}
+
+// Tails stdout/stderr for kept containers and forwards raw lines to Loki.
+// JSON bodies are stored as-is; LogQL `| json` parses fields at query time
+// so we never promote high-cardinality fields (request_id, path) to labels.
+loki.source.docker "containers" {
+  host          = "unix:///var/run/docker.sock"
+  targets       = discovery.docker.containers.targets
+  relabel_rules = discovery.relabel.keep_list.rules
+  forward_to    = [loki.write.default.receiver]
+}
+
+loki.write "default" {
+  endpoint {
+    url = "http://loki:3100/loki/api/v1/push"
+  }
+}

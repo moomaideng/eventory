@@ -111,6 +111,53 @@ services:
       interval: 5s
       timeout: 5s
       retries: 30
+    labels:
+      - eventory.logs=true
+
+  loki:
+    image: grafana/loki:3.6.18
+    profiles: [obs]
+    command: -config.file=/etc/loki/config.yaml
+    volumes:
+      - ./docker/observability/loki-config.yaml:/etc/loki/config.yaml:ro
+      - loki_data:/loki
+    ports:
+      - "127.0.0.1:${LOKI_PORT:-3100}:3100"
+
+  alloy:
+    image: grafana/alloy:v1.21.0
+    profiles: [obs]
+    command:
+      - run
+      - --server.http.listen-addr=0.0.0.0:12345
+      - --storage.path=/var/lib/alloy/data
+      - /etc/alloy/config.alloy
+    volumes:
+      - ./docker/observability/config.alloy:/etc/alloy/config.alloy:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    ports:
+      - "127.0.0.1:${ALLOY_PORT:-12345}:12345"
+    depends_on:
+      - loki
+
+  grafana:
+    image: grafana/grafana:13.2.4
+    profiles: [obs]
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin}
+      GF_SERVER_ROOT_URL: http://localhost:${BACKEND_PORT:-8080}/grafana/
+      GF_SERVER_SERVE_FROM_SUB_PATH: "true"
+    volumes:
+      - ./docker/observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      - loki
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=eventory_default
+      - traefik.http.routers.grafana.rule=PathPrefix(`/grafana`)
+      - traefik.http.routers.grafana.entrypoints=web
+      - traefik.http.services.grafana.loadbalancer.server.port=3000
 
   account-migrate:
     <<: *backend-dev
@@ -155,6 +202,7 @@ services:
       account-migrate:
         condition: service_completed_successfully
     labels:
+      - eventory.logs=true
       - traefik.enable=true
       - traefik.docker.network=eventory_default
       - traefik.http.routers.account.rule=PathPrefix(`/api/v1/accounts`)
@@ -215,6 +263,7 @@ services:
       account:
         condition: service_started
     labels:
+      - eventory.logs=true
       - traefik.enable=true
       - traefik.docker.network=eventory_default
       - traefik.http.routers.tournament.rule=PathPrefix(`/api/v1/tournaments`) || PathPrefix(`/api/v1/lobbies`)
@@ -264,6 +313,7 @@ services:
       payment-migrate:
         condition: service_completed_successfully
     labels:
+      - eventory.logs=true
       - traefik.enable=true
       - traefik.docker.network=eventory_default
       - traefik.http.routers.payment.rule=PathPrefix(`/api/v1/payments`)
@@ -322,6 +372,8 @@ services:
       notification-migrate:
         condition: service_completed_successfully
     restart: unless-stopped
+    labels:
+      - eventory.logs=true
 
   frontend:
     image: eventory-frontend:local
@@ -350,6 +402,8 @@ services:
         condition: service_healthy
       payment:
         condition: service_healthy
+    labels:
+      - eventory.logs=true
 
 networks:
   default:
@@ -363,3 +417,5 @@ volumes:
   go_build_cache:
   frontend_node_modules:
   frontend_next:
+  loki_data:
+  grafana_data:
