@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
+	"log/slog"
 	"time"
 
 	"github.com/moomaideng/eventory/internal/events"
@@ -59,13 +59,13 @@ func (worker *Worker) Run(ctx context.Context) error {
 }
 
 func (worker *Worker) reconnect(ctx context.Context, cause error) error {
-	log.Printf("rabbitmq consumer disconnected: %v", cause)
+	slog.Warn("rabbitmq consumer disconnected", "error", cause)
 	for {
 		if err := worker.broker.Reconnect(); err == nil {
-			log.Printf("rabbitmq consumer reconnected")
+			slog.Info("rabbitmq consumer reconnected")
 			return nil
 		} else {
-			log.Printf("rabbitmq reconnect failed: %v", err)
+			slog.Warn("rabbitmq reconnect failed", "error", err)
 		}
 		select {
 		case <-ctx.Done():
@@ -90,10 +90,10 @@ func (worker *Worker) handle(
 	outcome, _ := worker.useCase.Process(ctx, event, attempt >= worker.maxRetries)
 	switch outcome {
 	case usecases.OutcomeSent:
-		log.Printf("notification sent event_id=%s attempt=%d", event.ID, attempt)
+		slog.Info("notification sent", "event_id", event.ID, "attempt", attempt)
 		_ = ack(false)
 	case usecases.OutcomeAlreadyHandled:
-		log.Printf("notification duplicate skipped event_id=%s", event.ID)
+		slog.Debug("notification duplicate skipped", "event_id", event.ID)
 		_ = ack(false)
 	case usecases.OutcomeRetry:
 		if attempt >= worker.maxRetries {
@@ -103,11 +103,11 @@ func (worker *Worker) handle(
 		}
 		nextAttempt := attempt + 1
 		if publishErr := worker.broker.PublishRetry(ctx, body, nextAttempt); publishErr != nil {
-			log.Printf("notification retry publish failed event_id=%s: %v", event.ID, publishErr)
+			slog.Error("notification retry publish failed", "event_id", event.ID, "error", publishErr)
 			_ = nack(false, true)
 			return
 		}
-		log.Printf("notification retry scheduled event_id=%s attempt=%d", event.ID, nextAttempt)
+		slog.Info("notification retry scheduled", "event_id", event.ID, "attempt", nextAttempt)
 		_ = ack(false)
 	case usecases.OutcomePermanentFailure:
 		reason := "permanent processing failure"
@@ -127,10 +127,10 @@ func (worker *Worker) deadLetter(
 		reason = reason[:240]
 	}
 	if err := worker.broker.PublishDead(ctx, body, attempt, reason); err != nil {
-		log.Printf("notification dead-letter publish failed: %v", err)
+		slog.Error("notification dead-letter publish failed", "error", err, "attempt", attempt, "reason", reason)
 		_ = nack(false, true)
 		return
 	}
-	log.Printf("notification moved to dead-letter queue reason=%q attempt=%d", reason, attempt)
+	slog.Warn("notification moved to dead-letter queue", "reason", reason, "attempt", attempt)
 	_ = ack(false)
 }

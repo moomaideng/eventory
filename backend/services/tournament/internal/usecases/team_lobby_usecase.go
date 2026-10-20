@@ -4,7 +4,7 @@ import (
 	"context"
 	cryptorand "crypto/rand"
 	"errors"
-	"log"
+	"log/slog"
 	"math/big"
 	"regexp"
 	"strings"
@@ -399,7 +399,7 @@ func (u *TeamLobbyUseCase) Run(ctx context.Context) {
 		case <-ticker.C:
 			teams, err := u.repo.Pending(ctx)
 			if err != nil {
-				log.Printf("list pending team submissions: %v", err)
+				slog.Error("list pending team submissions", "error", err)
 				continue
 			}
 			for i := range teams {
@@ -407,7 +407,7 @@ func (u *TeamLobbyUseCase) Run(ctx context.Context) {
 					return
 				}
 				if err := u.Reconcile(ctx, &teams[i]); err != nil {
-					log.Printf("reconcile team %s: %v", teams[i].ID, err)
+					slog.Error("reconcile team submission", "team_id", teams[i].ID, "error", err)
 				}
 			}
 		}

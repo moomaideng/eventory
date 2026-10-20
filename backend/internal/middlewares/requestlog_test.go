@@ -93,10 +93,14 @@ func TestAccessLogSkipsSuccessfulHealth(t *testing.T) {
 	handler := RequestID(AccessLog(1000)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})))
-	req := httptest.NewRequest(http.MethodGet, "/health", nil)
-	handler.ServeHTTP(httptest.NewRecorder(), req)
-	if _, ok := h.last(); ok {
-		t.Fatal("expected no access log for successful /health")
+	for _, path := range []string{"/health", "/ready"} {
+		h.mu.Lock()
+		h.records = nil
+		h.mu.Unlock()
+		handler.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodGet, path, nil))
+		if _, ok := h.last(); ok {
+			t.Fatalf("expected no access log for successful %s", path)
+		}
 	}
 
 	h.mu.Lock()

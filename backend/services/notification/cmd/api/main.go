@@ -3,13 +3,14 @@ package main
 import (
 	"context"
 	"errors"
-	"log"
+	"log/slog"
 	"net/http"
 	"os/signal"
 	"syscall"
 	"time"
 
 	shareddatabase "github.com/moomaideng/eventory/internal/database"
+	"github.com/moomaideng/eventory/internal/logger"
 	"github.com/moomaideng/eventory/services/notification/config"
 	"github.com/moomaideng/eventory/services/notification/internal/adapters/rabbitmq"
 	smtpadapter "github.com/moomaideng/eventory/services/notification/internal/adapters/smtp"
@@ -22,15 +23,20 @@ import (
 func main() {
 	cfg, err := config.Load()
 	if err != nil {
-		log.Fatalf("failed to load configuration: %v", err)
+		slog.Error("failed to load configuration", "error", err)
+		panic(err)
 	}
+	logger.SetDefault(cfg.Logging, cfg.Environment, "notification")
+
 	db, err := shareddatabase.ConnectPostgres(cfg.DBDSN)
 	if err != nil {
-		log.Fatalf("failed to connect to notification database: %v", err)
+		slog.Error("failed to connect to notification database", "error", err)
+		panic(err)
 	}
 	broker, err := rabbitmq.Connect(cfg.BrokerURL, cfg.RetryDelays, cfg.ConsumerPrefetch)
 	if err != nil {
-		log.Fatalf("failed to connect to RabbitMQ: %v", err)
+		slog.Error("failed to connect to RabbitMQ", "error", err)
+		panic(err)
 	}
 	defer broker.Close()
 
@@ -45,11 +51,15 @@ func main() {
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
-	httpServer := &http.Server{Addr: ":" + cfg.HTTPPort, Handler: server.New(db, broker), ReadHeaderTimeout: 5 * time.Second}
+	httpServer := &http.Server{
+		Addr:              ":" + cfg.HTTPPort,
+		Handler:           server.New(db, broker),
+		ReadHeaderTimeout: 5 * time.Second,
+	}
 
 	errorsChannel := make(chan error, 2)
 	go func() {
-		log.Printf("notification health server listening on %s", httpServer.Addr)
+		slog.Info("notification health server listening", "addr", httpServer.Addr)
 		if err := httpServer.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
 			errorsChannel <- err
 		}
@@ -59,7 +69,7 @@ func main() {
 	select {
 	case err := <-errorsChannel:
 		if err != nil {
-			log.Printf("notification service stopped: %v", err)
+			slog.Error("notification service stopped", "error", err)
 		}
 		stop()
 	case <-ctx.Done():
