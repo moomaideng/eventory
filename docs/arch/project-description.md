@@ -189,7 +189,8 @@ FR14 is for Solo, FR15-18 for Team, and FR19-20 are shared.
 
 - NFR5: When a fee or pledge applies and payment succeeds, the system shall confirm the related registration or sponsorship.
 - NFR6: When a fee or pledge applies and payment fails, the system shall keep the previous registration or sponsorship state (team roster unlocked; sponsorship and registration unconfirmed).
+- NFR7: When an internal service dependency (e.g. the account service) is temporarily unavailable, the system shall automatically retry the affected read-only request within its existing per-call timeout, so a brief disruption in one service does not fail operations in another that depend on it.
 
 ### Performance
 
-- NFR7: Under normal course-demo load, the system shall complete competitor registration confirmation with p95 latency under 3 seconds, excluding external payment-gateway processing time.
+- NFR8: Under normal course-demo load, the system shall complete competitor registration confirmation with p95 latency under 3 seconds, excluding external payment-gateway processing time.
