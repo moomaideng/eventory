@@ -46,11 +46,20 @@ func NewAppWithAccountConn(db *gorm.DB, mongoDB *mongo.Database, cfg config.Conf
 }
 
 func newApp(db *gorm.DB, mongoDB *mongo.Database, cfg config.Config, accountSvc ports.AccountService) *App {
-	submission := usecases.NewTeamSubmissionUseCase(repositories.NewTeamSubmissionRepository(db), paymenthttp.New(cfg.PaymentURL, cfg.PaymentServiceKey))
-	return &App{HTTP: newHTTPRouter(db, mongoDB, cfg, accountSvc, submission), RunSubmissions: submission.Run}
+	payments := paymenthttp.New(cfg.PaymentURL, cfg.PaymentServiceKey)
+	teamLobbyRepo := repositories.NewTeamLobbyRepository(db)
+	teamLobbyUseCase := usecases.NewTeamLobbyUseCase(teamLobbyRepo, accountSvc, payments)
+	sponsorships := usecases.NewSponsorshipUseCase(repositories.NewSponsorshipRepository(db), repositories.NewTournamentRepository(db), accountSvc, payments)
+	return &App{
+		HTTP: newHTTPRouter(db, mongoDB, cfg, accountSvc, teamLobbyUseCase, sponsorships),
+		RunSubmissions: func(ctx context.Context) {
+			go sponsorships.Run(ctx)
+			teamLobbyUseCase.Run(ctx)
+		},
+	}
 }
 
-func newHTTPRouter(db *gorm.DB, mongoDB *mongo.Database, cfg config.Config, accountSvc ports.AccountService, submission *usecases.TeamSubmissionUseCase) http.Handler {
+func newHTTPRouter(db *gorm.DB, mongoDB *mongo.Database, cfg config.Config, accountSvc ports.AccountService, teamLobbyUseCase *usecases.TeamLobbyUseCase, sponsorships *usecases.SponsorshipUseCase) http.Handler {
 	router := chi.NewMux()
 	router.Use(middlewares.RequestID)
 	router.Use(middlewares.AccessLog(cfg.Logging.SlowRequestMS))
@@ -106,34 +115,32 @@ func newHTTPRouter(db *gorm.DB, mongoDB *mongo.Database, cfg config.Config, acco
 	})
 
 	tournamentRepo := repositories.NewTournamentRepository(db)
-	teamLobbyRepo := repositories.NewTeamLobbyRepository(db)
-	organizerDashboardRepo := repositories.NewOrganizerDashboardRepository(db)
-	tournamentStatusRepo := repositories.NewTournamentStatusRepository(db)
 	tournamentStaffRepo := repositories.NewTournamentStaffRepository(db)
+	teamReviewRepo := repositories.NewTeamReviewRepository(db)
+	sponsorshipTierRepo := repositories.NewSponsorshipTierRepository(db)
+	bracketRepo := repositories.NewBracketRepository(db)
 
 	tournamentUseCase := usecases.NewTournamentUseCase(tournamentRepo, accountSvc)
-	teamLobbyUseCase := usecases.NewTeamLobbyUseCase(teamLobbyRepo, accountSvc).WithSubmission(submission)
-	dashboardUseCase := usecases.NewOrganizerDashboardUseCase(organizerDashboardRepo, accountSvc)
-	statusUseCase := usecases.NewTournamentStatusUseCase(tournamentStatusRepo, accountSvc)
 	staffUseCase := usecases.NewTournamentStaffUseCase(tournamentStaffRepo, accountSvc)
+	teamReviewUseCase := usecases.NewTeamReviewUseCase(teamReviewRepo, accountSvc)
+	sponsorshipTierUseCase := usecases.NewSponsorshipTierUseCase(sponsorshipTierRepo, tournamentRepo)
+	bracketUseCase := usecases.NewBracketUseCase(bracketRepo)
 
 	authMiddleware := middlewares.NewAuthMiddleware(api, cfg.SupabaseURL, cfg.Environment)
 	organizerMiddleware := tournamentmiddlewares.NewOrganizerMiddleware(api, accountSvc)
 
-	teamLobbyGroup := huma.NewGroup(api, "/api/v1")
-	teamLobbyGroup.UseMiddleware(authMiddleware.HumaMiddleware())
+	auth := authMiddleware.HumaMiddleware()
+	organizer := organizerMiddleware.HumaMiddleware()
 
-	organizerGroup := huma.NewGroup(api, "/api/v1")
-	organizerGroup.UseMiddleware(authMiddleware.HumaMiddleware(), organizerMiddleware.HumaMiddleware())
-
-	organizerTournamentGroup := huma.NewGroup(api, "/api/v1/tournaments")
-	organizerTournamentGroup.UseMiddleware(authMiddleware.HumaMiddleware(), organizerMiddleware.HumaMiddleware())
-
-	resthandlers.RegisterTeamLobbyRoutes(teamLobbyGroup, teamLobbyUseCase)
-	resthandlers.RegisterTournamentStaffRoutes(teamLobbyGroup, staffUseCase)
-	resthandlers.RegisterOrganizerDashboardRoutes(teamLobbyGroup, dashboardUseCase)
-	resthandlers.RegisterTournamentStatusRoutes(organizerGroup, statusUseCase)
-	resthandlers.RegisterTournamentRoutes(api, organizerTournamentGroup, tournamentUseCase)
+	resthandlers.RegisterTournamentRoutes(api, auth, organizer, tournamentUseCase)
+	resthandlers.RegisterTeamLobbyRoutes(api, auth, teamLobbyUseCase)
+	resthandlers.RegisterTournamentStaffRoutes(api, auth, staffUseCase)
+	resthandlers.RegisterOrganizerDashboardRoutes(api, auth, tournamentUseCase)
+	resthandlers.RegisterTournamentStatusRoutes(api, auth, organizer, tournamentUseCase)
+	resthandlers.RegisterSponsorshipTierRoutes(api, auth, organizer, sponsorshipTierUseCase)
+	resthandlers.RegisterTeamReviewRoutes(api, auth, teamReviewUseCase)
+	resthandlers.RegisterBracketRoutes(api, auth, bracketUseCase)
+	resthandlers.RegisterSponsorshipRoutes(api, auth, sponsorships)
 
 	if mongoDB != nil {
 		formRepo := repositories.NewRegistrationFormRepository(mongoDB)
@@ -142,11 +149,7 @@ func newHTTPRouter(db *gorm.DB, mongoDB *mongo.Database, cfg config.Config, acco
 		}
 		fieldRegistry := forms.NewDefaultRegistry()
 		formUseCase := usecases.NewRegistrationFormUseCase(tournamentRepo, formRepo, fieldRegistry)
-		resthandlers.RegisterRegistrationFormRoutes(api, teamLobbyGroup, organizerTournamentGroup, formUseCase)
-
-		dummyRepo := repositories.NewDummyRepository(mongoDB)
-		dummyUseCase := usecases.NewDummyUseCase(dummyRepo)
-		resthandlers.RegisterDummyRoutes(api, dummyUseCase)
+		resthandlers.RegisterRegistrationFormRoutes(api, auth, organizer, formUseCase)
 	}
 
 	return router

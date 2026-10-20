@@ -29,6 +29,7 @@ type OverrideTournamentStatusInput struct {
 	Body         struct {
 		Status string `json:"status" enum:"DRAFT,CROWDFUNDING,REGISTRATION_OPEN,REGISTRATION_CLOSED,ONGOING,COMPLETED,CANCELLED" doc:"Target status"`
 		Reason string `json:"reason" minLength:"10" maxLength:"500" doc:"Why the status is being overridden; recorded in the audit trail"`
+		Force  bool   `json:"force,omitempty" doc:"Allow a crowdfunding owner to open registration before the funding goal is reached; a reason is still required"`
 	}
 }
 
@@ -54,16 +55,23 @@ type TournamentStatusHistoryOutput struct {
 	}
 }
 
-func RegisterTournamentStatusRoutes(api huma.API, statuses *usecases.TournamentStatusUseCase) {
+func RegisterTournamentStatusRoutes(
+	api huma.API,
+	auth, organizer func(huma.Context, func(huma.Context)),
+	tournaments *usecases.TournamentUseCase,
+) {
 	huma.Register(api, huma.Operation{
 		OperationID: "override-tournament-status",
 		Method:      http.MethodPatch,
-		Path:        "/tournaments/{id}/status",
+		Path:        "/api/v1/tournaments/{id}/status",
 		Summary:     "Override a tournament's status",
 		Description: "Manually moves an owned tournament to another lifecycle status, " +
-			"recording the previous status, the reason, the acting account, and a timestamp.",
-		Tags:     []string{"Organizer dashboard"},
-		Security: []map[string][]string{{"bearer": {}}},
+			"recording the previous status, the reason, the acting account, and a timestamp. " +
+			"Opening registration from crowdfunding requires complete event details and a met funding goal, " +
+			"unless the owner explicitly force-starts it.",
+		Tags:        []string{"Organizer dashboard"},
+		Middlewares: huma.Middlewares{auth, organizer},
+		Security:    []map[string][]string{{"bearer": {}}},
 	}, func(ctx context.Context, input *OverrideTournamentStatusInput) (*OverrideTournamentStatusOutput, error) {
 		accountID, err := authenticatedAccountID(ctx)
 		if err != nil {
@@ -73,7 +81,7 @@ func RegisterTournamentStatusRoutes(api huma.API, statuses *usecases.TournamentS
 			return nil, tournamentStatusHTTPError(err)
 		}
 
-		result, err := statuses.Override(ctx, accountID, input.TournamentID, input.Body.Status, input.Body.Reason)
+		result, err := tournaments.OverrideWithForce(ctx, accountID, input.TournamentID, input.Body.Status, input.Body.Reason, input.Body.Force)
 		if err != nil {
 			return nil, tournamentStatusHTTPError(err)
 		}
@@ -88,10 +96,11 @@ func RegisterTournamentStatusRoutes(api huma.API, statuses *usecases.TournamentS
 	huma.Register(api, huma.Operation{
 		OperationID: "list-tournament-status-history",
 		Method:      http.MethodGet,
-		Path:        "/tournaments/{id}/status/history",
+		Path:        "/api/v1/tournaments/{id}/status/history",
 		Summary:     "List a tournament's status override history",
 		Description: "Returns the audit trail of manual status overrides for an owned tournament, newest first.",
 		Tags:        []string{"Organizer dashboard"},
+		Middlewares: huma.Middlewares{auth, organizer},
 		Security:    []map[string][]string{{"bearer": {}}},
 	}, func(ctx context.Context, input *TournamentStatusHistoryInput) (*TournamentStatusHistoryOutput, error) {
 		profile, err := middlewares.GetOrganizerProfile(ctx)
@@ -99,7 +108,7 @@ func RegisterTournamentStatusRoutes(api huma.API, statuses *usecases.TournamentS
 			return nil, tournamentStatusHTTPError(err)
 		}
 
-		detail, err := statuses.History(ctx, profile.AccountID, input.TournamentID)
+		detail, err := tournaments.History(ctx, profile.AccountID, input.TournamentID)
 		if err != nil {
 			return nil, tournamentStatusHTTPError(err)
 		}
@@ -142,6 +151,12 @@ func tournamentStatusHTTPError(err error) error {
 		// Ownership failures are reported as 404, never 403: confirming a
 		// tournament exists would leak it to accounts that do not own it.
 		return huma.Error404NotFound("Tournament not found or not owned by your account")
+	case errors.Is(err, usecases.ErrNotTournamentOwner):
+		return huma.Error403Forbidden("Only the tournament owner can launch or cancel crowdfunding")
+	case errors.Is(err, usecases.ErrCrowdfundingGoalNotReached):
+		return huma.Error422UnprocessableEntity("Funding goal has not been reached. Use force start with a reason to open registration early")
+	case errors.Is(err, usecases.ErrCrowdfundingPlanIncomplete):
+		return huma.Error422UnprocessableEntity(err.Error())
 	case errors.Is(err, usecases.ErrInvalidStatusTransition):
 		return huma.Error422UnprocessableEntity("That status change is not allowed from the tournament's current status")
 	case errors.Is(err, usecases.ErrStatusUnchanged):

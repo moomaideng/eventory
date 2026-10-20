@@ -6,18 +6,23 @@ export function PaymentPageHeader({
   description,
   icon: Icon,
   invoiceId,
+  sponsorMode = false,
 }: {
   title: string;
   description: string;
   icon: LucideIcon;
   invoiceId?: string;
+  sponsorMode?: boolean;
 }) {
   return (
     <header className="flex flex-col gap-5">
       <nav aria-label="Breadcrumb">
         <ol className="text-muted-foreground flex flex-wrap items-center gap-2 text-sm">
           <li>
-            <Link href="/payments" className="hover:underline">
+            <Link
+              href={sponsorMode ? "/sponsor/payments" : "/payments"}
+              className="hover:underline"
+            >
               My payments
             </Link>
           </li>
@@ -28,7 +33,7 @@ export function PaymentPageHeader({
             <>
               <li>
                 <Link
-                  href={`/payments/${invoiceId}`}
+                  href={`${sponsorMode ? "/sponsor" : ""}/payments/${invoiceId}`}
                   className="hover:underline"
                 >
                   Invoice

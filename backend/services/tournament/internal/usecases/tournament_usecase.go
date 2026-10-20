@@ -3,8 +3,11 @@ package usecases
 import (
 	"context"
 	"errors"
+	"fmt"
+	"slices"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/google/uuid"
 	"github.com/moomaideng/eventory/services/tournament/internal/ports"
@@ -24,9 +27,24 @@ var (
 	ErrInvalidTournamentCapacity  = errors.New("tournament capacity must be at least 1")
 	ErrInvalidRegistrationMode    = errors.New("invalid registration mode: must be SOLO or TEAM")
 	ErrInvalidTeamSize            = errors.New("minimum team size must be at least 1 and less than or equal to maximum team size")
+	ErrInvalidCrowdfunding        = errors.New("crowdfunding requires a positive funding goal and a deadline after now but before the registration deadline")
+	ErrCrowdfundingClosed         = errors.New("funding can only be changed while crowdfunding is active")
 	ErrTournamentCannotBeModified = errors.New("ongoing, completed, or cancelled tournaments cannot be modified")
 	ErrCapacityBelowAcceptedTeams = errors.New("capacity cannot be less than the number of accepted teams")
 	ErrRosterRulesLocked          = errors.New("team size and registration mode cannot be modified after teams have locked or been accepted")
+	ErrInvalidDashboardPage       = errors.New("invalid dashboard pagination")
+	ErrInvalidStatusTransition    = errors.New("this status change is not allowed")
+	ErrStatusUnchanged            = errors.New("tournament is already in that status")
+	ErrOverrideReasonRequired     = errors.New("a reason between 10 and 500 characters is required")
+	ErrUnknownStatus              = errors.New("unknown tournament status")
+	ErrCrowdfundingGoalNotReached = errors.New("funding goal has not been reached")
+	ErrCrowdfundingPlanIncomplete = errors.New("event details or registration rules are incomplete")
+	ErrTournamentStateChanged     = errors.New("tournament status changed; refresh and try again")
+)
+
+const (
+	overrideReasonMinLength = 10
+	overrideReasonMaxLength = 500
 )
 
 type CreateTournamentInput struct {
@@ -42,6 +60,8 @@ type CreateTournamentInput struct {
 	MinTeamSize          int
 	MaxTeamSize          int
 	Capacity             int
+	FundingGoal          *int64
+	FundingDeadline      *time.Time
 }
 
 type UpdateTournamentInput struct {
@@ -57,6 +77,8 @@ type UpdateTournamentInput struct {
 	MinTeamSize          *int
 	MaxTeamSize          *int
 	Capacity             *int
+	FundingGoal          *int64
+	FundingDeadline      *time.Time
 }
 
 var catalogLocation = time.FixedZone("Asia/Bangkok", 7*60*60)
@@ -80,6 +102,52 @@ type TournamentSearchResult struct {
 	PageSize int
 }
 
+// TournamentView is the shared read model: persisted tournament + organizer display name.
+type TournamentView struct {
+	Tournament    models.Tournament
+	OrganizerName string
+}
+
+func NewTournamentView(tournament models.Tournament, organizerName string) TournamentView {
+	return TournamentView{
+		Tournament:    tournament,
+		OrganizerName: organizerName,
+	}
+}
+
+func NewTournamentViews(tournaments []models.Tournament, names map[uuid.UUID]string) []TournamentView {
+	views := make([]TournamentView, len(tournaments))
+	for i, tournament := range tournaments {
+		views[i] = NewTournamentView(tournament, names[tournament.ID])
+	}
+	return views
+}
+
+type TournamentFundingStats struct {
+	GoalAmount      int64
+	Deadline        *time.Time
+	RaisedAmount    int64
+	RemainingAmount int64
+	SupporterCount  int
+	Percentage      float64
+}
+
+func NewFundingStats(funding *models.TournamentFunding) TournamentFundingStats {
+	stats := TournamentFundingStats{}
+	if funding == nil {
+		return stats
+	}
+	stats.GoalAmount = funding.GoalAmount
+	stats.Deadline = funding.Deadline
+	stats.RaisedAmount = funding.RaisedAmount
+	stats.SupporterCount = funding.SupporterCount
+	stats.RemainingAmount = max(stats.GoalAmount-stats.RaisedAmount, 0)
+	if stats.GoalAmount > 0 {
+		stats.Percentage = float64(stats.RaisedAmount) / float64(stats.GoalAmount) * 100
+	}
+	return stats
+}
+
 type TournamentSearchItem struct {
 	TournamentView
 	RegisteredCount int
@@ -89,6 +157,68 @@ type TournamentDetailsResult struct {
 	TournamentView
 	RegisteredCount int
 	Funding         TournamentFundingStats
+}
+
+type OrganizerDashboardMetrics struct {
+	TotalEntries          int
+	FormingEntries        int
+	LockedEntries         int
+	AcceptedEntries       int
+	RejectedEntries       int
+	ConfirmedParticipants int
+	AvailableSpots        int
+}
+
+// OrganizerTournamentSummary is the list-row read model. Tournament is the persisted
+// row with Teams and Funding cleared; those values live on Metrics and Funding.
+type OrganizerTournamentSummary struct {
+	Tournament    models.Tournament
+	OrganizerName string
+	Metrics       OrganizerDashboardMetrics
+	Funding       TournamentFundingStats
+}
+
+type OrganizerDashboardEntry struct {
+	ID        uuid.UUID
+	Name      string
+	Status    string
+	CreatedAt time.Time
+	Members   []TeamMemberView
+}
+
+func NewOrganizerDashboardEntry(team models.TournamentTeam, members []TeamMemberView) OrganizerDashboardEntry {
+	return OrganizerDashboardEntry{
+		ID: team.ID, Name: team.Name, Status: string(team.Status), CreatedAt: team.CreatedAt, Members: members,
+	}
+}
+
+// OrganizerDashboard is one owned tournament plus its enriched registrations.
+type OrganizerDashboard struct {
+	OrganizerTournamentSummary
+	Entries []OrganizerDashboardEntry
+}
+
+type OrganizerDashboardList struct {
+	Items    []OrganizerTournamentSummary
+	Total    int64
+	Page     int
+	PageSize int
+}
+
+type TournamentStatusOverride struct {
+	TournamentID uuid.UUID
+	FromStatus   models.TournamentStatus
+	ToStatus     models.TournamentStatus
+	Reason       string
+	Change       models.TournamentStatusChange
+}
+
+// TournamentStatusDetail describes where a tournament stands and where an
+// organizer may move it next.
+type TournamentStatusDetail struct {
+	CurrentStatus      models.TournamentStatus
+	AllowedTransitions []models.TournamentStatus
+	Changes            []models.TournamentStatusChange
 }
 
 type TournamentUseCase struct {
@@ -129,10 +259,10 @@ func (u *TournamentUseCase) Search(
 
 	status := models.TournamentStatus(strings.ToUpper(strings.TrimSpace(input.Status)))
 	validStatuses := map[models.TournamentStatus]bool{
-		"":                                      true,
-		models.TournamentStatusDraft:            true,
-		models.TournamentStatusCrowdfunding:     true,
-		models.TournamentStatusRegistrationOpen: true,
+		"":                                        true,
+		models.TournamentStatusDraft:              true,
+		models.TournamentStatusCrowdfunding:       true,
+		models.TournamentStatusRegistrationOpen:   true,
 		models.TournamentStatusRegistrationClosed: true,
 		models.TournamentStatusOngoing:            true,
 		models.TournamentStatusCompleted:          true,
@@ -214,6 +344,7 @@ func (u *TournamentUseCase) GetDetails(
 		}
 	}
 	tournament.Teams = acceptedTeams
+	registeredCount := len(acceptedTeams)
 
 	names, err := organizerNames(ctx, u.accountSvc, *tournament)
 	if err != nil {
@@ -222,15 +353,14 @@ func (u *TournamentUseCase) GetDetails(
 
 	return &TournamentDetailsResult{
 		TournamentView:  NewTournamentView(*tournament, names[tournament.ID]),
-		RegisteredCount: len(acceptedTeams),
+		RegisteredCount: registeredCount,
 		Funding:         NewFundingStats(tournament.Funding),
 	}, nil
 }
 
 // CreateTournament initializes and persists a new tournament record for an organizer.
-// It applies default status REGISTRATION_OPEN, published=true, hardcoded currency "THB",
-// automatically coerces solo tournaments to min/max team size of 1, and creates an initial
-// funding stub. It strictly validates that registrationDeadline < startsAt < endsAt.
+// A funding goal and deadline launch a published crowdfunding tournament;
+// otherwise registration opens immediately. Both paths validate their dates.
 func (u *TournamentUseCase) CreateTournament(
 	ctx context.Context,
 	accountID uuid.UUID,
@@ -280,12 +410,15 @@ func (u *TournamentUseCase) CreateTournament(
 	// In the future, currency selection may be expanded based on team consensus.
 	currency := "THB"
 
-	// [TODO]: Initialize default funding stub for now; funding features and schemas
-	// are currently being finalized by the team.
-	funding := &models.TournamentFunding{
-		GoalAmount:     1000,
-		RaisedAmount:   500,
-		SupporterCount: 1,
+	var funding *models.TournamentFunding
+	status := models.TournamentStatusRegistrationOpen
+	if input.FundingGoal != nil || input.FundingDeadline != nil {
+		if input.FundingGoal == nil || input.FundingDeadline == nil ||
+			!validFunding(*input.FundingGoal, *input.FundingDeadline, input.RegistrationDeadline) {
+			return nil, ErrInvalidCrowdfunding
+		}
+		funding = &models.TournamentFunding{GoalAmount: *input.FundingGoal, Deadline: input.FundingDeadline}
+		status = models.TournamentStatusCrowdfunding
 	}
 
 	tournament := &models.Tournament{
@@ -308,7 +441,7 @@ func (u *TournamentUseCase) CreateTournament(
 		MinTeamSize:          minTeamSize,
 		MaxTeamSize:          maxTeamSize,
 		Capacity:             input.Capacity,
-		Status:               models.TournamentStatusRegistrationOpen,
+		Status:               status,
 		Published:            true,
 	}
 
@@ -316,6 +449,10 @@ func (u *TournamentUseCase) CreateTournament(
 		return nil, err
 	}
 	return tournament, nil
+}
+
+func validFunding(goal int64, deadline, registrationDeadline time.Time) bool {
+	return goal > 0 && deadline.After(time.Now()) && deadline.Before(registrationDeadline)
 }
 
 // UpdateTournament modifies mutable tournament attributes subject to strict safety invariants.
@@ -338,8 +475,7 @@ func (u *TournamentUseCase) UpdateTournament(
 		return nil, ErrNotTournamentOwner
 	}
 
-	// CANCELLED is terminal too (US3-3): cancelling refunds entrants, so the
-	// tournament must not be re-configured afterwards.
+	// CANCELLED is terminal: the event cannot be re-configured afterwards.
 	if tournament.Status == models.TournamentStatusOngoing ||
 		tournament.Status == models.TournamentStatusCompleted ||
 		tournament.Status == models.TournamentStatusCancelled {
@@ -424,6 +560,28 @@ func (u *TournamentUseCase) UpdateTournament(
 	if !newDeadline.Before(newStartsAt) || !newStartsAt.Before(newEndsAt) {
 		return nil, ErrInvalidTournamentDates
 	}
+	if input.FundingGoal != nil || input.FundingDeadline != nil {
+		if tournament.Status != models.TournamentStatusCrowdfunding || tournament.Funding == nil ||
+			tournament.Funding.Deadline == nil || !tournament.Funding.Deadline.After(time.Now()) {
+			return nil, ErrCrowdfundingClosed
+		}
+		goal := tournament.Funding.GoalAmount
+		if input.FundingGoal != nil {
+			goal = *input.FundingGoal
+		}
+		deadline := *tournament.Funding.Deadline
+		if input.FundingDeadline != nil {
+			deadline = *input.FundingDeadline
+		}
+		if !validFunding(goal, deadline, newDeadline) {
+			return nil, ErrInvalidCrowdfunding
+		}
+		tournament.Funding.GoalAmount = goal
+		tournament.Funding.Deadline = &deadline
+	} else if tournament.Status == models.TournamentStatusCrowdfunding && tournament.Funding != nil && tournament.Funding.Deadline != nil &&
+		!tournament.Funding.Deadline.Before(newDeadline) {
+		return nil, ErrInvalidCrowdfunding
+	}
 	tournament.RegistrationDeadline = newDeadline
 	tournament.StartsAt = newStartsAt
 	tournament.EndsAt = newEndsAt
@@ -460,6 +618,9 @@ func (u *TournamentUseCase) UpdateTournament(
 	}
 
 	if err := u.tournamentRepo.Update(ctx, tournament); err != nil {
+		if errors.Is(err, repositories.ErrTournamentStateChanged) {
+			return nil, ErrTournamentStateChanged
+		}
 		return nil, err
 	}
 	return tournament, nil
@@ -478,4 +639,253 @@ func parseCatalogDate(value string, endOfDay bool) (*time.Time, error) {
 		parsed = parsed.Add(24*time.Hour - time.Nanosecond)
 	}
 	return &parsed, nil
+}
+
+func (u *TournamentUseCase) List(ctx context.Context, organizerID uuid.UUID, page, pageSize int) (*OrganizerDashboardList, error) {
+	if page < 1 || pageSize < 1 || pageSize > 100 || page > 1000000 {
+		return nil, ErrInvalidDashboardPage
+	}
+	tournaments, total, err := u.tournamentRepo.ListOwned(ctx, organizerID, page, pageSize)
+	if err != nil {
+		return nil, err
+	}
+	names, err := organizerNames(ctx, u.accountSvc, tournaments...)
+	if err != nil {
+		return nil, err
+	}
+	items := make([]OrganizerTournamentSummary, 0, len(tournaments))
+	for _, tournament := range tournaments {
+		items = append(items, summarizeDashboard(tournament, names[tournament.ID]))
+	}
+	return &OrganizerDashboardList{Items: items, Total: total, Page: page, PageSize: pageSize}, nil
+}
+
+func (u *TournamentUseCase) Get(ctx context.Context, organizerID, tournamentID uuid.UUID) (*OrganizerDashboard, error) {
+	tournament, err := u.tournamentRepo.GetOwned(ctx, organizerID, tournamentID)
+	if errors.Is(err, repositories.ErrTournamentNotFound) {
+		return nil, ErrTournamentNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+	names, err := organizerNames(ctx, u.accountSvc, *tournament)
+	if err != nil {
+		return nil, err
+	}
+	summary := summarizeDashboard(*tournament, names[tournament.ID])
+
+	var allMembers []models.TournamentTeamMember
+	for _, team := range tournament.Teams {
+		allMembers = append(allMembers, team.Members...)
+	}
+	accounts, err := accountInfos(ctx, u.accountSvc, allMembers...)
+	if err != nil {
+		return nil, err
+	}
+	entries := make([]OrganizerDashboardEntry, 0, len(allMembers))
+	for _, team := range tournament.Teams {
+		if team.Status == models.TournamentTeamStatusForming || team.Status == models.TournamentTeamStatusPaymentPending {
+			continue
+		}
+		entries = append(entries, NewOrganizerDashboardEntry(team, NewTeamMemberViews(team.Members, accounts)))
+	}
+	return &OrganizerDashboard{OrganizerTournamentSummary: summary, Entries: entries}, nil
+}
+
+func summarizeDashboard(tournament models.Tournament, organizerName string) OrganizerTournamentSummary {
+	metrics := OrganizerDashboardMetrics{TotalEntries: len(tournament.Teams)}
+	participants := make(map[uuid.UUID]struct{})
+	for _, team := range tournament.Teams {
+		switch team.Status {
+		case models.TournamentTeamStatusForming, models.TournamentTeamStatusPaymentPending:
+			metrics.FormingEntries++
+		case models.TournamentTeamStatusLocked:
+			metrics.LockedEntries++
+		case models.TournamentTeamStatusAccepted:
+			metrics.AcceptedEntries++
+			for _, member := range team.Members {
+				participants[member.AccountID] = struct{}{}
+			}
+		case models.TournamentTeamStatusRejected:
+			metrics.RejectedEntries++
+		}
+	}
+	metrics.ConfirmedParticipants = len(participants)
+	metrics.AvailableSpots = max(tournament.Capacity-metrics.AcceptedEntries, 0)
+	tournament.Teams = nil
+	funding := tournament.Funding
+	tournament.Funding = nil
+	return OrganizerTournamentSummary{
+		Tournament:    tournament,
+		OrganizerName: organizerName,
+		Metrics:       metrics,
+		Funding:       NewFundingStats(funding),
+	}
+}
+
+// allowedTransitions maps each status to the statuses an organizer may manually
+// override it to.
+var allowedTransitions = map[models.TournamentStatus][]models.TournamentStatus{
+	models.TournamentStatusDraft: {
+		models.TournamentStatusRegistrationOpen,
+		models.TournamentStatusCancelled,
+	},
+	models.TournamentStatusCrowdfunding: {
+		models.TournamentStatusRegistrationOpen,
+		models.TournamentStatusCancelled,
+	},
+	models.TournamentStatusRegistrationOpen: {
+		models.TournamentStatusRegistrationClosed,
+		models.TournamentStatusOngoing, // skip ahead when registration is cut short
+		models.TournamentStatusCompleted,
+		models.TournamentStatusCancelled,
+	},
+	models.TournamentStatusRegistrationClosed: {
+		models.TournamentStatusRegistrationOpen, // reopen after a delay
+		models.TournamentStatusOngoing,
+		models.TournamentStatusCompleted,
+		models.TournamentStatusCancelled,
+	},
+	models.TournamentStatusOngoing: {
+		models.TournamentStatusRegistrationClosed, // started early by mistake
+		models.TournamentStatusCompleted,
+		models.TournamentStatusCancelled,
+	},
+	models.TournamentStatusCompleted: {}, // terminal
+	models.TournamentStatusCancelled: {}, // terminal
+}
+
+func (u *TournamentUseCase) Override(
+	ctx context.Context,
+	accountID, tournamentID uuid.UUID,
+	rawStatus, rawReason string,
+) (*TournamentStatusOverride, error) {
+	return u.OverrideWithForce(ctx, accountID, tournamentID, rawStatus, rawReason, false)
+}
+
+func (u *TournamentUseCase) OverrideWithForce(
+	ctx context.Context,
+	accountID, tournamentID uuid.UUID,
+	rawStatus, rawReason string,
+	force bool,
+) (*TournamentStatusOverride, error) {
+	to := models.TournamentStatus(strings.ToUpper(strings.TrimSpace(rawStatus)))
+	if _, known := allowedTransitions[to]; !known {
+		return nil, ErrUnknownStatus
+	}
+
+	reason := strings.TrimSpace(rawReason)
+	if n := utf8.RuneCountInString(reason); n < overrideReasonMinLength || n > overrideReasonMaxLength {
+		return nil, ErrOverrideReasonRequired
+	}
+
+	actor, err := u.accountSvc.GetAccount(ctx, accountID)
+	if err != nil {
+		return nil, err
+	}
+	actorDisplayName := actor.DisplayName
+
+	var from models.TournamentStatus
+	change, err := u.tournamentRepo.ApplyOverride(ctx, accountID, actorDisplayName, tournamentID, reason,
+		func(current *models.Tournament) (models.TournamentStatus, error) {
+			from = current.Status
+			if current.Status == to {
+				return "", ErrStatusUnchanged
+			}
+			if !canTransition(current.Status, to) {
+				return "", ErrInvalidStatusTransition
+			}
+			if force && (current.Status != models.TournamentStatusCrowdfunding || to != models.TournamentStatusRegistrationOpen) {
+				return "", ErrInvalidStatusTransition
+			}
+			if current.Status == models.TournamentStatusCrowdfunding {
+				if current.OwnerID() != accountID {
+					return "", ErrNotTournamentOwner
+				}
+				if to == models.TournamentStatusRegistrationOpen {
+					if problem := crowdfundingPlanProblem(current, time.Now()); problem != "" {
+						return "", fmt.Errorf("%w: %s", ErrCrowdfundingPlanIncomplete, problem)
+					}
+					if !force && current.Funding.RaisedAmount < current.Funding.GoalAmount {
+						return "", ErrCrowdfundingGoalNotReached
+					}
+				}
+			}
+			return to, nil
+		})
+	if err != nil {
+		if errors.Is(err, repositories.ErrTournamentNotFound) {
+			return nil, ErrTournamentNotFound
+		}
+		return nil, err
+	}
+
+	return &TournamentStatusOverride{
+		TournamentID: tournamentID, FromStatus: from, ToStatus: to,
+		Reason: reason, Change: *change,
+	}, nil
+}
+
+func crowdfundingPlanProblem(t *models.Tournament, now time.Time) string {
+	if !t.Published || t.Funding == nil || t.Funding.GoalAmount <= 0 || t.Funding.Deadline == nil {
+		return "the crowdfunding setup is incomplete"
+	}
+	if strings.TrimSpace(t.Name) == "" || strings.TrimSpace(t.Game) == "" {
+		return "the tournament name or game is missing"
+	}
+	if strings.TrimSpace(t.Location) == "" {
+		return "add an event location"
+	}
+	if t.Capacity < 1 || t.EntryFee < 0 {
+		return "set a valid capacity and entry fee"
+	}
+	if !t.RegistrationDeadline.After(now) {
+		return "set a future registration deadline"
+	}
+	if !t.RegistrationDeadline.Before(t.StartsAt) || !t.StartsAt.Before(t.EndsAt) {
+		return "set the registration deadline before the event start and the event end after the start"
+	}
+	if !t.Funding.Deadline.Before(t.RegistrationDeadline) {
+		return "set the funding deadline before registration closes"
+	}
+	switch t.RegistrationMode {
+	case models.TournamentRegistrationModeSolo:
+		if t.MinTeamSize == 1 && t.MaxTeamSize == 1 {
+			return ""
+		}
+	case models.TournamentRegistrationModeTeam:
+		if t.MinTeamSize >= 1 && t.MaxTeamSize >= t.MinTeamSize {
+			return ""
+		}
+	}
+	return "set a valid registration mode and team size"
+}
+
+func (u *TournamentUseCase) History(
+	ctx context.Context,
+	accountID, tournamentID uuid.UUID,
+) (*TournamentStatusDetail, error) {
+	history, err := u.tournamentRepo.ListHistory(ctx, accountID, tournamentID)
+	if err != nil {
+		if errors.Is(err, repositories.ErrTournamentNotFound) {
+			return nil, ErrTournamentNotFound
+		}
+		return nil, err
+	}
+	return &TournamentStatusDetail{
+		CurrentStatus:      history.CurrentStatus,
+		AllowedTransitions: AllowedTransitionsFrom(history.CurrentStatus),
+		Changes:            history.Changes,
+	}, nil
+}
+
+func canTransition(from, to models.TournamentStatus) bool {
+	return slices.Contains(allowedTransitions[from], to)
+}
+
+func AllowedTransitionsFrom(from models.TournamentStatus) []models.TournamentStatus {
+	allowed := allowedTransitions[from]
+	out := make([]models.TournamentStatus, len(allowed))
+	copy(out, allowed)
+	return out
 }

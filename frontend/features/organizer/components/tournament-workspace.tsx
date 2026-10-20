@@ -1,0 +1,246 @@
+"use client";
+
+import Link from "next/link";
+import { ArrowLeft, ArrowUpRight, Trophy } from "lucide-react";
+import { useAuth } from "@/context/auth-context";
+import { $api } from "@/lib/api/client";
+import { RegistrationFormBuilder } from "@/features/registration-form/components/registration-form-builder";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  DashboardError,
+  DashboardLoading,
+  RefreshDashboard,
+} from "@/features/organizer/components/dashboard-shared";
+import { DashboardOverview } from "@/features/organizer/components/dashboard-overview";
+import { FundingSettingsDialog } from "@/features/organizer/components/funding-settings-dialog";
+import { PlannedEventDetailsDialog } from "@/features/organizer/components/planned-event-details-dialog";
+import { RegistrationRulesDialog } from "@/features/organizer/components/registration-rules-dialog";
+import { RegistrationTable } from "@/features/organizer/components/registration-table";
+import { StatusControlDialog } from "@/features/organizer/components/status-control-dialog";
+import { dashboardQueryOptions, statusLabel } from "@/features/organizer/utils";
+import {
+  LeaveTournamentDialog,
+  StaffRoleBadge,
+  TournamentStaffSection,
+} from "@/features/tournament-staff";
+import { SponsorshipTierSection } from "@/features/sponsorship";
+
+export function TournamentWorkspace({
+  tournamentId,
+}: {
+  tournamentId: string;
+}) {
+  const { authorizationHeader, isLoading: authLoading } = useAuth();
+  const { data, error, isLoading, isFetching, refetch } = $api.useQuery(
+    "get",
+    "/api/v1/tournaments/{id}/dashboard",
+    {
+      params: { path: { id: tournamentId } },
+      headers: { Authorization: authorizationHeader ?? "" },
+    },
+    { ...dashboardQueryOptions, enabled: Boolean(authorizationHeader) }
+  );
+  const loading = authLoading || !authorizationHeader || isLoading;
+  return (
+    <div className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-8 px-4 py-10 sm:px-8">
+      <div>
+        <Button
+          variant="outline"
+          size="sm"
+          render={<Link href="/organizer" />}
+          nativeButton={false}
+        >
+          <ArrowLeft data-icon="inline-start" />
+          My tournaments
+        </Button>
+      </div>
+      {loading ? (
+        <DashboardLoading />
+      ) : error || !data ? (
+        <DashboardError onRetry={() => void refetch()} />
+      ) : (
+        <div className="motion-safe:animate-in motion-safe:fade-in-0 flex min-w-0 flex-col gap-8 motion-safe:duration-300">
+          {(() => {
+            const isOwner = data.summary.role === "OWNER";
+            const canReview = isOwner || data.summary.role === "ADMIN";
+            const isSolo = data.summary.tournament.registrationMode === "SOLO";
+            return (
+              <>
+                <header className="flex flex-col items-start justify-between gap-5 sm:flex-row sm:items-center">
+                  <div className="flex min-w-0 flex-1 flex-col gap-4">
+                    <div className="flex flex-wrap items-center gap-2">
+                      {data.summary.role ? (
+                        <StaffRoleBadge role={data.summary.role} />
+                      ) : null}
+                      <Badge variant="secondary">
+                        {data.summary.tournament.game}
+                      </Badge>
+                      <Badge variant="outline" className="capitalize">
+                        {statusLabel(data.summary.tournament.status)}
+                      </Badge>
+                      <Badge variant="outline">
+                        {data.summary.published ? "Published" : "Unpublished"}
+                      </Badge>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <div className="bg-primary/10 text-primary flex size-12 shrink-0 items-center justify-center rounded-lg">
+                        <Trophy aria-hidden="true" />
+                      </div>
+                      <div className="min-w-0">
+                        <h1 className="text-2xl font-bold wrap-anywhere sm:text-3xl">
+                          {data.summary.tournament.name}
+                        </h1>
+                        <p className="text-muted-foreground mt-1 text-sm wrap-anywhere">
+                          Hosted by {data.summary.tournament.organizerName}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    {isOwner &&
+                    data.summary.tournament.status === "CROWDFUNDING" &&
+                    data.summary.funding.deadline ? (
+                      <PlannedEventDetailsDialog
+                        tournamentId={tournamentId}
+                        details={{
+                          location: data.summary.tournament.location,
+                          description: data.summary.tournament.description,
+                          registrationDeadline:
+                            data.summary.tournament.registrationDeadline,
+                          startAt: data.summary.tournament.startAt,
+                          endAt: data.summary.tournament.endAt,
+                        }}
+                        fundingDeadline={data.summary.funding.deadline}
+                      />
+                    ) : null}
+                    {isOwner &&
+                    data.summary.tournament.status === "CROWDFUNDING" ? (
+                      <RegistrationRulesDialog
+                        tournamentId={tournamentId}
+                        rules={{
+                          registrationMode:
+                            data.summary.tournament.registrationMode,
+                          minTeamSize: data.summary.tournament.minTeamSize,
+                          maxTeamSize: data.summary.tournament.maxTeamSize,
+                          capacity: data.summary.tournament.capacity,
+                          entryFee: data.summary.tournament.entryFee,
+                        }}
+                      />
+                    ) : null}
+                    {isOwner ? (
+                      data.summary.tournament.status === "CROWDFUNDING" &&
+                      data.summary.funding.deadline ? (
+                        <FundingSettingsDialog
+                          tournamentId={tournamentId}
+                          goal={data.summary.funding.goalAmount}
+                          deadline={data.summary.funding.deadline}
+                          registrationDeadline={
+                            data.summary.tournament.registrationDeadline
+                          }
+                        />
+                      ) : null
+                    ) : null}
+                    {isOwner ? (
+                      <StatusControlDialog
+                        tournamentId={tournamentId}
+                        currentStatus={data.summary.tournament.status}
+                        funding={data.summary.funding}
+                      />
+                    ) : (
+                      <LeaveTournamentDialog
+                        tournamentId={tournamentId}
+                        tournamentName={data.summary.tournament.name}
+                      />
+                    )}
+                    {data.summary.published ? (
+                      <Button
+                        render={<Link href={`/tournaments/${tournamentId}`} />}
+                        nativeButton={false}
+                      >
+                        Public page
+                        <ArrowUpRight data-icon="inline-end" />
+                      </Button>
+                    ) : null}
+                  </div>
+                </header>
+
+                <Tabs defaultValue="dashboard">
+                  <TabsList>
+                    <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
+                    {isOwner && isSolo ? (
+                      <TabsTrigger value="form">Registration Form</TabsTrigger>
+                    ) : null}
+                    {isOwner ? (
+                      <TabsTrigger value="staff">Manage Staff</TabsTrigger>
+                    ) : null}
+                    {isOwner ? (
+                      <TabsTrigger value="sponsorship">Sponsorship</TabsTrigger>
+                    ) : null}
+                  </TabsList>
+
+                  <TabsContent value="dashboard" keepMounted>
+                    <div className="flex flex-wrap items-center justify-between gap-4">
+                      <div>
+                        <h2 className="text-xl font-semibold tracking-tight">
+                          Overview & Metrics
+                        </h2>
+                        <p className="text-muted-foreground text-sm">
+                          Live participant pipeline, capacity, and crowdfunding
+                          metrics.
+                        </p>
+                      </div>
+                      <RefreshDashboard
+                        fetching={isFetching}
+                        onRefresh={() => void refetch()}
+                      />
+                    </div>
+                    <DashboardOverview summary={data.summary} />
+                    <RegistrationTable
+                      key={tournamentId}
+                      entries={data.entries ?? []}
+                      metrics={data.summary.metrics}
+                      tournamentId={tournamentId}
+                      canReview={canReview}
+                    />
+                  </TabsContent>
+
+                  {isOwner && isSolo ? (
+                    <TabsContent value="form" keepMounted>
+                      <RegistrationFormBuilder tournamentId={tournamentId} />
+                    </TabsContent>
+                  ) : null}
+
+                  {isOwner ? (
+                    <TabsContent value="staff" keepMounted>
+                      <TournamentStaffSection
+                        tournamentId={tournamentId}
+                        isOwner={isOwner}
+                      />
+                    </TabsContent>
+                  ) : null}
+
+                  {isOwner ? (
+                    <TabsContent value="sponsorship">
+                      <SponsorshipTierSection
+                        tournamentId={tournamentId}
+                        currency={data.summary.tournament.currency}
+                        editable={
+                          data.summary.tournament.status !== "COMPLETED" &&
+                          data.summary.tournament.status !== "CANCELLED"
+                        }
+                      />
+                    </TabsContent>
+                  ) : null}
+                </Tabs>
+              </>
+            );
+          })()}
+        </div>
+      )}
+    </div>
+  );
+}
+
+export const TournamentDashboard = TournamentWorkspace;

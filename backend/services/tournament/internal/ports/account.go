@@ -27,6 +27,7 @@ type AccountInfo struct {
 	Handle      string
 	DisplayName string
 	Status      AccountStatus
+	SponsorName string
 }
 
 type OrganizerInfo struct {

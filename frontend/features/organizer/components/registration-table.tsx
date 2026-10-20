@@ -23,6 +23,8 @@ import {
   DashboardPagination,
   DashboardStatus,
 } from "@/features/organizer/components/dashboard-shared";
+import { ReviewActions } from "@/features/organizer/components/review-actions";
+import { ViewFormAnswersDialog } from "@/features/organizer/components/view-form-answers-dialog";
 import type {
   DashboardEntry,
   OrganizerSummary,
@@ -32,9 +34,13 @@ import { formatDate, initials } from "@/features/tournaments/utils";
 export function RegistrationTable({
   entries,
   metrics,
+  tournamentId,
+  canReview,
 }: {
   entries: DashboardEntry[];
   metrics: OrganizerSummary["metrics"];
+  tournamentId: string;
+  canReview: boolean;
 }) {
   const [requestedPage, setPage] = useState(1);
   const pages = Math.max(1, Math.ceil(entries.length / 10));
@@ -77,8 +83,7 @@ export function RegistrationTable({
           <EmptyHeader>
             <EmptyTitle>No registrations yet</EmptyTitle>
             <EmptyDescription>
-              Teams appear after submitting a complete roster and paying any
-              entry fee.
+              Applications appear after a player submits and pays any entry fee.
             </EmptyDescription>
           </EmptyHeader>
         </Empty>
@@ -90,13 +95,16 @@ export function RegistrationTable({
             </TableCaption>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-1/3 sm:w-1/4">Entry</TableHead>
-                <TableHead className="hidden w-32 sm:table-cell">
+                <TableHead className="w-1/2 sm:w-1/4">Entry</TableHead>
+                <TableHead className="hidden w-44 sm:table-cell">
                   Status
                 </TableHead>
                 <TableHead>Participants</TableHead>
                 <TableHead className="hidden w-32 lg:table-cell">
                   Created
+                </TableHead>
+                <TableHead className="hidden w-56 sm:table-cell">
+                  Actions
                 </TableHead>
               </TableRow>
             </TableHeader>
@@ -115,6 +123,21 @@ export function RegistrationTable({
                         <span className="sm:hidden">
                           <DashboardStatus status={entry.status} />
                         </span>
+                        <div className="flex flex-wrap items-center gap-2 pt-2 sm:hidden">
+                          {entry.members?.[0]?.accountId ? (
+                            <ViewFormAnswersDialog
+                              tournamentId={tournamentId}
+                              accountId={entry.members[0].accountId}
+                              applicantName={entry.name}
+                            />
+                          ) : null}
+                          {canReview ? (
+                            <ReviewActions
+                              tournamentId={tournamentId}
+                              entry={entry}
+                            />
+                          ) : null}
+                        </div>
                       </div>
                     </div>
                   </TableCell>
@@ -146,6 +169,23 @@ export function RegistrationTable({
                   </TableCell>
                   <TableCell className="text-muted-foreground hidden align-top lg:table-cell">
                     {formatDate(entry.createdAt)}
+                  </TableCell>
+                  <TableCell className="hidden align-top whitespace-normal sm:table-cell">
+                    <div className="flex flex-wrap items-center gap-2">
+                      {entry.members?.[0]?.accountId ? (
+                        <ViewFormAnswersDialog
+                          tournamentId={tournamentId}
+                          accountId={entry.members[0].accountId}
+                          applicantName={entry.name}
+                        />
+                      ) : null}
+                      {canReview ? (
+                        <ReviewActions
+                          tournamentId={tournamentId}
+                          entry={entry}
+                        />
+                      ) : null}
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}

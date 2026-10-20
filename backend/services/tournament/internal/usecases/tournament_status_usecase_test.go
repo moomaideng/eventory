@@ -5,6 +5,7 @@ import (
 	"errors"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/moomaideng/eventory/services/tournament/internal/repositories"
@@ -16,8 +17,10 @@ import (
 // mutate callback against a fixed current status so transition rules can be
 // exercised without Postgres, and records what the use case tried to persist.
 type statusRepositoryStub struct {
-	current models.TournamentStatus
-	err     error
+	mockTournamentRepository
+	current    models.TournamentStatus
+	tournament *models.Tournament
+	err        error
 
 	called         bool
 	gotAccountID   uuid.UUID
@@ -43,6 +46,9 @@ func (r *statusRepositoryStub) ApplyOverride(
 	}
 
 	tournament := models.Tournament{ID: tournamentID, Status: r.current}
+	if r.tournament != nil {
+		tournament = *r.tournament
+	}
 	to, err := mutate(&tournament)
 	if err != nil {
 		return nil, err
@@ -77,9 +83,6 @@ func TestOverrideAllowsPermittedTransitions(t *testing.T) {
 		{"pull back a premature start", models.TournamentStatusOngoing, models.TournamentStatusRegistrationClosed},
 		{"finish", models.TournamentStatusOngoing, models.TournamentStatusCompleted},
 		{"cancel while live", models.TournamentStatusOngoing, models.TournamentStatusCancelled},
-		// Force-starting an under-funded campaign is the whole point of the
-		// crowdfunding escape hatch; the reason field records the risk taken.
-		{"force start under-funded campaign", models.TournamentStatusCrowdfunding, models.TournamentStatusRegistrationOpen},
 	}
 
 	for _, test := range tests {
@@ -87,7 +90,7 @@ func TestOverrideAllowsPermittedTransitions(t *testing.T) {
 			repo := &statusRepositoryStub{current: test.from}
 			accountID, tournamentID := uuid.New(), uuid.New()
 
-			result, err := usecases.NewTournamentStatusUseCase(repo, newStubAccountService()).
+			result, err := usecases.NewTournamentUseCase(repo, newStubAccountService()).
 				Override(context.Background(), accountID, tournamentID, string(test.to), validReason)
 			if err != nil {
 				t.Fatalf("expected transition to be allowed, got %v", err)
@@ -105,6 +108,99 @@ func TestOverrideAllowsPermittedTransitions(t *testing.T) {
 	}
 }
 
+func crowdfundingReadyTournament(ownerID uuid.UUID) *models.Tournament {
+	now := time.Now()
+	fundingDeadline := now.Add(24 * time.Hour)
+	return &models.Tournament{
+		Status: models.TournamentStatusCrowdfunding, Published: true,
+		Name: "Community Cup", Game: "Valorant", Location: "Main Hall",
+		RegistrationDeadline: now.Add(48 * time.Hour),
+		StartsAt:             now.Add(72 * time.Hour), EndsAt: now.Add(96 * time.Hour),
+		RegistrationMode: models.TournamentRegistrationModeTeam,
+		MinTeamSize:      3, MaxTeamSize: 5, Capacity: 16,
+		Funding: &models.TournamentFunding{GoalAmount: 1000, RaisedAmount: 1000, Deadline: &fundingDeadline},
+		Staff:   []models.TournamentStaff{{AccountID: ownerID, Role: models.TournamentStaffRoleOwner}},
+	}
+}
+
+func TestCrowdfundingLifecycle(t *testing.T) {
+	tests := []struct {
+		name    string
+		to      models.TournamentStatus
+		force   bool
+		modify  func(*models.Tournament)
+		want    error
+		problem string
+	}{
+		{name: "open when funded", to: models.TournamentStatusRegistrationOpen},
+		{name: "open when overfunded", to: models.TournamentStatusRegistrationOpen,
+			modify: func(t *models.Tournament) { t.Funding.RaisedAmount = 1200 }},
+		{name: "underfunded normal launch", to: models.TournamentStatusRegistrationOpen,
+			modify: func(t *models.Tournament) { t.Funding.RaisedAmount = 999 }, want: usecases.ErrCrowdfundingGoalNotReached},
+		{name: "force launch underfunded", to: models.TournamentStatusRegistrationOpen, force: true,
+			modify: func(t *models.Tournament) { t.Funding.RaisedAmount = 200 }},
+		{name: "missing venue", to: models.TournamentStatusRegistrationOpen,
+			modify: func(t *models.Tournament) { t.Location = " " }, want: usecases.ErrCrowdfundingPlanIncomplete, problem: "location"},
+		{name: "registration deadline passed", to: models.TournamentStatusRegistrationOpen, force: true,
+			modify: func(t *models.Tournament) { t.RegistrationDeadline = time.Now().Add(-time.Hour) }, want: usecases.ErrCrowdfundingPlanIncomplete, problem: "future registration deadline"},
+		{name: "invalid roster rules", to: models.TournamentStatusRegistrationOpen, force: true,
+			modify: func(t *models.Tournament) { t.MinTeamSize = 6 }, want: usecases.ErrCrowdfundingPlanIncomplete},
+		{name: "cancel regardless of funding", to: models.TournamentStatusCancelled,
+			modify: func(t *models.Tournament) { t.Funding.RaisedAmount = 0 }},
+		{name: "force cannot cancel", to: models.TournamentStatusCancelled, force: true, want: usecases.ErrInvalidStatusTransition},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			ownerID, tournamentID := uuid.New(), uuid.New()
+			current := crowdfundingReadyTournament(ownerID)
+			if test.modify != nil {
+				test.modify(current)
+			}
+			repo := &statusRepositoryStub{current: current.Status, tournament: current}
+			result, err := usecases.NewTournamentUseCase(repo, newStubAccountService()).
+				OverrideWithForce(context.Background(), ownerID, tournamentID, string(test.to), validReason, test.force)
+			if !errors.Is(err, test.want) {
+				t.Fatalf("wanted %v, got %v", test.want, err)
+			}
+			if test.want != nil {
+				if test.problem != "" && !strings.Contains(err.Error(), test.problem) {
+					t.Fatalf("expected useful explanation containing %q, got %v", test.problem, err)
+				}
+				if repo.persistedTo != "" {
+					t.Fatalf("unexpected status change to %s", repo.persistedTo)
+				}
+				return
+			}
+			if result.ToStatus != test.to || repo.persistedTo != test.to || repo.gotReason != validReason {
+				t.Fatalf("unexpected change: result=%+v persisted=%s reason=%s", result, repo.persistedTo, repo.gotReason)
+			}
+		})
+	}
+}
+
+func TestCrowdfundingLaunchRequiresOwnerAndReason(t *testing.T) {
+	ownerID, staffID, tournamentID := uuid.New(), uuid.New(), uuid.New()
+	repo := &statusRepositoryStub{current: models.TournamentStatusCrowdfunding, tournament: crowdfundingReadyTournament(ownerID)}
+	repo.tournament.Staff = append(repo.tournament.Staff, models.TournamentStaff{AccountID: staffID, Role: models.TournamentStaffRoleAdmin})
+	repo.tournament.Funding.RaisedAmount = 200
+	useCase := usecases.NewTournamentUseCase(repo, newStubAccountService())
+	if _, err := useCase.OverrideWithForce(context.Background(), staffID, tournamentID, "REGISTRATION_OPEN", validReason, true); !errors.Is(err, usecases.ErrNotTournamentOwner) {
+		t.Fatalf("expected owner check, got %v", err)
+	}
+	if repo.persistedTo != "" {
+		t.Fatal("staff member must not launch")
+	}
+	if _, err := useCase.OverrideWithForce(context.Background(), staffID, tournamentID, "CANCELLED", validReason, false); !errors.Is(err, usecases.ErrNotTournamentOwner) {
+		t.Fatalf("expected owner check for cancellation, got %v", err)
+	}
+	if _, err := useCase.OverrideWithForce(context.Background(), ownerID, tournamentID, "REGISTRATION_OPEN", "", true); !errors.Is(err, usecases.ErrOverrideReasonRequired) {
+		t.Fatalf("expected force-start reason check, got %v", err)
+	}
+	if _, err := useCase.OverrideWithForce(context.Background(), ownerID, tournamentID, "CANCELLED", "", false); !errors.Is(err, usecases.ErrOverrideReasonRequired) {
+		t.Fatalf("expected reason check, got %v", err)
+	}
+}
+
 func TestOverrideRejectsForbiddenTransitions(t *testing.T) {
 	tests := []struct {
 		name string
@@ -114,10 +210,9 @@ func TestOverrideRejectsForbiddenTransitions(t *testing.T) {
 		// COMPLETED is a read-only archive.
 		{"reopen a completed tournament", models.TournamentStatusCompleted, models.TournamentStatusOngoing},
 		{"cancel a completed tournament", models.TournamentStatusCompleted, models.TournamentStatusCancelled},
-		// Cancelling triggers refunds that flipping a status cannot reverse.
+		// A cancelled tournament is terminal and cannot be revived.
 		{"revive a cancelled tournament", models.TournamentStatusCancelled, models.TournamentStatusRegistrationOpen},
-		// DRAFT and CROWDFUNDING are declared placeholders; no screen handles
-		// them, so a tournament must never be moved into one.
+		// A running tournament cannot move back to its draft or funding stage.
 		{"regress to draft", models.TournamentStatusRegistrationOpen, models.TournamentStatusDraft},
 		{"regress to crowdfunding", models.TournamentStatusOngoing, models.TournamentStatusCrowdfunding},
 	}
@@ -127,7 +222,7 @@ func TestOverrideRejectsForbiddenTransitions(t *testing.T) {
 			repo := &statusRepositoryStub{current: test.from}
 
 			accountID, tournamentID := uuid.New(), uuid.New()
-			_, err := usecases.NewTournamentStatusUseCase(repo, newStubAccountService()).
+			_, err := usecases.NewTournamentUseCase(repo, newStubAccountService()).
 				Override(context.Background(), accountID, tournamentID, string(test.to), validReason)
 			if !errors.Is(err, usecases.ErrInvalidStatusTransition) {
 				t.Fatalf("expected invalid transition error, got %v", err)
@@ -143,7 +238,7 @@ func TestOverrideRejectsNoOpChange(t *testing.T) {
 	repo := &statusRepositoryStub{current: models.TournamentStatusOngoing}
 
 	accountID, tournamentID := uuid.New(), uuid.New()
-	_, err := usecases.NewTournamentStatusUseCase(repo, newStubAccountService()).
+	_, err := usecases.NewTournamentUseCase(repo, newStubAccountService()).
 		Override(context.Background(), accountID, tournamentID, "ONGOING", validReason)
 	if !errors.Is(err, usecases.ErrStatusUnchanged) {
 		t.Fatalf("expected unchanged-status error, got %v", err)
@@ -170,7 +265,7 @@ func TestOverrideRequiresAReason(t *testing.T) {
 			repo := &statusRepositoryStub{current: models.TournamentStatusRegistrationOpen}
 
 			accountID, tournamentID := uuid.New(), uuid.New()
-			_, err := usecases.NewTournamentStatusUseCase(repo, newStubAccountService()).
+			_, err := usecases.NewTournamentUseCase(repo, newStubAccountService()).
 				Override(context.Background(), accountID, tournamentID, "ONGOING", test.reason)
 			if !errors.Is(err, usecases.ErrOverrideReasonRequired) {
 				t.Fatalf("expected reason-required error, got %v", err)
@@ -186,7 +281,7 @@ func TestOverrideStoresTrimmedReason(t *testing.T) {
 	repo := &statusRepositoryStub{current: models.TournamentStatusRegistrationOpen}
 
 	accountID, tournamentID := uuid.New(), uuid.New()
-	result, err := usecases.NewTournamentStatusUseCase(repo, newStubAccountService()).
+	result, err := usecases.NewTournamentUseCase(repo, newStubAccountService()).
 		Override(context.Background(), accountID, tournamentID, "ONGOING", "   "+validReason+"   ")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -200,7 +295,7 @@ func TestOverrideNormalisesAndValidatesStatusInput(t *testing.T) {
 	t.Run("accepts lowercase and padding", func(t *testing.T) {
 		repo := &statusRepositoryStub{current: models.TournamentStatusRegistrationOpen}
 		accountID, tournamentID := uuid.New(), uuid.New()
-		if _, err := usecases.NewTournamentStatusUseCase(repo, newStubAccountService()).
+		if _, err := usecases.NewTournamentUseCase(repo, newStubAccountService()).
 			Override(context.Background(), accountID, tournamentID, "  ongoing  ", validReason); err != nil {
 			t.Fatalf("expected normalised status to be accepted, got %v", err)
 		}
@@ -212,7 +307,7 @@ func TestOverrideNormalisesAndValidatesStatusInput(t *testing.T) {
 	t.Run("rejects an unknown status", func(t *testing.T) {
 		repo := &statusRepositoryStub{current: models.TournamentStatusRegistrationOpen}
 		accountID, tournamentID := uuid.New(), uuid.New()
-		_, err := usecases.NewTournamentStatusUseCase(repo, newStubAccountService()).
+		_, err := usecases.NewTournamentUseCase(repo, newStubAccountService()).
 			Override(context.Background(), accountID, tournamentID, "BANANA", validReason)
 		if !errors.Is(err, usecases.ErrUnknownStatus) {
 			t.Fatalf("expected unknown-status error, got %v", err)
@@ -233,7 +328,7 @@ func TestOverrideTranslatesOwnershipFailureToNotFound(t *testing.T) {
 	}
 
 	accountID, tournamentID := uuid.New(), uuid.New()
-	_, err := usecases.NewTournamentStatusUseCase(repo, newStubAccountService()).
+	_, err := usecases.NewTournamentUseCase(repo, newStubAccountService()).
 		Override(context.Background(), accountID, tournamentID, "ONGOING", validReason)
 	if !errors.Is(err, usecases.ErrTournamentNotFound) {
 		t.Fatalf("expected tournament-not-found error, got %v", err)
@@ -243,7 +338,7 @@ func TestOverrideTranslatesOwnershipFailureToNotFound(t *testing.T) {
 func TestHistoryTranslatesOwnershipFailureToNotFound(t *testing.T) {
 	repo := &statusRepositoryStub{err: repositories.ErrTournamentNotFound}
 
-	_, err := usecases.NewTournamentStatusUseCase(repo, newStubAccountService()).
+	_, err := usecases.NewTournamentUseCase(repo, newStubAccountService()).
 		History(context.Background(), uuid.New(), uuid.New())
 	if !errors.Is(err, usecases.ErrTournamentNotFound) {
 		t.Fatalf("expected tournament-not-found error, got %v", err)

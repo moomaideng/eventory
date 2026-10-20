@@ -36,6 +36,8 @@ type TeamLobbyRepository interface {
 	Lock(ctx context.Context, teamID uuid.UUID) (*models.TournamentTeam, error)
 	RemoveMember(ctx context.Context, teamID, memberID uuid.UUID) (*models.TournamentTeam, error)
 	Disband(ctx context.Context, teamID uuid.UUID) error
+	Pending(ctx context.Context) ([]models.TournamentTeam, error)
+	ApplyPayment(ctx context.Context, team *models.TournamentTeam, paymentID uuid.UUID, status string) error
 }
 
 type teamLobbyRepository struct {
@@ -65,6 +67,9 @@ func (r *teamLobbyRepository) FindByID(ctx context.Context, id uuid.UUID) (*mode
 }
 
 func (r *teamLobbyRepository) FindByInviteCode(ctx context.Context, inviteCode string) (*models.TournamentTeam, error) {
+	if inviteCode == "" {
+		return nil, ErrTeamLobbyNotFound
+	}
 	return r.find(ctx, r.db.WithContext(ctx).Where("invite_code = ?", inviteCode))
 }
 
@@ -186,7 +191,7 @@ func (r *teamLobbyRepository) Lock(ctx context.Context, teamID uuid.UUID) (*mode
 			return ErrTeamLobbyNotForming
 		}
 		now := time.Now().UTC().Truncate(time.Microsecond)
-		if !tournament.Published || tournament.RegistrationMode != models.TournamentRegistrationModeTeam || tournament.Status != models.TournamentStatusRegistrationOpen || !now.Before(tournament.RegistrationDeadline) {
+		if !tournament.Published || tournament.Status != models.TournamentStatusRegistrationOpen || !now.Before(tournament.RegistrationDeadline) {
 			return ErrTournamentRegistrationClosed
 		}
 		if len(team.Members) < team.Tournament.MinTeamSize {
@@ -306,4 +311,29 @@ func accountHasActiveTournamentTeam(tx *gorm.DB, tournamentID, accountID uuid.UU
 		return ErrAlreadyInTournamentLobby
 	}
 	return nil
+}
+
+func (r *teamLobbyRepository) Pending(ctx context.Context) ([]models.TournamentTeam, error) {
+	var teams []models.TournamentTeam
+	err := r.db.WithContext(ctx).Where("status = ?", models.TournamentTeamStatusPaymentPending).Find(&teams).Error
+	return teams, err
+}
+
+func (r *teamLobbyRepository) ApplyPayment(ctx context.Context, team *models.TournamentTeam, paymentID uuid.UUID, status string) error {
+	updates := map[string]any{"payment_id": paymentID}
+	switch status {
+	case "PAID":
+		updates["status"] = models.TournamentTeamStatusLocked
+		updates["locked_at"] = time.Now().UTC()
+	case "EXPIRED", "CANCELLED":
+		updates["status"] = models.TournamentTeamStatusForming
+		updates["payment_attempt_id"] = nil
+		updates["payment_id"] = nil
+		updates["payment_payer_id"] = nil
+		updates["payment_expires_at"] = nil
+		updates["payment_amount_minor"] = 0
+	}
+	return r.db.WithContext(ctx).Model(&models.TournamentTeam{}).
+		Where("id = ? AND status = ? AND payment_attempt_id = ?", team.ID, models.TournamentTeamStatusPaymentPending, team.PaymentAttemptID).
+		Updates(updates).Error
 }

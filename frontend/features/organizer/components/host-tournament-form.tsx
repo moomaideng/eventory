@@ -15,6 +15,7 @@ import {
 import { HostTournamentGeneralCard } from "./host-tournament-general-card";
 import { HostTournamentFormatCard } from "./host-tournament-format-card";
 import { HostTournamentScheduleCard } from "./host-tournament-schedule-card";
+import { HostTournamentFundingCard } from "./host-tournament-funding-card";
 
 export interface HostTournamentFormProps {
   organizerName?: string;
@@ -44,15 +45,16 @@ export function HostTournamentForm({
   const [registrationDeadline, setRegistrationDeadline] = useState("");
   const [startAt, setStartAt] = useState("");
   const [endAt, setEndAt] = useState("");
+  const [crowdfunding, setCrowdfunding] = useState(false);
+  const [fundingGoal, setFundingGoal] = useState(0);
+  const [fundingDeadline, setFundingDeadline] = useState("");
 
   const [fieldErrors, setFieldErrors] = useState<FormErrors>({});
   const [apiError, setApiError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Sync draft values up to parent workspace for the live preview card
-  function updateAndNotify(
-    overrides: Partial<CreateTournamentFormInput> = {}
-  ) {
+  function updateAndNotify(overrides: Partial<CreateTournamentFormInput> = {}) {
     const updated: CreateTournamentFormInput = {
       name,
       game,
@@ -66,6 +68,9 @@ export function HostTournamentForm({
       registrationDeadline,
       startAt,
       endAt,
+      crowdfunding,
+      fundingGoal,
+      fundingDeadline,
       ...overrides,
     };
     onValuesChange(updated);
@@ -103,6 +108,9 @@ export function HostTournamentForm({
       registrationDeadline,
       startAt,
       endAt,
+      crowdfunding,
+      fundingGoal,
+      fundingDeadline,
     };
 
     const result = createTournamentFormSchema.safeParse(payload);
@@ -144,6 +152,14 @@ export function HostTournamentForm({
           ).toISOString(),
           startAt: new Date(result.data.startAt).toISOString(),
           endAt: new Date(result.data.endAt).toISOString(),
+          ...(result.data.crowdfunding
+            ? {
+                fundingGoal: result.data.fundingGoal,
+                fundingDeadline: new Date(
+                  result.data.fundingDeadline
+                ).toISOString(),
+              }
+            : {}),
         },
       });
 
@@ -167,7 +183,7 @@ export function HostTournamentForm({
       {apiError ? (
         <div
           role="alert"
-          className="bg-destructive/10 text-destructive flex items-center gap-3 rounded-lg border border-destructive/20 p-3 text-sm"
+          className="bg-destructive/10 text-destructive border-destructive/20 flex items-center gap-3 rounded-lg border p-3 text-sm"
         >
           <AlertCircle className="size-4 shrink-0" />
           <span>{apiError}</span>
@@ -177,6 +193,7 @@ export function HostTournamentForm({
       {/* 1. General Information Card (Basic Info + Description & Rules) */}
       <HostTournamentGeneralCard
         organizerName={organizerName}
+        crowdfunding={crowdfunding}
         name={name}
         onNameChange={(val) => {
           setName(val);
@@ -237,6 +254,7 @@ export function HostTournamentForm({
 
       {/* 3. Tournament Schedule Card */}
       <HostTournamentScheduleCard
+        crowdfunding={crowdfunding}
         registrationDeadline={registrationDeadline}
         onRegistrationDeadlineChange={(val) => {
           setRegistrationDeadline(val);
@@ -261,6 +279,27 @@ export function HostTournamentForm({
         errors={fieldErrors}
       />
 
+      <HostTournamentFundingCard
+        enabled={crowdfunding}
+        onEnabledChange={(value) => {
+          setCrowdfunding(value);
+          updateAndNotify({ crowdfunding: value });
+        }}
+        goal={fundingGoal}
+        onGoalChange={(value) => {
+          setFundingGoal(value);
+          setFieldErrors((prev) => ({ ...prev, fundingGoal: undefined }));
+          updateAndNotify({ fundingGoal: value });
+        }}
+        deadline={fundingDeadline}
+        onDeadlineChange={(value) => {
+          setFundingDeadline(value);
+          setFieldErrors((prev) => ({ ...prev, fundingDeadline: undefined }));
+          updateAndNotify({ fundingDeadline: value });
+        }}
+        errors={fieldErrors}
+      />
+
       {/* Form Submission Actions */}
       <div className="flex flex-col-reverse gap-3 pt-2 sm:flex-row sm:items-center sm:justify-end">
         <Button
@@ -281,7 +320,7 @@ export function HostTournamentForm({
           ) : (
             <>
               <PlusCircle data-icon="inline-start" />
-              Publish Tournament
+              {crowdfunding ? "Start Crowdfunding" : "Publish Tournament"}
             </>
           )}
         </Button>

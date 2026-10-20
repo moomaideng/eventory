@@ -1,15 +1,15 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { TournamentDashboard } from "@/features/organizer/components/tournament-dashboard";
+import { TournamentWorkspace } from "@/features/organizer/components/tournament-workspace";
 import { tournamentIdParamSchema } from "@/features/tournaments/schemas";
 
 export const metadata: Metadata = {
-  title: "Tournament Dashboard - Eventory",
+  title: "Tournament Workspace - Eventory",
   description:
-    "View registrations, participant rosters, and funding metrics for your tournament.",
+    "View registrations, participant rosters, configure registration questions, and manage staff for your tournament.",
 };
 
-export default async function TournamentDashboardPage({
+export default async function TournamentWorkspacePage({
   params,
 }: {
   params: Promise<{ tournamentId: string }>;
@@ -20,5 +20,5 @@ export default async function TournamentDashboardPage({
     notFound();
   }
 
-  return <TournamentDashboard tournamentId={parsed.data} />;
+  return <TournamentWorkspace tournamentId={parsed.data} />;
 }

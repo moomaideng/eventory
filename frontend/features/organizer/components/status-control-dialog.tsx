@@ -44,13 +44,16 @@ import {
   TERMINAL_WARNING,
   type TournamentStatus,
 } from "@/features/organizer/utils";
+import type { OrganizerSummary } from "@/features/organizer/utils";
 
 export function StatusControlDialog({
   tournamentId,
   currentStatus,
+  funding,
 }: {
   tournamentId: string;
   currentStatus: string;
+  funding?: OrganizerSummary["funding"];
 }) {
   const [open, setOpen] = useState(false);
   const { authorizationHeader } = useAuth();
@@ -91,20 +94,34 @@ export function StatusControlDialog({
     history.isSuccess && (history.data?.allowedTransitions?.length ?? 0) === 0;
   const isKnownTerminalStatus =
     currentStatus === "COMPLETED" || currentStatus === "CANCELLED";
+  const isCrowdfunding = currentStatus === "CROWDFUNDING";
+  const underGoal =
+    isCrowdfunding &&
+    !(
+      funding &&
+      funding.goalAmount > 0 &&
+      funding.raisedAmount >= funding.goalAmount
+    );
 
   const options = useMemo(
     () =>
       (history.data?.allowedTransitions ?? []).map((value) => ({
         value,
-        label: statusTitle(value),
+        label:
+          isCrowdfunding && value === "REGISTRATION_OPEN"
+            ? underGoal
+              ? "Force open registration"
+              : "Open registration"
+            : isCrowdfunding && value === "CANCELLED"
+              ? "Cancel tournament"
+              : statusTitle(value),
       })),
-    [history.data?.allowedTransitions]
+    [history.data?.allowedTransitions, isCrowdfunding, underGoal]
   );
 
   const parsed = statusOverrideSchema.safeParse({ status, reason });
-  const fieldErrors = submitted && !parsed.success
-    ? parsed.error.flatten().fieldErrors
-    : {};
+  const fieldErrors =
+    submitted && !parsed.success ? parsed.error.flatten().fieldErrors : {};
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -120,6 +137,9 @@ export function StatusControlDialog({
         body: {
           ...parsed.data,
           status: parsed.data.status as TournamentStatus,
+          force: Boolean(
+            underGoal && parsed.data.status === "REGISTRATION_OPEN"
+          ),
         },
       },
       {
@@ -138,17 +158,19 @@ export function StatusControlDialog({
         render={<Button variant="outline" disabled={isKnownTerminalStatus} />}
       >
         <Settings2 data-icon="inline-start" />
-        Change status
+        {isCrowdfunding ? "Launch or cancel" : "Change status"}
       </DialogTrigger>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Change tournament status</DialogTitle>
+          <DialogTitle>
+            {isCrowdfunding
+              ? "Launch or cancel tournament"
+              : "Change tournament status"}
+          </DialogTitle>
           <DialogDescription>
-            This tournament is currently{" "}
-            <span className="font-medium">
-              {statusTitle(currentStatus)}
-            </span>
-            . The change is recorded with your name, the reason, and the time.
+            {isCrowdfunding
+              ? "Review the event plan and registration rules before opening registration. Your decision and reason will be recorded."
+              : `This tournament is currently ${statusTitle(currentStatus)}. The change is recorded with your name, the reason, and the time.`}
           </DialogDescription>
         </DialogHeader>
 
@@ -176,9 +198,25 @@ export function StatusControlDialog({
           </Alert>
         ) : (
           <form onSubmit={handleSubmit} className="flex flex-col gap-6">
+            {isCrowdfunding ? (
+              <Alert>
+                <AlertTitle>
+                  {underGoal
+                    ? "Funding goal not reached"
+                    : "Funding goal reached"}
+                </AlertTitle>
+                <AlertDescription>
+                  {underGoal
+                    ? "Opening registration now is a force start. Check the event plan and registration rules first, then record why you are starting early."
+                    : "You can open registration after reviewing the event plan and registration rules."}
+                </AlertDescription>
+              </Alert>
+            ) : null}
             <FieldGroup>
               <Field data-invalid={fieldErrors.status ? true : undefined}>
-                <FieldLabel htmlFor="status-override">New status</FieldLabel>
+                <FieldLabel htmlFor="status-override">
+                  {isCrowdfunding ? "Decision" : "New status"}
+                </FieldLabel>
                 <Select
                   items={options}
                   value={status}
@@ -210,7 +248,9 @@ export function StatusControlDialog({
               </Field>
 
               <Field data-invalid={fieldErrors.reason ? true : undefined}>
-                <FieldLabel htmlFor="status-reason">Reason</FieldLabel>
+                <FieldLabel htmlFor="status-reason">
+                  Reason for this decision
+                </FieldLabel>
                 <Textarea
                   id="status-reason"
                   rows={4}
@@ -218,7 +258,11 @@ export function StatusControlDialog({
                   maxLength={REASON_MAX_LENGTH}
                   aria-invalid={fieldErrors.reason ? true : undefined}
                   onChange={(event) => setReason(event.target.value)}
-                  placeholder="Why is the status changing?"
+                  placeholder={
+                    isCrowdfunding
+                      ? "Why are you opening or cancelling now?"
+                      : "Why is the status changing?"
+                  }
                 />
                 {fieldErrors.reason ? (
                   <FieldError>{fieldErrors.reason[0]}</FieldError>
@@ -257,11 +301,21 @@ export function StatusControlDialog({
               >
                 Cancel
               </DialogClose>
-              <Button type="submit" disabled={override.isPending}>
+              <Button
+                type="submit"
+                variant={status === "CANCELLED" ? "destructive" : "default"}
+                disabled={override.isPending}
+              >
                 {override.isPending ? (
                   <Spinner data-icon="inline-start" />
                 ) : null}
-                Change status
+                {isCrowdfunding && status === "REGISTRATION_OPEN"
+                  ? underGoal
+                    ? "Force open registration"
+                    : "Open registration"
+                  : isCrowdfunding && status === "CANCELLED"
+                    ? "Cancel tournament"
+                    : "Change status"}
               </Button>
             </DialogFooter>
           </form>

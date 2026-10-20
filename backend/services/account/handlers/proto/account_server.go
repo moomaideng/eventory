@@ -94,11 +94,16 @@ func (s *AccountServer) GetAccountByHandle(ctx context.Context, req *accountv1.G
 }
 
 func toProtoAccount(account *models.Account) *accountv1.Account {
+	var sponsorName string
+	if account.SponsorProfile != nil {
+		sponsorName = account.SponsorProfile.SponsorName
+	}
 	return &accountv1.Account{
 		Id:          account.ID.String(),
 		Handle:      account.Handle,
 		DisplayName: account.DisplayName,
 		Status:      string(account.Status),
+		SponsorName: sponsorName,
 	}
 }
 

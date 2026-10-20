@@ -29,7 +29,7 @@ flowchart LR
 | **Frontend** | The pages you see and click | `frontend/` |
 | **Account / Tournament / Notification** | Backend services | `backend/services/*`, Compose profile `apps` |
 | **Traefik, Postgres, MongoDB, RabbitMQ & Mailpit** | Gateway, data, messaging, and local email | Compose profile `infra` |
-| **Supabase** | Google login and uploads | external |
+| **Supabase** | Google login | external |
 
 ---
 
@@ -46,6 +46,8 @@ task dev
 ```
 
 Backend defaults live in `backend/services/<name>/.env.default`. A local `.env` next to it is only for overrides.
+
+For Google/Supabase login, set `SUPABASE_URL` in each service's local `.env` (`account`, `tournament`, and `payment`) to the same project as `NEXT_PUBLIC_SUPABASE_URL` in the frontend. The placeholder default supports dev-token login only; it cannot verify real login sessions. Restart a service after changing its environment file.
 
 Then open:
 
@@ -79,6 +81,14 @@ task notification:smoke # publish a sample registration email to Mailpit
 
 An existing Postgres volume from the old single-database setup does not contain `account_db` and `tournament_db`. Run `task db:reset` once (delete local data), then `task dev` or `task dev:backend` if you need the stack again.
 
+### Sponsorship checkout (US5-5)
+
+Choose a package on a published tournament, set up a sponsor profile if needed, and upload a PNG/JPEG logo (up to 1 MB) with an HTTP(S) brand link. Payment is due within 15 minutes. Reservations are released after payment verification, so an outage can keep a slot reserved longer to protect successful payments that have not yet been confirmed. The existing mock payment page, invoice history, and PDF receipts are reused. A verified successful payment publishes the brand and updates funding; failed, cancelled, or expired attempts do not.
+
+Logos are stored as binary data in `tournament_db`, separate from pledge records so lists do not load image bytes. The existing `task db:reset` clears both pledges and logos. No storage bucket, extra volume, or new secret is required. Pending payments are checked in the background, so closing the checkout does not lose a successful pledge. Sponsorship stays open after crowdfunding, through the tournament's end; completed or cancelled tournaments cannot start new checkouts. Crowdfunding-failure refunds remain US5-6.
+
+Removing a package archives it rather than deleting its checkout records. Archived packages are hidden from selection and management and cannot be purchased or edited; old sponsorship and invoice history remains accessible. Packages with pending or confirmed sponsorships remain locked against editing and archiving.
+
 ---
 
 ## Documentation
@@ -103,7 +113,8 @@ An existing Postgres volume from the old single-database setup does not contain 
 | Backend | Go 1.26, Huma v2, Chi router, GORM, gRPC |
 | Database | PostgreSQL 18 |
 | Messaging & email | RabbitMQ, SMTP (Mailpit locally) |
-| Auth & files | Supabase |
+| Auth | Supabase |
+| Sponsor logos | PostgreSQL (`bytea`) |
 | Frontend ↔ backend | OpenAPI types + TanStack Query |
 
 ---

@@ -1,7 +1,17 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { formatAmount, formatPaymentDate } from "./utils.ts";
-import { historyDatesSchema, paymentIdSchema } from "./schemas.ts";
+import { historyDatesSchema, paymentIdSchema, sponsorPaymentRouteSchema } from "./schemas.ts";
+
+test("sponsor payment routes accept only invoice, checkout and receipt paths", () => {
+  const id = "66666666-6666-4666-8666-666666666666";
+  for (const path of [[id], [id, "checkout"], [id, "receipt"]]) {
+    assert.equal(sponsorPaymentRouteSchema.safeParse(path).success, true);
+  }
+  for (const path of [[], ["invalid"], [id, "other"], [id, "receipt", "extra"]]) {
+    assert.equal(sponsorPaymentRouteSchema.safeParse(path).success, false);
+  }
+});
 
 test("money display preserves satang, including the largest allowed amount", () => {
   assert.equal(
