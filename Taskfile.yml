@@ -55,8 +55,8 @@ tasks:
     cmds:
       - "{{.COMPOSE_APPS}} up -d --wait postgres"
       - "{{.COMPOSE_APPS}} exec -T postgres bash /docker-entrypoint-initdb.d/01-init-databases.sh"
-      - "{{.COMPOSE_APPS}} up -d --force-recreate account-migrate tournament-migrate payment-migrate"
-      - "{{.COMPOSE_APPS}} wait account-migrate tournament-migrate payment-migrate"
+      - "{{.COMPOSE_APPS}} up -d --force-recreate account-migrate tournament-migrate payment-migrate notification-migrate"
+      - "{{.COMPOSE_APPS}} wait account-migrate tournament-migrate payment-migrate notification-migrate"
 
   seed:
     desc: Seed sample accounts, tournaments and mock payments (apps must already be up)
@@ -66,12 +66,17 @@ tasks:
       - go -C backend run ./services/payment/cmd/seed
 
   db:reset:
-    desc: Stop the stack and delete the local Postgres and Mongodb volume
+    desc: Stop the stack and delete the local Postgres, MongoDB, and RabbitMQ volumes
     cmds:
       - "{{.COMPOSE_ALL}} down --remove-orphans"
-      - docker volume rm -f eventory_postgres_data eventory_mongo_data
+      - docker volume rm -f eventory_postgres_data eventory_mongo_data eventory_rabbitmq_data
 
   # --- Tooling ---
+
+  notification:smoke:
+    desc: Publish a sample registration.submitted event and inspect it in Mailpit on port 8025
+    cmds:
+      - go -C backend run ./services/notification/cmd/publish-registration-submitted
 
   build:
     desc: Rebuild Compose images when Dockerfiles change
@@ -103,32 +108,6 @@ tasks:
     cmds:
       - npm ci --no-fund --no-audit
       - cp package-lock.json node_modules/.install-stamp
-
-  migrate:
-    desc: Create service databases and apply their schemas
-    cmds:
-      - "{{.COMPOSE_APPS}} up -d --build --wait postgres"
-      - "{{.COMPOSE_APPS}} exec -T postgres bash /docker-entrypoint-initdb.d/01-init-databases.sh"
-      - "{{.COMPOSE_APPS}} up -d --build --force-recreate account-migrate tournament-migrate payment-migrate notification-migrate"
-      - "{{.COMPOSE_APPS}} wait account-migrate tournament-migrate payment-migrate notification-migrate"
-
-  seed:
-    desc: Seed sample accounts, tournaments and mock payments (apps must already be up)
-    cmds:
-      - go -C backend run ./services/account/cmd/seed
-      - go -C backend run ./services/tournament/cmd/seed
-      - go -C backend run ./services/payment/cmd/seed
-
-  notification:smoke:
-    desc: Publish a sample registration.submitted event and inspect it in Mailpit on port 8025
-    cmds:
-      - go -C backend run ./services/notification/cmd/publish-registration-submitted
-
-  db:reset:
-    desc: Stop the stack and delete the local Postgres, MongoDB, and RabbitMQ volumes
-    cmds:
-      - "{{.COMPOSE_ALL}} down --remove-orphans"
-      - docker volume rm -f eventory_postgres_data eventory_mongo_data eventory_rabbitmq_data
 
   gen-proto:
     desc: Lint and regenerate gRPC code
