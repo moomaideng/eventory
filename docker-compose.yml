@@ -124,6 +124,16 @@ services:
     ports:
       - "127.0.0.1:${LOKI_PORT:-3100}:3100"
 
+  tempo:
+    image: grafana/tempo:3.1.0
+    profiles: [obs]
+    command: -config.file=/etc/tempo/tempo.yaml
+    volumes:
+      - ./docker/observability/tempo-config.yml:/etc/tempo/tempo.yaml:ro
+      - tempo_data:/var/tempo
+    ports:
+      - "127.0.0.1:${TEMPO_PORT:-3200}:3200"
+
   alloy:
     image: grafana/alloy:v1.21.0
     profiles: [obs]
@@ -178,6 +188,7 @@ services:
       SERVICE: account
       ENVIRONMENT: development
       DB_DSN: postgresql://${POSTGRES_USER:-admin}:${POSTGRES_PASSWORD:-password123}@postgres:5432/account_db?sslmode=disable
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
     ports:
       - "127.0.0.1:8081:8081"
       - "127.0.0.1:9091:9091"
@@ -236,6 +247,7 @@ services:
       PAYMENT_SERVICE_KEY: ${PAYMENT_SERVICE_KEY:-local-payment-service-key-not-for-production}
       MONGO_URI: mongodb://${MONGO_USER:-admin}:${MONGO_PASSWORD:-password123}@mongodb:27017/tournament_db?authSource=admin
       MONGO_DB_NAME: tournament_db
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
     ports:
       - "127.0.0.1:8082:8082"
     healthcheck:
@@ -290,6 +302,7 @@ services:
       ENVIRONMENT: development
       DB_DSN: postgresql://${POSTGRES_USER:-admin}:${POSTGRES_PASSWORD:-password123}@postgres:5432/payment_db?sslmode=disable
       PAYMENT_SERVICE_KEY: ${PAYMENT_SERVICE_KEY:-local-payment-service-key-not-for-production}
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
     ports:
       - "127.0.0.1:8083:8083"
     healthcheck:
@@ -418,4 +431,5 @@ volumes:
   frontend_node_modules:
   frontend_next:
   loki_data:
+  tempo_data:
   grafana_data:

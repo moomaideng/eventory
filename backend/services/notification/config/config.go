@@ -12,7 +12,11 @@ import (
 	sharedconfig "github.com/moomaideng/eventory/internal/config"
 )
 
-const serviceDir = "services/notification"
+const (
+	serviceDir = "services/notification"
+	// ServiceName identifies this service in logs and traces.
+	ServiceName = "notification"
+)
 
 type Config struct {
 	HTTPPort           string               `mapstructure:"http_port"`

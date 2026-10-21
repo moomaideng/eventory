@@ -108,6 +108,15 @@ services:
       - loki_data:/loki
     restart: unless-stopped
 
+  tempo:
+    image: grafana/tempo:3.1.0
+    mem_limit: 256m
+    command: -config.file=/etc/tempo/tempo.yaml
+    volumes:
+      - ./docker/observability/tempo-config.yml:/etc/tempo/tempo.yaml:ro
+      - tempo_data:/var/tempo
+    restart: unless-stopped
+
   alloy:
     image: grafana/alloy:v1.21.0
     mem_limit: 256m
@@ -163,6 +172,7 @@ services:
       HTTP_PORT: "8081"
       GRPC_PORT: "9091"
       DB_DSN: postgresql://admin:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@postgres:5432/account_db?sslmode=disable
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://alloy:4318
       SUPABASE_URL: ${SUPABASE_URL:?SUPABASE_URL is required}
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:?CORS_ALLOWED_ORIGINS is required}
     healthcheck:
@@ -229,6 +239,7 @@ services:
       PAYMENT_SERVICE_KEY: ${PAYMENT_SERVICE_KEY:?PAYMENT_SERVICE_KEY is required}
       MONGO_URI: mongodb://admin:${MONGO_PASSWORD:?MONGO_PASSWORD is required}@mongodb:27017/tournament_db?authSource=admin
       MONGO_DB_NAME: tournament_db
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://alloy:4318
       SUPABASE_URL: ${SUPABASE_URL:?SUPABASE_URL is required}
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:?CORS_ALLOWED_ORIGINS is required}
     healthcheck:
@@ -284,6 +295,7 @@ services:
       HTTP_PORT: "8083"
       DB_DSN: postgresql://admin:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@postgres:5432/payment_db?sslmode=disable
       PAYMENT_SERVICE_KEY: ${PAYMENT_SERVICE_KEY:?PAYMENT_SERVICE_KEY is required}
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://alloy:4318
       SUPABASE_URL: ${SUPABASE_URL:?SUPABASE_URL is required}
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:?CORS_ALLOWED_ORIGINS is required}
     healthcheck:
@@ -416,4 +428,5 @@ volumes:
   rabbitmq_data:
   traefik_letsencrypt:
   loki_data:
+  tempo_data:
   grafana_data:

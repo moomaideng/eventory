@@ -10,12 +10,14 @@ import (
 	"github.com/go-chi/cors"
 	"github.com/moomaideng/eventory/internal/grpcx"
 	"github.com/moomaideng/eventory/internal/middlewares"
+	"github.com/moomaideng/eventory/internal/telemetry"
 	"github.com/moomaideng/eventory/services/account/config"
 	protohandlers "github.com/moomaideng/eventory/services/account/handlers/proto"
 	resthandlers "github.com/moomaideng/eventory/services/account/handlers/rest"
 	"github.com/moomaideng/eventory/services/account/internal/repositories"
 	"github.com/moomaideng/eventory/services/account/internal/usecases"
 	accountv1 "github.com/moomaideng/eventory/services/account/pkg/proto/account/v1"
+	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"google.golang.org/grpc"
 	"gorm.io/gorm"
 )
@@ -29,7 +31,10 @@ func NewApp(db *gorm.DB, cfg config.Config) *App {
 	accountRepo := repositories.NewAccountRepository(db)
 	accountUseCase := usecases.NewAccountUseCase(accountRepo)
 
-	grpcServer := grpc.NewServer(grpc.UnaryInterceptor(grpcx.UnaryServerLogging(cfg.Logging.SlowRequestMS)))
+	grpcServer := grpc.NewServer(
+		grpc.StatsHandler(otelgrpc.NewServerHandler()),
+		grpc.UnaryInterceptor(grpcx.UnaryServerLogging(cfg.Logging.SlowRequestMS)),
+	)
 	accountv1.RegisterAccountServiceServer(grpcServer, protohandlers.NewAccountServer(accountUseCase))
 
 	return &App{
@@ -40,6 +45,7 @@ func NewApp(db *gorm.DB, cfg config.Config) *App {
 
 func newHTTPRouter(db *gorm.DB, cfg config.Config, accountUseCase *usecases.AccountUseCase) http.Handler {
 	router := chi.NewMux()
+	router.Use(telemetry.HTTPMiddleware(config.ServiceName))
 	router.Use(middlewares.RequestID)
 	router.Use(middlewares.AccessLog(cfg.Logging.SlowRequestMS))
 	router.Use(middlewares.Recover)

@@ -3,8 +3,10 @@
 version: "3"
 
 vars:
-  COMPOSE_ALL: docker compose --profile infra --profile apps --profile web
   COMPOSE_APPS: docker compose --profile infra --profile apps
+  COMPOSE_WEB: docker compose --profile infra --profile apps --profile web
+  COMPOSE_OBS: docker compose --profile infra --profile apps --profile obs
+  COMPOSE_ALL: docker compose --profile infra --profile apps --profile web --profile obs
 
 tasks:
   default:
@@ -30,12 +32,21 @@ tasks:
       - task: migrate
       - "{{.COMPOSE_APPS}} up -d"
 
+  dev:obs:
+    desc: Migrate and start infra+apps+observability (Grafana at /grafana)
+    deps: [build]
+    env:
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://alloy:4318
+    cmds:
+      - task: migrate
+      - "{{.COMPOSE_OBS}} up -d"
+
   dev:docker:
     desc: Migrate and start infra+apps+frontend container
     deps: [build]
     cmds:
       - task: migrate
-      - "{{.COMPOSE_ALL}} up -d"
+      - "{{.COMPOSE_WEB}} up -d"
 
   logs:
     desc: Follow account, tournament, and payment logs

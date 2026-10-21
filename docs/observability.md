@@ -1,35 +1,66 @@
 # Observability
 
-Grafana + Loki + Alloy, for reading structured logs without SSH-ing into app containers. Alloy scrapes Docker logs and ships them to Loki; Grafana queries Loki.
+Read logs and traces in Grafana instead of SSH-ing into containers.
 
-## Local
+```mermaid
+flowchart LR
+    Apps["Go services"] -- "OTLP :4318" --> Alloy
+    Docker["Docker logs"] --> Alloy
+    Alloy --> Loki
+    Alloy --> Tempo
+    Loki --> Grafana
+    Tempo --> Grafana
+```
+
+## Run locally
 
 ```bash
-docker compose --profile infra --profile apps --profile obs up -d
+task dev:obs
 ```
 
 Grafana: [http://localhost:8080/grafana](http://localhost:8080/grafana), user `admin`, password `admin` (override with `GRAFANA_PASSWORD`).
 
-Go services log JSON in production by default; locally they default to logfmt. Both are structured and equally filterable, just via different LogQL parser stages. `LOGGING_FORMAT=json` only matters for Explore's JSON-aware UI, not for filtering. To switch a service to JSON locally: `backend/services/<service>/.env` (gitignored) with `LOGGING_FORMAT=json`, then `docker compose up -d --force-recreate account`.
+`task down` stops everything, including the observability containers.
 
-### Explore recipe
+## Logs
 
-JSON mode:
-
-```logql
-{compose_service="tournament"} | json | request_id="<id>"
-```
-
-Logfmt mode (local default, same precision):
+Alloy scrapes containers labeled `eventory.logs=true` into Loki. Query them in Explore → Loki:
 
 ```logql
 {compose_service="tournament"} | logfmt | request_id="<id>"
 ```
 
-Swap `tournament` for any scraped service. Scraping is controlled by the `eventory.logs=true` Compose label (see `docker/observability/config.alloy`); no service list here since it drifts.
+Use `| json` instead of `| logfmt` in production, where services log JSON. Locally they log logfmt; to switch, set `LOGGING_FORMAT=json` in `backend/services/<service>/.env` and recreate the container.
 
-`frontend` and `traefik` don't use `slog`, so their lines are unstructured. Only substring filtering applies: `{compose_service="traefik"} |= "error"`.
+`frontend` and `traefik` logs are unstructured, so only substring filters work: `{compose_service="traefik"} |= "error"`.
+
+## Traces
+
+Account, Tournament and Payment send traces for inbound HTTP, Tournament → Account gRPC, and Postgres queries. `/health` is skipped.
+
+To see a full HTTP → gRPC → SQL trace locally, call a route that needs an organizer profile:
+
+```bash
+curl -X POST http://localhost:8082/api/v1/tournaments \
+  -H "Authorization: Bearer dev-token" -H "Content-Type: application/json" -d '{}'
+```
+
+Then open Explore → Tempo → Search and pick the `tournament` service.
+
+Every log line written during a traced request carries `trace_id`, so you can jump between the two:
+
+- **Trace → logs:** open a span and use "Logs for this span".
+- **Log → trace:** click the `TraceID` link on a log line.
+
+To find the logs for a trace by hand: `{compose_service="tournament"} |= "<trace_id>"`.
 
 ## Production
 
-Grafana is public at `https://eventory.ddns.net/grafana`, not SSH-tunnel-only. Deliberate for this course project: it has a real login (`PROD_GRAFANA_PASSWORD`, see `docs/deployment.md`), and being reachable without an SSH hop outweighs keeping it private.
+Grafana is public at `https://eventory.ddns.net/grafana`, protected by its own login (`PROD_GRAFANA_PASSWORD`, see [deployment.md](deployment.md)). Loki, Tempo and Alloy are internal to the Compose network, and each obs container has a 256MB memory limit.
+
+## Configuration
+
+| Variable | Effect |
+| --- | --- |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | Where services send traces. Unset locally (tracing off) unless `task dev:obs` sets it to `http://alloy:4318`; always set in production. |
+| `LOGGING_FORMAT` | `json` (production default) or `text`/logfmt (local default). |

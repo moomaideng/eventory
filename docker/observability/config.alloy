@@ -24,6 +24,13 @@ discovery.relabel "keep_list" {
     source_labels = ["__meta_docker_container_label_com_docker_compose_service"]
     target_label  = "compose_service"
   }
+
+  // Loki 3 derives service_name from this label; without it every stream
+  // is filed under service_name="unknown_service".
+  rule {
+    source_labels = ["__meta_docker_container_label_com_docker_compose_service"]
+    target_label  = "service_name"
+  }
 }
 
 // Tails stdout/stderr for kept containers and forwards raw lines to Loki.
@@ -39,5 +46,31 @@ loki.source.docker "containers" {
 loki.write "default" {
   endpoint {
     url = "http://loki:3100/loki/api/v1/push"
+  }
+}
+
+// App traces: OTLP/HTTP on :4318 (the apps' OTEL_EXPORTER_OTLP_ENDPOINT) -> Tempo.
+otelcol.receiver.otlp "apps" {
+  grpc {}
+  http {}
+
+  output {
+    traces = [otelcol.processor.batch.default.input]
+  }
+}
+
+otelcol.processor.batch "default" {
+  output {
+    traces = [otelcol.exporter.otlp.tempo.input]
+  }
+}
+
+otelcol.exporter.otlp "tempo" {
+  client {
+    endpoint = "tempo:4317"
+
+    tls {
+      insecure = true
+    }
   }
 }

@@ -26,7 +26,7 @@ func main() {
 		slog.Error("failed to load configuration", "error", err)
 		panic(err)
 	}
-	logger.SetDefault(cfg.Logging, cfg.Environment, "notification")
+	logger.SetDefault(cfg.Logging, cfg.Environment, config.ServiceName)
 
 	db, err := shareddatabase.ConnectPostgres(cfg.DBDSN)
 	if err != nil {
