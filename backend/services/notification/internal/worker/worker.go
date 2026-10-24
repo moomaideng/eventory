@@ -98,10 +98,10 @@ func (worker *Worker) handle(
 	outcome, _ := worker.useCase.Process(ctx, event, attempt >= worker.maxRetries)
 	switch outcome {
 	case usecases.OutcomeSent:
-		slog.Info("notification sent", "event_id", event.ID, "attempt", attempt)
+		slog.InfoContext(ctx, "notification sent", "event_id", event.ID, "attempt", attempt)
 		_ = ack(false)
 	case usecases.OutcomeAlreadyHandled:
-		slog.Debug("notification duplicate skipped", "event_id", event.ID)
+		slog.DebugContext(ctx, "notification duplicate skipped", "event_id", event.ID)
 		_ = ack(false)
 	case usecases.OutcomeRetry:
 		if attempt >= worker.maxRetries {
@@ -111,11 +111,11 @@ func (worker *Worker) handle(
 		}
 		nextAttempt := attempt + 1
 		if publishErr := worker.broker.PublishRetry(ctx, body, nextAttempt); publishErr != nil {
-			slog.Error("notification retry publish failed", "event_id", event.ID, "error", publishErr)
+			slog.ErrorContext(ctx, "notification retry publish failed", "event_id", event.ID, "error", publishErr)
 			_ = nack(false, true)
 			return
 		}
-		slog.Info("notification retry scheduled", "event_id", event.ID, "attempt", nextAttempt)
+		slog.InfoContext(ctx, "notification retry scheduled", "event_id", event.ID, "attempt", nextAttempt)
 		_ = ack(false)
 	case usecases.OutcomePermanentFailure:
 		reason := "permanent processing failure"
@@ -135,10 +135,10 @@ func (worker *Worker) deadLetter(
 		reason = reason[:240]
 	}
 	if err := worker.broker.PublishDead(ctx, body, attempt, reason); err != nil {
-		slog.Error("notification dead-letter publish failed", "error", err, "attempt", attempt, "reason", reason)
+		slog.ErrorContext(ctx, "notification dead-letter publish failed", "error", err, "attempt", attempt, "reason", reason)
 		_ = nack(false, true)
 		return
 	}
-	slog.Warn("notification moved to dead-letter queue", "reason", reason, "attempt", attempt)
+	slog.WarnContext(ctx, "notification moved to dead-letter queue", "reason", reason, "attempt", attempt)
 	_ = ack(false)
 }

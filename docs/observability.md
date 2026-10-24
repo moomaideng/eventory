@@ -47,7 +47,7 @@ traefik GET → tournament GET → select … (GORM)
 
 - **Gateway:** Traefik starts the root span and forwards `traceparent` to the services. Calls straight to a service port (for example `:8082`) start at that service instead.
 - **Cross-service calls:** Tournament → Account gRPC and Tournament → Payment HTTP carry the trace context.
-- **Messaging:** the RabbitMQ publisher writes `traceparent` into the message headers, and the Notification consumer continues that trace with a `process registration.submitted` span.
+- **Messaging:** publishing to RabbitMQ writes `traceparent` into the message headers, and the Notification worker continues the trace, so its GORM queries and logs join the producer's trace. No service publishes yet; `cmd/publish-registration-submitted` shows how a producer should do it.
 - **Postgres:** every GORM query is a span under the calling request.
 - **Not traced:** `/health` and `/ready`, the browser, and Next.js. Traces start at Traefik. Background pollers in Tournament (lobby and sponsorship, every 10 s) have no parent request, so each tick is its own root trace.
 
