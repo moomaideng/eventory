@@ -12,7 +12,6 @@ import (
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/status"
 )
 
@@ -24,11 +23,9 @@ type AccountClient struct {
 }
 
 func NewAccountClient(addr string, slowRequestMS int) (*AccountClient, error) {
-	conn, err := grpc.NewClient(addr,
-		grpc.WithTransportCredentials(insecure.NewCredentials()),
-		grpc.WithStatsHandler(otelgrpc.NewClientHandler()),
-		grpc.WithUnaryInterceptor(grpcx.UnaryClientLogging(slowRequestMS)),
-	)
+	// grpcx.NewClient owns credentials, logging and retry; tracing is added here
+	// so internal/grpcx stays free of OpenTelemetry.
+	conn, err := grpcx.NewClient(addr, slowRequestMS, grpc.WithStatsHandler(otelgrpc.NewClientHandler()))
 	if err != nil {
 		return nil, fmt.Errorf("dial account gRPC: %w", err)
 	}
