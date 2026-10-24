@@ -20,13 +20,9 @@ discovery.relabel "keep_list" {
     action        = "keep"
   }
 
-  rule {
-    source_labels = ["__meta_docker_container_label_com_docker_compose_service"]
-    target_label  = "compose_service"
-  }
-
-  // Loki 3 derives service_name from this label; without it every stream
-  // is filed under service_name="unknown_service".
+  // The Compose service name is the one service label. Loki 3 treats
+  // service_name as its native service label; without it every stream is
+  // filed under service_name="unknown_service".
   rule {
     source_labels = ["__meta_docker_container_label_com_docker_compose_service"]
     target_label  = "service_name"

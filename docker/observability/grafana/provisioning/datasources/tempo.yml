@@ -16,4 +16,4 @@ datasources:
         filterBySpanID: false
         tags:
           - key: service.name
-            value: compose_service
+            value: service_name

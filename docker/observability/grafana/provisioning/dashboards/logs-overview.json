@@ -16,7 +16,7 @@
         {
           "refId": "A",
           "datasource": { "type": "loki", "uid": "loki" },
-          "expr": "sum by (compose_service) (count_over_time({compose_service=~\".+\"}[$__auto]))",
+          "expr": "sum by (service_name) (count_over_time({service_name=~\".+\"}[$__auto]))",
           "queryType": "range"
         }
       ]
@@ -31,7 +31,7 @@
         {
           "refId": "A",
           "datasource": { "type": "loki", "uid": "loki" },
-          "expr": "{compose_service=~\".+\"} | json",
+          "expr": "{service_name=~\".+\"} | json",
           "queryType": "range"
         }
       ],

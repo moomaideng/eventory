@@ -28,12 +28,12 @@ Grafana: [http://localhost:8080/grafana](http://localhost:8080/grafana), user `a
 Alloy scrapes containers labeled `eventory.logs=true` into Loki. Query them in Explore → Loki:
 
 ```logql
-{compose_service="tournament"} | logfmt | request_id="<id>"
+{service_name="tournament"} | logfmt | request_id="<id>"
 ```
 
 Use `| json` instead of `| logfmt` in production, where services log JSON. Locally they log logfmt; to switch, set `LOGGING_FORMAT=json` in `backend/services/<service>/.env` and recreate the container.
 
-`frontend` and `traefik` logs are unstructured, so only substring filters work: `{compose_service="traefik"} |= "error"`.
+`frontend` and `traefik` logs are unstructured, so only substring filters work: `{service_name="traefik"} |= "error"`.
 
 ## Traces
 
@@ -65,7 +65,7 @@ Every log line written during a traced request carries `trace_id`, so you can ju
 - **Trace → logs:** open a span and use "Logs for this span".
 - **Log → trace:** click the `TraceID` link on a log line.
 
-To find the logs for a trace by hand: `{compose_service="tournament"} |= "<trace_id>"`.
+To find the logs for a trace by hand: `{service_name="tournament"} |= "<trace_id>"`.
 
 ## Production
 
