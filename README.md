@@ -72,7 +72,7 @@ task down         # stop Compose
 task dev:docker      # also run the frontend in Docker
 task dev:backend  # infra+apps only (no host Next.js)
 task build        # rebuild images when a Dockerfile changes
-task db:reset     # stop the stack and delete the local Postgres volume
+task db:reset     # stop the stack and delete local Postgres, MongoDB, RabbitMQ, Loki, Tempo, and Grafana data
 task test         # backend tests, frontend lint, frontend typecheck
 task notification:smoke # publish a sample registration email to Mailpit
 ```

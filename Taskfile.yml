@@ -77,10 +77,10 @@ tasks:
       - go -C backend run ./services/payment/cmd/seed
 
   db:reset:
-    desc: Stop the stack and delete the local Postgres, MongoDB, and RabbitMQ volumes
+    desc: Stop the stack and delete the local Postgres, MongoDB, RabbitMQ, Loki, Tempo, and Grafana volumes
     cmds:
       - "{{.COMPOSE_ALL}} down --remove-orphans"
-      - docker volume rm -f eventory_postgres_data eventory_mongo_data eventory_rabbitmq_data
+      - docker volume rm -f eventory_postgres_data eventory_mongo_data eventory_rabbitmq_data eventory_loki_data eventory_tempo_data eventory_grafana_data
 
   # --- Tooling ---
 
