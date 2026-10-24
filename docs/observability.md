@@ -49,6 +49,7 @@ traefik GET → tournament GET → select … (GORM)
 - **Cross-service calls:** Tournament → Account gRPC and Tournament → Payment HTTP carry the trace context.
 - **Messaging:** publishing to RabbitMQ writes `traceparent` into the message headers, and the Notification worker continues the trace, so its GORM queries and logs join the producer's trace. No service publishes yet; `cmd/publish-registration-submitted` shows how a producer should do it.
 - **Postgres:** every GORM query is a span under the calling request.
+- **MongoDB:** every Tournament Mongo command is a client span such as `find tournament_forms`.
 - **Not traced:** `/health` and `/ready`, the browser, and Next.js. Traces start at Traefik. Background pollers in Tournament (lobby and sponsorship, every 10 s) have no parent request, so each tick is its own root trace.
 
 To see a full HTTP → gRPC → SQL trace locally, call a route that needs an organizer profile through the gateway:

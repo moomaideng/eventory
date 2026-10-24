@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"net/url"
 
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
@@ -33,7 +34,13 @@ func Setup(ctx context.Context, cfg Config) (shutdown func(context.Context) erro
 		return noopShutdown, nil
 	}
 
-	exporter, err := otlptracehttp.New(ctx, otlptracehttp.WithEndpointURL(cfg.Endpoint))
+	// Since otel v1.45, WithEndpointURL no longer appends the signal path, so
+	// the base URL from OTEL_EXPORTER_OTLP_ENDPOINT needs /v1/traces added.
+	tracesURL, err := url.JoinPath(cfg.Endpoint, "/v1/traces")
+	if err != nil {
+		return noopShutdown, fmt.Errorf("build OTLP traces URL from %q: %w", cfg.Endpoint, err)
+	}
+	exporter, err := otlptracehttp.New(ctx, otlptracehttp.WithEndpointURL(tracesURL))
 	if err != nil {
 		return noopShutdown, fmt.Errorf("create OTLP trace exporter: %w", err)
 	}

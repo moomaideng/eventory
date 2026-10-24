@@ -55,13 +55,18 @@ otelcol.receiver.otlp "apps" {
   }
 }
 
-// Traefik's Docker provider polls the Docker API every few seconds and each
-// call becomes a root trace ("GET /v1.54/containers/..."). Drop those.
+// Drop high-volume spans that carry no debugging value:
+// - Traefik's Docker provider polls the Docker API every few seconds, and each
+//   call becomes a root trace ("GET /v1.54/containers/...").
+// - The /ready health check pings MongoDB, and each ping becomes a root trace.
 otelcol.processor.filter "drop_noise" {
   error_mode = "ignore"
 
   traces {
-    span = ["resource.attributes[\"service.name\"] == \"traefik\" and IsMatch(name, \"^GET /v1[.]\")"]
+    span = [
+      "resource.attributes[\"service.name\"] == \"traefik\" and IsMatch(name, \"^GET /v1[.]\")",
+      "name == \"ping\" and attributes[\"db.system.name\"] == \"mongodb\"",
+    ]
   }
 
   output {
