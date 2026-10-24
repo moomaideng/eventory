@@ -22,6 +22,9 @@ backend_scheduler:
 backend_worker:
   compaction:
     block_retention: 72h
+  # Default is 30s, and the worker waits all of it on shutdown even when idle,
+  # which outlasts Docker's 10s stop grace period and ends in SIGKILL.
+  finish_on_shutdown_timeout: 5s
 
 storage:
   trace:
