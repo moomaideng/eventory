@@ -36,6 +36,7 @@ tasks:
     deps: [build]
     env:
       OTEL_EXPORTER_OTLP_ENDPOINT: http://alloy:4318
+      TRAEFIK_TRACING: "true"
     cmds:
       - task: migrate
       - "{{.COMPOSE_OBS}} up -d"

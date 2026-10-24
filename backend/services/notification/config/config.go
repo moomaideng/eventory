@@ -41,6 +41,7 @@ type Config struct {
 	SMTPTimeoutRaw     string               `mapstructure:"smtp_timeout"`
 	BrokerReconnectRaw string               `mapstructure:"broker_reconnect_delay"`
 	Logging            sharedconfig.Logging `mapstructure:",squash"`
+	OTel               sharedconfig.OTel    `mapstructure:",squash"`
 
 	SMTPStartTLS         bool            `mapstructure:"-"`
 	RetryDelays          []time.Duration `mapstructure:"-"`

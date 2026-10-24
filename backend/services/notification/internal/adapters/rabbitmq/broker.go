@@ -8,6 +8,7 @@ import (
 	"time"
 
 	amqp "github.com/rabbitmq/amqp091-go"
+	"go.opentelemetry.io/otel"
 )
 
 const (
@@ -145,6 +146,7 @@ func (broker *Broker) publish(ctx context.Context, exchange, key string, body []
 	if broker.publishCh == nil || broker.publishCh.IsClosed() {
 		return fmt.Errorf("rabbitmq publisher channel is closed")
 	}
+	otel.GetTextMapPropagator().Inject(ctx, tableCarrier(headers))
 	if err := broker.publishCh.PublishWithContext(ctx, exchange, key, true, false, amqp.Publishing{
 		Headers: headers, ContentType: "application/json", DeliveryMode: amqp.Persistent,
 		Timestamp: time.Now().UTC(), Body: body,
@@ -216,3 +218,27 @@ func retryQueueName(attempt int) string {
 	return fmt.Sprintf("notification.email.retry.%d.v1", attempt)
 }
 func retryRoutingKey(attempt int) string { return fmt.Sprintf("retry.%d", attempt) }
+
+// tableCarrier lets the OTel propagator read and write trace headers on AMQP
+// message headers, so consumers continue the publisher's trace.
+type tableCarrier amqp.Table
+
+func (c tableCarrier) Get(key string) string {
+	value, _ := c[key].(string)
+	return value
+}
+
+func (c tableCarrier) Set(key, value string) { c[key] = value }
+
+func (c tableCarrier) Keys() []string {
+	keys := make([]string, 0, len(c))
+	for key := range c {
+		keys = append(keys, key)
+	}
+	return keys
+}
+
+// ExtractTrace returns ctx carrying the trace context stored in headers.
+func ExtractTrace(ctx context.Context, headers amqp.Table) context.Context {
+	return otel.GetTextMapPropagator().Extract(ctx, tableCarrier(headers))
+}

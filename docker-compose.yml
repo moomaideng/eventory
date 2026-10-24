@@ -100,6 +100,12 @@ services:
       - --providers.docker.exposedbydefault=false
       - --providers.docker.network=eventory_default
       - --entrypoints.web.address=:80
+      # Gateway span is the trace root and forwards traceparent to services.
+      # Off unless `task dev:obs` sets TRAEFIK_TRACING=true (Alloy must be up).
+      - --tracing=${TRAEFIK_TRACING:-false}
+      - --tracing.serviceName=traefik
+      - --tracing.otlp.http=true
+      - --tracing.otlp.http.endpoint=http://alloy:4318/v1/traces
     ports:
       - "127.0.0.1:${BACKEND_PORT:-8080}:80"
     volumes:
@@ -354,6 +360,7 @@ services:
       HTTP_PORT: "8084"
       DB_DSN: postgresql://${POSTGRES_USER:-admin}:${POSTGRES_PASSWORD:-password123}@postgres:5432/notification_db?sslmode=disable
       AMQP_URL: amqp://${RABBITMQ_USER:-eventory}:${RABBITMQ_PASSWORD:-eventory}@rabbitmq:5672/
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
       SMTP_HOST: mailpit
       SMTP_PORT: "1025"
       SMTP_STARTTLS: "false"

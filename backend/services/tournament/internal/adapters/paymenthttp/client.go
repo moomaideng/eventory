@@ -5,11 +5,14 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/moomaideng/eventory/services/tournament/internal/ports"
 	"io"
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/moomaideng/eventory/services/tournament/internal/ports"
+
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
 
 type Client struct {
@@ -18,7 +21,14 @@ type Client struct {
 }
 
 func New(url, key string) *Client {
-	return &Client{strings.TrimRight(url, "/"), key, &http.Client{Timeout: 5 * time.Second}}
+	return &Client{
+		url: strings.TrimRight(url, "/"),
+		key: key,
+		http: &http.Client{
+			Timeout:   5 * time.Second,
+			Transport: otelhttp.NewTransport(http.DefaultTransport),
+		},
+	}
 }
 
 // Creation is idempotent and also returns the latest status on retries.

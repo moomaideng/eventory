@@ -78,6 +78,11 @@ services:
       - --providers.file.filename=/etc/traefik/dynamic.yml
       - --entrypoints.web.address=:80
       - --entrypoints.websecure.address=:443
+      # Gateway span is the trace root and forwards traceparent to services.
+      - --tracing=true
+      - --tracing.serviceName=traefik
+      - --tracing.otlp.http=true
+      - --tracing.otlp.http.endpoint=http://alloy:4318/v1/traces
       - --certificatesresolvers.letsencrypt.acme.tlschallenge=true
       - --certificatesresolvers.letsencrypt.acme.email=${ACME_EMAIL:?ACME_EMAIL is required}
       - --certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json
@@ -343,6 +348,7 @@ services:
     environment:
       ENVIRONMENT: production
       HTTP_PORT: "8084"
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://alloy:4318
       DB_DSN: postgresql://admin:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@postgres:5432/notification_db?sslmode=disable
       AMQP_HOST: rabbitmq
       AMQP_PORT: "5672"

@@ -10,6 +10,8 @@ import (
 	"github.com/moomaideng/eventory/internal/events"
 	"github.com/moomaideng/eventory/services/notification/internal/adapters/rabbitmq"
 	"github.com/moomaideng/eventory/services/notification/internal/usecases"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/trace"
 )
 
 type Worker struct {
@@ -46,7 +48,13 @@ func (worker *Worker) Run(ctx context.Context) error {
 					connected = false
 					continue
 				}
-				worker.handle(ctx, delivery.Body, rabbitmq.Attempt(delivery.Headers), delivery.Ack, delivery.Nack)
+				msgCtx, span := otel.Tracer("notification.worker").Start(
+					rabbitmq.ExtractTrace(ctx, delivery.Headers),
+					"process registration.submitted",
+					trace.WithSpanKind(trace.SpanKindConsumer),
+				)
+				worker.handle(msgCtx, delivery.Body, rabbitmq.Attempt(delivery.Headers), delivery.Ack, delivery.Nack)
+				span.End()
 			}
 		}
 		if err := worker.reconnect(ctx, fmt.Errorf("rabbitmq delivery channel closed")); err != nil {

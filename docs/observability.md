@@ -4,6 +4,7 @@ Read logs and traces in Grafana instead of SSH-ing into containers.
 
 ```mermaid
 flowchart LR
+    Traefik -- "OTLP :4318" --> Alloy
     Apps["Go services"] -- "OTLP :4318" --> Alloy
     Docker["Docker logs"] --> Alloy
     Alloy --> Loki
@@ -36,12 +37,24 @@ Use `| json` instead of `| logfmt` in production, where services log JSON. Local
 
 ## Traces
 
-Account, Tournament and Payment send traces for inbound HTTP, Tournament → Account gRPC, and Postgres queries. `/health` is skipped.
+Traefik, Account, Tournament, Payment and Notification send traces. A request through the gateway is one trace:
 
-To see a full HTTP → gRPC → SQL trace locally, call a route that needs an organizer profile:
+```text
+traefik GET → tournament GET → select … (GORM)
+                             → account gRPC → select … (GORM)
+                             → payment HTTP → …
+```
+
+- **Gateway:** Traefik starts the root span and forwards `traceparent` to the services. Calls straight to a service port (for example `:8082`) start at that service instead.
+- **Cross-service calls:** Tournament → Account gRPC and Tournament → Payment HTTP carry the trace context.
+- **Messaging:** the RabbitMQ publisher writes `traceparent` into the message headers, and the Notification consumer continues that trace with a `process registration.submitted` span.
+- **Postgres:** every GORM query is a span under the calling request.
+- **Not traced:** `/health` and `/ready`, the browser, and Next.js. Traces start at Traefik. Background pollers in Tournament (lobby and sponsorship, every 10 s) have no parent request, so each tick is its own root trace.
+
+To see a full HTTP → gRPC → SQL trace locally, call a route that needs an organizer profile through the gateway:
 
 ```bash
-curl -X POST http://localhost:8082/api/v1/tournaments \
+curl -X POST http://localhost:8080/api/v1/tournaments \
   -H "Authorization: Bearer dev-token" -H "Content-Type: application/json" -d '{}'
 ```
 
@@ -62,5 +75,6 @@ Grafana is public at `https://eventory.ddns.net/grafana`, protected by its own l
 
 | Variable | Effect |
 | --- | --- |
-| `OTEL_EXPORTER_OTLP_ENDPOINT` | Where services send traces. Unset locally (tracing off) unless `task dev:obs` sets it to `http://alloy:4318`; always set in production. |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | Where Go services send traces. Unset locally (tracing off) unless `task dev:obs` sets it to `http://alloy:4318`; always set in production. |
+| `TRAEFIK_TRACING` | Local only. `task dev:obs` sets it to `true` to turn on Traefik's root span; otherwise off. Production always has Traefik tracing on. |
 | `LOGGING_FORMAT` | `json` (production default) or `text`/logfmt (local default). |
