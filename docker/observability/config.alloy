@@ -12,7 +12,7 @@ discovery.docker "containers" {
 // Keep-list: only containers labeled eventory.logs=true reach Loki
 // (set per service in Compose).
 discovery.relabel "keep_list" {
-  targets = []
+  targets = discovery.docker.containers.targets
 
   rule {
     source_labels = ["__meta_docker_container_label_eventory_logs"]
@@ -33,10 +33,9 @@ discovery.relabel "keep_list" {
 // JSON bodies are stored as-is; LogQL `| json` parses fields at query time
 // so we never promote high-cardinality fields (request_id, path) to labels.
 loki.source.docker "containers" {
-  host          = "unix:///var/run/docker.sock"
-  targets       = discovery.docker.containers.targets
-  relabel_rules = discovery.relabel.keep_list.rules
-  forward_to    = [loki.write.default.receiver]
+  host       = "unix:///var/run/docker.sock"
+  targets    = discovery.relabel.keep_list.output
+  forward_to = [loki.write.default.receiver]
 }
 
 loki.write "default" {
