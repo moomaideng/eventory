@@ -22,8 +22,7 @@ tasks:
     cmds:
       - task: migrate
       - "{{.COMPOSE_APPS}} up -d"
-      - task: frontend:install
-      - npm --prefix frontend run dev
+      - task: frontend
 
   dev:backend:
     desc: Migrate and start infra+apps (no frontend)
