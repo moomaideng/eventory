@@ -21,3 +21,5 @@ Justify decisions with architecturally significant requirements (ASRs) and quali
 | [09 Object Storage](./09_object-storage.md) | Accepted |
 | [10 RabbitMQ as Message Broker](./10_rabbitmq-message-broker.md) | Accepted |
 | [11 SMTP for Notification Email Delivery](./11_smtp-email-delivery.md) | Accepted |
+| [12 Service Discovery and Container Orchestration](./12_service-discovery-and-orchestration.md) | Accepted |
+| [13 Observability Stack](./13_observability-stack.md) | Accepted |

@@ -7,6 +7,7 @@ actor Organizer
 actor Sponsor
 actor Competitor
 actor "Tournament Staff" as Staff
+actor Developer
 
 rectangle "Web Client" as Client
 rectangle "API Gateway\n(Traefik)" as GW
@@ -16,7 +17,7 @@ cloud "Object Storage\n(S3-compatible)" as S3
 cloud "Payment Gateway" as PayGW
 cloud "Email Provider" as Email
 
-rectangle "Eventory" {
+rectangle "Eventory" as Eventory {
   component [Account Service] as Account
   component [Tournament Service] as Tournament
   component [Payment Service] as Payment
@@ -29,7 +30,24 @@ rectangle "Eventory" {
   database "MongoDB\n(forms)" as FormDB
   database "PostgreSQL\n(payment)" as PayDB
   database "PostgreSQL\n(notification)" as NotifDB
+
+  note as DiscoveryNote
+    Services find each other
+    by Compose service name
+  end note
 }
+
+rectangle "Observability" as Obs {
+  component [Alloy\n(collector)] as Alloy
+  database "Tempo\n(traces)" as Tempo
+  database "Loki\n(logs)" as Loki
+  component [Grafana] as Grafana
+}
+
+note bottom of GW
+  Finds services by
+  Docker labels
+end note
 
 Organizer --> Client
 Sponsor --> Client
@@ -59,5 +77,12 @@ Payment --> Broker : publish payment.succeeded
 Tournament --> Broker : publish registration.submitted /\nmatch_result.recorded /\nsponsorship.confirmed
 Notification --> Broker : consume events
 Notification --> Email : SendEmailNotification
+
+Eventory --> Alloy : sending traces and logs
+Alloy --> Tempo : persist traces
+Alloy --> Loki : persist logs
+Grafana --> Tempo
+Grafana --> Loki
+Developer --> Grafana : inspect
 
 @enduml
