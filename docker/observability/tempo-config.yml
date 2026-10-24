@@ -1,0 +1,38 @@
+server:
+  http_listen_port: 3200
+  log_level: info
+
+distributor:
+  receivers:
+    otlp:
+      protocols:
+        grpc:
+          endpoint: "0.0.0.0:4317"
+        http:
+          endpoint: "0.0.0.0:4318"
+
+# Tempo 3.x: retention/compaction run via scheduler + worker (no top-level
+# `compactor` block). Both need the same block_retention (72h contract).
+backend_scheduler:
+  provider:
+    compaction:
+      compaction:
+        block_retention: 72h
+
+backend_worker:
+  compaction:
+    block_retention: 72h
+  # Default is 30s, and the worker waits all of it on shutdown even when idle,
+  # which outlasts Docker's 10s stop grace period and ends in SIGKILL.
+  finish_on_shutdown_timeout: 5s
+
+storage:
+  trace:
+    backend: local
+    wal:
+      path: /var/tempo/wal
+    local:
+      path: /var/tempo/blocks
+
+usage_report:
+  reporting_enabled: false

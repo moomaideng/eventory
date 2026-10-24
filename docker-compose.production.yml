@@ -34,7 +34,20 @@ services:
     volumes:
       - mongo_data:/data/db
     healthcheck:
-      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping')", "-u", "admin", "-p", "${MONGO_PASSWORD:?MONGO_PASSWORD is required}", "--authenticationDatabase", "admin"]
+      test:
+        [
+          "CMD",
+          "mongosh",
+          "--quiet",
+          "--eval",
+          "db.adminCommand('ping')",
+          "-u",
+          "admin",
+          "-p",
+          "${MONGO_PASSWORD:?MONGO_PASSWORD is required}",
+          "--authenticationDatabase",
+          "admin",
+        ]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -48,7 +61,10 @@ services:
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
     healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      # Run as the rabbitmq user: a root-run check on a fresh volume creates a
+      # root-owned .erlang.cookie before the server does, and the server then
+      # crashes with eacces.
+      test: ["CMD", "su-exec", "rabbitmq", "rabbitmq-diagnostics", "-q", "ping"]
       interval: 5s
       timeout: 5s
       retries: 12
@@ -65,6 +81,11 @@ services:
       - --providers.file.filename=/etc/traefik/dynamic.yml
       - --entrypoints.web.address=:80
       - --entrypoints.websecure.address=:443
+      # Gateway span is the trace root and forwards traceparent to services.
+      - --tracing=true
+      - --tracing.serviceName=traefik
+      - --tracing.otlp.http=true
+      - --tracing.otlp.http.endpoint=http://alloy:4318/v1/traces
       - --certificatesresolvers.letsencrypt.acme.tlschallenge=true
       - --certificatesresolvers.letsencrypt.acme.email=${ACME_EMAIL:?ACME_EMAIL is required}
       - --certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json
@@ -82,6 +103,66 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+    restart: unless-stopped
+    labels:
+      - eventory.logs=true
+
+  loki:
+    image: grafana/loki:3.6.18
+    mem_limit: 256m
+    command: -config.file=/etc/loki/config.yaml
+    volumes:
+      - ./docker/observability/loki-config.yaml:/etc/loki/config.yaml:ro
+      - loki_data:/loki
+    restart: unless-stopped
+
+  tempo:
+    image: grafana/tempo:3.1.0
+    mem_limit: 256m
+    command: -config.file=/etc/tempo/tempo.yaml
+    volumes:
+      - ./docker/observability/tempo-config.yml:/etc/tempo/tempo.yaml:ro
+      - tempo_data:/var/tempo
+    restart: unless-stopped
+
+  alloy:
+    image: grafana/alloy:v1.21.0
+    mem_limit: 256m
+    command:
+      - run
+      - --server.http.listen-addr=0.0.0.0:12345
+      - --storage.path=/var/lib/alloy/data
+      - /etc/alloy/config.alloy
+    volumes:
+      - ./docker/observability/config.alloy:/etc/alloy/config.alloy:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    depends_on:
+      - loki
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:13.2.4
+    mem_limit: 256m
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:?GRAFANA_PASSWORD is required}
+      GF_SERVER_ROOT_URL: https://eventory.ddns.net/grafana/
+      GF_SERVER_SERVE_FROM_SUB_PATH: "true"
+    volumes:
+      - ./docker/observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      - loki
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=eventory-production_default
+      - traefik.http.routers.grafana.rule=Host(`eventory.ddns.net`) && PathPrefix(`/grafana`)
+      - traefik.http.routers.grafana.entrypoints=websecure
+      # Don't trace Grafana's own UI traffic through the gateway.
+      - traefik.http.routers.grafana.observability.tracing=false
+      - traefik.http.routers.grafana.tls=true
+      - traefik.http.routers.grafana.tls.certresolver=letsencrypt
+      - traefik.http.routers.grafana.priority=100
+      - traefik.http.services.grafana.loadbalancer.server.port=3000
     restart: unless-stopped
 
   account-migrate:
@@ -101,6 +182,7 @@ services:
       HTTP_PORT: "8081"
       GRPC_PORT: "9091"
       DB_DSN: postgresql://admin:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@postgres:5432/account_db?sslmode=disable
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://alloy:4318
       SUPABASE_URL: ${SUPABASE_URL:?SUPABASE_URL is required}
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:?CORS_ALLOWED_ORIGINS is required}
     healthcheck:
@@ -121,6 +203,7 @@ services:
       postgres:
         condition: service_healthy
     labels:
+      - eventory.logs=true
       - traefik.enable=true
       - traefik.docker.network=eventory-production_default
       - traefik.http.routers.account.rule=Host(`eventory.ddns.net`) && PathPrefix(`/api/v1/accounts`)
@@ -166,6 +249,7 @@ services:
       PAYMENT_SERVICE_KEY: ${PAYMENT_SERVICE_KEY:?PAYMENT_SERVICE_KEY is required}
       MONGO_URI: mongodb://admin:${MONGO_PASSWORD:?MONGO_PASSWORD is required}@mongodb:27017/tournament_db?authSource=admin
       MONGO_DB_NAME: tournament_db
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://alloy:4318
       SUPABASE_URL: ${SUPABASE_URL:?SUPABASE_URL is required}
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:?CORS_ALLOWED_ORIGINS is required}
     healthcheck:
@@ -190,6 +274,7 @@ services:
       account:
         condition: service_healthy
     labels:
+      - eventory.logs=true
       - traefik.enable=true
       - traefik.docker.network=eventory-production_default
       - traefik.http.routers.tournament.rule=Host(`eventory.ddns.net`) && (PathPrefix(`/api/v1/tournaments`) || PathPrefix(`/api/v1/lobbies`))
@@ -220,10 +305,19 @@ services:
       HTTP_PORT: "8083"
       DB_DSN: postgresql://admin:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@postgres:5432/payment_db?sslmode=disable
       PAYMENT_SERVICE_KEY: ${PAYMENT_SERVICE_KEY:?PAYMENT_SERVICE_KEY is required}
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://alloy:4318
       SUPABASE_URL: ${SUPABASE_URL:?SUPABASE_URL is required}
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:?CORS_ALLOWED_ORIGINS is required}
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--output-document=/dev/null", "http://127.0.0.1:8083/health"]
+      test:
+        [
+          "CMD",
+          "wget",
+          "--no-verbose",
+          "--tries=1",
+          "--output-document=/dev/null",
+          "http://127.0.0.1:8083/health",
+        ]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -232,6 +326,7 @@ services:
       postgres:
         condition: service_healthy
     labels:
+      - eventory.logs=true
       - traefik.enable=true
       - traefik.docker.network=eventory-production_default
       - traefik.http.routers.payment.rule=Host(`eventory.ddns.net`) && PathPrefix(`/api/v1/payments`)
@@ -258,6 +353,7 @@ services:
     environment:
       ENVIRONMENT: production
       HTTP_PORT: "8084"
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://alloy:4318
       DB_DSN: postgresql://admin:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@postgres:5432/notification_db?sslmode=disable
       AMQP_HOST: rabbitmq
       AMQP_PORT: "5672"
@@ -298,6 +394,8 @@ services:
       notification-migrate:
         condition: service_completed_successfully
     restart: unless-stopped
+    labels:
+      - eventory.logs=true
 
   frontend:
     image: ghcr.io/moomaideng/eventory-frontend:${IMAGE_TAG:?IMAGE_TAG is required}
@@ -313,6 +411,7 @@ services:
       payment:
         condition: service_healthy
     labels:
+      - eventory.logs=true
       - traefik.enable=true
       - traefik.docker.network=eventory-production_default
       - traefik.http.routers.frontend.rule=Host(`eventory.ddns.net`) && PathPrefix(`/`)
@@ -339,3 +438,6 @@ volumes:
   mongo_data:
   rabbitmq_data:
   traefik_letsencrypt:
+  loki_data:
+  tempo_data:
+  grafana_data:

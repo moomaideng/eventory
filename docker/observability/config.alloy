@@ -1,0 +1,90 @@
+logging {
+  level  = "info"
+  format = "logfmt"
+}
+
+// Discover every container on the host. Filtering happens in the
+// discovery.relabel.
+discovery.docker "containers" {
+  host = "unix:///var/run/docker.sock"
+}
+
+// Keep-list: only containers labeled eventory.logs=true reach Loki
+// (set per service in Compose).
+discovery.relabel "keep_list" {
+  targets = discovery.docker.containers.targets
+
+  rule {
+    source_labels = ["__meta_docker_container_label_eventory_logs"]
+    regex         = "true"
+    action        = "keep"
+  }
+
+  // The Compose service name is the one service label. Loki 3 treats
+  // service_name as its native service label; without it every stream is
+  // filed under service_name="unknown_service".
+  rule {
+    source_labels = ["__meta_docker_container_label_com_docker_compose_service"]
+    target_label  = "service_name"
+  }
+}
+
+// Tails stdout/stderr for kept containers and forwards raw lines to Loki.
+// JSON bodies are stored as-is; LogQL `| json` parses fields at query time
+// so we never promote high-cardinality fields (request_id, path) to labels.
+loki.source.docker "containers" {
+  host       = "unix:///var/run/docker.sock"
+  targets    = discovery.relabel.keep_list.output
+  forward_to = [loki.write.default.receiver]
+}
+
+loki.write "default" {
+  endpoint {
+    url = "http://loki:3100/loki/api/v1/push"
+  }
+}
+
+// App traces: OTLP/HTTP on :4318 (the apps' OTEL_EXPORTER_OTLP_ENDPOINT) -> Tempo.
+otelcol.receiver.otlp "apps" {
+  grpc {}
+  http {}
+
+  output {
+    traces = [otelcol.processor.filter.drop_noise.input]
+  }
+}
+
+// Drop high-volume spans that carry no debugging value:
+// - Traefik's Docker provider polls the Docker API every few seconds, and each
+//   call becomes a root trace ("GET /v1.54/containers/...").
+// - The /ready health check pings MongoDB, and each ping becomes a root trace.
+otelcol.processor.filter "drop_noise" {
+  error_mode = "ignore"
+
+  traces {
+    span = [
+      "resource.attributes[\"service.name\"] == \"traefik\" and IsMatch(name, \"^GET /v1[.]\")",
+      "name == \"ping\" and attributes[\"db.system.name\"] == \"mongodb\"",
+    ]
+  }
+
+  output {
+    traces = [otelcol.processor.batch.default.input]
+  }
+}
+
+otelcol.processor.batch "default" {
+  output {
+    traces = [otelcol.exporter.otlp.tempo.input]
+  }
+}
+
+otelcol.exporter.otlp "tempo" {
+  client {
+    endpoint = "tempo:4317"
+
+    tls {
+      insecure = true
+    }
+  }
+}

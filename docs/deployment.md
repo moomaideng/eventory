@@ -61,6 +61,7 @@ Set once, in the repository settings. Without these, deployment fails.
 | `PROD_SMTP_FROM_ADDRESS` | Verified From address for Eventory email |
 | `PROD_POSTGRES_PASSWORD` | Password for the Postgres container. User is `admin` |
 | `PROD_MONGO_PASSWORD` | Password for the MongoDB container. User is `admin` |
+| `PROD_GRAFANA_PASSWORD` | Grafana admin password in production |
 | `ORACLE_HOST` | Server address |
 | `ORACLE_USER` | Server login name |
 | `ORACLE_SSH_KEY` | Server login key |

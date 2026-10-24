@@ -111,7 +111,7 @@ That merges both OpenAPI documents into `frontend/lib/api/schema.d.ts`.
 | `task down` | Stop containers. The database volume stays |
 | `task migrate` | Apply `account_db`, then `tournament_db` |
 | `task seed` | Sample accounts, then sample tournaments |
-| `task db:reset` | Stop the stack and delete DB volumes. Then `task dev` or `task dev:backend` |
+| `task db:reset` | Stop the stack and delete local data: databases, RabbitMQ, and the Loki, Tempo and Grafana volumes. Then `task dev` or `task dev:backend` |
 | `task frontend` | Host Next.js only |
 | `task test` | Backend tests, frontend lint, frontend typecheck |
 | `task gen-proto` | Lint and regenerate Account gRPC code. Needs [Buf](https://buf.build/docs/installation/) |

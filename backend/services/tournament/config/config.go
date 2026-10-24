@@ -7,7 +7,11 @@ import (
 	sharedconfig "github.com/moomaideng/eventory/internal/config"
 )
 
-const serviceDir = "services/tournament"
+const (
+	serviceDir = "services/tournament"
+	// ServiceName identifies this service in logs and traces.
+	ServiceName = "tournament"
+)
 
 // Config holds tournament-service settings.
 type Config struct {
@@ -22,6 +26,7 @@ type Config struct {
 	MongoURI          string               `mapstructure:"mongo_uri"`
 	MongoDBName       string               `mapstructure:"mongo_db_name"`
 	Logging           sharedconfig.Logging `mapstructure:",squash"`
+	OTel              sharedconfig.OTel    `mapstructure:",squash"`
 }
 
 // Load reads services/tournament/.env.default, then .env, then process env.

@@ -3,8 +3,10 @@
 version: "3"
 
 vars:
-  COMPOSE_ALL: docker compose --profile infra --profile apps --profile web
   COMPOSE_APPS: docker compose --profile infra --profile apps
+  COMPOSE_WEB: docker compose --profile infra --profile apps --profile web
+  COMPOSE_OBS: docker compose --profile infra --profile apps --profile obs
+  COMPOSE_ALL: docker compose --profile infra --profile apps --profile web --profile obs
 
 tasks:
   default:
@@ -20,8 +22,7 @@ tasks:
     cmds:
       - task: migrate
       - "{{.COMPOSE_APPS}} up -d"
-      - task: frontend:install
-      - npm --prefix frontend run dev
+      - task: frontend
 
   dev:backend:
     desc: Migrate and start infra+apps (no frontend)
@@ -30,12 +31,22 @@ tasks:
       - task: migrate
       - "{{.COMPOSE_APPS}} up -d"
 
+  dev:obs:
+    desc: Migrate and start infra+apps+observability (Grafana at /grafana)
+    deps: [build]
+    env:
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://alloy:4318
+      TRAEFIK_TRACING: "true"
+    cmds:
+      - task: migrate
+      - "{{.COMPOSE_OBS}} up -d"
+
   dev:docker:
     desc: Migrate and start infra+apps+frontend container
     deps: [build]
     cmds:
       - task: migrate
-      - "{{.COMPOSE_ALL}} up -d"
+      - "{{.COMPOSE_WEB}} up -d"
 
   logs:
     desc: Follow account, tournament, and payment logs
@@ -66,10 +77,10 @@ tasks:
       - go -C backend run ./services/payment/cmd/seed
 
   db:reset:
-    desc: Stop the stack and delete the local Postgres, MongoDB, and RabbitMQ volumes
+    desc: Stop the stack and delete the local Postgres, MongoDB, RabbitMQ, Loki, Tempo, and Grafana volumes
     cmds:
       - "{{.COMPOSE_ALL}} down --remove-orphans"
-      - docker volume rm -f eventory_postgres_data eventory_mongo_data eventory_rabbitmq_data
+      - docker volume rm -f eventory_postgres_data eventory_mongo_data eventory_rabbitmq_data eventory_loki_data eventory_tempo_data eventory_grafana_data
 
   # --- Tooling ---
 

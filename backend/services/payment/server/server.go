@@ -9,6 +9,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/cors"
 	"github.com/moomaideng/eventory/internal/middlewares"
+	"github.com/moomaideng/eventory/internal/telemetry"
 	"github.com/moomaideng/eventory/services/payment/config"
 	rest "github.com/moomaideng/eventory/services/payment/handlers/rest"
 	"github.com/moomaideng/eventory/services/payment/internal/repositories"
@@ -20,6 +21,7 @@ type App struct{ HTTP http.Handler }
 
 func NewApp(db *gorm.DB, cfg config.Config) *App {
 	router := chi.NewMux()
+	router.Use(telemetry.HTTPMiddleware(config.ServiceName))
 	router.Use(middlewares.RequestID)
 	router.Use(middlewares.AccessLog(cfg.Logging.SlowRequestMS))
 	router.Use(middlewares.Recover)

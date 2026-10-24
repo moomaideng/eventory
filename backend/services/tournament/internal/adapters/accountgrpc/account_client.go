@@ -9,6 +9,7 @@ import (
 	"github.com/moomaideng/eventory/internal/grpcx"
 	accountv1 "github.com/moomaideng/eventory/services/account/pkg/proto/account/v1"
 	"github.com/moomaideng/eventory/services/tournament/internal/ports"
+	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
@@ -25,6 +26,7 @@ type AccountClient struct {
 func NewAccountClient(addr string, slowRequestMS int) (*AccountClient, error) {
 	conn, err := grpc.NewClient(addr,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithStatsHandler(otelgrpc.NewClientHandler()),
 		grpc.WithUnaryInterceptor(grpcx.UnaryClientLogging(slowRequestMS)),
 	)
 	if err != nil {

@@ -11,6 +11,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/cors"
 	"github.com/moomaideng/eventory/internal/middlewares"
+	"github.com/moomaideng/eventory/internal/telemetry"
 	"github.com/moomaideng/eventory/services/tournament/config"
 	resthandlers "github.com/moomaideng/eventory/services/tournament/handlers/rest"
 	"github.com/moomaideng/eventory/services/tournament/internal/adapters/accountgrpc"
@@ -61,6 +62,7 @@ func newApp(db *gorm.DB, mongoDB *mongo.Database, cfg config.Config, accountSvc 
 
 func newHTTPRouter(db *gorm.DB, mongoDB *mongo.Database, cfg config.Config, accountSvc ports.AccountService, teamLobbyUseCase *usecases.TeamLobbyUseCase, sponsorships *usecases.SponsorshipUseCase) http.Handler {
 	router := chi.NewMux()
+	router.Use(telemetry.HTTPMiddleware(config.ServiceName))
 	router.Use(middlewares.RequestID)
 	router.Use(middlewares.AccessLog(cfg.Logging.SlowRequestMS))
 	router.Use(middlewares.Recover)
