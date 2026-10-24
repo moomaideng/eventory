@@ -173,6 +173,8 @@ services:
       - traefik.docker.network=eventory_default
       - traefik.http.routers.grafana.rule=PathPrefix(`/grafana`)
       - traefik.http.routers.grafana.entrypoints=web
+      # Don't trace Grafana's own UI traffic through the gateway.
+      - traefik.http.routers.grafana.observability.tracing=false
       - traefik.http.services.grafana.loadbalancer.server.port=3000
 
   account-migrate:

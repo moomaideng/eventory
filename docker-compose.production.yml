@@ -154,6 +154,8 @@ services:
       - traefik.docker.network=eventory-production_default
       - traefik.http.routers.grafana.rule=Host(`eventory.ddns.net`) && PathPrefix(`/grafana`)
       - traefik.http.routers.grafana.entrypoints=websecure
+      # Don't trace Grafana's own UI traffic through the gateway.
+      - traefik.http.routers.grafana.observability.tracing=false
       - traefik.http.routers.grafana.tls=true
       - traefik.http.routers.grafana.tls.certresolver=letsencrypt
       - traefik.http.routers.grafana.priority=100

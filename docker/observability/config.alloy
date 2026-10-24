@@ -55,6 +55,20 @@ otelcol.receiver.otlp "apps" {
   http {}
 
   output {
+    traces = [otelcol.processor.filter.drop_noise.input]
+  }
+}
+
+// Traefik's Docker provider polls the Docker API every few seconds and each
+// call becomes a root trace ("GET /v1.54/containers/..."). Drop those.
+otelcol.processor.filter "drop_noise" {
+  error_mode = "ignore"
+
+  traces {
+    span = ["resource.attributes[\"service.name\"] == \"traefik\" and IsMatch(name, \"^GET /v1[.]\")"]
+  }
+
+  output {
     traces = [otelcol.processor.batch.default.input]
   }
 }
