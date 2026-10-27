@@ -234,7 +234,7 @@ export function TournamentDetails({
                 </>
               ) : (
                 <Button disabled className="self-start">
-                  Registered
+                  Registration started
                 </Button>
               )}
             </div>

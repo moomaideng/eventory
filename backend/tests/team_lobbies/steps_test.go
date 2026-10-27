@@ -38,6 +38,17 @@ func (s *teamLobbyScenarioContext) aPublishedTeamTournamentExistsWithRegistratio
 	return s.createPublishedTournament()
 }
 
+func (s *teamLobbyScenarioContext) aPublishedSoloTournamentExistsWithRegistrationOpen() error {
+	if err := s.createPublishedTournament(); err != nil {
+		return err
+	}
+	return app.DB.Model(s.tournament).Updates(map[string]any{
+		"registration_mode": models.TournamentRegistrationModeSolo,
+		"min_team_size":     1,
+		"max_team_size":     1,
+	}).Error
+}
+
 func (s *teamLobbyScenarioContext) createPublishedTournament() error {
 	organizer := apptest.NewTestUser()
 	if err := s.persistActiveAccount(organizer); err != nil {
@@ -125,6 +136,39 @@ func (s *teamLobbyScenarioContext) aCaptainHasCreatedAFormingTeamLobbyWithAValid
 
 func (s *teamLobbyScenarioContext) theCompetitorSubmitsAValidTeamName() error {
 	return s.createLobby(s.actor, "Cyber Wolves")
+}
+
+func (s *teamLobbyScenarioContext) rejectedEntry(name string) error {
+	team := models.TournamentTeam{
+		ID: uuid.New(), TournamentID: s.tournament.ID, Name: name,
+		Status: models.TournamentTeamStatusRejected,
+	}
+	if err := app.DB.Create(&team).Error; err != nil {
+		return err
+	}
+	return app.DB.Create(&models.TournamentTeamMember{
+		ID: uuid.New(), TournamentTeamID: team.ID, AccountID: s.actor.ID,
+		Role: models.TournamentTeamMemberRoleCaptain,
+	}).Error
+}
+
+func (s *teamLobbyScenarioContext) theCompetitorsPreviousTeamWasRejected() error {
+	return s.rejectedEntry("Cyber Wolves")
+}
+
+func (s *teamLobbyScenarioContext) theCompetitorsPreviousSoloApplicationWasRejected() error {
+	return s.rejectedEntry(s.actor.DisplayName)
+}
+
+func (s *teamLobbyScenarioContext) theCompetitorRegistersSoloAgain() error {
+	resp, err := s.client.Do(http.MethodPost,
+		fmt.Sprintf("/tournaments/%s/solo-register", s.tournament.ID), nil,
+		s.actor.AuthHeaders())
+	if err != nil {
+		return err
+	}
+	s.resp = resp
+	return nil
 }
 
 func (s *teamLobbyScenarioContext) theCompetitorSubmitsAnEmptyTeamName() error {
@@ -278,10 +322,14 @@ func InitializeScenario(sc *godog.ScenarioContext) {
 
 	sc.Step(`^the Eventory API service is running$`, s.theEventoryAPIServiceIsRunning)
 	sc.Step(`^a published team tournament exists with registration open$`, s.aPublishedTeamTournamentExistsWithRegistrationOpen)
+	sc.Step(`^a published solo tournament exists with registration open$`, s.aPublishedSoloTournamentExistsWithRegistrationOpen)
 	sc.Step(`^the competitor has signed in and completed onboarding$`, s.anActiveCompetitor)
 	sc.Step(`^another competitor has signed in and completed onboarding$`, s.anotherActiveCompetitor)
 	sc.Step(`^a captain has created a forming team lobby with a valid invite code$`, s.aCaptainHasCreatedAFormingTeamLobbyWithAValidInviteCode)
 	sc.Step(`^the competitor submits a valid team name$`, s.theCompetitorSubmitsAValidTeamName)
+	sc.Step(`^the competitor's previous team was rejected$`, s.theCompetitorsPreviousTeamWasRejected)
+	sc.Step(`^the competitor's previous solo application was rejected$`, s.theCompetitorsPreviousSoloApplicationWasRejected)
+	sc.Step(`^the competitor registers solo again$`, s.theCompetitorRegistersSoloAgain)
 	sc.Step(`^the competitor submits an empty team name$`, s.theCompetitorSubmitsAnEmptyTeamName)
 	sc.Step(`^the other competitor joins the lobby using the valid invite code$`, s.theOtherCompetitorJoinsUsingTheValidInviteCode)
 	sc.Step(`^the competitor tries to join with an invalid invite code$`, s.theCompetitorTriesToJoinWithAnInvalidInviteCode)
