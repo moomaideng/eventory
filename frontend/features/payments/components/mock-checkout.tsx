@@ -138,7 +138,9 @@ export function MockCheckout({
           {payment.status !== "UNPAID" && (
             <Alert>
               <AlertTitle>
-                {payment.status === "PAID"
+                {payment.status === "REFUNDED"
+                  ? "Payment refunded"
+                  : payment.status === "PAID"
                   ? "Payment successful"
                   : payment.status === "CANCELLED"
                     ? lastResult === "FAILED"
@@ -147,7 +149,9 @@ export function MockCheckout({
                     : "Invoice expired"}
               </AlertTitle>
               <AlertDescription>
-                {payment.status === "PAID"
+                {payment.status === "REFUNDED"
+                  ? "The full amount was refunded after your registration was rejected."
+                  : payment.status === "PAID"
                   ? "Your payment has been recorded. View your receipt below."
                   : "This invoice is closed and can no longer be paid. No payment was made."}
               </AlertDescription>
@@ -187,13 +191,13 @@ export function MockCheckout({
           ) : (
             <Link
               href={
-                payment.status === "PAID"
+                payment.status === "PAID" || payment.status === "REFUNDED"
                   ? `${basePath}/${payment.id}/receipt`
                   : `${basePath}/${payment.id}`
               }
               className={buttonVariants({ variant: "outline" })}
             >
-              {payment.status === "PAID" ? "View receipt" : "View invoice"}
+              {payment.status === "PAID" || payment.status === "REFUNDED" ? "View receipt" : "View invoice"}
             </Link>
           )}
         </CardFooter>

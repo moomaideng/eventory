@@ -65,7 +65,11 @@ export function Invoice({
         <Card>
           <CardHeader>
             <CardTitle>
-              {invoice.status === "PAID" ? "Amount paid" : "Amount due"}
+              {invoice.status === "REFUNDED"
+                ? "Amount refunded"
+                : invoice.status === "PAID"
+                  ? "Amount paid"
+                  : "Amount due"}
             </CardTitle>
             <CardDescription>Set by the requesting service.</CardDescription>
           </CardHeader>
@@ -78,7 +82,9 @@ export function Invoice({
             </div>
             <Alert>
               <AlertTitle>
-                {invoice.status === "PAID"
+                {invoice.status === "REFUNDED"
+                  ? "Payment refunded"
+                  : invoice.status === "PAID"
                   ? "Invoice paid"
                   : invoice.status === "CANCELLED"
                     ? "Payment attempt closed"
@@ -87,7 +93,9 @@ export function Invoice({
                       : "Payment is due"}
               </AlertTitle>
               <AlertDescription>
-                {invoice.status === "PAID"
+                {invoice.status === "REFUNDED"
+                  ? "Your organizer rejected the registration. The full amount has been refunded; your original payment receipt is still available."
+                  : invoice.status === "PAID"
                   ? "Your receipt is available below."
                   : invoice.status === "CANCELLED"
                     ? "No payment was made. Return to the tournament or team lobby to start again."
@@ -106,7 +114,7 @@ export function Invoice({
                 Proceed to checkout
               </Link>
             )}
-            {invoice.status === "PAID" && (
+            {(invoice.status === "PAID" || invoice.status === "REFUNDED") && (
               <Link
                 href={`${basePath}/${invoice.id}/receipt`}
                 className={buttonVariants()}

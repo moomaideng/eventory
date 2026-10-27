@@ -110,6 +110,7 @@ type TournamentTeam struct {
 	LockedAt           *time.Time
 	PaymentAttemptID   *uuid.UUID `gorm:"type:uuid"`
 	PaymentID          *uuid.UUID `gorm:"type:uuid"`
+	RefundedAt         *time.Time
 	PaymentPayerID     *uuid.UUID `gorm:"type:uuid"`
 	PaymentAmountMinor int64      `gorm:"not null;default:0"`
 	PaymentExpiresAt   *time.Time

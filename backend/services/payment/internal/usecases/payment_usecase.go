@@ -76,6 +76,24 @@ func (uc *PaymentUseCase) GetForService(ctx context.Context, id uuid.UUID) (*mod
 	return uc.repo.Get(ctx, id)
 }
 
+func (uc *PaymentUseCase) RefundRegistration(ctx context.Context, invoiceID, entryID uuid.UUID) (*models.Invoice, error) {
+	if invoiceID == uuid.Nil || entryID == uuid.Nil {
+		return nil, ErrInvalid
+	}
+	return uc.repo.Refund(ctx, invoiceID, func(invoice *models.Invoice) error {
+		if invoice.Source != "TEAM_REGISTRATION" || !strings.HasPrefix(invoice.Reference, entryID.String()+":") || invoice.PaidAt == nil {
+			return repositories.ErrConflict
+		}
+		if invoice.RefundedAt != nil {
+			return nil
+		}
+		now := time.Now().UTC().Truncate(time.Microsecond)
+		invoice.RefundedAt = &now
+		invoice.RefundReason = "APPLICATION_REJECTED"
+		return nil
+	})
+}
+
 // Date filters include both selected days in UTC, matching history display.
 func HistoryFilter(from, to string, page, limit int) (repositories.Filter, error) {
 	filter := repositories.Filter{Page: page, Limit: limit}

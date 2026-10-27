@@ -3,6 +3,7 @@ package repositories
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/moomaideng/eventory/services/tournament/models"
@@ -30,7 +31,9 @@ type TeamReviewRepository interface {
 		tournamentID, teamID uuid.UUID,
 		reason string,
 		decide func(tournament *models.Tournament, team *models.TournamentTeam, acceptedEntries int) (models.TournamentTeamStatus, error),
-	) (*models.TournamentTeamReview, error)
+	) (*models.TournamentTeamReview, *uuid.UUID, error)
+	PendingRefunds(ctx context.Context) ([]models.TournamentTeam, error)
+	MarkRefunded(ctx context.Context, teamID, paymentID uuid.UUID) error
 }
 
 type teamReviewRepository struct {
@@ -48,8 +51,9 @@ func (r *teamReviewRepository) ApplyReview(
 	tournamentID, teamID uuid.UUID,
 	reason string,
 	decide func(tournament *models.Tournament, team *models.TournamentTeam, acceptedEntries int) (models.TournamentTeamStatus, error),
-) (*models.TournamentTeamReview, error) {
+) (*models.TournamentTeamReview, *uuid.UUID, error) {
 	var review models.TournamentTeamReview
+	var paymentID *uuid.UUID
 
 	err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		var tournament models.Tournament
@@ -94,6 +98,7 @@ func (r *teamReviewRepository) ApplyReview(
 		}
 
 		from := team.Status
+		paymentID = team.PaymentID
 		if err := tx.Model(&team).Update("status", to).Error; err != nil {
 			return err
 		}
@@ -110,7 +115,19 @@ func (r *teamReviewRepository) ApplyReview(
 		return tx.Create(&review).Error
 	})
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	return &review, nil
+	return &review, paymentID, nil
+}
+
+func (r *teamReviewRepository) PendingRefunds(ctx context.Context) ([]models.TournamentTeam, error) {
+	var teams []models.TournamentTeam
+	err := r.db.WithContext(ctx).Where("status = ? AND payment_id IS NOT NULL AND refunded_at IS NULL", models.TournamentTeamStatusRejected).Find(&teams).Error
+	return teams, err
+}
+
+func (r *teamReviewRepository) MarkRefunded(ctx context.Context, teamID, paymentID uuid.UUID) error {
+	return r.db.WithContext(ctx).Model(&models.TournamentTeam{}).
+		Where("id = ? AND status = ? AND payment_id = ? AND refunded_at IS NULL", teamID, models.TournamentTeamStatusRejected, paymentID).
+		Update("refunded_at", time.Now().UTC()).Error
 }

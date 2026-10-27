@@ -17,7 +17,7 @@ export function TeamSubmissionResult({ payment }: { payment: Payment }) {
   const submission = useQuery({
     queryKey: ["team-submission", payment.id, payment.status],
     enabled:
-      isTeamPayment && payment.status !== "UNPAID" && !!authorizationHeader,
+      isTeamPayment && payment.status !== "UNPAID" && payment.status !== "REFUNDED" && !!authorizationHeader,
     queryFn: async () => {
       const result = await apiClient.POST(
         "/api/v1/lobbies/{id}/submission/refresh",
@@ -33,20 +33,31 @@ export function TeamSubmissionResult({ payment }: { payment: Payment }) {
     retry: 2,
   });
   if (!isTeamPayment || payment.status === "UNPAID") return null;
+  if (payment.status === "REFUNDED")
+    return (
+      <Alert aria-live="polite">
+        <AlertTitle>Application rejected</AlertTitle>
+        <AlertDescription>Your full registration fee has been refunded.</AlertDescription>
+      </Alert>
+    );
   const team = submission.data;
   const submitted =
     team && ["LOCKED", "ACCEPTED", "REJECTED"].includes(team.status);
   return (
     <Alert aria-live="polite">
       <AlertTitle>
-        {submitted
+        {team?.status === "REJECTED"
+          ? "Application rejected"
+          : submitted
           ? "Team application submitted"
           : team?.status === "FORMING"
             ? "Roster unlocked"
             : "Verifying team submission"}
       </AlertTitle>
       <AlertDescription>
-        {submitted
+        {team?.status === "REJECTED"
+          ? "Your organizer rejected this registration. If you paid a fee, its refund is being processed."
+          : submitted
           ? "Your application is with the organizer. Open your team to see its approval status."
           : team?.status === "FORMING"
             ? "Payment was unsuccessful or expired. Your team was not submitted. Return to the lobby to edit your roster or try again."

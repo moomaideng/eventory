@@ -1415,9 +1415,11 @@ export interface components {
             /** @enum {string} */
             provider: "MOCK";
             reference: string;
+            /** Format: date-time */
+            refundedAt: string | null;
             source: string;
             /** @enum {string} */
-            status: "UNPAID" | "PAID" | "EXPIRED" | "CANCELLED";
+            status: "UNPAID" | "PAID" | "REFUNDED" | "EXPIRED" | "CANCELLED";
         };
         ReceiptResponse: {
             /**
@@ -1462,6 +1464,15 @@ export interface components {
             isCompleted: boolean;
             matchId: string;
             targetMatchId?: string;
+        };
+        "Refund-rejected-registrationRequest": {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/Refund-rejected-registrationRequest.json
+             */
+            readonly $schema?: string;
+            entryId: string;
         };
         RegistrationFormResponse: {
             /**

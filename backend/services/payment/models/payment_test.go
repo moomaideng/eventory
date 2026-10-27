@@ -23,4 +23,9 @@ func TestInvoiceStatus(t *testing.T) {
 	if invoice.Status(deadline.Add(time.Hour)) != Paid {
 		t.Fatal("paid invoice must stay paid after its deadline")
 	}
+	refundedAt := deadline.Add(time.Hour)
+	invoice.RefundedAt = &refundedAt
+	if invoice.Status(refundedAt) != Refunded {
+		t.Fatal("refunded invoice must stay refunded")
+	}
 }
