@@ -3,7 +3,6 @@ package usecases
 import (
 	"context"
 	"errors"
-	"log/slog"
 	"time"
 
 	"github.com/google/uuid"
@@ -233,27 +232,8 @@ func mapSponsorshipError(err error) error {
 	return mapTierError(err)
 }
 
-func (u *SponsorshipUseCase) Run(ctx context.Context) {
-	ticker := time.NewTicker(10 * time.Second)
-	defer ticker.Stop()
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case <-ticker.C:
-			pledges, err := u.repo.Pending(ctx)
-			if err != nil {
-				slog.Error("list pending sponsorships", "error", err)
-				continue
-			}
-			for i := range pledges {
-				if ctx.Err() != nil {
-					return
-				}
-				if err := u.Reconcile(ctx, &pledges[i]); err != nil {
-					slog.Warn("reconcile sponsorship", "pledge", pledges[i].ID, "error", err)
-				}
-			}
-		}
-	}
+// Pending lists pledges awaiting a payment outcome, for a background poller to
+// feed to Reconcile.
+func (u *SponsorshipUseCase) Pending(ctx context.Context) ([]models.SponsorshipPledge, error) {
+	return u.repo.Pending(ctx)
 }

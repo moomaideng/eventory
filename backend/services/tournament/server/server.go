@@ -22,6 +22,7 @@ import (
 	"github.com/moomaideng/eventory/services/tournament/internal/forms"
 	"github.com/moomaideng/eventory/services/tournament/internal/repositories"
 	"github.com/moomaideng/eventory/services/tournament/internal/usecases"
+	"github.com/moomaideng/eventory/services/tournament/models"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"google.golang.org/grpc"
 	"gorm.io/gorm"
@@ -54,8 +55,40 @@ func newApp(db *gorm.DB, mongoDB *mongo.Database, cfg config.Config, accountSvc 
 	return &App{
 		HTTP: newHTTPRouter(db, mongoDB, cfg, accountSvc, teamLobbyUseCase, sponsorships),
 		RunSubmissions: func(ctx context.Context) {
-			go sponsorships.Run(ctx)
-			teamLobbyUseCase.Run(ctx)
+			go sponsorshipPoller(sponsorships).run(ctx)
+			teamSubmissionPoller(teamLobbyUseCase).run(ctx)
+		},
+	}
+}
+
+const reconcileInterval = 10 * time.Second
+
+func teamSubmissionPoller(u *usecases.TeamLobbyUseCase) poller[models.TournamentTeam] {
+	return poller[models.TournamentTeam]{
+		interval:    reconcileInterval,
+		spanName:    "reconcile pending team submissions",
+		listPending: u.Pending,
+		reconcile:   u.Reconcile,
+		onListError: func(ctx context.Context, err error) {
+			slog.ErrorContext(ctx, "list pending team submissions", "error", err)
+		},
+		onReconcileError: func(ctx context.Context, team *models.TournamentTeam, err error) {
+			slog.ErrorContext(ctx, "reconcile team submission", "team_id", team.ID, "error", err)
+		},
+	}
+}
+
+func sponsorshipPoller(u *usecases.SponsorshipUseCase) poller[models.SponsorshipPledge] {
+	return poller[models.SponsorshipPledge]{
+		interval:    reconcileInterval,
+		spanName:    "reconcile pending sponsorships",
+		listPending: u.Pending,
+		reconcile:   u.Reconcile,
+		onListError: func(ctx context.Context, err error) {
+			slog.ErrorContext(ctx, "list pending sponsorships", "error", err)
+		},
+		onReconcileError: func(ctx context.Context, pledge *models.SponsorshipPledge, err error) {
+			slog.WarnContext(ctx, "reconcile sponsorship", "pledge", pledge.ID, "error", err)
 		},
 	}
 }
