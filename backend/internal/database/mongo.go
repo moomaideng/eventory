@@ -8,6 +8,7 @@ import (
 
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
+	"go.opentelemetry.io/contrib/instrumentation/go.mongodb.org/mongo-driver/v2/mongo/otelmongo"
 )
 
 // ConnectMongo initializes and validates a MongoDB client connection.
@@ -16,7 +17,11 @@ func ConnectMongo(ctx context.Context, uri string) (*mongo.Client, error) {
 		return nil, errors.New("MONGO_URI is required")
 	}
 
-	opts := options.Client().ApplyURI(uri)
+	// Keep command bodies out of spans: they hold user data (emails, form
+	// answers). This is otelmongo's default today, but upstream plans to
+	// re-enable it, so it stays explicit.
+	monitor := otelmongo.NewMonitor(otelmongo.WithCommandAttributeDisabled(true))
+	opts := options.Client().ApplyURI(uri).SetMonitor(monitor)
 	client, err := mongo.Connect(opts)
 	if err != nil {
 		return nil, err

@@ -5,6 +5,9 @@ import (
 	sharedconfig "github.com/moomaideng/eventory/internal/config"
 )
 
+// ServiceName identifies this service in logs and traces.
+const ServiceName = "payment"
+
 type Config struct {
 	HTTPPort    string               `mapstructure:"http_port"`
 	DBDSN       string               `mapstructure:"db_dsn"`
@@ -13,6 +16,7 @@ type Config struct {
 	CORSOrigins []string             `mapstructure:"cors_allowed_origins"`
 	ServiceKey  string               `mapstructure:"payment_service_key"`
 	Logging     sharedconfig.Logging `mapstructure:",squash"`
+	OTel        sharedconfig.OTel    `mapstructure:",squash"`
 }
 
 func Load() (Config, error) {

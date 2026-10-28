@@ -12,7 +12,11 @@ import (
 	sharedconfig "github.com/moomaideng/eventory/internal/config"
 )
 
-const serviceDir = "services/notification"
+const (
+	serviceDir = "services/notification"
+	// ServiceName identifies this service in logs and traces.
+	ServiceName = "notification"
+)
 
 type Config struct {
 	HTTPPort           string               `mapstructure:"http_port"`
@@ -37,6 +41,7 @@ type Config struct {
 	SMTPTimeoutRaw     string               `mapstructure:"smtp_timeout"`
 	BrokerReconnectRaw string               `mapstructure:"broker_reconnect_delay"`
 	Logging            sharedconfig.Logging `mapstructure:",squash"`
+	OTel               sharedconfig.OTel    `mapstructure:",squash"`
 
 	SMTPStartTLS         bool            `mapstructure:"-"`
 	RetryDelays          []time.Duration `mapstructure:"-"`

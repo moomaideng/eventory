@@ -8,6 +8,10 @@ import (
 	"time"
 
 	amqp "github.com/rabbitmq/amqp091-go"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
 )
 
 const (
@@ -135,7 +139,22 @@ func (broker *Broker) PublishDead(ctx context.Context, body []byte, attempt int,
 	return broker.publish(ctx, DeadExchange, RegistrationKey, body, amqp.Table{"x-attempt": int32(attempt), "x-failure-reason": reason})
 }
 
-func (broker *Broker) publish(ctx context.Context, exchange, key string, body []byte, headers amqp.Table) error {
+func (broker *Broker) publish(ctx context.Context, exchange, key string, body []byte, headers amqp.Table) (err error) {
+	ctx, span := otel.Tracer("notification.rabbitmq").Start(ctx, "publish "+exchange,
+		trace.WithSpanKind(trace.SpanKindProducer),
+		trace.WithAttributes(
+			attribute.String("messaging.system", "rabbitmq"),
+			attribute.String("messaging.destination.name", exchange),
+			attribute.String("messaging.rabbitmq.destination.routing_key", key),
+		))
+	defer func() {
+		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, err.Error())
+		}
+		span.End()
+	}()
+
 	// A confirm belongs to the next publish on this channel. Serialize publishes
 	// so a future worker pool cannot consume another goroutine's confirmation.
 	broker.publishMu.Lock()
@@ -145,6 +164,10 @@ func (broker *Broker) publish(ctx context.Context, exchange, key string, body []
 	if broker.publishCh == nil || broker.publishCh.IsClosed() {
 		return fmt.Errorf("rabbitmq publisher channel is closed")
 	}
+
+	// Inject after starting the span so the consumer's span is a child of this publish.
+	otel.GetTextMapPropagator().Inject(ctx, tableCarrier(headers))
+
 	if err := broker.publishCh.PublishWithContext(ctx, exchange, key, true, false, amqp.Publishing{
 		Headers: headers, ContentType: "application/json", DeliveryMode: amqp.Persistent,
 		Timestamp: time.Now().UTC(), Body: body,
@@ -216,3 +239,27 @@ func retryQueueName(attempt int) string {
 	return fmt.Sprintf("notification.email.retry.%d.v1", attempt)
 }
 func retryRoutingKey(attempt int) string { return fmt.Sprintf("retry.%d", attempt) }
+
+// tableCarrier lets the OTel propagator read and write trace headers on AMQP
+// message headers, so consumers continue the publisher's trace.
+type tableCarrier amqp.Table
+
+func (c tableCarrier) Get(key string) string {
+	value, _ := c[key].(string)
+	return value
+}
+
+func (c tableCarrier) Set(key, value string) { c[key] = value }
+
+func (c tableCarrier) Keys() []string {
+	keys := make([]string, 0, len(c))
+	for key := range c {
+		keys = append(keys, key)
+	}
+	return keys
+}
+
+// ExtractTrace returns ctx carrying the trace context stored in headers.
+func ExtractTrace(ctx context.Context, headers amqp.Table) context.Context {
+	return otel.GetTextMapPropagator().Extract(ctx, tableCarrier(headers))
+}

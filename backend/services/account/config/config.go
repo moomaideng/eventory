@@ -2,7 +2,11 @@ package config
 
 import sharedconfig "github.com/moomaideng/eventory/internal/config"
 
-const serviceDir = "services/account"
+const (
+	serviceDir = "services/account"
+	// ServiceName identifies this service in logs and traces.
+	ServiceName = "account"
+)
 
 // Config holds account-service settings.
 type Config struct {
@@ -13,6 +17,7 @@ type Config struct {
 	Environment string               `mapstructure:"environment"`
 	CORSOrigins []string             `mapstructure:"cors_allowed_origins"`
 	Logging     sharedconfig.Logging `mapstructure:",squash"`
+	OTel        sharedconfig.OTel    `mapstructure:",squash"`
 }
 
 // Load reads services/account/.env.default, then .env, then process env.
