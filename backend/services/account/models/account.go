@@ -54,16 +54,20 @@ func (profile *OrganizerProfile) BeforeSave(_ *gorm.DB) error {
 }
 
 type SponsorProfile struct {
-	AccountID    uuid.UUID `gorm:"type:uuid;primaryKey"`
-	SponsorName  string    `gorm:"type:varchar(150);not null"`
-	SponsorEmail string    `gorm:"type:varchar(255)"`
-	CreatedAt    time.Time
-	UpdatedAt    time.Time
+	AccountID          uuid.UUID `gorm:"type:uuid;primaryKey"`
+	SponsorName        string    `gorm:"type:varchar(150);not null"`
+	SponsorEmail       string    `gorm:"type:varchar(255)"`
+	Category           string    `gorm:"type:varchar(80)"`
+	PublicContactEmail string    `gorm:"type:varchar(255)"`
+	DirectoryVisible   bool      `gorm:"not null;default:false;index"`
+	CreatedAt          time.Time
+	UpdatedAt          time.Time
 }
 
 func (profile *SponsorProfile) BeforeSave(_ *gorm.DB) error {
 	profile.SponsorName = strings.TrimSpace(profile.SponsorName)
 	profile.SponsorEmail = strings.ToLower(strings.TrimSpace(profile.SponsorEmail))
+	profile.Category = strings.TrimSpace(profile.Category)
+	profile.PublicContactEmail = strings.ToLower(strings.TrimSpace(profile.PublicContactEmail))
 	return nil
 }
-

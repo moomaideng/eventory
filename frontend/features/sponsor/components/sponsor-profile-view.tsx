@@ -14,12 +14,18 @@ import { Button } from "@/components/ui/button";
 interface SponsorProfileViewProps {
   sponsorName: string;
   sponsorEmail?: string | null;
+  category?: string;
+  publicContactEmail?: string;
+  directoryVisible?: boolean;
   onEdit: () => void;
 }
 
 export function SponsorProfileView({
   sponsorName,
   sponsorEmail,
+  category,
+  publicContactEmail,
+  directoryVisible,
   onEdit,
 }: SponsorProfileViewProps) {
   return (
@@ -27,8 +33,7 @@ export function SponsorProfileView({
       <CardHeader>
         <CardTitle>Sponsor profile</CardTitle>
         <CardDescription>
-          This information is shown to organizers when you sponsor a
-          tournament.
+          This information is shown to organizers when you sponsor a tournament.
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
@@ -40,11 +45,21 @@ export function SponsorProfileView({
           <p className="text-muted-foreground text-sm">Contact email</p>
           <p className="font-medium">
             {sponsorEmail || (
-              <span className="text-muted-foreground font-normal">
-                Not set
-              </span>
+              <span className="text-muted-foreground font-normal">Not set</span>
             )}
           </p>
+        </div>
+        <div className="border-border space-y-2 border-t pt-4">
+          <p className="font-medium">Sponsor directory</p>
+          <p className="text-muted-foreground text-sm">
+            {directoryVisible
+              ? "Visible to organizers"
+              : "Hidden from organizers"}
+          </p>
+          {category ? <p className="text-sm">Category: {category}</p> : null}
+          {publicContactEmail ? (
+            <p className="text-sm">Public contact: {publicContactEmail}</p>
+          ) : null}
         </div>
       </CardContent>
       <CardFooter className="justify-end">

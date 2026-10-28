@@ -3,6 +3,7 @@ package repositories
 import (
 	"context"
 	"errors"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/moomaideng/eventory/services/account/models"
@@ -23,6 +24,8 @@ type AccountRepository interface {
 	UpsertOrganizerProfile(ctx context.Context, profile *models.OrganizerProfile) (*models.OrganizerProfile, error)
 	FindSponsorProfileByAccountID(ctx context.Context, accountID uuid.UUID) (*models.SponsorProfile, error)
 	UpsertSponsorProfile(ctx context.Context, profile *models.SponsorProfile) (*models.SponsorProfile, error)
+	ListVisibleSponsorProfiles(ctx context.Context, search, category string, page, pageSize int) ([]models.SponsorProfile, int64, error)
+	ListVisibleSponsorCategories(ctx context.Context) ([]string, error)
 }
 
 // accountRepositoryImpl is the concrete implementation of AccountRepository using GORM.
@@ -178,6 +181,9 @@ func (r *accountRepositoryImpl) UpsertSponsorProfile(ctx context.Context, profil
 				if rerr := r.db.WithContext(ctx).Where("account_id = ?", profile.AccountID).First(&fallback).Error; rerr == nil {
 					fallback.SponsorName = profile.SponsorName
 					fallback.SponsorEmail = profile.SponsorEmail
+					fallback.Category = profile.Category
+					fallback.PublicContactEmail = profile.PublicContactEmail
+					fallback.DirectoryVisible = profile.DirectoryVisible
 					if err := r.db.WithContext(ctx).Save(&fallback).Error; err != nil {
 						return nil, err
 					}
@@ -192,8 +198,44 @@ func (r *accountRepositoryImpl) UpsertSponsorProfile(ctx context.Context, profil
 
 	existing.SponsorName = profile.SponsorName
 	existing.SponsorEmail = profile.SponsorEmail
+	existing.Category = profile.Category
+	existing.PublicContactEmail = profile.PublicContactEmail
+	existing.DirectoryVisible = profile.DirectoryVisible
 	if err := r.db.WithContext(ctx).Save(&existing).Error; err != nil {
 		return nil, err
 	}
 	return &existing, nil
+}
+
+// ListVisibleSponsorProfiles returns only sponsors that opted in and have a public contact address.
+func (r *accountRepositoryImpl) ListVisibleSponsorProfiles(ctx context.Context, search, category string, page, pageSize int) ([]models.SponsorProfile, int64, error) {
+	query := r.db.WithContext(ctx).Model(&models.SponsorProfile{}).
+		Joins("JOIN accounts ON accounts.id = sponsor_profiles.account_id").
+		Where("sponsor_profiles.directory_visible = ? AND sponsor_profiles.public_contact_email <> ? AND accounts.status = ?", true, "", models.AccountStatusActive)
+	if search != "" {
+		// Escape LIKE wildcards so the search box treats input as plain text.
+		escaped := strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`).Replace(strings.ToLower(search))
+		query = query.Where(`LOWER(sponsor_profiles.sponsor_name) LIKE ? ESCAPE '\'`, "%"+escaped+"%")
+	}
+	if category != "" {
+		query = query.Where("LOWER(sponsor_profiles.category) = ?", strings.ToLower(category))
+	}
+	var total int64
+	if err := query.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+	var profiles []models.SponsorProfile
+	if err := query.Order("sponsor_profiles.sponsor_name ASC, sponsor_profiles.account_id ASC").Offset((page - 1) * pageSize).Limit(pageSize).Find(&profiles).Error; err != nil {
+		return nil, 0, err
+	}
+	return profiles, total, nil
+}
+
+func (r *accountRepositoryImpl) ListVisibleSponsorCategories(ctx context.Context) ([]string, error) {
+	var categories []string
+	err := r.db.WithContext(ctx).Model(&models.SponsorProfile{}).
+		Joins("JOIN accounts ON accounts.id = sponsor_profiles.account_id").
+		Where("sponsor_profiles.directory_visible = ? AND sponsor_profiles.public_contact_email <> ? AND accounts.status = ?", true, "", models.AccountStatusActive).
+		Distinct("sponsor_profiles.category").Order("sponsor_profiles.category ASC").Pluck("sponsor_profiles.category", &categories).Error
+	return categories, err
 }

@@ -1,6 +1,10 @@
 "use client";
 
-import { useState, type FormEvent, type MouseEvent as ReactMouseEvent } from "react";
+import {
+  useState,
+  type FormEvent,
+  type MouseEvent as ReactMouseEvent,
+} from "react";
 import { Building2 } from "lucide-react";
 import {
   AlertDialog,
@@ -32,11 +36,23 @@ import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { sponsorProfileSchema, type SponsorProfileInput } from "../schemas";
 
-type FieldErrors = Partial<Record<"sponsorName" | "sponsorEmail", string>>;
+type FieldErrors = Partial<
+  Record<
+    | "sponsorName"
+    | "sponsorEmail"
+    | "category"
+    | "publicContactEmail"
+    | "directoryVisible",
+    string
+  >
+>;
 
 interface SponsorProfileFormProps {
   initialName: string;
   initialEmail: string;
+  initialCategory: string;
+  initialPublicContactEmail: string;
+  initialDirectoryVisible: boolean;
   onCancel: () => void;
   onConfirmSave: (data: SponsorProfileInput) => Promise<boolean>;
   isSaving: boolean;
@@ -46,6 +62,9 @@ interface SponsorProfileFormProps {
 export function SponsorProfileForm({
   initialName,
   initialEmail,
+  initialCategory,
+  initialPublicContactEmail,
+  initialDirectoryVisible,
   onCancel,
   onConfirmSave,
   isSaving,
@@ -53,10 +72,18 @@ export function SponsorProfileForm({
 }: SponsorProfileFormProps) {
   const [sponsorName, setSponsorName] = useState(initialName);
   const [sponsorEmail, setSponsorEmail] = useState(initialEmail);
+  const [category, setCategory] = useState(initialCategory);
+  const [publicContactEmail, setPublicContactEmail] = useState(
+    initialPublicContactEmail
+  );
+  const [directoryVisible, setDirectoryVisible] = useState(
+    initialDirectoryVisible
+  );
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [pendingData, setPendingData] =
-    useState<SponsorProfileInput | null>(null);
+  const [pendingData, setPendingData] = useState<SponsorProfileInput | null>(
+    null
+  );
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -64,6 +91,9 @@ export function SponsorProfileForm({
     const result = sponsorProfileSchema.safeParse({
       sponsorName,
       sponsorEmail,
+      category,
+      publicContactEmail,
+      directoryVisible,
     });
 
     if (!result.success) {
@@ -71,6 +101,9 @@ export function SponsorProfileForm({
       setFieldErrors({
         sponsorName: flat.sponsorName?.[0],
         sponsorEmail: flat.sponsorEmail?.[0],
+        category: flat.category?.[0],
+        publicContactEmail: flat.publicContactEmail?.[0],
+        directoryVisible: flat.directoryVisible?.[0],
       });
       return;
     }
@@ -98,8 +131,7 @@ export function SponsorProfileForm({
       <CardHeader>
         <CardTitle>Sponsor profile</CardTitle>
         <CardDescription>
-          This information is shown to organizers when you sponsor a
-          tournament.
+          This information is shown to organizers when you sponsor a tournament.
         </CardDescription>
       </CardHeader>
       <form onSubmit={handleSubmit} noValidate>
@@ -147,6 +179,88 @@ export function SponsorProfileForm({
                 <FieldError>{fieldErrors.sponsorEmail}</FieldError>
               ) : null}
             </Field>
+            <div className="border-border space-y-4 rounded-lg border p-4">
+              <div>
+                <p className="font-medium">Sponsor directory</p>
+                <p className="text-muted-foreground text-sm">
+                  Organizers can find you only when you choose to appear here.
+                  New profiles start hidden.
+                </p>
+              </div>
+              <Field data-invalid={Boolean(fieldErrors.category)}>
+                <FieldLabel htmlFor="sponsor-category">
+                  Business category
+                </FieldLabel>
+                <Input
+                  id="sponsor-category"
+                  value={category}
+                  maxLength={80}
+                  placeholder="e.g. Technology"
+                  aria-invalid={Boolean(fieldErrors.category)}
+                  onChange={(event) => {
+                    setCategory(event.target.value);
+                    setFieldErrors((prev) => ({
+                      ...prev,
+                      category: undefined,
+                    }));
+                  }}
+                />
+                {fieldErrors.category ? (
+                  <FieldError>{fieldErrors.category}</FieldError>
+                ) : null}
+              </Field>
+              <Field data-invalid={Boolean(fieldErrors.publicContactEmail)}>
+                <FieldLabel htmlFor="public-contact-email">
+                  Public contact email
+                </FieldLabel>
+                <Input
+                  id="public-contact-email"
+                  type="email"
+                  value={publicContactEmail}
+                  placeholder="partners@example.com"
+                  aria-invalid={Boolean(fieldErrors.publicContactEmail)}
+                  onChange={(event) => {
+                    setPublicContactEmail(event.target.value);
+                    setFieldErrors((prev) => ({
+                      ...prev,
+                      publicContactEmail: undefined,
+                    }));
+                  }}
+                />
+                <FieldDescription>
+                  This address appears in the directory. Your profile contact
+                  email above stays separate.
+                </FieldDescription>
+                {fieldErrors.publicContactEmail ? (
+                  <FieldError>{fieldErrors.publicContactEmail}</FieldError>
+                ) : null}
+              </Field>
+              <label
+                className="flex items-start gap-3 text-sm"
+                htmlFor="directory-visible"
+              >
+                <input
+                  id="directory-visible"
+                  type="checkbox"
+                  checked={directoryVisible}
+                  className="border-input accent-primary mt-0.5 size-4 rounded border"
+                  onChange={(event) => {
+                    setDirectoryVisible(event.target.checked);
+                    setFieldErrors((prev) => ({
+                      ...prev,
+                      directoryVisible: undefined,
+                    }));
+                  }}
+                />
+                <span>
+                  Show my sponsor name, category and public contact email to
+                  organizers
+                </span>
+              </label>
+              {fieldErrors.directoryVisible ? (
+                <FieldError>{fieldErrors.directoryVisible}</FieldError>
+              ) : null}
+            </div>
           </FieldGroup>
         </CardContent>
         <CardFooter className="justify-end gap-3">
@@ -165,8 +279,9 @@ export function SponsorProfileForm({
           <AlertDialogHeader>
             <AlertDialogTitle>Save changes?</AlertDialogTitle>
             <AlertDialogDescription>
-              Organizers will see this sponsor name and email the next time
-              they view your sponsorship.
+              {pendingData?.directoryVisible
+                ? "Your sponsor name, category and public contact email will be available to organizers in the directory."
+                : "Your sponsor profile will be saved. Your directory listing will remain hidden."}
             </AlertDialogDescription>
           </AlertDialogHeader>
           {saveError ? (

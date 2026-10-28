@@ -7,6 +7,7 @@ import { NavbarRight } from "./navbar-right";
 
 const SPONSOR_NAV_LINKS: NavLinkItem[] = [
   { label: "Sponsor Dashboard", href: "/sponsor" },
+  { label: "Profile", href: "/sponsor/profile" },
   { label: "Find Tournaments", href: "/sponsor/tournaments" },
   { label: "My Payments", href: "/sponsor/payments" },
 ];
