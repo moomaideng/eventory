@@ -16,7 +16,98 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  # Decides what this run must do. Every image is tagged with a hash of its
+  # inputs (scripts/image-tag.sh). On main, an image is built only if that tag
+  # is missing from GHCR, so a failed build or deploy is retried by whatever
+  # push comes next, even one that touches nothing but CI.
+  plan:
+    runs-on: ubuntu-24.04-arm
+    outputs:
+      tags: ${{ steps.plan.outputs.tags }}
+      build: ${{ steps.plan.outputs.build }}
+      verify_backend: ${{ steps.plan.outputs.verify_backend }}
+      verify_frontend: ${{ steps.plan.outputs.verify_frontend }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          # PR runs check out the merge commit; HEAD^1 is the base branch.
+          fetch-depth: 2
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+
+      - name: Log in to GitHub Container Registry
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Compute image tags and work to do
+        id: plan
+        env:
+          # Every deployable image and the docker build context it builds from.
+          SERVICES: |
+            [
+              {"service": "account", "context": "backend"},
+              {"service": "tournament", "context": "backend"},
+              {"service": "payment", "context": "backend"},
+              {"service": "notification", "context": "backend"},
+              {"service": "frontend", "context": "frontend"}
+            ]
+          IS_MAIN_PUSH: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.PROD_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.PROD_SUPABASE_PUBLISHABLE_KEY }}
+          NEXT_PUBLIC_API_URL: ${{ secrets.PROD_API_URL }}
+        run: |
+          set -euo pipefail
+          # Without this, set -e is off inside $(...): a failing image-tag.sh
+          # would yield an empty tag instead of failing the job.
+          shopt -s inherit_errexit
+          # SERVICES plus each image's content tag and whether GHCR already has
+          # it. Probing is the only side effect; everything below is derived
+          # from this array with jq.
+          plan=$(
+            jq -c '.[]' <<<"$SERVICES" | while IFS= read -r entry; do
+              service=$(jq -r .service <<<"$entry")
+              context=$(jq -r .context <<<"$entry")
+              tag=$(scripts/image-tag.sh "$context" "$service")
+              published=false
+              # Any failure (not found, auth, network) counts as missing: the
+              # worst case is a needless rebuild, never a skipped one.
+              if [ "$IS_MAIN_PUSH" = true ] \
+                && docker manifest inspect "ghcr.io/moomaideng/eventory-$service:$tag" > /dev/null 2>&1; then
+                published=true
+              fi
+              echo "$service: $tag published=$published" >&2
+              jq -c --arg tag "$tag" --argjson published "$published" \
+                '. + {tag: $tag, published: $published}' <<<"$entry"
+            done | jq -s -c .
+          )
+          tags=$(jq -c 'map({(.service): .tag}) | add' <<<"$plan")
+          # Only main publishes; there, build whatever the registry lacks.
+          build=$(jq -c --argjson main "$IS_MAIN_PUSH" \
+            'map(select($main and (.published | not)) | {service, context, tag})' <<<"$plan")
+          verify_backend=$(jq 'any(.[]; .context == "backend")' <<<"$build")
+          verify_frontend=$(jq 'any(.[]; .context == "frontend")' <<<"$build")
+          # PRs verify whatever their full diff against the base touches.
+          if [ "$IS_MAIN_PUSH" != true ]; then
+            git diff --quiet HEAD^1 HEAD -- backend .github || verify_backend=true
+            git diff --quiet HEAD^1 HEAD -- frontend .github || verify_frontend=true
+          fi
+          {
+            echo "tags=$tags"
+            echo "build=$build"
+            echo "verify_backend=$verify_backend"
+            echo "verify_frontend=$verify_frontend"
+          } | tee -a "$GITHUB_OUTPUT"
+
   verify-backend:
+    needs: plan
+    if: needs.plan.outputs.verify_backend == 'true'
     runs-on: ubuntu-24.04-arm
     steps:
       - uses: actions/checkout@v5
@@ -35,6 +126,8 @@ jobs:
           go build ./...
 
   verify-frontend:
+    needs: plan
+    if: needs.plan.outputs.verify_frontend == 'true'
     runs-on: ubuntu-24.04-arm
     steps:
       - uses: actions/checkout@v5
@@ -62,19 +155,18 @@ jobs:
         run: npm run test:payments && npm run build
 
   publish:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: [verify-backend, verify-frontend]
+    # Skipped verify jobs (nothing of theirs changed) must not block publish.
+    if: >-
+      !failure() && !cancelled()
+      && github.event_name == 'push' && github.ref == 'refs/heads/main'
+      && needs.plan.outputs.build != '[]'
+    needs: [plan, verify-backend, verify-frontend]
     runs-on: ubuntu-24.04-arm
     strategy:
       # A failed image blocks deploy anyway; let the others finish and push.
       fail-fast: false
       matrix:
-        include:
-          - { service: account, context: backend }
-          - { service: tournament, context: backend }
-          - { service: payment, context: backend }
-          - { service: notification, context: backend }
-          - { service: frontend, context: frontend }
+        include: ${{ fromJSON(needs.plan.outputs.build) }}
     steps:
       - uses: actions/checkout@v5
 
@@ -122,12 +214,17 @@ jobs:
           cache-from: type=gha,scope=${{ matrix.service }}
           cache-to: type=gha,mode=max,scope=${{ matrix.service }}
           tags: |
+            ghcr.io/moomaideng/eventory-${{ matrix.service }}:${{ matrix.tag }}
             ghcr.io/moomaideng/eventory-${{ matrix.service }}:latest
             ghcr.io/moomaideng/eventory-${{ matrix.service }}:${{ github.sha }}
 
   deploy:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: publish
+    # Runs on every main push, even when no image changed: config, .env and
+    # retries of a previously failed deploy still need to land.
+    if: >-
+      !failure() && !cancelled()
+      && github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [plan, verify-backend, verify-frontend, publish]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -191,7 +288,7 @@ jobs:
 
       - name: Write production runtime environment
         env:
-          IMAGE_TAG: ${{ github.sha }}
+          IMAGE_TAGS: ${{ needs.plan.outputs.tags }}
           PROD_POSTGRES_PASSWORD: ${{ secrets.PROD_POSTGRES_PASSWORD }}
           PROD_MONGO_PASSWORD: ${{ secrets.PROD_MONGO_PASSWORD }}
           PROD_SUPABASE_URL: ${{ secrets.PROD_SUPABASE_URL }}
@@ -209,7 +306,11 @@ jobs:
           ORACLE_USER: ${{ secrets.ORACLE_USER }}
         run: |
           {
-            printf 'IMAGE_TAG=%s\n' "$IMAGE_TAG"
+            jq -r '"ACCOUNT_IMAGE_TAG=\(.account)",
+                   "TOURNAMENT_IMAGE_TAG=\(.tournament)",
+                   "PAYMENT_IMAGE_TAG=\(.payment)",
+                   "NOTIFICATION_IMAGE_TAG=\(.notification)",
+                   "FRONTEND_IMAGE_TAG=\(.frontend)"' <<<"$IMAGE_TAGS"
             printf 'POSTGRES_PASSWORD=%s\n' "$PROD_POSTGRES_PASSWORD"
             printf 'MONGO_PASSWORD=%s\n' "$PROD_MONGO_PASSWORD"
             printf 'SUPABASE_URL=%s\n' "$PROD_SUPABASE_URL"

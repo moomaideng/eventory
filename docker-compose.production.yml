@@ -167,7 +167,7 @@ services:
 
   account-migrate:
     <<: *migrate
-    image: ghcr.io/moomaideng/eventory-account:${IMAGE_TAG:?IMAGE_TAG is required}
+    image: ghcr.io/moomaideng/eventory-account:${ACCOUNT_IMAGE_TAG:?ACCOUNT_IMAGE_TAG is required}
     command: ["./migrate"]
     environment:
       ENVIRONMENT: production
@@ -176,7 +176,7 @@ services:
       DB_DSN: postgresql://admin:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@postgres:5432/account_db?sslmode=disable
 
   account:
-    image: ghcr.io/moomaideng/eventory-account:${IMAGE_TAG:?IMAGE_TAG is required}
+    image: ghcr.io/moomaideng/eventory-account:${ACCOUNT_IMAGE_TAG:?ACCOUNT_IMAGE_TAG is required}
     environment:
       ENVIRONMENT: production
       HTTP_PORT: "8081"
@@ -228,7 +228,7 @@ services:
 
   tournament-migrate:
     <<: *migrate
-    image: ghcr.io/moomaideng/eventory-tournament:${IMAGE_TAG:?IMAGE_TAG is required}
+    image: ghcr.io/moomaideng/eventory-tournament:${TOURNAMENT_IMAGE_TAG:?TOURNAMENT_IMAGE_TAG is required}
     command: ["./migrate"]
     environment:
       ENVIRONMENT: production
@@ -239,7 +239,7 @@ services:
       PAYMENT_SERVICE_KEY: ${PAYMENT_SERVICE_KEY:?PAYMENT_SERVICE_KEY is required}
 
   tournament:
-    image: ghcr.io/moomaideng/eventory-tournament:${IMAGE_TAG:?IMAGE_TAG is required}
+    image: ghcr.io/moomaideng/eventory-tournament:${TOURNAMENT_IMAGE_TAG:?TOURNAMENT_IMAGE_TAG is required}
     environment:
       ENVIRONMENT: production
       HTTP_PORT: "8082"
@@ -290,7 +290,7 @@ services:
 
   payment-migrate:
     <<: *migrate
-    image: ghcr.io/moomaideng/eventory-payment:${IMAGE_TAG:?IMAGE_TAG is required}
+    image: ghcr.io/moomaideng/eventory-payment:${PAYMENT_IMAGE_TAG:?PAYMENT_IMAGE_TAG is required}
     command: ["./migrate"]
     environment:
       ENVIRONMENT: production
@@ -299,7 +299,7 @@ services:
       PAYMENT_SERVICE_KEY: ${PAYMENT_SERVICE_KEY:?PAYMENT_SERVICE_KEY is required}
 
   payment:
-    image: ghcr.io/moomaideng/eventory-payment:${IMAGE_TAG:?IMAGE_TAG is required}
+    image: ghcr.io/moomaideng/eventory-payment:${PAYMENT_IMAGE_TAG:?PAYMENT_IMAGE_TAG is required}
     environment:
       ENVIRONMENT: production
       HTTP_PORT: "8083"
@@ -342,14 +342,14 @@ services:
 
   notification-migrate:
     <<: *migrate
-    image: ghcr.io/moomaideng/eventory-notification:${IMAGE_TAG:?IMAGE_TAG is required}
+    image: ghcr.io/moomaideng/eventory-notification:${NOTIFICATION_IMAGE_TAG:?NOTIFICATION_IMAGE_TAG is required}
     command: ["./migrate"]
     environment:
       ENVIRONMENT: production
       DB_DSN: postgresql://admin:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@postgres:5432/notification_db?sslmode=disable
 
   notification:
-    image: ghcr.io/moomaideng/eventory-notification:${IMAGE_TAG:?IMAGE_TAG is required}
+    image: ghcr.io/moomaideng/eventory-notification:${NOTIFICATION_IMAGE_TAG:?NOTIFICATION_IMAGE_TAG is required}
     environment:
       ENVIRONMENT: production
       HTTP_PORT: "8084"
@@ -398,7 +398,7 @@ services:
       - eventory.logs=true
 
   frontend:
-    image: ghcr.io/moomaideng/eventory-frontend:${IMAGE_TAG:?IMAGE_TAG is required}
+    image: ghcr.io/moomaideng/eventory-frontend:${FRONTEND_IMAGE_TAG:?FRONTEND_IMAGE_TAG is required}
     environment:
       INTERNAL_API_URL: http://traefik:80
     depends_on:

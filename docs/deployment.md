@@ -8,16 +8,27 @@ How code gets from a pull request to the live server. Handled automatically by G
 
 | You do | GitHub does |
 | --- | --- |
-| Open a pull request | Runs tests, style checks, and a build. Nothing is deployed. |
-| Merge into `main` | Builds images, publishes them, deploys to the server. |
+| Open a pull request | Runs backend and/or frontend checks (tests, lint, build), depending on what the PR changes. Nothing is deployed. |
+| Merge into `main` | Builds and publishes only the images whose inputs changed, then deploys to the server. |
 
 ```mermaid
 flowchart LR
-    PR["Pull request"] --> V["verify<br/>tests · lint · build"]
-    M["Merge to main"] --> V2["verify"] --> P["publish<br/>images to GHCR"] --> D["deploy<br/>to Oracle server"]
+    PR["Pull request"] --> PL["plan<br/>what changed"] --> V["verify-backend · verify-frontend<br/>tests · lint · build"]
+    M["Merge to main"] --> PL2["plan<br/>which images are missing"] --> V2["verify<br/>for missing images"] --> P["publish<br/>missing images, in parallel"] --> D["deploy<br/>to Oracle server"]
 ```
 
-If `verify` fails, nothing is published or deployed.
+If a `verify` job fails, nothing is published or deployed.
+
+### Image tags
+
+Each image is tagged with a hash of everything that goes into it, computed by `scripts/image-tag.sh`:
+
+- Backend services: `go.mod`, `go.sum`, `backend/Dockerfile`, the service directory, and every in-module Go package its binaries import. A change to `backend/internal` rebuilds all four services. Tournament also rebuilds when Account's generated proto changes.
+- Frontend: the whole `frontend/` directory plus the `NEXT_PUBLIC_*` build values, since `next build` bakes them into the image.
+
+On `main`, `plan` checks GHCR for each tag and builds only the missing ones. Whether an image is built depends on the registry, not on what the latest commit touched. If a build or deploy fails, the next push builds whatever is still missing, even if that push only changes CI. `deploy` runs on every `main` push and writes the five tags into the server's `.env` as `ACCOUNT_IMAGE_TAG`, `TOURNAMENT_IMAGE_TAG`, `PAYMENT_IMAGE_TAG`, `NOTIFICATION_IMAGE_TAG`, and `FRONTEND_IMAGE_TAG`. Compose recreates only the containers whose tag changed.
+
+If you change a build setting that lives outside the hashed files, such as `platforms` in `ci.yml`, bump `SCHEME` in `scripts/image-tag.sh` to force a full rebuild.
 
 ---
 
@@ -27,7 +38,7 @@ If `verify` fails, nothing is published or deployed.
 | --- | --- | --- |
 | Compose file | `docker-compose.yml` | `docker-compose.production.yml` |
 | Database | Postgres container with `account_db`, `tournament_db`, `payment_db`, and `notification_db` | Postgres 18 container on the server, with the same four databases |
-| Images | Built on your machine | Pulled from GHCR, tagged by commit |
+| Images | Built on your machine | Pulled from GHCR, tagged by content hash |
 | Public site | Traefik on port 8080, website on port 3000 | Traefik on ports 80 and 443, with a Let's Encrypt certificate |
 | Server | your machine | Oracle cloud server |
 
