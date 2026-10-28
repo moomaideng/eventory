@@ -81,11 +81,14 @@ type UpsertOrganizerProfileInput struct {
 
 // SponsorProfileResponse represents the public payload for a SponsorProfile entity.
 type SponsorProfileResponse struct {
-	AccountID    uuid.UUID `json:"accountId" doc:"Associated account UUID"`
-	SponsorName  string    `json:"sponsorName" doc:"Sponsor company or organization name"`
-	SponsorEmail string    `json:"sponsorEmail" doc:"Contact email for sponsorship communications"`
-	CreatedAt    time.Time `json:"createdAt" doc:"Timestamp of profile creation"`
-	UpdatedAt    time.Time `json:"updatedAt" doc:"Timestamp of last profile update"`
+	AccountID          uuid.UUID `json:"accountId" doc:"Associated account UUID"`
+	SponsorName        string    `json:"sponsorName" doc:"Sponsor company or organization name"`
+	SponsorEmail       string    `json:"sponsorEmail" doc:"Contact email for sponsorship communications"`
+	Category           string    `json:"category" doc:"Sponsor business category"`
+	PublicContactEmail string    `json:"publicContactEmail" doc:"Email explicitly shared in the sponsor directory"`
+	DirectoryVisible   bool      `json:"directoryVisible" doc:"Whether this sponsor opted in to the organizer directory"`
+	CreatedAt          time.Time `json:"createdAt" doc:"Timestamp of profile creation"`
+	UpdatedAt          time.Time `json:"updatedAt" doc:"Timestamp of last profile update"`
 }
 
 // SponsorProfileOutput represents the standard HTTP response returning a SponsorProfile.
@@ -95,8 +98,35 @@ type SponsorProfileOutput struct {
 
 // UpsertSponsorProfileRequest defines the request body for creating or updating a sponsor profile.
 type UpsertSponsorProfileRequest struct {
-	SponsorName  string  `json:"sponsorName" doc:"Sponsor company or organization name" minLength:"1" maxLength:"150"`
-	SponsorEmail *string `json:"sponsorEmail,omitempty" doc:"Contact email for sponsorship communications" maxLength:"255"`
+	SponsorName        string  `json:"sponsorName" doc:"Sponsor company or organization name" minLength:"1" maxLength:"150"`
+	SponsorEmail       *string `json:"sponsorEmail,omitempty" doc:"Contact email for sponsorship communications" maxLength:"255"`
+	Category           *string `json:"category,omitempty" doc:"Sponsor business category" maxLength:"80"`
+	PublicContactEmail *string `json:"publicContactEmail,omitempty" doc:"Email to publish in the sponsor directory" maxLength:"255"`
+	DirectoryVisible   *bool   `json:"directoryVisible,omitempty" doc:"Explicit opt-in to the organizer directory"`
+}
+
+type SponsorDirectoryInput struct {
+	Search   string `query:"search" doc:"Search sponsor name"`
+	Category string `query:"category" doc:"Filter business category"`
+	Page     int    `query:"page" default:"1" minimum:"1"`
+	PageSize int    `query:"pageSize" default:"12" minimum:"1" maximum:"50"`
+}
+
+type SponsorDirectoryItem struct {
+	AccountID          uuid.UUID `json:"accountId"`
+	SponsorName        string    `json:"sponsorName"`
+	Category           string    `json:"category"`
+	PublicContactEmail string    `json:"publicContactEmail"`
+}
+
+type SponsorDirectoryOutput struct {
+	Body struct {
+		Items      []SponsorDirectoryItem `json:"items"`
+		Categories []string               `json:"categories"`
+		Total      int64                  `json:"total"`
+		Page       int                    `json:"page"`
+		PageSize   int                    `json:"pageSize"`
+	}
 }
 
 // UpsertSponsorProfileInput represents request payload for upserting a sponsor profile.
@@ -129,11 +159,14 @@ func toOrganizerProfileResponse(p *models.OrganizerProfile) OrganizerProfileResp
 
 func toSponsorProfileResponse(p *models.SponsorProfile) SponsorProfileResponse {
 	return SponsorProfileResponse{
-		AccountID:    p.AccountID,
-		SponsorName:  p.SponsorName,
-		SponsorEmail: p.SponsorEmail,
-		CreatedAt:    p.CreatedAt,
-		UpdatedAt:    p.UpdatedAt,
+		AccountID:          p.AccountID,
+		SponsorName:        p.SponsorName,
+		SponsorEmail:       p.SponsorEmail,
+		Category:           p.Category,
+		PublicContactEmail: p.PublicContactEmail,
+		DirectoryVisible:   p.DirectoryVisible,
+		CreatedAt:          p.CreatedAt,
+		UpdatedAt:          p.UpdatedAt,
 	}
 }
 
@@ -351,17 +384,59 @@ func RegisterAccountRoutes(api huma.API, accountUseCase *usecases.AccountUseCase
 		}
 
 		profile, err := accountUseCase.UpsertSponsorProfile(ctx, acc.ID, usecases.UpsertSponsorProfileInput{
-			SponsorName:  input.Body.SponsorName,
-			SponsorEmail: input.Body.SponsorEmail,
+			SponsorName:        input.Body.SponsorName,
+			SponsorEmail:       input.Body.SponsorEmail,
+			Category:           input.Body.Category,
+			PublicContactEmail: input.Body.PublicContactEmail,
+			DirectoryVisible:   input.Body.DirectoryVisible,
 		})
 		if err != nil {
 			if errors.Is(err, usecases.ErrInvalidSponsorName) {
 				return nil, huma.Error400BadRequest("Sponsor name cannot be empty", err)
 			}
+			if errors.Is(err, usecases.ErrInvalidSponsorDirectory) {
+				return nil, huma.Error400BadRequest("Enter a valid category and public contact email before joining the directory", err)
+			}
 			return nil, huma.Error500InternalServerError("Failed to upsert sponsor profile", err)
 		}
 
 		return &SponsorProfileOutput{Body: toSponsorProfileResponse(profile)}, nil
+	})
+
+	// Organizer-only directory; the response never contains the private sponsor email.
+	huma.Register(api, huma.Operation{
+		OperationID: "list-sponsor-directory",
+		Method:      http.MethodGet,
+		Path:        "/sponsors",
+		Summary:     "Browse Sponsor Directory",
+		Description: "Lists active sponsors who explicitly opted in, for authenticated organizers.",
+		Tags:        []string{"Accounts"},
+		Security:    []map[string][]string{{"bearer": {}}},
+	}, func(ctx context.Context, input *SponsorDirectoryInput) (*SponsorDirectoryOutput, error) {
+		acc, err := getAuthAccount(ctx, accountUseCase)
+		if err != nil {
+			return nil, err
+		}
+		page, err := accountUseCase.ListSponsorDirectory(ctx, acc.ID, input.Search, input.Category, input.Page, input.PageSize)
+		if err != nil {
+			if errors.Is(err, usecases.ErrSponsorDirectoryForbidden) {
+				return nil, huma.Error403Forbidden("Organizer profile required")
+			}
+			return nil, huma.Error500InternalServerError("Failed to list sponsors", err)
+		}
+		output := &SponsorDirectoryOutput{}
+		output.Body.Items = make([]SponsorDirectoryItem, 0, len(page.Items))
+		for _, p := range page.Items {
+			output.Body.Items = append(output.Body.Items, SponsorDirectoryItem{
+				AccountID: p.AccountID, SponsorName: p.SponsorName,
+				Category: p.Category, PublicContactEmail: p.PublicContactEmail,
+			})
+		}
+		output.Body.Total = page.Total
+		output.Body.Categories = page.Categories
+		output.Body.Page = page.Page
+		output.Body.PageSize = page.PageSize
+		return output, nil
 	})
 
 	// 8. GET /api/v1/accounts/me/sponsor-profile (Get current user's sponsor profile)
