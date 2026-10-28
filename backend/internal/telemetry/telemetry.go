@@ -58,7 +58,9 @@ func Setup(ctx context.Context, cfg Config) (shutdown func(context.Context) erro
 	tp := sdktrace.NewTracerProvider(
 		sdktrace.WithBatcher(exporter),
 		sdktrace.WithResource(res),
-		sdktrace.WithSampler(sdktrace.AlwaysSample()),
+		// Record every root span, but honour the caller's decision: a request
+		// Traefik sampled out, or work wrapped in Untraced, stays out.
+		sdktrace.WithSampler(sdktrace.ParentBased(sdktrace.AlwaysSample())),
 	)
 	otel.SetTracerProvider(tp)
 	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(
