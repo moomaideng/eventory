@@ -272,7 +272,7 @@ jobs:
             sudo docker compose --env-file .env -f docker-compose.yml run --rm tournament-migrate
             sudo docker compose --env-file .env -f docker-compose.yml run --rm payment-migrate
             sudo docker compose --env-file .env -f docker-compose.yml run --rm notification-migrate
-            sudo docker compose --env-file .env -f docker-compose.yml up -d --remove-orphans postgres mongodb rabbitmq account tournament payment notification traefik frontend loki alloy grafana
+            sudo docker compose --env-file .env -f docker-compose.yml up -d --remove-orphans postgres mongodb rabbitmq account tournament payment notification traefik frontend loki tempo alloy grafana
           '
 
       - name: Verify deployment
