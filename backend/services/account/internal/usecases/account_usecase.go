@@ -6,24 +6,27 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"net/mail"
 	"strings"
 
 	"github.com/google/uuid"
-	"github.com/moomaideng/eventory/services/account/models"
 	"github.com/moomaideng/eventory/services/account/internal/repositories"
+	"github.com/moomaideng/eventory/services/account/models"
 )
 
 var (
-	ErrAccountNotFound          = errors.New("account not found")
+	ErrAccountNotFound           = errors.New("account not found")
 	ErrHandleAlreadyExists       = errors.New("handle is already taken")
-	ErrInvalidHandle            = errors.New("handle must be between 3 and 32 lowercase alphanumeric characters or underscores")
-	ErrInvalidDisplayName       = errors.New("display name cannot be empty")
-	ErrInvalidEmail             = errors.New("email cannot be empty")
-	ErrInvalidAccountID         = errors.New("valid account id is required")
-	ErrOrganizerProfileNotFound = errors.New("organizer profile not found")
-	ErrSponsorProfileNotFound   = errors.New("sponsor profile not found")
-	ErrInvalidOrganizerName     = errors.New("organizer name cannot be empty")
-	ErrInvalidSponsorName       = errors.New("sponsor name cannot be empty")
+	ErrInvalidHandle             = errors.New("handle must be between 3 and 32 lowercase alphanumeric characters or underscores")
+	ErrInvalidDisplayName        = errors.New("display name cannot be empty")
+	ErrInvalidEmail              = errors.New("email cannot be empty")
+	ErrInvalidAccountID          = errors.New("valid account id is required")
+	ErrOrganizerProfileNotFound  = errors.New("organizer profile not found")
+	ErrSponsorProfileNotFound    = errors.New("sponsor profile not found")
+	ErrInvalidOrganizerName      = errors.New("organizer name cannot be empty")
+	ErrInvalidSponsorName        = errors.New("sponsor name cannot be empty")
+	ErrInvalidSponsorDirectory   = errors.New("public contact email and category are required when appearing in the sponsor directory")
+	ErrSponsorDirectoryForbidden = errors.New("an active organizer profile is required")
 )
 
 // CreateAccountInput specifies input parameters for creating or ensuring an account.
@@ -48,10 +51,20 @@ type UpsertOrganizerProfileInput struct {
 
 // UpsertSponsorProfileInput specifies input parameters for creating or updating a sponsor profile.
 type UpsertSponsorProfileInput struct {
-	SponsorName  string
-	SponsorEmail *string
+	SponsorName        string
+	SponsorEmail       *string
+	Category           *string
+	PublicContactEmail *string
+	DirectoryVisible   *bool
 }
 
+type SponsorDirectoryPage struct {
+	Items      []models.SponsorProfile
+	Categories []string
+	Total      int64
+	Page       int
+	PageSize   int
+}
 
 // AccountUseCase handles core business logic for user accounts.
 type AccountUseCase struct {
@@ -422,12 +435,91 @@ func (u *AccountUseCase) UpsertSponsorProfile(ctx context.Context, accountID uui
 		}
 	}
 
+	existing, err := u.accountRepo.FindSponsorProfileByAccountID(ctx, accountID)
+	if err != nil {
+		return nil, err
+	}
 	profile := &models.SponsorProfile{
 		AccountID:    accountID,
 		SponsorName:  name,
 		SponsorEmail: email,
 	}
+	if existing != nil {
+		profile.Category = existing.Category
+		profile.PublicContactEmail = existing.PublicContactEmail
+		profile.DirectoryVisible = existing.DirectoryVisible
+	}
+	if input.Category != nil {
+		profile.Category = strings.TrimSpace(*input.Category)
+	}
+	if input.PublicContactEmail != nil {
+		profile.PublicContactEmail = strings.ToLower(strings.TrimSpace(*input.PublicContactEmail))
+	}
+	if input.DirectoryVisible != nil {
+		profile.DirectoryVisible = *input.DirectoryVisible
+	}
+	if len(profile.Category) > 80 || len(profile.PublicContactEmail) > 255 {
+		return nil, ErrInvalidSponsorDirectory
+	}
+	if profile.PublicContactEmail != "" {
+		parsed, parseErr := mail.ParseAddress(profile.PublicContactEmail)
+		if parseErr != nil || parsed.Address != profile.PublicContactEmail {
+			return nil, ErrInvalidSponsorDirectory
+		}
+	}
+	if profile.DirectoryVisible && (profile.Category == "" || profile.PublicContactEmail == "") {
+		return nil, ErrInvalidSponsorDirectory
+	}
 
 	return u.accountRepo.UpsertSponsorProfile(ctx, profile)
 }
 
+// ListSponsorDirectory is available only to active organizers. The repository enforces opt-in visibility.
+func (u *AccountUseCase) ListSponsorDirectory(ctx context.Context, organizerID uuid.UUID, search, category string, page, pageSize int) (*SponsorDirectoryPage, error) {
+	account, err := u.accountRepo.FindByID(ctx, organizerID)
+	if err != nil {
+		return nil, err
+	}
+	if account == nil || account.Status != models.AccountStatusActive {
+		return nil, ErrSponsorDirectoryForbidden
+	}
+	organizer, err := u.accountRepo.FindOrganizerProfileByAccountID(ctx, organizerID)
+	if err != nil {
+		return nil, err
+	}
+	if organizer == nil {
+		return nil, ErrSponsorDirectoryForbidden
+	}
+	if page < 1 {
+		page = 1
+	}
+	if pageSize < 1 {
+		pageSize = 12
+	}
+	if pageSize > 50 {
+		pageSize = 50
+	}
+	search = strings.TrimSpace(search)
+	category = strings.TrimSpace(category)
+	if len(search) > 100 {
+		search = search[:100]
+	}
+	if len(category) > 80 {
+		category = category[:80]
+	}
+	items, total, err := u.accountRepo.ListVisibleSponsorProfiles(ctx, search, category, page, pageSize)
+	if err != nil {
+		return nil, err
+	}
+	if items == nil {
+		items = []models.SponsorProfile{}
+	}
+	categories, err := u.accountRepo.ListVisibleSponsorCategories(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if categories == nil {
+		categories = []string{}
+	}
+	return &SponsorDirectoryPage{Items: items, Categories: categories, Total: total, Page: page, PageSize: pageSize}, nil
+}

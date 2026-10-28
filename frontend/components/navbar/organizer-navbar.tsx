@@ -8,6 +8,7 @@ import { NavbarRight } from "./navbar-right";
 const ORGANIZER_NAV_LINKS: NavLinkItem[] = [
   { label: "My Tournaments", href: "/organizer" },
   { label: "Host a Tournament", href: "/organizer/tournaments/new" },
+  { label: "Sponsors", href: "/organizer/sponsors" },
 ];
 
 export interface OrganizerNavbarProps {

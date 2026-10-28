@@ -973,6 +973,26 @@ export interface paths {
         patch: operations["mark-notification-read"];
         trace?: never;
     };
+    "/api/v1/accounts/sponsors": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Browse Sponsor Directory
+         * @description Lists active sponsors who explicitly opted in, for authenticated organizers.
+         */
+        get: operations["list-sponsor-directory"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1087,11 +1107,17 @@ export interface components {
             readonly $schema?: string;
             /** @description Associated account UUID */
             accountId: string;
+            /** @description Sponsor business category */
+            category: string;
             /**
              * Format: date-time
              * @description Timestamp of profile creation
              */
             createdAt: string;
+            /** @description Whether this sponsor opted in to the organizer directory */
+            directoryVisible: boolean;
+            /** @description Email explicitly shared in the sponsor directory */
+            publicContactEmail: string;
             /** @description Contact email for sponsorship communications */
             sponsorEmail: string;
             /** @description Sponsor company or organization name */
@@ -1137,6 +1163,12 @@ export interface components {
              * @example https://example.com/schemas/UpsertSponsorProfileRequest.json
              */
             readonly $schema?: string;
+            /** @description Sponsor business category */
+            category?: string;
+            /** @description Explicit opt-in to the organizer directory */
+            directoryVisible?: boolean;
+            /** @description Email to publish in the sponsor directory */
+            publicContactEmail?: string;
             /** @description Contact email for sponsorship communications */
             sponsorEmail?: string;
             /** @description Sponsor company or organization name */
@@ -2155,6 +2187,28 @@ export interface components {
             notifications: components["schemas"]["NotificationItem"][] | null;
             /** Format: int64 */
             unreadCount: number;
+        };
+        SponsorDirectoryItem: {
+            accountId: string;
+            category: string;
+            publicContactEmail: string;
+            sponsorName: string;
+        };
+        SponsorDirectoryOutputBody: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/SponsorDirectoryOutputBody.json
+             */
+            readonly $schema?: string;
+            categories: string[] | null;
+            items: components["schemas"]["SponsorDirectoryItem"][] | null;
+            /** Format: int64 */
+            page: number;
+            /** Format: int64 */
+            pageSize: number;
+            /** Format: int64 */
+            total: number;
         };
     };
     responses: never;
@@ -4185,6 +4239,42 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["NotificationItem"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "list-sponsor-directory": {
+        parameters: {
+            query?: {
+                /** @description Search sponsor name */
+                search?: string;
+                /** @description Filter business category */
+                category?: string;
+                page?: number;
+                pageSize?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SponsorDirectoryOutputBody"];
                 };
             };
             /** @description Error */
