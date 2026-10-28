@@ -206,7 +206,7 @@ jobs:
         run: |
           # rsync --delete would do this in one step, but needs rsync on both
           # the runner and the Oracle host; rm + scp -r needs neither.
-          ssh "$ORACLE_USER@$ORACLE_HOST" 'sudo install -d -m 0755 -o "$USER" -g "$(id -gn)" /opt/eventory && rm -rf /opt/eventory/docker'
+          ssh "$ORACLE_USER@$ORACLE_HOST" 'sudo install -d -m 0755 -o "$USER" -g "$(id -gn)" /opt/eventory /opt/eventory/docker && rm -rf /opt/eventory/docker'
           scp docker-compose.production.yml "$ORACLE_USER@$ORACLE_HOST:/opt/eventory/docker-compose.yml"
           scp -r docker "$ORACLE_USER@$ORACLE_HOST:/opt/eventory/docker"
           ssh "$ORACLE_USER@$ORACLE_HOST" 'chmod 755 /opt/eventory/docker/postgres/init-databases.sh'
