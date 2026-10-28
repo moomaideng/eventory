@@ -351,7 +351,9 @@ jobs:
             sudo docker compose --env-file .env -f docker-compose.yml run --rm tournament-migrate
             sudo docker compose --env-file .env -f docker-compose.yml run --rm payment-migrate
             sudo docker compose --env-file .env -f docker-compose.yml run --rm notification-migrate
-            sudo docker compose --env-file .env -f docker-compose.yml up -d --remove-orphans postgres mongodb rabbitmq account tournament payment notification traefik frontend loki tempo alloy grafana
+            # --wait fails the deploy if a container exits or turns unhealthy,
+            # instead of reporting success while e.g. Grafana crash-loops.
+            sudo docker compose --env-file .env -f docker-compose.yml up -d --wait --wait-timeout 300 --remove-orphans postgres mongodb rabbitmq account tournament payment notification traefik frontend loki tempo alloy grafana
           '
 
       - name: Verify deployment

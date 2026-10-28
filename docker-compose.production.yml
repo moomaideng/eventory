@@ -163,6 +163,12 @@ services:
       - traefik.http.routers.grafana.tls.certresolver=letsencrypt
       - traefik.http.routers.grafana.priority=100
       - traefik.http.services.grafana.loadbalancer.server.port=3000
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:3000/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 60s
     restart: unless-stopped
 
   account-migrate:
