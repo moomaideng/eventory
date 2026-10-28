@@ -9,9 +9,11 @@ permissions:
   contents: read
   packages: write
 
+# Cancel superseded PR runs, but never a running main run: cancelling a deploy
+# halfway can leave production with a partially copied config.
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   verify:
