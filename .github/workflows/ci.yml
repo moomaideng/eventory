@@ -16,7 +16,7 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  verify:
+  verify-backend:
     runs-on: ubuntu-24.04-arm
     steps:
       - uses: actions/checkout@v5
@@ -26,22 +26,18 @@ jobs:
           go-version-file: backend/go.mod
           cache-dependency-path: backend/go.sum
 
+      # go test skips packages without test files (including every cmd/), so
+      # go build ./... is what proves every service binary still compiles.
       - name: Test and build backend
         working-directory: backend
         run: |
           go test -v ./...
-          go build -o bin/account ./services/account/cmd/api
-          go build -o bin/account-migrate ./services/account/cmd/migrate
-          go build -o bin/account-seed ./services/account/cmd/seed
-          go build -o bin/tournament ./services/tournament/cmd/api
-          go build -o bin/tournament-migrate ./services/tournament/cmd/migrate
-          go build -o bin/tournament-seed ./services/tournament/cmd/seed
-          go build -o bin/payment ./services/payment/cmd/api
-          go build -o bin/payment-migrate ./services/payment/cmd/migrate
-          go build -o bin/payment-seed ./services/payment/cmd/seed
-          go build -o bin/notification ./services/notification/cmd/api
-          go build -o bin/notification-migrate ./services/notification/cmd/migrate
-          go build -o bin/notification-seed ./services/notification/cmd/seed
+          go build ./...
+
+  verify-frontend:
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@v5
 
       - uses: actions/setup-node@v5
         with:
@@ -67,7 +63,7 @@ jobs:
 
   publish:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: verify
+    needs: [verify-backend, verify-frontend]
     runs-on: ubuntu-24.04-arm
     steps:
       - uses: actions/checkout@v5
