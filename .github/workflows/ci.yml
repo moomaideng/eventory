@@ -65,6 +65,16 @@ jobs:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     needs: [verify-backend, verify-frontend]
     runs-on: ubuntu-24.04-arm
+    strategy:
+      # A failed image blocks deploy anyway; let the others finish and push.
+      fail-fast: false
+      matrix:
+        include:
+          - { service: account, context: backend }
+          - { service: tournament, context: backend }
+          - { service: payment, context: backend }
+          - { service: notification, context: backend }
+          - { service: frontend, context: frontend }
     steps:
       - uses: actions/checkout@v5
 
@@ -77,73 +87,43 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and push account image
-        uses: docker/build-push-action@v6
-        with:
-          context: ./backend
-          platforms: linux/arm64
-          push: true
-          build-args: SERVICE=account
-          tags: |
-            ghcr.io/moomaideng/eventory-account:latest
-            ghcr.io/moomaideng/eventory-account:${{ github.sha }}
-
-      - name: Build and push tournament image
-        uses: docker/build-push-action@v6
-        with:
-          context: ./backend
-          platforms: linux/arm64
-          push: true
-          build-args: SERVICE=tournament
-          tags: |
-            ghcr.io/moomaideng/eventory-tournament:latest
-            ghcr.io/moomaideng/eventory-tournament:${{ github.sha }}
-
-      - name: Build and push payment image
-        uses: docker/build-push-action@v6
-        with:
-          context: ./backend
-          platforms: linux/arm64
-          push: true
-          build-args: SERVICE=payment
-          tags: |
-            ghcr.io/moomaideng/eventory-payment:latest
-            ghcr.io/moomaideng/eventory-payment:${{ github.sha }}
-
-      - name: Build and push notification image
-        uses: docker/build-push-action@v6
-        with:
-          context: ./backend
-          platforms: linux/arm64
-          push: true
-          build-args: SERVICE=notification
-          tags: |
-            ghcr.io/moomaideng/eventory-notification:latest
-            ghcr.io/moomaideng/eventory-notification:${{ github.sha }}
-
-      - name: Check frontend production configuration
+      # Matrix values cannot read secrets, so resolve per-image build args
+      # here. Only the frontend gets the NEXT_PUBLIC_* values it bakes in.
+      - name: Resolve build arguments
+        id: args
         env:
+          SERVICE: ${{ matrix.service }}
           PROD_SUPABASE_URL: ${{ secrets.PROD_SUPABASE_URL }}
           PROD_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.PROD_SUPABASE_PUBLISHABLE_KEY }}
           PROD_API_URL: ${{ secrets.PROD_API_URL }}
         run: |
+          if [ "$SERVICE" != frontend ]; then
+            printf 'value=SERVICE=%s\n' "$SERVICE" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           test -n "$PROD_SUPABASE_URL" || (echo "::error::Missing PROD_SUPABASE_URL" && exit 1)
           test -n "$PROD_SUPABASE_PUBLISHABLE_KEY" || (echo "::error::Missing PROD_SUPABASE_PUBLISHABLE_KEY" && exit 1)
           test -n "$PROD_API_URL" || (echo "::error::Missing PROD_API_URL" && exit 1)
+          {
+            echo 'value<<BUILD_ARGS'
+            printf 'NEXT_PUBLIC_SUPABASE_URL=%s\n' "$PROD_SUPABASE_URL"
+            printf 'NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=%s\n' "$PROD_SUPABASE_PUBLISHABLE_KEY"
+            printf 'NEXT_PUBLIC_API_URL=%s\n' "$PROD_API_URL"
+            echo 'BUILD_ARGS'
+          } >> "$GITHUB_OUTPUT"
 
-      - name: Build and push frontend image
+      - name: Build and push ${{ matrix.service }} image
         uses: docker/build-push-action@v6
         with:
-          context: ./frontend
+          context: ./${{ matrix.context }}
           platforms: linux/arm64
           push: true
-          build-args: |
-            NEXT_PUBLIC_SUPABASE_URL=${{ secrets.PROD_SUPABASE_URL }}
-            NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=${{ secrets.PROD_SUPABASE_PUBLISHABLE_KEY }}
-            NEXT_PUBLIC_API_URL=${{ secrets.PROD_API_URL }}
+          build-args: ${{ steps.args.outputs.value }}
+          cache-from: type=gha,scope=${{ matrix.service }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.service }}
           tags: |
-            ghcr.io/moomaideng/eventory-frontend:latest
-            ghcr.io/moomaideng/eventory-frontend:${{ github.sha }}
+            ghcr.io/moomaideng/eventory-${{ matrix.service }}:latest
+            ghcr.io/moomaideng/eventory-${{ matrix.service }}:${{ github.sha }}
 
   deploy:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
