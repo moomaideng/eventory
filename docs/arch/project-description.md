@@ -16,7 +16,7 @@ Eventory
 
 Running a tournament today splits work across many tools: organizers post rules and brackets in chat apps or social media, collect entries with forms and spreadsheets, chase payments over bank transfer, and update results by hand. Competitors hunt for events, join teams, and submit forms in different places. Sponsors have no shared place to pick a package, pay, and see their support shown on the event.
 
-Eventory puts those flows on one platform. An organizer creates a tournament (with optional crowdfunding before open registration) and a registration form. A sponsor pledges a package, pays, and appears on the tournament page as funding progresses. A team captain locks the roster, pays any entry fee, and submits the registration. Match results are recorded on the same tournament so standings stay visible in one place.
+Eventory puts those flows on one platform. An organizer creates a tournament (with optional crowdfunding before open registration) and a registration form. A sponsor pledges a package, pays, and appears on the tournament page as funding progresses. A team captain locks the roster, pays any entry fee, and submits the registration. Match results are recorded in the same tournament so standings stay visible in one place.
 
 ## Target Customers
 
@@ -42,7 +42,7 @@ Eventory puts those flows on one platform. An organizer creates a tournament (wi
    - Optionally enables crowdfunding (funding goal, deadline, sponsorship packages/tiers).
    - Configures the custom registration form (fields such as text, dropdown, file upload).
    - May update crowdfunding and the form again while the tournament is still a draft.
-4. When ready, organizer opens the tournament for sponsorship and/or competitor registration.
+4. When ready, the organizer opens the tournament for sponsorship and/or competitor registration.
 
 **Postcondition**: A tournament exists with its registration form configured and is open according to the organizer’s chosen path.
 
@@ -67,7 +67,7 @@ Eventory puts those flows on one platform. An organizer creates a tournament (wi
 1. Sponsor opens the tournament page and reviews available sponsorship packages/tiers and funding progress.
 2. Sponsor selects a package, uploads brand logo (and link if required), and starts checkout.
 3. System processes payment via the payment gateway.
-4. On success, system records the pledge, updates funding progress, and shows the sponsor (e.g. logo) on the tournament page.
+4. On success, the system records the pledge, updates funding progress, and shows the sponsor (e.g. logo) on the tournament page.
 
 **Postcondition**: A confirmed sponsorship exists; funding progress and public sponsor display are updated.
 
@@ -93,7 +93,7 @@ Eventory puts those flows on one platform. An organizer creates a tournament (wi
    - **2a. Solo**: Competitor fills the tournament registration form and proceeds to pay entry fee if any.
    - **2b. Team**: Team members join the captain’s lobby via invite and fill in their individual registration forms. When the roster meets tournament size rules, the Team Captain locks the roster and pays the team entry fee if any.
 3. System processes payment when required (payment gateway).
-4. On success, system submits the registration to the organizer for review/acceptance and confirms to the competitor.
+4. On success, the system submits the registration to the organizer for review/acceptance and confirms to the competitor.
 
 **Postcondition**: A registration entry exists and is visible to the organizer for review.
 
@@ -194,3 +194,7 @@ FR14 is for Solo, FR15-18 for Team, and FR19-20 are shared.
 ### Performance
 
 - NFR8: Under normal course-demo load, the system shall complete competitor registration confirmation with p95 latency under 3 seconds, excluding external payment-gateway processing time.
+
+### Observability
+
+- NFR9: When a request passes through the API gateway, the system shall record one trace linking the gateway, service, and database spans, and the log entry for that request shall carry the same trace ID.
