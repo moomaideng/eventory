@@ -70,7 +70,7 @@ To find the logs for a trace by hand: `{service_name="tournament"} |= "<trace_id
 
 ## Production
 
-Grafana is public at `https://eventory.ddns.net/grafana`, protected by its own login (`PROD_GRAFANA_PASSWORD`, see [deployment.md](deployment.md)). Loki, Tempo and Alloy are internal to the Compose network, and each obs container has a 256MB memory limit.
+Grafana is public at `https://eventory.ddns.net/grafana`, protected by its own login (`PROD_GRAFANA_PASSWORD`, see [deployment.md](deployment.md)). Loki, Tempo and Alloy are internal to the Compose network, and each obs container has a 512MB memory limit.
 
 ## Configuration
 

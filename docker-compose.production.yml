@@ -109,7 +109,7 @@ services:
 
   loki:
     image: grafana/loki:3.6.18
-    mem_limit: 256m
+    mem_limit: 512m
     command: -config.file=/etc/loki/config.yaml
     volumes:
       - ./docker/observability/loki-config.yaml:/etc/loki/config.yaml:ro
@@ -118,7 +118,7 @@ services:
 
   tempo:
     image: grafana/tempo:3.1.0
-    mem_limit: 256m
+    mem_limit: 512m
     command: -config.file=/etc/tempo/tempo.yaml
     volumes:
       - ./docker/observability/tempo-config.yml:/etc/tempo/tempo.yaml:ro
@@ -127,7 +127,7 @@ services:
 
   alloy:
     image: grafana/alloy:v1.21.0
-    mem_limit: 256m
+    mem_limit: 512m
     command:
       - run
       - --server.http.listen-addr=0.0.0.0:12345
@@ -142,7 +142,7 @@ services:
 
   grafana:
     image: grafana/grafana:13.2.4
-    mem_limit: 256m
+    mem_limit: 512m
     environment:
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:?GRAFANA_PASSWORD is required}
       GF_SERVER_ROOT_URL: https://eventory.ddns.net/grafana/
