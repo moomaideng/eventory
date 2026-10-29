@@ -30,6 +30,8 @@ On `main`, `plan` checks GHCR for each tag and builds only the missing ones. Whe
 
 If you change a build setting that lives outside the hashed files, such as `platforms` in `ci.yml`, bump `SCHEME` in `scripts/image-tag.sh` to force a full rebuild.
 
+**Known limitation: base images.** The `FROM` lines in the Dockerfiles (`alpine`, `node`, `golang`) are tags, not digests, so a patched base image does not change the hash. An image picks up new base layers only when its own files change. Services that rarely change can run an older base OS for a while. To refresh them, bump `SCHEME`. If this becomes a concern, the options are a scheduled weekly rebuild (add the ISO week to the hash) or digest-pinned `FROM` lines with Dependabot.
+
 ---
 
 ## Local vs production

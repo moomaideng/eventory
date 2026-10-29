@@ -15,7 +15,8 @@
 set -euo pipefail
 
 # Bump when a build setting outside the hashed files changes the image
-# (platforms, build-push-action options in ci.yml), to force a full rebuild.
+# (platforms, build-push-action options in ci.yml), or to pick up patched
+# base images (the Dockerfile FROM tags are not hashed), to force a full rebuild.
 SCHEME=v1
 
 context=${1:?usage: image-tag.sh backend <service> | image-tag.sh frontend}
