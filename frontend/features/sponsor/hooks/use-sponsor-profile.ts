@@ -132,7 +132,6 @@ export function useSponsorProfile(
               sponsorName: validation.data.sponsorName,
               sponsorEmail: validation.data.sponsorEmail,
               category: validation.data.category,
-              publicContactEmail: validation.data.publicContactEmail,
               directoryVisible: validation.data.directoryVisible,
             },
           }

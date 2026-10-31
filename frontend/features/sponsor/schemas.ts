@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { sponsorCategories } from "./categories";
 
 /**
  * Validates the sponsor profile form (#63) before sending to
@@ -21,27 +22,15 @@ export type SponsorOnboardingValues = z.infer<typeof sponsorOnboardingSchema>;
 
 export const sponsorProfileSchema = sponsorOnboardingSchema
   .extend({
-    category: z
-      .string()
-      .trim()
-      .max(80, "Category must be 80 characters or fewer.")
-      .optional(),
-    publicContactEmail: z
-      .string()
-      .trim()
-      .refine(
-        (value) => value === "" || z.email().safeParse(value).success,
-        "Enter a valid public contact email."
-      )
-      .optional(),
+    category: z.union([z.enum(sponsorCategories), z.literal("")]).optional(),
     directoryVisible: z.boolean().optional(),
   })
   .refine(
     (value) =>
       !value.directoryVisible ||
-      Boolean(value.category && value.publicContactEmail),
+      Boolean(value.category && value.sponsorEmail),
     {
-      message: "Add a category and public email before joining the directory.",
+      message: "Choose a category and enter a contact email before joining the directory.",
       path: ["directoryVisible"],
     }
   );
