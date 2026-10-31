@@ -115,7 +115,7 @@ func (u *TeamReviewUseCase) Review(
 	}
 	if to == models.TournamentTeamStatusRejected && paymentID != nil {
 		if err := u.refund(ctx, entryID, *paymentID); err != nil {
-			slog.Warn("refund rejected registration will retry", "entry_id", entryID, "error", err)
+			slog.WarnContext(ctx, "refund rejected registration will retry", "entry_id", entryID, "error", err)
 		}
 	}
 
@@ -153,7 +153,7 @@ func (u *TeamReviewUseCase) RetryRefunds(ctx context.Context) error {
 			return err
 		}
 		if err := u.refund(ctx, team.ID, *team.PaymentID); err != nil {
-			slog.Warn("retry rejected registration refund", "entry_id", team.ID, "error", err)
+			slog.WarnContext(ctx, "retry rejected registration refund", "entry_id", team.ID, "error", err)
 		}
 	}
 	return nil
@@ -164,7 +164,7 @@ func (u *TeamReviewUseCase) RunRefunds(ctx context.Context) {
 	defer ticker.Stop()
 	for {
 		if err := u.RetryRefunds(ctx); err != nil && ctx.Err() == nil {
-			slog.Error("list rejected registration refunds", "error", err)
+			slog.ErrorContext(ctx, "list rejected registration refunds", "error", err)
 		}
 		select {
 		case <-ctx.Done():
