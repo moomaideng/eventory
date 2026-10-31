@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/moomaideng/eventory/services/tournament/internal/forms"
 	"github.com/moomaideng/eventory/services/tournament/internal/ports"
 	"github.com/moomaideng/eventory/services/tournament/internal/repositories"
 	"github.com/moomaideng/eventory/services/tournament/models"
@@ -53,14 +54,24 @@ type TeamLobbyUseCase struct {
 	repo       repositories.TeamLobbyRepository
 	accountSvc ports.AccountService
 	payments   ports.PaymentService
+	formRepo   repositories.RegistrationFormRepository
+	registry   *forms.FieldRegistry
 }
 
-func NewTeamLobbyUseCase(repo repositories.TeamLobbyRepository, accountSvc ports.AccountService, payments ...ports.PaymentService) *TeamLobbyUseCase {
-	var p ports.PaymentService
-	if len(payments) > 0 {
-		p = payments[0]
+func NewTeamLobbyUseCase(
+	repo repositories.TeamLobbyRepository,
+	accountSvc ports.AccountService,
+	payments ports.PaymentService,
+	formRepo repositories.RegistrationFormRepository,
+	registry *forms.FieldRegistry,
+) *TeamLobbyUseCase {
+	return &TeamLobbyUseCase{
+		repo:       repo,
+		accountSvc: accountSvc,
+		payments:   payments,
+		formRepo:   formRepo,
+		registry:   registry,
 	}
-	return &TeamLobbyUseCase{repo: repo, accountSvc: accountSvc, payments: p}
 }
 
 func (u *TeamLobbyUseCase) RefreshSubmission(ctx context.Context, teamID, accountID uuid.UUID) (*TeamLobbyView, error) {
@@ -141,7 +152,11 @@ func (u *TeamLobbyUseCase) Create(ctx context.Context, tournamentID, captainAcco
 	return u.toView(ctx, created)
 }
 
-func (u *TeamLobbyUseCase) RegisterSolo(ctx context.Context, tournamentID, accountID uuid.UUID) (*TeamLobbyView, error) {
+func (u *TeamLobbyUseCase) RegisterSolo(
+	ctx context.Context,
+	tournamentID, accountID uuid.UUID,
+	answers []models.FieldAnswer,
+) (*TeamLobbyView, error) {
 	account, err := requireActiveAccount(ctx, u.accountSvc, accountID)
 	if err != nil {
 		return nil, err
@@ -158,6 +173,26 @@ func (u *TeamLobbyUseCase) RegisterSolo(ctx context.Context, tournamentID, accou
 	}
 	if tournament.Status != models.TournamentStatusRegistrationOpen {
 		return nil, ErrRegistrationNotOpen
+	}
+
+	if u.formRepo != nil && u.registry != nil {
+		form, err := u.formRepo.GetFormByTournamentID(ctx, tournamentID)
+		if err != nil && !errors.Is(err, repositories.ErrFormNotFound) {
+			return nil, err
+		}
+		if err == nil && form != nil && len(form.Fields) > 0 {
+			if err := u.registry.ValidateFormAnswers(form.Fields, answers); err != nil {
+				return nil, err
+			}
+			resp := &models.FormResponse{
+				TournamentID: tournamentID,
+				AccountID:    accountID,
+				Answers:      answers,
+			}
+			if _, err := u.formRepo.UpsertResponse(ctx, resp); err != nil {
+				return nil, err
+			}
+		}
 	}
 
 	name := strings.TrimSpace(account.DisplayName)

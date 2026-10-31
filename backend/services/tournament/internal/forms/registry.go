@@ -2,6 +2,7 @@ package forms
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/moomaideng/eventory/services/tournament/models"
 )
@@ -51,4 +52,35 @@ func (r *FieldRegistry) ValidateFieldAnswer(field models.FormField, val any) err
 		return fmt.Errorf("%w: %s", ErrUnknownFieldType, field.Type)
 	}
 	return handler.ValidateAnswer(field, val)
+}
+
+// ValidateFormAnswers validates a slice of answers against form field definitions.
+func (r *FieldRegistry) ValidateFormAnswers(fields []models.FormField, answers []models.FieldAnswer) error {
+	formFieldsMap := make(map[string]models.FormField, len(fields))
+	for _, f := range fields {
+		formFieldsMap[f.ID] = f
+	}
+
+	submittedMap := make(map[string]any, len(answers))
+	for _, a := range answers {
+		fieldID := strings.TrimSpace(a.FieldID)
+		if _, exists := formFieldsMap[fieldID]; !exists {
+			return fmt.Errorf("%w: '%s'", ErrUnrecognizedField, fieldID)
+		}
+		if _, duplicate := submittedMap[fieldID]; duplicate {
+			return fmt.Errorf("%w: '%s'", ErrDuplicateFieldAnswer, fieldID)
+		}
+		submittedMap[fieldID] = a.Value
+	}
+
+	for _, field := range fields {
+		val, answered := submittedMap[field.ID]
+		if !answered {
+			val = nil
+		}
+		if err := r.ValidateFieldAnswer(field, val); err != nil {
+			return fmt.Errorf("field '%s': %w", field.ID, err)
+		}
+	}
+	return nil
 }

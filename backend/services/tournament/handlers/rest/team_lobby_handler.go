@@ -8,6 +8,7 @@ import (
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/google/uuid"
+	"github.com/moomaideng/eventory/services/tournament/internal/forms"
 	"github.com/moomaideng/eventory/services/tournament/internal/repositories"
 	"github.com/moomaideng/eventory/services/tournament/internal/usecases"
 	"github.com/moomaideng/eventory/services/tournament/models"
@@ -59,6 +60,15 @@ type CreateTeamLobbyInput struct {
 	Body         CreateTeamLobbyRequest
 }
 
+type RegisterSoloRequest struct {
+	Answers []models.FieldAnswer `json:"answers,omitempty" doc:"Submitted answers for custom registration form"`
+}
+
+type RegisterSoloInput struct {
+	TournamentID uuid.UUID           `path:"tournamentId" doc:"Tournament UUID"`
+	Body         RegisterSoloRequest `doc:"Registration form answers"`
+}
+
 type MyTournamentTeamInput struct {
 	TournamentID uuid.UUID `path:"tournamentId" doc:"Tournament UUID"`
 }
@@ -106,16 +116,16 @@ func RegisterTeamLobbyRoutes(
 		Method:      http.MethodPost,
 		Path:        "/api/v1/tournaments/{tournamentId}/solo-register",
 		Summary:     "Register for a solo tournament",
-		Description: "Automatically creates and locks a 1-person team for a solo tournament, initiating payment if an entry fee is required.",
+		Description: "Automatically creates and locks a 1-person team for a solo tournament, validating custom registration form answers and initiating payment if an entry fee is required.",
 		Tags:        []string{"Team lobbies"},
 		Middlewares: huma.Middlewares{auth},
 		Security:    []map[string][]string{{"bearer": {}}},
-	}, func(ctx context.Context, input *MyTournamentTeamInput) (*CreateTeamLobbyOutput, error) {
+	}, func(ctx context.Context, input *RegisterSoloInput) (*CreateTeamLobbyOutput, error) {
 		accountID, err := authenticatedAccountID(ctx)
 		if err != nil {
 			return nil, err
 		}
-		view, err := lobbyUseCase.RegisterSolo(ctx, input.TournamentID, accountID)
+		view, err := lobbyUseCase.RegisterSolo(ctx, input.TournamentID, accountID, input.Body.Answers)
 		if err != nil {
 			return nil, teamLobbyHTTPError(err)
 		}
@@ -294,7 +304,10 @@ func teamLobbyHTTPError(err error) error {
 		return huma.Error503ServiceUnavailable(err.Error())
 	case errors.Is(err, repositories.ErrInvalidRegistrationFee):
 		return huma.Error409Conflict(err.Error())
-	case errors.Is(err, usecases.ErrInvalidTeamName), errors.Is(err, usecases.ErrInvalidInviteCode):
+	case errors.Is(err, usecases.ErrInvalidTeamName), errors.Is(err, usecases.ErrInvalidInviteCode),
+		errors.Is(err, forms.ErrUnrecognizedField), errors.Is(err, forms.ErrDuplicateFieldAnswer),
+		errors.Is(err, forms.ErrFieldRequired), errors.Is(err, forms.ErrInvalidFieldValue),
+		errors.Is(err, forms.ErrInvalidFieldConfig), errors.Is(err, forms.ErrUnknownFieldType):
 		return huma.Error400BadRequest("Invalid input", err)
 	case errors.Is(err, usecases.ErrLobbyAccessDenied):
 		return huma.Error403Forbidden("Only the team captain can perform this action", err)

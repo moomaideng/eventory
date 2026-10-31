@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/moomaideng/eventory/services/tournament/internal/forms"
 	"github.com/moomaideng/eventory/services/tournament/internal/ports"
 	"github.com/moomaideng/eventory/services/tournament/internal/repositories"
 	"github.com/moomaideng/eventory/services/tournament/internal/usecases"
@@ -85,6 +86,56 @@ func (s *teamLobbyRepositoryStub) ApplyPayment(_ context.Context, _ *models.Tour
 	return nil
 }
 
+type registrationFormRepositoryStub struct {
+	form     *models.RegistrationForm
+	response *models.FormResponse
+	upserted *models.FormResponse
+}
+
+func (s *registrationFormRepositoryStub) EnsureIndexes(_ context.Context) error { return nil }
+func (s *registrationFormRepositoryStub) GetFormByTournamentID(_ context.Context, _ uuid.UUID) (*models.RegistrationForm, error) {
+	if s.form == nil {
+		return nil, repositories.ErrFormNotFound
+	}
+	return s.form, nil
+}
+func (s *registrationFormRepositoryStub) UpsertForm(_ context.Context, form *models.RegistrationForm) (*models.RegistrationForm, error) {
+	s.form = form
+	return form, nil
+}
+func (s *registrationFormRepositoryStub) CreateResponse(_ context.Context, resp *models.FormResponse) (*models.FormResponse, error) {
+	s.response = resp
+	return resp, nil
+}
+func (s *registrationFormRepositoryStub) UpsertResponse(_ context.Context, resp *models.FormResponse) (*models.FormResponse, error) {
+	s.upserted = resp
+	return resp, nil
+}
+func (s *registrationFormRepositoryStub) GetResponseByAccount(_ context.Context, _ uuid.UUID, _ uuid.UUID) (*models.FormResponse, error) {
+	if s.upserted != nil {
+		return s.upserted, nil
+	}
+	if s.response != nil {
+		return s.response, nil
+	}
+	return nil, repositories.ErrResponseNotFound
+}
+func (s *registrationFormRepositoryStub) ListResponsesByTournamentID(_ context.Context, _ uuid.UUID) ([]models.FormResponse, error) {
+	return nil, nil
+}
+
+func newTestTeamLobbyUseCase(
+	repo repositories.TeamLobbyRepository,
+	accountSvc ports.AccountService,
+	payments ...ports.PaymentService,
+) *usecases.TeamLobbyUseCase {
+	var p ports.PaymentService
+	if len(payments) > 0 {
+		p = payments[0]
+	}
+	return usecases.NewTeamLobbyUseCase(repo, accountSvc, p, nil, nil)
+}
+
 func TestCreateTeamLobby_InitializesCaptainAndInvite(t *testing.T) {
 	tournamentID := uuid.New()
 	captainID := uuid.New()
@@ -92,7 +143,7 @@ func TestCreateTeamLobby_InitializesCaptainAndInvite(t *testing.T) {
 		ID: tournamentID, Status: models.TournamentStatusRegistrationOpen,
 		RegistrationMode: models.TournamentRegistrationModeTeam, MinTeamSize: 5, MaxTeamSize: 5,
 	}}
-	useCase := usecases.NewTeamLobbyUseCase(repo, newStubAccountService().withAccount(captainID, "captain", "Captain"))
+	useCase := newTestTeamLobbyUseCase(repo, newStubAccountService().withAccount(captainID, "captain", "Captain"))
 
 	team, err := useCase.Create(context.Background(), tournamentID, captainID, "  Night Owls  ")
 	if err != nil {
@@ -129,7 +180,7 @@ func TestCreateTeamLobby_RejectsUnavailableTournamentState(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			useCase := usecases.NewTeamLobbyUseCase(&teamLobbyRepositoryStub{tournament: test.tournament}, newStubAccountService().withAccount(captainID, "captain", "Captain"))
+			useCase := newTestTeamLobbyUseCase(&teamLobbyRepositoryStub{tournament: test.tournament}, newStubAccountService().withAccount(captainID, "captain", "Captain"))
 			_, err := useCase.Create(context.Background(), tournamentID, captainID, "Night Owls")
 			if !errors.Is(err, test.want) {
 				t.Fatalf("Create() error = %v, want %v", err, test.want)
@@ -150,9 +201,9 @@ func TestRegisterSolo_Success(t *testing.T) {
 	}
 	repo := &teamLobbyRepositoryStub{tournament: tournament}
 	accounts := newStubAccountService().withAccount(playerID, "playerone", "Player One")
-	useCase := usecases.NewTeamLobbyUseCase(repo, accounts)
+	useCase := newTestTeamLobbyUseCase(repo, accounts)
 
-	got, err := useCase.RegisterSolo(context.Background(), tournamentID, playerID)
+	got, err := useCase.RegisterSolo(context.Background(), tournamentID, playerID, nil)
 	if err != nil {
 		t.Fatalf("RegisterSolo() error = %v", err)
 	}
@@ -170,6 +221,55 @@ func TestRegisterSolo_Success(t *testing.T) {
 	}
 }
 
+func TestRegisterSolo_WithFormValidation(t *testing.T) {
+	tournamentID := uuid.New()
+	playerID := uuid.New()
+	tournament := &models.Tournament{
+		ID:               tournamentID,
+		Status:           models.TournamentStatusRegistrationOpen,
+		MinTeamSize:      1,
+		MaxTeamSize:      1,
+		RegistrationMode: models.TournamentRegistrationModeSolo,
+	}
+	repo := &teamLobbyRepositoryStub{tournament: tournament}
+	accounts := newStubAccountService().withAccount(playerID, "playerone", "Player One")
+	formRepo := &registrationFormRepositoryStub{
+		form: &models.RegistrationForm{
+			TournamentID: tournamentID,
+			Title:        "Survey",
+			Fields: []models.FormField{
+				{
+					ID:       "discord_id",
+					Type:     models.FieldTypeShortText,
+					Label:    "Discord ID",
+					Required: true,
+				},
+			},
+		},
+	}
+	registry := forms.NewDefaultRegistry()
+	useCase := usecases.NewTeamLobbyUseCase(repo, accounts, nil, formRepo, registry)
+
+	// Missing required answer
+	_, err := useCase.RegisterSolo(context.Background(), tournamentID, playerID, nil)
+	if !errors.Is(err, forms.ErrFieldRequired) {
+		t.Fatalf("RegisterSolo() expected ErrFieldRequired, got %v", err)
+	}
+
+	// Valid answer
+	answers := []models.FieldAnswer{{FieldID: "discord_id", Value: "gamer#1234"}}
+	got, err := useCase.RegisterSolo(context.Background(), tournamentID, playerID, answers)
+	if err != nil {
+		t.Fatalf("RegisterSolo() with answers error = %v", err)
+	}
+	if got.Team == nil {
+		t.Fatal("RegisterSolo() returned nil team")
+	}
+	if formRepo.upserted == nil || len(formRepo.upserted.Answers) != 1 {
+		t.Fatalf("expected answers to be upserted in formRepo, got %+v", formRepo.upserted)
+	}
+}
+
 func TestRegisterSolo_RejectsNonSoloTournament(t *testing.T) {
 	tournamentID := uuid.New()
 	playerID := uuid.New()
@@ -182,9 +282,9 @@ func TestRegisterSolo_RejectsNonSoloTournament(t *testing.T) {
 	}
 	repo := &teamLobbyRepositoryStub{tournament: tournament}
 	accounts := newStubAccountService().withAccount(playerID, "playerone", "Player One")
-	useCase := usecases.NewTeamLobbyUseCase(repo, accounts)
+	useCase := newTestTeamLobbyUseCase(repo, accounts)
 
-	_, err := useCase.RegisterSolo(context.Background(), tournamentID, playerID)
+	_, err := useCase.RegisterSolo(context.Background(), tournamentID, playerID, nil)
 	if !errors.Is(err, usecases.ErrNotSoloTournament) {
 		t.Fatalf("RegisterSolo() error = %v, want %v", err, usecases.ErrNotSoloTournament)
 	}
@@ -198,7 +298,7 @@ func TestCaptainActions_RejectNonCaptain(t *testing.T) {
 			AccountID: captainID, Role: models.TournamentTeamMemberRoleCaptain,
 		}},
 	}}
-	useCase := usecases.NewTeamLobbyUseCase(repo, newStubAccountService().withAccount(captainID, "captain", "Captain"))
+	useCase := newTestTeamLobbyUseCase(repo, newStubAccountService().withAccount(captainID, "captain", "Captain"))
 
 	_, err := useCase.Lock(context.Background(), repo.team.ID, uuid.New())
 	if !errors.Is(err, usecases.ErrLobbyAccessDenied) {
@@ -209,7 +309,7 @@ func TestCaptainActions_RejectNonCaptain(t *testing.T) {
 func TestGetActiveForTournament_ReturnsActiveTeam(t *testing.T) {
 	team := &models.TournamentTeam{ID: uuid.New(), Name: "Night Owls"}
 	accountID := uuid.New()
-	useCase := usecases.NewTeamLobbyUseCase(&teamLobbyRepositoryStub{activeTeam: team}, newStubAccountService().withAccount(accountID, "player", "Player"))
+	useCase := newTestTeamLobbyUseCase(&teamLobbyRepositoryStub{activeTeam: team}, newStubAccountService().withAccount(accountID, "player", "Player"))
 
 	got, err := useCase.GetActiveForTournament(context.Background(), uuid.New(), accountID)
 	if err != nil {
@@ -222,7 +322,7 @@ func TestGetActiveForTournament_ReturnsActiveTeam(t *testing.T) {
 
 func TestGetByInviteCode_ValidatesFormat(t *testing.T) {
 	repo := &teamLobbyRepositoryStub{}
-	useCase := usecases.NewTeamLobbyUseCase(repo, newStubAccountService().withAccount(uuid.New(), "user", "User"))
+	useCase := newTestTeamLobbyUseCase(repo, newStubAccountService().withAccount(uuid.New(), "user", "User"))
 
 	_, err := useCase.GetByInviteCode(context.Background(), "INVALID-CODE", uuid.New())
 	if !errors.Is(err, usecases.ErrInvalidInviteCode) {
@@ -247,7 +347,7 @@ func TestRegenerateInvite(t *testing.T) {
 		}},
 	}
 	repo := &teamLobbyRepositoryStub{team: team}
-	useCase := usecases.NewTeamLobbyUseCase(repo, newStubAccountService().withAccount(captainID, "captain", "Captain"))
+	useCase := newTestTeamLobbyUseCase(repo, newStubAccountService().withAccount(captainID, "captain", "Captain"))
 
 	// Non-captain denied
 	_, err := useCase.RegenerateInvite(context.Background(), teamID, uuid.New())
@@ -279,7 +379,7 @@ func TestLock_Success(t *testing.T) {
 		}},
 	}
 	repo := &teamLobbyRepositoryStub{team: team}
-	useCase := usecases.NewTeamLobbyUseCase(repo, newStubAccountService().withAccount(captainID, "captain", "Captain"))
+	useCase := newTestTeamLobbyUseCase(repo, newStubAccountService().withAccount(captainID, "captain", "Captain"))
 
 	locked, err := useCase.Lock(context.Background(), teamID, captainID)
 	if err != nil {
@@ -306,7 +406,7 @@ func TestRemoveMember(t *testing.T) {
 	accounts := newStubAccountService().
 		withAccount(captainID, "captain", "Captain").
 		withAccount(memberAccountID, "member", "Member")
-	useCase := usecases.NewTeamLobbyUseCase(repo, accounts)
+	useCase := newTestTeamLobbyUseCase(repo, accounts)
 
 	// Non-captain denied
 	_, err := useCase.RemoveMember(context.Background(), teamID, memberID, memberAccountID)
@@ -334,7 +434,7 @@ func TestDisband(t *testing.T) {
 		}},
 	}
 	repo := &teamLobbyRepositoryStub{team: team}
-	useCase := usecases.NewTeamLobbyUseCase(repo, newStubAccountService().withAccount(captainID, "captain", "Captain"))
+	useCase := newTestTeamLobbyUseCase(repo, newStubAccountService().withAccount(captainID, "captain", "Captain"))
 
 	// Non-captain denied
 	err := useCase.Disband(context.Background(), teamID, uuid.New())
@@ -384,7 +484,7 @@ func TestSubmissionRequiresAuthoritativeMatchingInvoice(t *testing.T) {
 			expires := time.Now().Add(time.Minute)
 			team := &models.TournamentTeam{ID: uuid.New(), Status: models.TournamentTeamStatusPaymentPending, PaymentAttemptID: &attempt, PaymentPayerID: &payer, PaymentExpiresAt: &expires, PaymentAmountMinor: 10000}
 			repo := &teamLobbyRepositoryStub{}
-			uc := usecases.NewTeamLobbyUseCase(repo, nil, registrationPaymentStub{tc.mutate, tc.err})
+			uc := newTestTeamLobbyUseCase(repo, nil, registrationPaymentStub{tc.mutate, tc.err})
 			if err := uc.Reconcile(context.Background(), team); !errors.Is(err, usecases.ErrPaymentUnavailable) {
 				t.Fatalf("error = %v", err)
 			}
@@ -392,7 +492,7 @@ func TestSubmissionRequiresAuthoritativeMatchingInvoice(t *testing.T) {
 				t.Fatal("unverified payment changed roster")
 			}
 			// A later retry of the same durable attempt can complete after an outage.
-			uc = usecases.NewTeamLobbyUseCase(repo, nil, registrationPaymentStub{})
+			uc = newTestTeamLobbyUseCase(repo, nil, registrationPaymentStub{})
 			if err := uc.Reconcile(context.Background(), team); err != nil {
 				t.Fatal(err)
 			}

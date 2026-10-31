@@ -8,10 +8,12 @@ import (
 )
 
 var (
-	ErrFieldRequired      = errors.New("field is required")
-	ErrInvalidFieldValue  = errors.New("invalid field value")
-	ErrInvalidFieldConfig = errors.New("invalid field configuration")
-	ErrUnknownFieldType   = errors.New("unknown field type")
+	ErrFieldRequired        = errors.New("field is required")
+	ErrInvalidFieldValue    = errors.New("invalid field value")
+	ErrInvalidFieldConfig   = errors.New("invalid field configuration")
+	ErrUnknownFieldType     = errors.New("unknown field type")
+	ErrUnrecognizedField    = errors.New("unrecognized field submitted")
+	ErrDuplicateFieldAnswer = errors.New("duplicate answer for field submitted")
 )
 
 // FieldHandler encapsulates configuration and response validation logic for a specific field type.

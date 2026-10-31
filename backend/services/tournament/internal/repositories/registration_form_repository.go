@@ -28,6 +28,7 @@ type RegistrationFormRepository interface {
 	GetFormByTournamentID(ctx context.Context, tournamentID uuid.UUID) (*models.RegistrationForm, error)
 	UpsertForm(ctx context.Context, form *models.RegistrationForm) (*models.RegistrationForm, error)
 	CreateResponse(ctx context.Context, resp *models.FormResponse) (*models.FormResponse, error)
+	UpsertResponse(ctx context.Context, resp *models.FormResponse) (*models.FormResponse, error)
 	GetResponseByAccount(ctx context.Context, tournamentID uuid.UUID, accountID uuid.UUID) (*models.FormResponse, error)
 	ListResponsesByTournamentID(ctx context.Context, tournamentID uuid.UUID) ([]models.FormResponse, error)
 }
@@ -114,6 +115,28 @@ func (r *registrationFormRepositoryImpl) CreateResponse(ctx context.Context, res
 		resp.ID = oid
 	}
 	return resp, nil
+}
+
+func (r *registrationFormRepositoryImpl) UpsertResponse(ctx context.Context, resp *models.FormResponse) (*models.FormResponse, error) {
+	filter := bson.M{
+		"tournament_id": resp.TournamentID,
+		"account_id":    resp.AccountID,
+	}
+	update := bson.M{
+		"$set": bson.M{
+			"answers": resp.Answers,
+		},
+		"$setOnInsert": bson.M{
+			"tournament_id": resp.TournamentID,
+			"account_id":    resp.AccountID,
+		},
+	}
+	opts := options.UpdateOne().SetUpsert(true)
+	_, err := r.responsesCol.UpdateOne(ctx, filter, update, opts)
+	if err != nil {
+		return nil, err
+	}
+	return r.GetResponseByAccount(ctx, resp.TournamentID, resp.AccountID)
 }
 
 func (r *registrationFormRepositoryImpl) GetResponseByAccount(ctx context.Context, tournamentID uuid.UUID, accountID uuid.UUID) (*models.FormResponse, error) {
