@@ -121,7 +121,7 @@ func TestRegistrationFormUseCase_SaveForm(t *testing.T) {
 	tRepo := &tournamentRepoStub{tournaments: tournaments}
 	fRepo := newFormRepoStub()
 	registry := forms.NewDefaultRegistry()
-	uc := usecases.NewRegistrationFormUseCase(tRepo, fRepo, registry)
+	uc := usecases.NewRegistrationFormUseCase(tRepo, fRepo, registry, nil)
 
 	t.Run("tournament not found", func(t *testing.T) {
 		_, err := uc.SaveForm(ctx, organizerID, uuid.New(), "Title", "Desc", nil)
@@ -216,7 +216,7 @@ func TestRegistrationFormUseCase_SubmitResponse(t *testing.T) {
 	tRepo := &tournamentRepoStub{tournaments: tournaments}
 	fRepo := newFormRepoStub()
 	registry := forms.NewDefaultRegistry()
-	uc := usecases.NewRegistrationFormUseCase(tRepo, fRepo, registry)
+	uc := usecases.NewRegistrationFormUseCase(tRepo, fRepo, registry, nil)
 
 	// Setup form
 	_, err := uc.SaveForm(ctx, organizerID, tournamentID, "Reg Form", "", []models.FormField{

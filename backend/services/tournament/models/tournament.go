@@ -117,11 +117,14 @@ type TournamentTeam struct {
 }
 
 type TournamentTeamMember struct {
-	ID               uuid.UUID                `gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
-	TournamentTeamID uuid.UUID                `gorm:"type:uuid;not null;index;uniqueIndex:idx_tournament_team_member"`
-	AccountID        uuid.UUID                `gorm:"type:uuid;not null;index;uniqueIndex:idx_tournament_team_member"`
-	Role             TournamentTeamMemberRole `gorm:"type:varchar(16);not null"`
-	JoinedAt         time.Time                `gorm:"not null;autoCreateTime"`
+	RegistrationAnswers   []FieldAnswer            `gorm:"serializer:json;type:jsonb"`
+	RegistrationSubmitted bool                     `gorm:"not null;default:false"`
+	RegistrationVersion   int                      `gorm:"not null;default:0"`
+	ID                    uuid.UUID                `gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
+	TournamentTeamID      uuid.UUID                `gorm:"type:uuid;not null;index;uniqueIndex:idx_tournament_team_member"`
+	AccountID             uuid.UUID                `gorm:"type:uuid;not null;index;uniqueIndex:idx_tournament_team_member"`
+	Role                  TournamentTeamMemberRole `gorm:"type:varchar(16);not null"`
+	JoinedAt              time.Time                `gorm:"not null;autoCreateTime"`
 }
 
 type TournamentFunding struct {

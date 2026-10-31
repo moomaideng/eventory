@@ -15,6 +15,8 @@ import (
 )
 
 type teamLobbyRepositoryStub struct {
+	joined     bool
+	locked     bool
 	tournament *models.Tournament
 	team       *models.TournamentTeam
 	activeTeam *models.TournamentTeam
@@ -33,6 +35,9 @@ func (s *teamLobbyRepositoryStub) FindByID(_ context.Context, _ uuid.UUID) (*mod
 	return s.team, nil
 }
 func (s *teamLobbyRepositoryStub) FindByInviteCode(_ context.Context, _ string) (*models.TournamentTeam, error) {
+	if s.team != nil {
+		return s.team, nil
+	}
 	return nil, repositories.ErrTeamLobbyNotFound
 }
 func (s *teamLobbyRepositoryStub) FindActiveByTournamentAndAccount(_ context.Context, _ uuid.UUID, _ uuid.UUID) (*models.TournamentTeam, error) {
@@ -45,9 +50,13 @@ func (s *teamLobbyRepositoryStub) Create(_ context.Context, team *models.Tournam
 	captain.TournamentTeamID = team.ID
 	team.Members = []models.TournamentTeamMember{*captain}
 	s.created, s.captain, s.team = team, captain, team
+	if s.tournament != nil {
+		team.Tournament = *s.tournament
+	}
 	return team, nil
 }
-func (s *teamLobbyRepositoryStub) Join(_ context.Context, _ uuid.UUID, _ uuid.UUID) (*models.TournamentTeam, error) {
+func (s *teamLobbyRepositoryStub) Join(_ context.Context, _ uuid.UUID, _ uuid.UUID, _ ...[]models.FieldAnswer) (*models.TournamentTeam, error) {
+	s.joined = true
 	return s.team, nil
 }
 func (s *teamLobbyRepositoryStub) RegenerateInvite(_ context.Context, _ uuid.UUID, inviteCode string) (*models.TournamentTeam, error) {
@@ -56,7 +65,8 @@ func (s *teamLobbyRepositoryStub) RegenerateInvite(_ context.Context, _ uuid.UUI
 	}
 	return s.team, nil
 }
-func (s *teamLobbyRepositoryStub) Lock(_ context.Context, _ uuid.UUID) (*models.TournamentTeam, error) {
+func (s *teamLobbyRepositoryStub) Lock(_ context.Context, _ uuid.UUID, _ ...[]models.TournamentTeamMember) (*models.TournamentTeam, error) {
+	s.locked = true
 	if s.team != nil {
 		s.team.Status = models.TournamentTeamStatusLocked
 	}
@@ -501,4 +511,18 @@ func TestSubmissionRequiresAuthoritativeMatchingInvoice(t *testing.T) {
 			}
 		})
 	}
+}
+
+func (s *teamLobbyRepositoryStub) SaveMemberAnswers(_ context.Context, _, accountID uuid.UUID, answers []models.FieldAnswer) error {
+	for i := range s.team.Members {
+		if s.team.Members[i].AccountID == accountID {
+			s.team.Members[i].RegistrationAnswers = answers
+			s.team.Members[i].RegistrationSubmitted = true
+			s.team.Members[i].RegistrationVersion++
+		}
+	}
+	return nil
+}
+func (s *teamLobbyRepositoryStub) MemberResponses(_ context.Context, _ uuid.UUID) ([]models.FormResponse, error) {
+	return nil, nil
 }

@@ -139,7 +139,7 @@ func TestRegistrationFormRoutes(t *testing.T) {
 	tRepo := &mockTournamentRepo{tournament: tourney}
 	fRepo := newMockFormRepo()
 	registry := forms.NewDefaultRegistry()
-	useCase := usecases.NewRegistrationFormUseCase(tRepo, fRepo, registry)
+	useCase := usecases.NewRegistrationFormUseCase(tRepo, fRepo, registry, nil)
 
 	_, api := humatest.New(t)
 
@@ -211,35 +211,15 @@ func TestRegistrationFormRoutes(t *testing.T) {
 		assert.Equal(t, "Championship Registration", out.Title)
 	})
 
-	t.Run("POST submit form response", func(t *testing.T) {
-		body := map[string]any{
-			"answers": []map[string]any{
-				{"fieldId": "ign", "value": "Faker"},
-				{"fieldId": "tier", "value": "gold"},
-			},
-		}
-
-		resp := api.Post("/api/v1/tournaments/"+tournamentID.String()+"/form/responses", body)
-		assert.Equal(t, http.StatusCreated, resp.Code)
-
-		var out rest.FormResponseItem
-		require.NoError(t, json.Unmarshal(resp.Body.Bytes(), &out))
-		assert.Equal(t, tournamentID, out.TournamentID)
-		assert.Equal(t, participantAccountID, out.AccountID)
-		assert.Len(t, out.Answers, 2)
+	t.Run("standalone response submission is removed", func(t *testing.T) {
+		resp := api.Post("/api/v1/tournaments/"+tournamentID.String()+"/form/responses", map[string]any{"answers": []any{}})
+		assert.Equal(t, http.StatusMethodNotAllowed, resp.Code)
 	})
-
-	t.Run("POST duplicate submit response gives 409", func(t *testing.T) {
-		body := map[string]any{
-			"answers": []map[string]any{
-				{"fieldId": "ign", "value": "Faker"},
-				{"fieldId": "tier", "value": "gold"},
-			},
-		}
-
-		resp := api.Post("/api/v1/tournaments/"+tournamentID.String()+"/form/responses", body)
-		assert.Equal(t, http.StatusConflict, resp.Code)
-	})
+	// Existing saved answers remain readable after removing the standalone writer.
+	fRepo.responses[tournamentID.String()+":"+participantAccountID.String()] = &models.FormResponse{
+		TournamentID: tournamentID, AccountID: participantAccountID,
+		Answers: []models.FieldAnswer{{FieldID: "ign", Value: "Faker"}, {FieldID: "tier", Value: "gold"}},
+	}
 
 	t.Run("GET my form response", func(t *testing.T) {
 		resp := api.Get("/api/v1/tournaments/" + tournamentID.String() + "/form/responses/me")

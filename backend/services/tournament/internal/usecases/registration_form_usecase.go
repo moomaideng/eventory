@@ -29,17 +29,20 @@ type RegistrationFormUseCase struct {
 	tournamentRepo repositories.TournamentRepository
 	formRepo       repositories.RegistrationFormRepository
 	registry       *forms.FieldRegistry
+	teamRepo       repositories.TeamLobbyRepository
 }
 
 func NewRegistrationFormUseCase(
 	tournamentRepo repositories.TournamentRepository,
 	formRepo repositories.RegistrationFormRepository,
 	registry *forms.FieldRegistry,
+	teamRepo repositories.TeamLobbyRepository,
 ) *RegistrationFormUseCase {
 	return &RegistrationFormUseCase{
 		tournamentRepo: tournamentRepo,
 		formRepo:       formRepo,
 		registry:       registry,
+		teamRepo:       teamRepo,
 	}
 }
 
@@ -168,6 +171,19 @@ func (u *RegistrationFormUseCase) GetMyResponse(
 		return nil, err
 	}
 
+	if u.teamRepo != nil {
+		team, err := u.teamRepo.FindActiveByTournamentAndAccount(ctx, tournamentID, accountID)
+		if err != nil && !errors.Is(err, repositories.ErrTeamLobbyNotFound) {
+			return nil, err
+		}
+		if err == nil {
+			for _, member := range team.Members {
+				if member.AccountID == accountID && member.RegistrationSubmitted {
+					return &models.FormResponse{TeamID: &team.ID, TournamentID: tournamentID, AccountID: accountID, Answers: member.RegistrationAnswers}, nil
+				}
+			}
+		}
+	}
 	return u.formRepo.GetResponseByAccount(ctx, tournamentID, accountID)
 }
 
@@ -191,6 +207,13 @@ func (u *RegistrationFormUseCase) ListResponses(
 	responses, err := u.formRepo.ListResponsesByTournamentID(ctx, tournamentID)
 	if err != nil {
 		return nil, err
+	}
+	if u.teamRepo != nil {
+		memberResponses, err := u.teamRepo.MemberResponses(ctx, tournamentID)
+		if err != nil {
+			return nil, err
+		}
+		responses = append(responses, memberResponses...)
 	}
 	return responses, nil
 }

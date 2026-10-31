@@ -48,6 +48,7 @@ type FieldAnswer struct {
 }
 
 type FormResponse struct {
+	TeamID       *uuid.UUID    `bson:"team_id,omitempty" json:"teamId,omitempty"`
 	ID           bson.ObjectID `bson:"_id,omitempty" json:"id"`
 	TournamentID uuid.UUID     `bson:"tournament_id" json:"tournamentId"`
 	AccountID    uuid.UUID     `bson:"account_id" json:"accountId"`

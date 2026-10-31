@@ -15,12 +15,13 @@ import (
 )
 
 type TeamLobbyMemberResponse struct {
-	ID          uuid.UUID `json:"id"`
-	AccountID   uuid.UUID `json:"accountId"`
-	Handle      string    `json:"handle"`
-	DisplayName string    `json:"displayName"`
-	Role        string    `json:"role" enum:"CAPTAIN,MEMBER"`
-	JoinedAt    time.Time `json:"joinedAt"`
+	RegistrationComplete bool      `json:"registrationComplete" doc:"Answers satisfy the current registration questions"`
+	ID                   uuid.UUID `json:"id"`
+	AccountID            uuid.UUID `json:"accountId"`
+	Handle               string    `json:"handle"`
+	DisplayName          string    `json:"displayName"`
+	Role                 string    `json:"role" enum:"CAPTAIN,MEMBER"`
+	JoinedAt             time.Time `json:"joinedAt"`
 }
 
 type TeamLobbyResponse struct {
@@ -52,7 +53,8 @@ type EmptyTeamLobbyOutput struct {
 }
 
 type CreateTeamLobbyRequest struct {
-	Name string `json:"name" minLength:"1" maxLength:"120" doc:"Team name"`
+	Answers []models.FieldAnswer `json:"answers,omitempty" doc:"Captain's registration answers"`
+	Name    string               `json:"name" minLength:"1" maxLength:"120" doc:"Team name"`
 }
 
 type CreateTeamLobbyInput struct {
@@ -79,6 +81,16 @@ type InviteCodeInput struct {
 
 type LobbyIDInput struct {
 	ID uuid.UUID `path:"id" doc:"Team UUID"`
+}
+
+type JoinTeamLobbyInput struct {
+	InviteCode string `path:"inviteCode" pattern:"^[A-Za-z0-9]{6}$"`
+	Body       RegisterSoloRequest
+}
+
+type MemberRegistrationInput struct {
+	ID   uuid.UUID `path:"id"`
+	Body RegisterSoloRequest
 }
 
 type LobbyMemberInput struct {
@@ -146,7 +158,7 @@ func RegisterTeamLobbyRoutes(
 		if err != nil {
 			return nil, err
 		}
-		view, err := lobbyUseCase.Create(ctx, input.TournamentID, accountID, input.Body.Name)
+		view, err := lobbyUseCase.Create(ctx, input.TournamentID, accountID, input.Body.Name, input.Body.Answers)
 		if err != nil {
 			return nil, teamLobbyHTTPError(err)
 		}
@@ -181,12 +193,32 @@ func RegisterTeamLobbyRoutes(
 		Tags:        []string{"Team lobbies"},
 		Middlewares: huma.Middlewares{auth},
 		Security:    []map[string][]string{{"bearer": {}}},
-	}, func(ctx context.Context, input *InviteCodeInput) (*TeamLobbyOutput, error) {
+	}, func(ctx context.Context, input *JoinTeamLobbyInput) (*TeamLobbyOutput, error) {
 		accountID, err := authenticatedAccountID(ctx)
 		if err != nil {
 			return nil, err
 		}
-		view, err := lobbyUseCase.Join(ctx, input.InviteCode, accountID)
+		view, err := lobbyUseCase.Join(ctx, input.InviteCode, accountID, input.Body.Answers)
+		if err != nil {
+			return nil, teamLobbyHTTPError(err)
+		}
+		return &TeamLobbyOutput{Body: toTeamLobbyResponse(view, accountID)}, nil
+	})
+
+	huma.Register(api, huma.Operation{
+		OperationID: "update-member-registration-answers",
+		Method:      http.MethodPut,
+		Path:        "/api/v1/lobbies/{id}/registration",
+		Summary:     "Update your own registration answers while the team is forming",
+		Tags:        []string{"Team lobbies"},
+		Middlewares: huma.Middlewares{auth},
+		Security:    []map[string][]string{{"bearer": {}}},
+	}, func(ctx context.Context, input *MemberRegistrationInput) (*TeamLobbyOutput, error) {
+		accountID, err := authenticatedAccountID(ctx)
+		if err != nil {
+			return nil, err
+		}
+		view, err := lobbyUseCase.SaveRegistrationAnswers(ctx, input.ID, accountID, input.Body.Answers)
 		if err != nil {
 			return nil, teamLobbyHTTPError(err)
 		}
@@ -298,6 +330,10 @@ func teamLobbyHTTPError(err error) error {
 		return mapped
 	}
 	switch {
+	case errors.Is(err, usecases.ErrNotTeamMember):
+		return huma.Error403Forbidden(err.Error(), err)
+	case errors.Is(err, usecases.ErrMemberAnswersIncomplete), errors.Is(err, repositories.ErrRosterChanged):
+		return huma.Error409Conflict(err.Error(), err)
 	case errors.Is(err, usecases.ErrTournamentNotFound), errors.Is(err, repositories.ErrTeamLobbyNotFound):
 		return huma.Error404NotFound("Requested tournament or team lobby was not found", err)
 	case errors.Is(err, usecases.ErrPaymentUnavailable):
@@ -342,7 +378,8 @@ func toTeamLobbyResponse(view *usecases.TeamLobbyView, viewerID uuid.UUID) TeamL
 	for _, memberView := range view.Members {
 		member := memberView.Member
 		members = append(members, TeamLobbyMemberResponse{
-			ID: member.ID, AccountID: member.AccountID,
+			RegistrationComplete: memberView.RegistrationComplete,
+			ID:                   member.ID, AccountID: member.AccountID,
 			Handle: memberView.Handle, DisplayName: memberView.DisplayName,
 			Role: string(member.Role), JoinedAt: member.JoinedAt,
 		})

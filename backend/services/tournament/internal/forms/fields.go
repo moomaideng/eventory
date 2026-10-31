@@ -52,7 +52,7 @@ func (h *ShortTextHandler) ValidateAnswer(field models.FormField, val any) error
 		return fmt.Errorf("%w: expected string", ErrInvalidFieldValue)
 	}
 
-	if strVal == "" {
+	if strings.TrimSpace(strVal) == "" {
 		if field.Required {
 			return ErrFieldRequired
 		}
@@ -114,7 +114,7 @@ func (h *LongTextHandler) ValidateAnswer(field models.FormField, val any) error 
 		return fmt.Errorf("%w: expected string", ErrInvalidFieldValue)
 	}
 
-	if strVal == "" {
+	if strings.TrimSpace(strVal) == "" {
 		if field.Required {
 			return ErrFieldRequired
 		}
