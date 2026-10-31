@@ -25,7 +25,7 @@ var (
 	ErrSponsorProfileNotFound    = errors.New("sponsor profile not found")
 	ErrInvalidOrganizerName      = errors.New("organizer name cannot be empty")
 	ErrInvalidSponsorName        = errors.New("sponsor name cannot be empty")
-	ErrInvalidSponsorDirectory   = errors.New("public contact email and category are required when appearing in the sponsor directory")
+	ErrInvalidSponsorDirectory   = errors.New("valid contact email and category are required when appearing in the sponsor directory")
 	ErrSponsorDirectoryForbidden = errors.New("an active organizer profile is required")
 )
 
@@ -51,11 +51,10 @@ type UpsertOrganizerProfileInput struct {
 
 // UpsertSponsorProfileInput specifies input parameters for creating or updating a sponsor profile.
 type UpsertSponsorProfileInput struct {
-	SponsorName        string
-	SponsorEmail       *string
-	Category           *string
-	PublicContactEmail *string
-	DirectoryVisible   *bool
+	SponsorName      string
+	SponsorEmail     *string
+	Category         *string
+	DirectoryVisible *bool
 }
 
 type SponsorDirectoryPage struct {
@@ -446,32 +445,44 @@ func (u *AccountUseCase) UpsertSponsorProfile(ctx context.Context, accountID uui
 	}
 	if existing != nil {
 		profile.Category = existing.Category
-		profile.PublicContactEmail = existing.PublicContactEmail
 		profile.DirectoryVisible = existing.DirectoryVisible
+		profile.DirectoryEmailConfirmed = existing.DirectoryEmailConfirmed
 	}
 	if input.Category != nil {
 		profile.Category = strings.TrimSpace(*input.Category)
-	}
-	if input.PublicContactEmail != nil {
-		profile.PublicContactEmail = strings.ToLower(strings.TrimSpace(*input.PublicContactEmail))
-	}
-	if input.DirectoryVisible != nil {
-		profile.DirectoryVisible = *input.DirectoryVisible
-	}
-	if len(profile.Category) > 80 || len(profile.PublicContactEmail) > 255 {
-		return nil, ErrInvalidSponsorDirectory
-	}
-	if profile.PublicContactEmail != "" {
-		parsed, parseErr := mail.ParseAddress(profile.PublicContactEmail)
-		if parseErr != nil || parsed.Address != profile.PublicContactEmail {
+		if profile.Category != "" && !validSponsorCategory(profile.Category) {
 			return nil, ErrInvalidSponsorDirectory
 		}
 	}
-	if profile.DirectoryVisible && (profile.Category == "" || profile.PublicContactEmail == "") {
+	if input.DirectoryVisible != nil {
+		profile.DirectoryVisible = *input.DirectoryVisible
+		profile.DirectoryEmailConfirmed = *input.DirectoryVisible
+	} else if existing != nil && profile.SponsorEmail != existing.SponsorEmail {
+		profile.DirectoryVisible = false
+		profile.DirectoryEmailConfirmed = false
+	}
+	if len(profile.Category) > 80 || len(profile.SponsorEmail) > 255 {
 		return nil, ErrInvalidSponsorDirectory
+	}
+	if profile.DirectoryVisible {
+		parsed, parseErr := mail.ParseAddress(profile.SponsorEmail)
+		if profile.Category == "" || parseErr != nil || parsed.Address != profile.SponsorEmail {
+			return nil, ErrInvalidSponsorDirectory
+		}
 	}
 
 	return u.accountRepo.UpsertSponsorProfile(ctx, profile)
+}
+
+func validSponsorCategory(category string) bool {
+	switch category {
+	case "Technology", "Gaming & Esports", "Food & Beverage", "Fashion & Apparel",
+		"Health & Wellness", "Education", "Finance", "Travel & Hospitality",
+		"Media & Entertainment", "Other":
+		return true
+	default:
+		return false
+	}
 }
 
 // ListSponsorDirectory is available only to active organizers. The repository enforces opt-in visibility.

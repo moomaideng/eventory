@@ -32,8 +32,10 @@ import {
   FieldLabel,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
+import { sponsorCategories } from "../categories";
 import { sponsorProfileSchema, type SponsorProfileInput } from "../schemas";
 
 type FieldErrors = Partial<
@@ -41,7 +43,6 @@ type FieldErrors = Partial<
     | "sponsorName"
     | "sponsorEmail"
     | "category"
-    | "publicContactEmail"
     | "directoryVisible",
     string
   >
@@ -51,7 +52,6 @@ interface SponsorProfileFormProps {
   initialName: string;
   initialEmail: string;
   initialCategory: string;
-  initialPublicContactEmail: string;
   initialDirectoryVisible: boolean;
   onCancel: () => void;
   onConfirmSave: (data: SponsorProfileInput) => Promise<boolean>;
@@ -63,7 +63,6 @@ export function SponsorProfileForm({
   initialName,
   initialEmail,
   initialCategory,
-  initialPublicContactEmail,
   initialDirectoryVisible,
   onCancel,
   onConfirmSave,
@@ -72,9 +71,10 @@ export function SponsorProfileForm({
 }: SponsorProfileFormProps) {
   const [sponsorName, setSponsorName] = useState(initialName);
   const [sponsorEmail, setSponsorEmail] = useState(initialEmail);
-  const [category, setCategory] = useState(initialCategory);
-  const [publicContactEmail, setPublicContactEmail] = useState(
-    initialPublicContactEmail
+  const [category, setCategory] = useState(
+    sponsorCategories.some((option) => option === initialCategory)
+      ? initialCategory
+      : initialCategory ? "Other" : ""
   );
   const [directoryVisible, setDirectoryVisible] = useState(
     initialDirectoryVisible
@@ -92,7 +92,6 @@ export function SponsorProfileForm({
       sponsorName,
       sponsorEmail,
       category,
-      publicContactEmail,
       directoryVisible,
     });
 
@@ -102,7 +101,6 @@ export function SponsorProfileForm({
         sponsorName: flat.sponsorName?.[0],
         sponsorEmail: flat.sponsorEmail?.[0],
         category: flat.category?.[0],
-        publicContactEmail: flat.publicContactEmail?.[0],
         directoryVisible: flat.directoryVisible?.[0],
       });
       return;
@@ -174,7 +172,9 @@ export function SponsorProfileForm({
                 placeholder="sponsorships@acme.com"
                 aria-invalid={Boolean(fieldErrors.sponsorEmail)}
               />
-              <FieldDescription>Optional.</FieldDescription>
+              <FieldDescription>
+                Organizers can see this email when you choose to appear in the sponsor directory.
+              </FieldDescription>
               {fieldErrors.sponsorEmail ? (
                 <FieldError>{fieldErrors.sponsorEmail}</FieldError>
               ) : null}
@@ -191,48 +191,30 @@ export function SponsorProfileForm({
                 <FieldLabel htmlFor="sponsor-category">
                   Business category
                 </FieldLabel>
-                <Input
-                  id="sponsor-category"
-                  value={category}
-                  maxLength={80}
-                  placeholder="e.g. Technology"
-                  aria-invalid={Boolean(fieldErrors.category)}
-                  onChange={(event) => {
-                    setCategory(event.target.value);
+                <Select
+                  items={sponsorCategories.map((option) => ({ label: option, value: option }))}
+                  value={category || null}
+                  onValueChange={(value) => {
+                    setCategory(String(value ?? ""));
                     setFieldErrors((prev) => ({
                       ...prev,
                       category: undefined,
                     }));
                   }}
-                />
+                >
+                  <SelectTrigger id="sponsor-category" className="w-full" aria-invalid={Boolean(fieldErrors.category)}>
+                    <SelectValue placeholder="Choose a category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectGroup>
+                      {sponsorCategories.map((option) => (
+                        <SelectItem key={option} value={option}>{option}</SelectItem>
+                      ))}
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
                 {fieldErrors.category ? (
                   <FieldError>{fieldErrors.category}</FieldError>
-                ) : null}
-              </Field>
-              <Field data-invalid={Boolean(fieldErrors.publicContactEmail)}>
-                <FieldLabel htmlFor="public-contact-email">
-                  Public contact email
-                </FieldLabel>
-                <Input
-                  id="public-contact-email"
-                  type="email"
-                  value={publicContactEmail}
-                  placeholder="partners@example.com"
-                  aria-invalid={Boolean(fieldErrors.publicContactEmail)}
-                  onChange={(event) => {
-                    setPublicContactEmail(event.target.value);
-                    setFieldErrors((prev) => ({
-                      ...prev,
-                      publicContactEmail: undefined,
-                    }));
-                  }}
-                />
-                <FieldDescription>
-                  This address appears in the directory. Your profile contact
-                  email above stays separate.
-                </FieldDescription>
-                {fieldErrors.publicContactEmail ? (
-                  <FieldError>{fieldErrors.publicContactEmail}</FieldError>
                 ) : null}
               </Field>
               <label
@@ -253,7 +235,7 @@ export function SponsorProfileForm({
                   }}
                 />
                 <span>
-                  Show my sponsor name, category and public contact email to
+                  Show my sponsor name, category and contact email to
                   organizers
                 </span>
               </label>
@@ -280,7 +262,7 @@ export function SponsorProfileForm({
             <AlertDialogTitle>Save changes?</AlertDialogTitle>
             <AlertDialogDescription>
               {pendingData?.directoryVisible
-                ? "Your sponsor name, category and public contact email will be available to organizers in the directory."
+                ? "Your sponsor name, category and contact email will be available to organizers in the directory."
                 : "Your sponsor profile will be saved. Your directory listing will remain hidden."}
             </AlertDialogDescription>
           </AlertDialogHeader>

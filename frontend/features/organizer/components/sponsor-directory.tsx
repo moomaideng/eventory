@@ -203,10 +203,10 @@ export function SponsorDirectory() {
                   </p>
                   <a
                     className="text-primary inline-flex items-center gap-2 text-sm font-medium hover:underline"
-                    href={`mailto:${sponsor.publicContactEmail}`}
+                    href={`mailto:${sponsor.contactEmail}`}
                   >
                     <Mail className="size-4" aria-hidden="true" />
-                    {sponsor.publicContactEmail}
+                    {sponsor.contactEmail}
                   </a>
                 </CardContent>
               </Card>

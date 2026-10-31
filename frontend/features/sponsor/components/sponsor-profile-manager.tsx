@@ -21,7 +21,6 @@ interface SponsorProfileData {
   sponsorName: string;
   sponsorEmail?: string | null;
   category?: string;
-  publicContactEmail?: string;
   directoryVisible?: boolean;
 }
 
@@ -64,7 +63,6 @@ export function SponsorProfileManager() {
             sponsorName: data.sponsorName,
             sponsorEmail: data.sponsorEmail,
             category: data.category,
-            publicContactEmail: data.publicContactEmail,
             directoryVisible: data.directoryVisible,
           },
         }
@@ -126,7 +124,6 @@ export function SponsorProfileManager() {
         initialName={current.sponsorName}
         initialEmail={current.sponsorEmail ?? ""}
         initialCategory={current.category ?? ""}
-        initialPublicContactEmail={current.publicContactEmail ?? ""}
         initialDirectoryVisible={current.directoryVisible ?? false}
         onCancel={() => setMode("view")}
         onConfirmSave={handleConfirmSave}
@@ -141,7 +138,6 @@ export function SponsorProfileManager() {
       sponsorName={current.sponsorName}
       sponsorEmail={current.sponsorEmail}
       category={current.category}
-      publicContactEmail={current.publicContactEmail}
       directoryVisible={current.directoryVisible}
       onEdit={() => setMode("edit")}
     />

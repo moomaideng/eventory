@@ -113,8 +113,8 @@ func (m *mockAccountRepository) UpsertSponsorProfile(ctx context.Context, profil
 		existing.SponsorName = profile.SponsorName
 		existing.SponsorEmail = profile.SponsorEmail
 		existing.Category = profile.Category
-		existing.PublicContactEmail = profile.PublicContactEmail
 		existing.DirectoryVisible = profile.DirectoryVisible
+		existing.DirectoryEmailConfirmed = profile.DirectoryEmailConfirmed
 		return existing, nil
 	}
 	m.sponsorProfiles[profile.AccountID] = profile
@@ -125,7 +125,7 @@ func (m *mockAccountRepository) ListVisibleSponsorProfiles(_ context.Context, se
 	var items []models.SponsorProfile
 	for _, profile := range m.sponsorProfiles {
 		account := m.accounts[profile.AccountID]
-		if account == nil || account.Status != models.AccountStatusActive || !profile.DirectoryVisible || profile.PublicContactEmail == "" {
+		if account == nil || account.Status != models.AccountStatusActive || !profile.DirectoryVisible || !profile.DirectoryEmailConfirmed || profile.SponsorEmail == "" {
 			continue
 		}
 		if search != "" && !strings.Contains(strings.ToLower(profile.SponsorName), strings.ToLower(search)) {
@@ -153,7 +153,7 @@ func (m *mockAccountRepository) ListVisibleSponsorCategories(_ context.Context) 
 	seen := map[string]bool{}
 	for _, profile := range m.sponsorProfiles {
 		account := m.accounts[profile.AccountID]
-		if account != nil && account.Status == models.AccountStatusActive && profile.DirectoryVisible && profile.PublicContactEmail != "" {
+		if account != nil && account.Status == models.AccountStatusActive && profile.DirectoryVisible && profile.DirectoryEmailConfirmed && profile.SponsorEmail != "" {
 			seen[profile.Category] = true
 		}
 	}
@@ -183,9 +183,15 @@ func TestSponsorDirectoryRequiresOptInAndOrganizer(t *testing.T) {
 	if err != nil || page.Total != 0 {
 		t.Fatalf("new sponsor should be hidden: page=%+v err=%v", page, err)
 	}
-	category, publicEmail, visible := "Technology", "partners@example.com", true
+	// A profile opted in under the old separate-email flow must confirm sharing its contact email.
+	repo.sponsorProfiles[visibleID].DirectoryVisible = true
+	page, err = uc.ListSponsorDirectory(ctx, organizerID, "", "", 1, 12)
+	if err != nil || page.Total != 0 {
+		t.Fatalf("legacy opt-in must remain hidden until email consent: page=%+v err=%v", page, err)
+	}
+	category, contactEmail, visible := "Technology", "partners@example.com", true
 	_, err = uc.UpsertSponsorProfile(ctx, visibleID, usecases.UpsertSponsorProfileInput{
-		SponsorName: "Tech Partner", Category: &category, PublicContactEmail: &publicEmail, DirectoryVisible: &visible,
+		SponsorName: "Tech Partner", SponsorEmail: &contactEmail, Category: &category, DirectoryVisible: &visible,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -194,8 +200,8 @@ func TestSponsorDirectoryRequiresOptInAndOrganizer(t *testing.T) {
 	if err != nil || page.Total != 1 || page.Items[0].AccountID != visibleID {
 		t.Fatalf("expected opted-in sponsor only: page=%+v err=%v", page, err)
 	}
-	if page.Items[0].PublicContactEmail != publicEmail || len(page.Categories) != 1 || page.Categories[0] != category {
-		t.Fatalf("directory must show only the chosen public contact and category: %+v", page)
+	if page.Items[0].SponsorEmail != contactEmail || len(page.Categories) != 1 || page.Categories[0] != category {
+		t.Fatalf("directory must show contact email and category: %+v", page)
 	}
 	if _, err := uc.ListSponsorDirectory(ctx, hiddenID, "", "", 1, 12); err != usecases.ErrSponsorDirectoryForbidden {
 		t.Fatalf("expected organizer guard, got %v", err)
@@ -209,14 +215,26 @@ func TestSponsorDirectoryRequiresOptInAndOrganizer(t *testing.T) {
 	if err != nil || page.Total != 0 {
 		t.Fatalf("opt-out should hide sponsor: page=%+v err=%v", page, err)
 	}
+	visible = true
+	if _, err := uc.UpsertSponsorProfile(ctx, visibleID, usecases.UpsertSponsorProfileInput{SponsorName: "Tech Partner", DirectoryVisible: &visible}); err != nil {
+		t.Fatal(err)
+	}
+	newEmail := "new@example.com"
+	if _, err := uc.UpsertSponsorProfile(ctx, visibleID, usecases.UpsertSponsorProfileInput{SponsorName: "Tech Partner", SponsorEmail: &newEmail}); err != nil {
+		t.Fatal(err)
+	}
+	page, err = uc.ListSponsorDirectory(ctx, organizerID, "", "", 1, 12)
+	if err != nil || page.Total != 0 {
+		t.Fatalf("changing contact email without fresh consent must hide sponsor: page=%+v err=%v", page, err)
+	}
 }
 
-func TestSponsorDirectoryRequiresExplicitPublicEmail(t *testing.T) {
+func TestSponsorDirectoryRequiresValidContactEmailAndCategory(t *testing.T) {
 	ctx := context.Background()
 	repo := newMockAccountRepository()
 	uc := usecases.NewAccountUseCase(repo)
 	id := uuid.New()
-	repo.accounts[id] = &models.Account{ID: id, Email: "private@example.com", Status: models.AccountStatusActive}
+	repo.accounts[id] = &models.Account{ID: id, Email: "", Status: models.AccountStatusActive}
 	category, visible := "Technology", true
 	_, err := uc.UpsertSponsorProfile(ctx, id, usecases.UpsertSponsorProfileInput{SponsorName: "Brand", Category: &category, DirectoryVisible: &visible})
 	if err != usecases.ErrInvalidSponsorDirectory {
@@ -226,9 +244,15 @@ func TestSponsorDirectoryRequiresExplicitPublicEmail(t *testing.T) {
 		t.Fatal("invalid opt-in must not be saved")
 	}
 	badEmail := "not-an-email"
-	_, err = uc.UpsertSponsorProfile(ctx, id, usecases.UpsertSponsorProfileInput{SponsorName: "Brand", Category: &category, PublicContactEmail: &badEmail, DirectoryVisible: &visible})
+	_, err = uc.UpsertSponsorProfile(ctx, id, usecases.UpsertSponsorProfileInput{SponsorName: "Brand", SponsorEmail: &badEmail, Category: &category, DirectoryVisible: &visible})
 	if err != usecases.ErrInvalidSponsorDirectory {
-		t.Fatalf("invalid public email should be rejected, got %v", err)
+		t.Fatalf("invalid contact email should be rejected, got %v", err)
+	}
+	unknownCategory := "Tech"
+	validEmail := "brand@example.com"
+	_, err = uc.UpsertSponsorProfile(ctx, id, usecases.UpsertSponsorProfileInput{SponsorName: "Brand", SponsorEmail: &validEmail, Category: &unknownCategory, DirectoryVisible: &visible})
+	if err != usecases.ErrInvalidSponsorDirectory {
+		t.Fatalf("unlisted category should be rejected, got %v", err)
 	}
 }
 

@@ -15,7 +15,6 @@ interface SponsorProfileViewProps {
   sponsorName: string;
   sponsorEmail?: string | null;
   category?: string;
-  publicContactEmail?: string;
   directoryVisible?: boolean;
   onEdit: () => void;
 }
@@ -24,7 +23,6 @@ export function SponsorProfileView({
   sponsorName,
   sponsorEmail,
   category,
-  publicContactEmail,
   directoryVisible,
   onEdit,
 }: SponsorProfileViewProps) {
@@ -57,9 +55,6 @@ export function SponsorProfileView({
               : "Hidden from organizers"}
           </p>
           {category ? <p className="text-sm">Category: {category}</p> : null}
-          {publicContactEmail ? (
-            <p className="text-sm">Public contact: {publicContactEmail}</p>
-          ) : null}
         </div>
       </CardContent>
       <CardFooter className="justify-end">
