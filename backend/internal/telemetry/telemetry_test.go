@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -44,5 +45,36 @@ func TestSetupPostsSpansToTracesPath(t *testing.T) {
 		}
 	case <-time.After(5 * time.Second):
 		t.Fatal("exporter sent nothing")
+	}
+}
+
+// Setup must install a parent-based sampler: a span under Untraced is never
+// exported, while a root span in the same process still is.
+func TestSetupDoesNotExportUntracedSpans(t *testing.T) {
+	previousProvider, previousPropagator := otel.GetTracerProvider(), otel.GetTextMapPropagator()
+	t.Cleanup(func() {
+		otel.SetTracerProvider(previousProvider)
+		otel.SetTextMapPropagator(previousPropagator)
+	})
+
+	var posts atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		posts.Add(1)
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	shutdown, err := Setup(context.Background(), Config{ServiceName: "test", Environment: "test", Endpoint: server.URL})
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, span := otel.Tracer("test").Start(Untraced(context.Background()), "poll")
+	span.End()
+	if err := shutdown(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+
+	if got := posts.Load(); got != 0 {
+		t.Fatalf("export requests for an untraced span = %d, want 0", got)
 	}
 }

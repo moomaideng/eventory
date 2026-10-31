@@ -4,7 +4,6 @@ import (
 	"context"
 	cryptorand "crypto/rand"
 	"errors"
-	"log/slog"
 	"math/big"
 	"regexp"
 	"strings"
@@ -387,29 +386,10 @@ func (u *TeamLobbyUseCase) Reconcile(ctx context.Context, team *models.Tournamen
 	}
 }
 
-// Durable attempts are recovered even if the captain closes the checkout or a
-// service restarts between payment confirmation and application submission.
-func (u *TeamLobbyUseCase) Run(ctx context.Context) {
-	ticker := time.NewTicker(10 * time.Second)
-	defer ticker.Stop()
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case <-ticker.C:
-			teams, err := u.repo.Pending(ctx)
-			if err != nil {
-				slog.Error("list pending team submissions", "error", err)
-				continue
-			}
-			for i := range teams {
-				if ctx.Err() != nil {
-					return
-				}
-				if err := u.Reconcile(ctx, &teams[i]); err != nil {
-					slog.Error("reconcile team submission", "team_id", teams[i].ID, "error", err)
-				}
-			}
-		}
-	}
+// Pending lists registrations awaiting a payment outcome. A background poller
+// feeds each one to Reconcile so attempts are recovered even if the captain
+// closes the checkout or a service restarts between payment confirmation and
+// application submission.
+func (u *TeamLobbyUseCase) Pending(ctx context.Context) ([]models.TournamentTeam, error) {
+	return u.repo.Pending(ctx)
 }
