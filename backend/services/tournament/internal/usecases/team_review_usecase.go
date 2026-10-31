@@ -143,35 +143,15 @@ func (u *TeamReviewUseCase) refund(ctx context.Context, entryID, paymentID uuid.
 	return u.repo.MarkRefunded(ctx, entryID, paymentID)
 }
 
-func (u *TeamReviewUseCase) RetryRefunds(ctx context.Context) error {
-	teams, err := u.repo.PendingRefunds(ctx)
-	if err != nil {
-		return err
-	}
-	for _, team := range teams {
-		if err := ctx.Err(); err != nil {
-			return err
-		}
-		if err := u.refund(ctx, team.ID, *team.PaymentID); err != nil {
-			slog.WarnContext(ctx, "retry rejected registration refund", "entry_id", team.ID, "error", err)
-		}
-	}
-	return nil
+func (u *TeamReviewUseCase) PendingRefunds(ctx context.Context) ([]models.TournamentTeam, error) {
+	return u.repo.PendingRefunds(ctx)
 }
 
-func (u *TeamReviewUseCase) RunRefunds(ctx context.Context) {
-	ticker := time.NewTicker(10 * time.Second)
-	defer ticker.Stop()
-	for {
-		if err := u.RetryRefunds(ctx); err != nil && ctx.Err() == nil {
-			slog.ErrorContext(ctx, "list rejected registration refunds", "error", err)
-		}
-		select {
-		case <-ctx.Done():
-			return
-		case <-ticker.C:
-		}
+func (u *TeamReviewUseCase) RetryRefund(ctx context.Context, team *models.TournamentTeam) error {
+	if team.PaymentID == nil {
+		return ErrPaymentUnavailable
 	}
+	return u.refund(ctx, team.ID, *team.PaymentID)
 }
 
 // checkReview holds the decision rules. It runs inside the repository's

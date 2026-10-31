@@ -57,7 +57,7 @@ func newApp(db *gorm.DB, mongoDB *mongo.Database, cfg config.Config, accountSvc 
 		HTTP: newHTTPRouter(db, mongoDB, cfg, accountSvc, teamLobbyUseCase, sponsorships, teamReviews),
 		RunSubmissions: func(ctx context.Context) {
 			go sponsorshipPoller(sponsorships).run(ctx)
-			go teamReviews.RunRefunds(ctx)
+			go refundPoller(teamReviews).run(ctx)
 			teamSubmissionPoller(teamLobbyUseCase).run(ctx)
 		},
 	}
@@ -91,6 +91,21 @@ func sponsorshipPoller(u *usecases.SponsorshipUseCase) poller[models.Sponsorship
 		},
 		onReconcileError: func(ctx context.Context, pledge *models.SponsorshipPledge, err error) {
 			slog.WarnContext(ctx, "reconcile sponsorship", "pledge", pledge.ID, "error", err)
+		},
+	}
+}
+
+func refundPoller(u *usecases.TeamReviewUseCase) poller[models.TournamentTeam] {
+	return poller[models.TournamentTeam]{
+		interval:    reconcileInterval,
+		spanName:    "retry rejected registration refunds",
+		listPending: u.PendingRefunds,
+		reconcile:   u.RetryRefund,
+		onListError: func(ctx context.Context, err error) {
+			slog.ErrorContext(ctx, "list rejected registration refunds", "error", err)
+		},
+		onReconcileError: func(ctx context.Context, team *models.TournamentTeam, err error) {
+			slog.WarnContext(ctx, "retry rejected registration refund", "entry_id", team.ID, "error", err)
 		},
 	}
 }

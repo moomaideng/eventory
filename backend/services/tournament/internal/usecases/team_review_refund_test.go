@@ -63,10 +63,15 @@ func TestRejectedRegistrationRefundRetries(t *testing.T) {
 		t.Fatalf("rejection must commit while refund waits for retry: result=%+v err=%v calls=%d marked=%v", result, err, payments.calls, repo.marked)
 	}
 	payments.fail = false
-	if err := uc.RetryRefunds(context.Background()); err != nil || !repo.marked || payments.calls != 2 {
+	pending, err := uc.PendingRefunds(context.Background())
+	if err != nil || len(pending) != 1 {
+		t.Fatalf("pending refunds = %d, err=%v; want one", len(pending), err)
+	}
+	if err := uc.RetryRefund(context.Background(), &pending[0]); err != nil || !repo.marked || payments.calls != 2 {
 		t.Fatalf("refund retry failed: err=%v calls=%d marked=%v", err, payments.calls, repo.marked)
 	}
-	if err := uc.RetryRefunds(context.Background()); err != nil || payments.calls != 2 {
+	pending, err = uc.PendingRefunds(context.Background())
+	if err != nil || len(pending) != 0 || payments.calls != 2 {
 		t.Fatal("completed refund was retried")
 	}
 }
