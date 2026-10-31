@@ -25,10 +25,11 @@ type PaymentResponse struct {
 	AmountMinor    int64         `json:"amountMinor" doc:"Amount in satang"`
 	Currency       string        `json:"currency" enum:"THB"`
 	Provider       string        `json:"provider" enum:"MOCK"`
-	Status         models.Status `json:"status" enum:"UNPAID,PAID,EXPIRED,CANCELLED"`
+	Status         models.Status `json:"status" enum:"UNPAID,PAID,REFUNDED,EXPIRED,CANCELLED"`
 	CreatedAt      time.Time     `json:"createdAt"`
 	ExpiresAt      time.Time     `json:"expiresAt"`
 	PaidAt         *time.Time    `json:"paidAt"`
+	RefundedAt     *time.Time    `json:"refundedAt"`
 	InvoicePath    string        `json:"invoicePath"`
 	CheckoutPath   string        `json:"checkoutPath"`
 }
@@ -41,7 +42,7 @@ type PaymentIDInput struct {
 func response(payment *models.Invoice) PaymentResponse {
 	return PaymentResponse{PayerAccountID: payment.PayerAccountID, ID: payment.ID, Source: payment.Source, Reference: payment.Reference, Description: payment.Description,
 		AmountMinor: payment.AmountMinor, Currency: payment.Currency, Provider: payment.Provider, Status: payment.Status(time.Now()),
-		CreatedAt: payment.CreatedAt, ExpiresAt: payment.ExpiresAt, PaidAt: payment.PaidAt,
+		CreatedAt: payment.CreatedAt, ExpiresAt: payment.ExpiresAt, PaidAt: payment.PaidAt, RefundedAt: payment.RefundedAt,
 		InvoicePath: "/payments/" + payment.ID.String(), CheckoutPath: "/payments/" + payment.ID.String() + "/checkout"}
 }
 
@@ -79,6 +80,19 @@ func RegisterInternalRoutes(api huma.API, uc *usecases.PaymentUseCase, serviceKe
 	huma.Register(internal, huma.Operation{OperationID: "get-payment-for-service", Method: http.MethodGet, Path: "/{id}", Summary: "Query payment status (trusted backend only)", Security: security},
 		func(ctx context.Context, input *PaymentIDInput) (*PaymentOutput, error) {
 			payment, err := uc.GetForService(ctx, input.ID)
+			if err != nil {
+				return nil, paymentError(err)
+			}
+			return &PaymentOutput{Body: response(payment)}, nil
+		})
+	huma.Register(internal, huma.Operation{OperationID: "refund-rejected-registration", Method: http.MethodPost, Path: "/{id}/refund", Summary: "Refund a rejected registration (trusted backend only)", Security: security},
+		func(ctx context.Context, input *struct {
+			ID   uuid.UUID `path:"id"`
+			Body struct {
+				EntryID uuid.UUID `json:"entryId"`
+			}
+		}) (*PaymentOutput, error) {
+			payment, err := uc.RefundRegistration(ctx, input.ID, input.Body.EntryID)
 			if err != nil {
 				return nil, paymentError(err)
 			}

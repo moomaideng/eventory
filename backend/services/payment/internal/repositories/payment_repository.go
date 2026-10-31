@@ -25,6 +25,7 @@ type PaymentRepository interface {
 	GetOwned(ctx context.Context, payerID uuid.UUID, invoiceID uuid.UUID) (*models.Invoice, error)
 	ListOwned(ctx context.Context, payerID uuid.UUID, filter Filter) ([]models.Invoice, int64, error)
 	Complete(ctx context.Context, payerID uuid.UUID, invoiceID uuid.UUID, mutate func(invoice *models.Invoice) error) (*models.Invoice, error)
+	Refund(ctx context.Context, invoiceID uuid.UUID, mutate func(invoice *models.Invoice) error) (*models.Invoice, error)
 }
 
 type paymentRepository struct{ db *gorm.DB }
@@ -115,4 +116,22 @@ func (r *paymentRepository) Complete(ctx context.Context, payer, id uuid.UUID, m
 		return tx.Model(&payment).Omit("Receipt").Update("paid_at", payment.PaidAt).Error
 	})
 	return &payment, err
+}
+
+func (r *paymentRepository) Refund(ctx context.Context, id uuid.UUID, mutate func(*models.Invoice) error) (*models.Invoice, error) {
+	var invoice models.Invoice
+	err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("id = ?", id).First(&invoice).Error; err != nil {
+			return err
+		}
+		alreadyRefunded := invoice.RefundedAt != nil
+		if err := mutate(&invoice); err != nil {
+			return err
+		}
+		if alreadyRefunded {
+			return nil
+		}
+		return tx.Model(&invoice).Updates(map[string]any{"refunded_at": invoice.RefundedAt, "refund_reason": invoice.RefundReason}).Error
+	})
+	return &invoice, err
 }

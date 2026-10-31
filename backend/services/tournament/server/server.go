@@ -52,10 +52,12 @@ func newApp(db *gorm.DB, mongoDB *mongo.Database, cfg config.Config, accountSvc 
 	teamLobbyRepo := repositories.NewTeamLobbyRepository(db)
 	teamLobbyUseCase := usecases.NewTeamLobbyUseCase(teamLobbyRepo, accountSvc, payments)
 	sponsorships := usecases.NewSponsorshipUseCase(repositories.NewSponsorshipRepository(db), repositories.NewTournamentRepository(db), accountSvc, payments)
+	teamReviews := usecases.NewTeamReviewUseCase(repositories.NewTeamReviewRepository(db), accountSvc, payments)
 	return &App{
-		HTTP: newHTTPRouter(db, mongoDB, cfg, accountSvc, teamLobbyUseCase, sponsorships),
+		HTTP: newHTTPRouter(db, mongoDB, cfg, accountSvc, teamLobbyUseCase, sponsorships, teamReviews),
 		RunSubmissions: func(ctx context.Context) {
 			go sponsorshipPoller(sponsorships).run(ctx)
+			go refundPoller(teamReviews).run(ctx)
 			teamSubmissionPoller(teamLobbyUseCase).run(ctx)
 		},
 	}
@@ -93,7 +95,22 @@ func sponsorshipPoller(u *usecases.SponsorshipUseCase) poller[models.Sponsorship
 	}
 }
 
-func newHTTPRouter(db *gorm.DB, mongoDB *mongo.Database, cfg config.Config, accountSvc ports.AccountService, teamLobbyUseCase *usecases.TeamLobbyUseCase, sponsorships *usecases.SponsorshipUseCase) http.Handler {
+func refundPoller(u *usecases.TeamReviewUseCase) poller[models.TournamentTeam] {
+	return poller[models.TournamentTeam]{
+		interval:    reconcileInterval,
+		spanName:    "retry rejected registration refunds",
+		listPending: u.PendingRefunds,
+		reconcile:   u.RetryRefund,
+		onListError: func(ctx context.Context, err error) {
+			slog.ErrorContext(ctx, "list rejected registration refunds", "error", err)
+		},
+		onReconcileError: func(ctx context.Context, team *models.TournamentTeam, err error) {
+			slog.WarnContext(ctx, "retry rejected registration refund", "entry_id", team.ID, "error", err)
+		},
+	}
+}
+
+func newHTTPRouter(db *gorm.DB, mongoDB *mongo.Database, cfg config.Config, accountSvc ports.AccountService, teamLobbyUseCase *usecases.TeamLobbyUseCase, sponsorships *usecases.SponsorshipUseCase, teamReviewUseCase *usecases.TeamReviewUseCase) http.Handler {
 	router := chi.NewMux()
 	router.Use(telemetry.HTTPMiddleware(config.ServiceName))
 	router.Use(middlewares.RequestID)
@@ -151,13 +168,11 @@ func newHTTPRouter(db *gorm.DB, mongoDB *mongo.Database, cfg config.Config, acco
 
 	tournamentRepo := repositories.NewTournamentRepository(db)
 	tournamentStaffRepo := repositories.NewTournamentStaffRepository(db)
-	teamReviewRepo := repositories.NewTeamReviewRepository(db)
 	sponsorshipTierRepo := repositories.NewSponsorshipTierRepository(db)
 	bracketRepo := repositories.NewBracketRepository(db)
 
 	tournamentUseCase := usecases.NewTournamentUseCase(tournamentRepo, accountSvc)
 	staffUseCase := usecases.NewTournamentStaffUseCase(tournamentStaffRepo, accountSvc)
-	teamReviewUseCase := usecases.NewTeamReviewUseCase(teamReviewRepo, accountSvc)
 	sponsorshipTierUseCase := usecases.NewSponsorshipTierUseCase(sponsorshipTierRepo, tournamentRepo)
 	bracketUseCase := usecases.NewBracketUseCase(bracketRepo)
 

@@ -132,6 +132,39 @@ func TestPaymentAPI(t *testing.T) {
 		expect(t, request("POST", path+"/mock-result", `{"result":"FAILED"}`, ownerToken, ""), 409)
 		expect(t, request("POST", "/internal/v1/payments", body("owned", "new-key", 15000), "", key), 409)
 	})
+	t.Run("rejected registration refund", func(t *testing.T) {
+		entryID := uuid.New()
+		reference := entryID.String() + ":" + uuid.NewString()
+		createBody := fmt.Sprintf(`{"payerAccountId":%q,"source":"TEAM_REGISTRATION","reference":%q,"idempotencyKey":%q,"description":"Team registration","amountMinor":15000,"currency":"THB","expiresAt":%q}`, owner.String(), reference, uuid.NewString(), deadline.Format(time.RFC3339Nano))
+		w := request("POST", "/internal/v1/payments", createBody, "", key)
+		expect(t, w, 200)
+		invoice := decode(t, w)
+		refundPath := "/internal/v1/payments/" + invoice.ID.String() + "/refund"
+		refundBody := fmt.Sprintf(`{"entryId":%q}`, entryID.String())
+		expect(t, request("POST", refundPath, refundBody, ownerToken, ""), 401)
+		expect(t, request("POST", refundPath, refundBody, "", key), 409)
+		expect(t, request("POST", refundPath, fmt.Sprintf(`{"entryId":%q}`, uuid.NewString()), "", key), 409)
+		expect(t, request("POST", "/api/v1/payments/"+invoice.ID.String()+"/mock-result", `{"result":"SUCCEEDED"}`, ownerToken, ""), 200)
+		expect(t, request("POST", refundPath, fmt.Sprintf(`{"entryId":%q}`, uuid.NewString()), "", key), 409)
+		expect(t, request("POST", "/internal/v1/payments/"+payment.ID.String()+"/refund", refundBody, "", key), 409)
+		w = request("POST", refundPath, refundBody, "", key)
+		expect(t, w, 200)
+		refunded := decode(t, w)
+		if refunded.Status != models.Refunded || refunded.RefundedAt == nil || refunded.PaidAt == nil {
+			t.Fatalf("wrong refund result: %+v", refunded)
+		}
+		w = request("POST", refundPath, refundBody, "", key)
+		expect(t, w, 200)
+		if got := decode(t, w); got.RefundedAt == nil || !got.RefundedAt.Equal(*refunded.RefundedAt) {
+			t.Fatal("duplicate request changed refund timestamp")
+		}
+		w = request("GET", "/api/v1/payments/"+invoice.ID.String(), "", ownerToken, "")
+		expect(t, w, 200)
+		if decode(t, w).Status != models.Refunded {
+			t.Fatal("payer cannot see refunded status")
+		}
+		expect(t, request("GET", "/api/v1/payments/"+invoice.ID.String()+"/receipt", "", ownerToken, ""), 200)
+	})
 	t.Run("failed and cancelled attempts remain retryable", func(t *testing.T) {
 		for _, status := range []models.MockResult{models.Failed, models.Cancelled} {
 			ref := string(status)

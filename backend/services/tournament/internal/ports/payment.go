@@ -31,3 +31,7 @@ type RegistrationPayment struct {
 type PaymentService interface {
 	EnsureInvoice(context.Context, RegistrationPaymentRequest) (*RegistrationPayment, error)
 }
+
+type RegistrationRefundService interface {
+	RefundRegistration(context.Context, uuid.UUID, uuid.UUID) (*RegistrationPayment, error)
+}

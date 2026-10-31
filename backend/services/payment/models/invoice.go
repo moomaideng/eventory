@@ -9,10 +9,11 @@ import (
 type Status string
 
 const (
-	Unpaid  Status = "UNPAID"
-	Paid    Status = "PAID"
-	Expired Status = "EXPIRED"
-	Voided  Status = "CANCELLED"
+	Unpaid   Status = "UNPAID"
+	Paid     Status = "PAID"
+	Refunded Status = "REFUNDED"
+	Expired  Status = "EXPIRED"
+	Voided   Status = "CANCELLED"
 )
 
 type MockResult string
@@ -38,6 +39,8 @@ type Invoice struct {
 	UpdatedAt      time.Time `gorm:"not null"`
 	ExpiresAt      time.Time `gorm:"not null"`
 	PaidAt         *time.Time
+	RefundedAt     *time.Time
+	RefundReason   string `gorm:"size:64"`
 	CancelledAt    *time.Time
 	Receipt        *Receipt `gorm:"foreignKey:InvoiceID"`
 }
@@ -45,6 +48,9 @@ type Invoice struct {
 func (Invoice) TableName() string { return "payment_invoices" }
 
 func (p *Invoice) Status(now time.Time) Status {
+	if p.RefundedAt != nil {
+		return Refunded
+	}
 	if p.PaidAt != nil {
 		return Paid
 	}

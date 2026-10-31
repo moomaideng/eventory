@@ -3,6 +3,7 @@ package usecases
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"slices"
 	"strings"
 	"time"
@@ -59,13 +60,15 @@ type ReviewResult struct {
 type TeamReviewUseCase struct {
 	repo       repositories.TeamReviewRepository
 	accountSvc ports.AccountService
+	payments   ports.RegistrationRefundService
 }
 
 func NewTeamReviewUseCase(
 	repo repositories.TeamReviewRepository,
 	accountSvc ports.AccountService,
+	payments ports.RegistrationRefundService,
 ) *TeamReviewUseCase {
-	return &TeamReviewUseCase{repo: repo, accountSvc: accountSvc}
+	return &TeamReviewUseCase{repo: repo, accountSvc: accountSvc, payments: payments}
 }
 
 // Review accepts or rejects an application, recording who decided and why.
@@ -100,7 +103,7 @@ func (u *TeamReviewUseCase) Review(
 		return nil, err
 	}
 
-	review, err := u.repo.ApplyReview(ctx, accountID, reviewer.DisplayName, tournamentID, entryID, reason,
+	review, paymentID, err := u.repo.ApplyReview(ctx, accountID, reviewer.DisplayName, tournamentID, entryID, reason,
 		func(tournament *models.Tournament, team *models.TournamentTeam, acceptedEntries int) (models.TournamentTeamStatus, error) {
 			if err := checkReview(tournament, team.Status, to, acceptedEntries); err != nil {
 				return "", err
@@ -109,6 +112,11 @@ func (u *TeamReviewUseCase) Review(
 		})
 	if err != nil {
 		return nil, translateReviewError(err)
+	}
+	if to == models.TournamentTeamStatusRejected && paymentID != nil {
+		if err := u.refund(ctx, entryID, *paymentID); err != nil {
+			slog.WarnContext(ctx, "refund rejected registration will retry", "entry_id", entryID, "error", err)
+		}
 	}
 
 	return &ReviewResult{
@@ -122,6 +130,28 @@ func (u *TeamReviewUseCase) Review(
 		ReviewerDisplayName: review.ReviewerDisplayName,
 		CreatedAt:           review.CreatedAt,
 	}, nil
+}
+
+func (u *TeamReviewUseCase) refund(ctx context.Context, entryID, paymentID uuid.UUID) error {
+	payment, err := u.payments.RefundRegistration(ctx, paymentID, entryID)
+	if err != nil {
+		return err
+	}
+	if payment == nil || payment.ID != paymentID || payment.Status != "REFUNDED" {
+		return ErrPaymentUnavailable
+	}
+	return u.repo.MarkRefunded(ctx, entryID, paymentID)
+}
+
+func (u *TeamReviewUseCase) PendingRefunds(ctx context.Context) ([]models.TournamentTeam, error) {
+	return u.repo.PendingRefunds(ctx)
+}
+
+func (u *TeamReviewUseCase) RetryRefund(ctx context.Context, team *models.TournamentTeam) error {
+	if team.PaymentID == nil {
+		return ErrPaymentUnavailable
+	}
+	return u.refund(ctx, team.ID, *team.PaymentID)
 }
 
 // checkReview holds the decision rules. It runs inside the repository's
