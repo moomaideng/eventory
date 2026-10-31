@@ -162,7 +162,8 @@ func (s *teamLobbyScenarioContext) theCompetitorsPreviousSoloApplicationWasRejec
 
 func (s *teamLobbyScenarioContext) theCompetitorRegistersSoloAgain() error {
 	resp, err := s.client.Do(http.MethodPost,
-		fmt.Sprintf("/tournaments/%s/solo-register", s.tournament.ID), nil,
+		fmt.Sprintf("/tournaments/%s/solo-register", s.tournament.ID),
+		handlers.RegisterSoloRequest{Answers: []models.FieldAnswer{}},
 		s.actor.AuthHeaders())
 	if err != nil {
 		return err
