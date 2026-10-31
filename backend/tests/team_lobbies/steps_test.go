@@ -205,7 +205,7 @@ func (s *teamLobbyScenarioContext) theOtherCompetitorJoinsUsingTheValidInviteCod
 	resp, err := s.client.Do(
 		http.MethodPost,
 		fmt.Sprintf("/lobbies/%s/join", *s.lobby.InviteCode),
-		nil,
+		map[string]any{"answers": []any{}},
 		s.otherCompetitor.AuthHeaders(),
 	)
 	if err != nil {
@@ -221,7 +221,7 @@ func (s *teamLobbyScenarioContext) theOtherCompetitorJoinsUsingTheValidInviteCod
 }
 
 func (s *teamLobbyScenarioContext) theCompetitorTriesToJoinWithAnInvalidInviteCode() error {
-	resp, err := s.client.Do(http.MethodPost, "/lobbies/ZZZZZZ/join", nil, s.actor.AuthHeaders())
+	resp, err := s.client.Do(http.MethodPost, "/lobbies/ZZZZZZ/join", map[string]any{"answers": []any{}}, s.actor.AuthHeaders())
 	if err != nil {
 		return err
 	}

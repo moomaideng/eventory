@@ -1,6 +1,7 @@
 package apptest
 
 import (
+	"go.mongodb.org/mongo-driver/v2/mongo"
 	"net"
 	"net/http/httptest"
 	"testing"
@@ -30,7 +31,7 @@ type App struct {
 }
 
 // NewApp wires both microservices with tournament calling account over in-process gRPC.
-func NewApp(tb testing.TB, dsn string) *App {
+func NewApp(tb testing.TB, dsn string, formDB ...*mongo.Database) *App {
 	tb.Helper()
 
 	db, err := gorm.Open(gormpostgres.Open(dsn), &gorm.Config{
@@ -73,7 +74,11 @@ func NewApp(tb testing.TB, dsn string) *App {
 	}
 	paymentTS := httptest.NewServer(paymentserver.NewApp(db, paymentconfig.Config{Environment: "development", SupabaseURL: jwksServer.URL(), ServiceKey: "test-team-payment-service-key-12345678"}).HTTP)
 	tb.Cleanup(paymentTS.Close)
-	tournamentApp := tournamentserver.NewAppWithAccountConn(db, nil, tournamentconfig.Config{
+	var mongoDB *mongo.Database
+	if len(formDB) > 0 {
+		mongoDB = formDB[0]
+	}
+	tournamentApp := tournamentserver.NewAppWithAccountConn(db, mongoDB, tournamentconfig.Config{
 		Environment: "development",
 		SupabaseURL: jwksServer.URL(),
 		PaymentURL:  paymentTS.URL, PaymentServiceKey: "test-team-payment-service-key-12345678",
