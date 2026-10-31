@@ -8,12 +8,10 @@ import { problemMessage, type Lobby } from "@/features/lobbies/utils";
 export function useLobbyActions({
   lobby,
   authorizationHeader,
-  normalizedInviteCode,
   refetch,
 }: {
   lobby?: Lobby;
   authorizationHeader?: string | null;
-  normalizedInviteCode: string;
   refetch: () => Promise<unknown>;
 }) {
   const router = useRouter();
@@ -47,17 +45,6 @@ export function useLobbyActions({
     } finally {
       setPendingAction(null);
     }
-  }
-
-  function joinLobby() {
-    if (!authorizationHeader) return;
-    void runAction(
-      "join",
-      apiClient.POST("/api/v1/lobbies/{inviteCode}/join", {
-        params: { path: { inviteCode: normalizedInviteCode } },
-        headers: { Authorization: authorizationHeader },
-      })
-    );
   }
 
   function regenerateInvite() {
@@ -119,7 +106,6 @@ export function useLobbyActions({
   return {
     actionError,
     pendingAction,
-    joinLobby,
     regenerateInvite,
     lockRoster,
     removeMember,
