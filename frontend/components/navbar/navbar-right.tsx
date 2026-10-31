@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { NotificationBell } from "@/features/notifications/components/notification-bell";
 import {
   ChevronDown,
   LogOut,
@@ -89,8 +90,11 @@ export function NavbarRight({
             /* Skeleton Loading State during Hydration (Zero Layout Shift) */
             <Skeleton className="h-9 w-28 rounded-lg" />
           ) : user ? (
-            /* Unified Profile & Mode Dropdown with Squircle Styling */
-            <DropdownMenu>
+            <>
+              <NotificationBell />
+
+              {/* Unified Profile & Mode Dropdown with Squircle Styling */}
+              <DropdownMenu>
               <DropdownMenuTrigger
                 render={
                   <Button
@@ -210,6 +214,7 @@ export function NavbarRight({
                 </DropdownMenuGroup>
               </DropdownMenuContent>
             </DropdownMenu>
+            </>
           ) : (
             /* Unauthenticated: Dev Login & Sign In */
             <div className="flex items-center gap-2">
