@@ -37,17 +37,19 @@ import { problemMessage } from "../utils";
 import { createTeamLobbySchema } from "../schemas";
 import { TeamCreateSkeleton } from "./team-create-skeleton";
 import { TournamentSummaryCard } from "./tournament-summary-card";
+import { useRegistrationAnswers } from "@/features/registration-form/hooks/use-registration-answers";
+import { RegistrationAnswerFields } from "@/features/registration-form/components/registration-answer-fields";
 
 export function TeamLobbyCreate({ tournamentId }: { tournamentId: string }) {
   const router = useRouter();
-  const {
-    user,
-    isLoading: isAuthLoading,
-    authorizationHeader,
-  } = useAuth();
+  const { user, isLoading: isAuthLoading, authorizationHeader } = useAuth();
   const [teamName, setTeamName] = React.useState("");
   const [formError, setFormError] = React.useState("");
   const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const registration = useRegistrationAnswers(
+    tournamentId,
+    authorizationHeader
+  );
 
   const {
     data: details,
@@ -72,6 +74,8 @@ export function TeamLobbyCreate({ tournamentId }: { tournamentId: string }) {
       return;
     }
 
+    const answers = registration.validate();
+    if (!answers || isSubmitting) return;
     setFormError("");
     setIsSubmitting(true);
     try {
@@ -80,7 +84,7 @@ export function TeamLobbyCreate({ tournamentId }: { tournamentId: string }) {
         {
           params: { path: { tournamentId } },
           headers: { Authorization: authorizationHeader },
-          body: { name: result.data.name },
+          body: { name: result.data.name, answers },
         }
       );
       if (createError || !data) {
@@ -171,8 +175,8 @@ export function TeamLobbyCreate({ tournamentId }: { tournamentId: string }) {
               Teammates will see this name when they open your invite link.
             </CardDescription>
           </CardHeader>
-          <form onSubmit={createLobby}>
-            <CardContent>
+          <form noValidate onSubmit={createLobby}>
+            <CardContent className="flex flex-col gap-6">
               <FieldGroup>
                 <Field data-invalid={Boolean(formError)}>
                   <FieldLabel htmlFor="team-name">Team name</FieldLabel>
@@ -194,9 +198,17 @@ export function TeamLobbyCreate({ tournamentId }: { tournamentId: string }) {
                   {formError ? <FieldError>{formError}</FieldError> : null}
                 </Field>
               </FieldGroup>
+              <p className="text-muted-foreground text-sm">
+                Complete your own registration questions before creating the
+                team. Each teammate answers when joining.
+              </p>
+              <RegistrationAnswerFields state={registration} />
             </CardContent>
             <CardFooter className="justify-end">
-              <Button type="submit" disabled={isSubmitting}>
+              <Button
+                type="submit"
+                disabled={isSubmitting || registration.blocked}
+              >
                 {isSubmitting ? (
                   <Spinner data-icon="inline-start" />
                 ) : (

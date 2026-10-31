@@ -124,13 +124,6 @@ export function RegistrationTable({
                           <DashboardStatus status={entry.status} />
                         </span>
                         <div className="flex flex-wrap items-center gap-2 pt-2 sm:hidden">
-                          {entry.members?.[0]?.accountId ? (
-                            <ViewFormAnswersDialog
-                              tournamentId={tournamentId}
-                              accountId={entry.members[0].accountId}
-                              applicantName={entry.name}
-                            />
-                          ) : null}
                           {canReview ? (
                             <ReviewActions
                               tournamentId={tournamentId}
@@ -160,6 +153,14 @@ export function RegistrationTable({
                             <p className="text-muted-foreground text-xs wrap-anywhere">
                               @{member.handle}
                             </p>
+                            <ViewFormAnswersDialog
+                              tournamentId={tournamentId}
+                              teamId={entry.id}
+                              accountId={member.accountId}
+                              applicantName={
+                                member.displayName || member.handle
+                              }
+                            />
                           </li>
                         ))
                       ) : (
@@ -172,13 +173,6 @@ export function RegistrationTable({
                   </TableCell>
                   <TableCell className="hidden align-top whitespace-normal sm:table-cell">
                     <div className="flex flex-wrap items-center gap-2">
-                      {entry.members?.[0]?.accountId ? (
-                        <ViewFormAnswersDialog
-                          tournamentId={tournamentId}
-                          accountId={entry.members[0].accountId}
-                          applicantName={entry.name}
-                        />
-                      ) : null}
                       {canReview ? (
                         <ReviewActions
                           tournamentId={tournamentId}

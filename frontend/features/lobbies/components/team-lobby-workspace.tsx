@@ -21,6 +21,7 @@ import { LobbyWorkspaceSkeleton } from "@/features/lobbies/components/lobby-skel
 import { LobbyRosterCard } from "@/features/lobbies/components/lobby-roster-card";
 import { LobbyInviteCard } from "@/features/lobbies/components/lobby-invite-card";
 import { LobbyDetailsCard } from "@/features/lobbies/components/lobby-details-card";
+import { MemberRegistrationForm } from "@/features/lobbies/components/member-registration-form";
 
 export function TeamLobbyWorkspace({ inviteCode }: { inviteCode: string }) {
   const { user, isLoading: isAuthLoading, authorizationHeader } = useAuth();
@@ -48,14 +49,16 @@ export function TeamLobbyWorkspace({ inviteCode }: { inviteCode: string }) {
       retry: false,
       staleTime: 0,
       refetchInterval: (query) =>
-        query.state.data?.status === "PAYMENT_PENDING" ? 5000 : false,
+        query.state.data?.status === "PAYMENT_PENDING" ||
+        query.state.data?.status === "FORMING"
+          ? 5000
+          : false,
     }
   );
 
   const {
     actionError,
     pendingAction,
-    joinLobby,
     regenerateInvite,
     lockRoster,
     removeMember,
@@ -63,7 +66,6 @@ export function TeamLobbyWorkspace({ inviteCode }: { inviteCode: string }) {
   } = useLobbyActions({
     lobby,
     authorizationHeader,
-    normalizedInviteCode,
     refetch,
   });
 
@@ -172,12 +174,23 @@ export function TeamLobbyWorkspace({ inviteCode }: { inviteCode: string }) {
         </Alert>
       )}
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
-        <LobbyRosterCard
-          lobby={lobby}
-          pendingAction={pendingAction}
-          onJoinLobby={joinLobby}
-          onRemoveMember={removeMember}
-        />
+        <div className="flex flex-col gap-6">
+          <LobbyRosterCard
+            lobby={lobby}
+            pendingAction={pendingAction}
+            onJoinLobby={() =>
+              document
+                .getElementById("member-registration")
+                ?.scrollIntoView({ behavior: "smooth", block: "start" })
+            }
+            onRemoveMember={removeMember}
+          />
+          <MemberRegistrationForm
+            key={`${lobby.id}-${lobby.viewerRole}`}
+            lobby={lobby}
+            onSaved={refetch}
+          />
+        </div>
 
         <div className="flex flex-col gap-6">
           {lobby.inviteCode && lobby.status === "FORMING" ? (

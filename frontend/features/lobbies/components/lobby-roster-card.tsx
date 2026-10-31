@@ -40,7 +40,11 @@ export function LobbyRosterCard({
   const isCaptain = lobby.viewerRole === "CAPTAIN";
   const isInvitee = lobby.viewerRole === "INVITEE";
   const isForming = lobby.status === "FORMING";
-  const rosterReady = members.length >= lobby.tournament.minTeamSize;
+  const missingAnswers = members.filter(
+    (member) => !member.registrationComplete
+  ).length;
+  const rosterReady =
+    members.length >= lobby.tournament.minTeamSize && missingAnswers === 0;
   const rosterFull = members.length >= lobby.tournament.maxTeamSize;
 
   return (
@@ -50,14 +54,16 @@ export function LobbyRosterCard({
           <div className="flex flex-col gap-1">
             <CardTitle>Team roster</CardTitle>
             <CardDescription>
-              {members.length} of {lobby.tournament.maxTeamSize} players · Minimum{" "}
-              {lobby.tournament.minTeamSize}
+              {members.length} of {lobby.tournament.maxTeamSize} players ·
+              Minimum {lobby.tournament.minTeamSize}
             </CardDescription>
           </div>
           <Badge variant={rosterReady ? "secondary" : "outline"}>
             {rosterReady
               ? "Ready to lock"
-              : `${lobby.tournament.minTeamSize - members.length} more needed`}
+              : missingAnswers > 0
+                ? `${missingAnswers} need answers`
+                : `${lobby.tournament.minTeamSize - members.length} more needed`}
           </Badge>
         </div>
       </CardHeader>
@@ -67,6 +73,7 @@ export function LobbyRosterCard({
             <TableRow>
               <TableHead>Member</TableHead>
               <TableHead>Joined</TableHead>
+              <TableHead>Registration</TableHead>
               {isCaptain && isForming ? (
                 <TableHead className="text-right">Actions</TableHead>
               ) : null}
@@ -90,6 +97,17 @@ export function LobbyRosterCard({
                   </TableCell>
                   <TableCell className="text-muted-foreground">
                     {formatDate(member.joinedAt)}
+                  </TableCell>
+                  <TableCell>
+                    <Badge
+                      variant={
+                        member.registrationComplete ? "secondary" : "outline"
+                      }
+                    >
+                      {member.registrationComplete
+                        ? "Complete"
+                        : "Answers required"}
+                    </Badge>
                   </TableCell>
                   {isCaptain && isForming ? (
                     <TableCell className="text-right">
