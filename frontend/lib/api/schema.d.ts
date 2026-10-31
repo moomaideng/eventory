@@ -680,7 +680,7 @@ export interface paths {
         put?: never;
         /**
          * Submit answers for tournament registration form
-         * @description Submits answers for a tournament registration form. One submission per participant.
+         * @description DEPRECATED: Submits answers for a tournament registration form. One submission per participant. Will be removed once solo and team registration flows are fully unified.
          */
         post: operations["submit-form-response"];
         delete?: never;
@@ -757,7 +757,7 @@ export interface paths {
         put?: never;
         /**
          * Register for a solo tournament
-         * @description Automatically creates and locks a 1-person team for a solo tournament, initiating payment if an entry fee is required.
+         * @description Automatically creates and locks a 1-person team for a solo tournament, validating custom registration form answers and initiating payment if an entry fee is required.
          */
         post: operations["register-solo-tournament"];
         delete?: never;
@@ -1473,6 +1473,16 @@ export interface components {
              */
             readonly $schema?: string;
             entryId: string;
+        };
+        RegisterSoloRequest: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/RegisterSoloRequest.json
+             */
+            readonly $schema?: string;
+            /** @description Submitted answers for custom registration form */
+            answers?: components["schemas"]["FieldAnswer"][] | null;
         };
         RegistrationFormResponse: {
             /**
@@ -3572,7 +3582,11 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RegisterSoloRequest"];
+            };
+        };
         responses: {
             /** @description OK */
             200: {

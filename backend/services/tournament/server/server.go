@@ -50,7 +50,16 @@ func NewAppWithAccountConn(db *gorm.DB, mongoDB *mongo.Database, cfg config.Conf
 func newApp(db *gorm.DB, mongoDB *mongo.Database, cfg config.Config, accountSvc ports.AccountService) *App {
 	payments := paymenthttp.New(cfg.PaymentURL, cfg.PaymentServiceKey)
 	teamLobbyRepo := repositories.NewTeamLobbyRepository(db)
-	teamLobbyUseCase := usecases.NewTeamLobbyUseCase(teamLobbyRepo, accountSvc, payments)
+	var formRepo repositories.RegistrationFormRepository
+	var fieldRegistry *forms.FieldRegistry
+	if mongoDB != nil {
+		formRepo = repositories.NewRegistrationFormRepository(mongoDB)
+		if err := formRepo.EnsureIndexes(context.Background()); err != nil {
+			slog.Error("failed to ensure registration form indexes", "error", err)
+		}
+		fieldRegistry = forms.NewDefaultRegistry()
+	}
+	teamLobbyUseCase := usecases.NewTeamLobbyUseCase(teamLobbyRepo, accountSvc, payments, formRepo, fieldRegistry)
 	sponsorships := usecases.NewSponsorshipUseCase(repositories.NewSponsorshipRepository(db), repositories.NewTournamentRepository(db), accountSvc, payments)
 	teamReviews := usecases.NewTeamReviewUseCase(repositories.NewTeamReviewRepository(db), accountSvc, payments)
 	return &App{

@@ -65,7 +65,7 @@ func TestTournamentOpenAPISpec(t *testing.T) {
 	}
 	accSvc := &dummyAccountSvc{}
 	teamLobbyRepo := repositories.NewTeamLobbyRepository(db)
-	teamLobbyUseCase := usecases.NewTeamLobbyUseCase(teamLobbyRepo, accSvc, nil)
+	teamLobbyUseCase := usecases.NewTeamLobbyUseCase(teamLobbyRepo, accSvc, nil, nil, nil)
 	sponsorships := usecases.NewSponsorshipUseCase(repositories.NewSponsorshipRepository(db), repositories.NewTournamentRepository(db), accSvc, nil)
 	teamReviews := usecases.NewTeamReviewUseCase(repositories.NewTeamReviewRepository(db), accSvc, nil)
 	opts := options.Client().ApplyURI("mongodb://localhost:27017").SetServerSelectionTimeout(50 * time.Millisecond)
