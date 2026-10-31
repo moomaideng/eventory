@@ -9,6 +9,9 @@ func AutoMigrate(db *gorm.DB) error {
 	if err := db.AutoMigrate(models.All()...); err != nil {
 		return err
 	}
+	if err := db.Exec("DROP INDEX IF EXISTS idx_tournament_team_name").Error; err != nil {
+		return err
+	}
 
 	if err := db.Exec("CREATE EXTENSION IF NOT EXISTS pg_trgm").Error; err != nil {
 		return err

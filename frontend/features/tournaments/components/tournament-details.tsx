@@ -2,8 +2,9 @@
 
 import React from "react";
 import Link from "next/link";
+import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Users } from "lucide-react";
-import { $api } from "@/lib/api/client";
+import { $api, apiClient } from "@/lib/api/client";
 import { useAuth } from "@/context/auth-context";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -38,21 +39,31 @@ export function TournamentDetails({
     { params: { path: { tournamentId } } },
     { staleTime: 30_000 }
   );
-  const { data: myTeam, isLoading: isMyTeamLoading } = $api.useQuery(
-    "get",
-    "/api/v1/tournaments/{tournamentId}/my-team",
-    {
-      params: { path: { tournamentId } },
-      headers: authorizationHeader
-        ? { Authorization: authorizationHeader }
-        : {},
+  const {
+    data: myTeam,
+    isFetching: isMyTeamFetching,
+    isError: isMyTeamError,
+  } = useQuery({
+    queryKey: [
+      "get",
+      "/api/v1/tournaments/{tournamentId}/my-team",
+      tournamentId,
+      authorizationHeader,
+    ],
+    enabled: Boolean(authorizationHeader) && !sponsorMode,
+    retry: false,
+    staleTime: 0,
+    refetchOnWindowFocus: true,
+    queryFn: async () => {
+      const result = await apiClient.GET("/api/v1/tournaments/{tournamentId}/my-team", {
+        params: { path: { tournamentId } },
+        headers: { Authorization: authorizationHeader ?? "" },
+      });
+      if (result.response.status === 404) return null;
+      if (result.error || !result.data) throw new Error("Failed to check registration status");
+      return result.data;
     },
-    {
-      enabled: Boolean(authorizationHeader) && !sponsorMode,
-      retry: false,
-      staleTime: 0,
-    }
-  );
+  });
 
   if (isLoading) return <TournamentDetailsSkeleton />;
 
@@ -92,7 +103,8 @@ export function TournamentDetails({
   const canCreateTeam =
     !isSolo &&
     tournament.status === "REGISTRATION_OPEN" &&
-    !isMyTeamLoading &&
+    !isMyTeamFetching &&
+    !isMyTeamError &&
     !myTeam;
 
   return (
@@ -168,9 +180,13 @@ export function TournamentDetails({
             >
               Sign in to register
             </Button>
-          ) : isMyTeamLoading ? (
+          ) : isMyTeamFetching ? (
             <Button disabled className="self-start">
               Checking eligibility
+            </Button>
+          ) : isMyTeamError ? (
+            <Button disabled className="self-start">
+              Registration unavailable
             </Button>
           ) : myTeam ? (
             <div className="flex max-w-xl flex-col gap-3">
@@ -234,7 +250,7 @@ export function TournamentDetails({
                 </>
               ) : (
                 <Button disabled className="self-start">
-                  Registered
+                  Registration started
                 </Button>
               )}
             </div>
@@ -284,7 +300,7 @@ export function TournamentDetails({
         </div>
 
         <div className="flex flex-col gap-6 lg:sticky lg:top-24">
-          {!sponsorMode && myTeam ? (
+          {!sponsorMode && !isMyTeamFetching && !isMyTeamError && myTeam ? (
             <Card>
               <CardHeader>
                 <CardTitle>

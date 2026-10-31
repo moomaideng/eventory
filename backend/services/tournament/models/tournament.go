@@ -100,9 +100,9 @@ func (t *Tournament) OwnerID() uuid.UUID {
 // formation, locking, organizer review, and confirmed registration.
 type TournamentTeam struct {
 	ID                 uuid.UUID              `gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
-	TournamentID       uuid.UUID              `gorm:"type:uuid;not null;index;uniqueIndex:idx_tournament_team_name;index:idx_tournament_teams_status,priority:1"`
+	TournamentID       uuid.UUID              `gorm:"type:uuid;not null;index;uniqueIndex:idx_tournament_team_active_name,where:status <> 'REJECTED';index:idx_tournament_teams_status,priority:1"`
 	Tournament         Tournament             `gorm:"foreignKey:TournamentID;constraint:OnDelete:CASCADE;"`
-	Name               string                 `gorm:"type:varchar(120);not null;uniqueIndex:idx_tournament_team_name"`
+	Name               string                 `gorm:"type:varchar(120);not null;uniqueIndex:idx_tournament_team_active_name,where:status <> 'REJECTED'"`
 	InviteCode         *string                `gorm:"type:varchar(6);uniqueIndex"`
 	Status             TournamentTeamStatus   `gorm:"type:varchar(16);not null;default:'FORMING';index:idx_tournament_teams_status,priority:2"`
 	Members            []TournamentTeamMember `gorm:"foreignKey:TournamentTeamID;constraint:OnDelete:CASCADE;"`
