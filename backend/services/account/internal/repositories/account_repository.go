@@ -182,8 +182,8 @@ func (r *accountRepositoryImpl) UpsertSponsorProfile(ctx context.Context, profil
 					fallback.SponsorName = profile.SponsorName
 					fallback.SponsorEmail = profile.SponsorEmail
 					fallback.Category = profile.Category
-					fallback.PublicContactEmail = profile.PublicContactEmail
 					fallback.DirectoryVisible = profile.DirectoryVisible
+					fallback.DirectoryEmailConfirmed = profile.DirectoryEmailConfirmed
 					if err := r.db.WithContext(ctx).Save(&fallback).Error; err != nil {
 						return nil, err
 					}
@@ -199,19 +199,19 @@ func (r *accountRepositoryImpl) UpsertSponsorProfile(ctx context.Context, profil
 	existing.SponsorName = profile.SponsorName
 	existing.SponsorEmail = profile.SponsorEmail
 	existing.Category = profile.Category
-	existing.PublicContactEmail = profile.PublicContactEmail
 	existing.DirectoryVisible = profile.DirectoryVisible
+	existing.DirectoryEmailConfirmed = profile.DirectoryEmailConfirmed
 	if err := r.db.WithContext(ctx).Save(&existing).Error; err != nil {
 		return nil, err
 	}
 	return &existing, nil
 }
 
-// ListVisibleSponsorProfiles returns only sponsors that opted in and have a public contact address.
+// ListVisibleSponsorProfiles returns only sponsors that opted in and have a contact address.
 func (r *accountRepositoryImpl) ListVisibleSponsorProfiles(ctx context.Context, search, category string, page, pageSize int) ([]models.SponsorProfile, int64, error) {
 	query := r.db.WithContext(ctx).Model(&models.SponsorProfile{}).
 		Joins("JOIN accounts ON accounts.id = sponsor_profiles.account_id").
-		Where("sponsor_profiles.directory_visible = ? AND sponsor_profiles.public_contact_email <> ? AND accounts.status = ?", true, "", models.AccountStatusActive)
+		Where("sponsor_profiles.directory_visible = ? AND sponsor_profiles.directory_email_confirmed = ? AND sponsor_profiles.sponsor_email <> ? AND accounts.status = ?", true, true, "", models.AccountStatusActive)
 	if search != "" {
 		// Escape LIKE wildcards so the search box treats input as plain text.
 		escaped := strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`).Replace(strings.ToLower(search))
@@ -235,7 +235,7 @@ func (r *accountRepositoryImpl) ListVisibleSponsorCategories(ctx context.Context
 	var categories []string
 	err := r.db.WithContext(ctx).Model(&models.SponsorProfile{}).
 		Joins("JOIN accounts ON accounts.id = sponsor_profiles.account_id").
-		Where("sponsor_profiles.directory_visible = ? AND sponsor_profiles.public_contact_email <> ? AND accounts.status = ?", true, "", models.AccountStatusActive).
+		Where("sponsor_profiles.directory_visible = ? AND sponsor_profiles.directory_email_confirmed = ? AND sponsor_profiles.sponsor_email <> ? AND accounts.status = ?", true, true, "", models.AccountStatusActive).
 		Distinct("sponsor_profiles.category").Order("sponsor_profiles.category ASC").Pluck("sponsor_profiles.category", &categories).Error
 	return categories, err
 }

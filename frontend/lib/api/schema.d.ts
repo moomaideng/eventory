@@ -1116,8 +1116,6 @@ export interface components {
             createdAt: string;
             /** @description Whether this sponsor opted in to the organizer directory */
             directoryVisible: boolean;
-            /** @description Email explicitly shared in the sponsor directory */
-            publicContactEmail: string;
             /** @description Contact email for sponsorship communications */
             sponsorEmail: string;
             /** @description Sponsor company or organization name */
@@ -1167,8 +1165,6 @@ export interface components {
             category?: string;
             /** @description Explicit opt-in to the organizer directory */
             directoryVisible?: boolean;
-            /** @description Email to publish in the sponsor directory */
-            publicContactEmail?: string;
             /** @description Contact email for sponsorship communications */
             sponsorEmail?: string;
             /** @description Sponsor company or organization name */
@@ -2191,7 +2187,7 @@ export interface components {
         SponsorDirectoryItem: {
             accountId: string;
             category: string;
-            publicContactEmail: string;
+            contactEmail: string;
             sponsorName: string;
         };
         SponsorDirectoryOutputBody: {
