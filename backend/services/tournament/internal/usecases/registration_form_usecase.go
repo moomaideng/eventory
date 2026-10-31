@@ -21,8 +21,8 @@ var (
 	ErrEmptyFieldID          = errors.New("field id cannot be empty")
 	ErrEmptyFieldLabel       = errors.New("field label cannot be empty")
 	ErrRegistrationClosed    = errors.New("tournament registration is not open")
-	ErrUnrecognizedField     = errors.New("unrecognized field submitted")
-	ErrDuplicateFieldAnswer  = errors.New("duplicate answer for field submitted")
+	ErrUnrecognizedField     = forms.ErrUnrecognizedField
+	ErrDuplicateFieldAnswer  = forms.ErrDuplicateFieldAnswer
 )
 
 type RegistrationFormUseCase struct {
@@ -142,31 +142,8 @@ func (u *RegistrationFormUseCase) SubmitResponse(
 		return nil, err
 	}
 
-	formFieldsMap := make(map[string]models.FormField, len(form.Fields))
-	for _, f := range form.Fields {
-		formFieldsMap[f.ID] = f
-	}
-
-	submittedMap := make(map[string]any, len(answers))
-	for _, a := range answers {
-		fieldID := strings.TrimSpace(a.FieldID)
-		if _, exists := formFieldsMap[fieldID]; !exists {
-			return nil, fmt.Errorf("%w: '%s'", ErrUnrecognizedField, fieldID)
-		}
-		if _, duplicate := submittedMap[fieldID]; duplicate {
-			return nil, fmt.Errorf("%w: '%s'", ErrDuplicateFieldAnswer, fieldID)
-		}
-		submittedMap[fieldID] = a.Value
-	}
-
-	for _, field := range form.Fields {
-		val, answered := submittedMap[field.ID]
-		if !answered {
-			val = nil
-		}
-		if err := u.registry.ValidateFieldAnswer(field, val); err != nil {
-			return nil, fmt.Errorf("field '%s': %w", field.ID, err)
-		}
+	if err := u.registry.ValidateFormAnswers(form.Fields, answers); err != nil {
+		return nil, err
 	}
 
 	resp := &models.FormResponse{

@@ -156,35 +156,17 @@ export function RegistrationFormView({ tournamentId }: { tournamentId: string })
     setSubmitError(null);
     setIsSubmitting(true);
     try {
-      if (fields.length > 0) {
-        const answersPayload = fields.map((field) => ({
-          fieldId: field.id,
-          value: formatAnswerForApi(field, answerOf(field)),
-        }));
-        const responseResult = await apiClient.POST(
-          "/api/v1/tournaments/{tournamentId}/form/responses",
-          {
-            params: { path: { tournamentId } },
-            headers: { Authorization: authorizationHeader },
-            body: { answers: answersPayload },
-          }
-        );
-        if (responseResult.error && responseResult.response.status !== 409) {
-          setSubmitError(
-            responseResult.error?.detail ??
-              responseResult.error?.title ??
-              "Failed to save registration form answers."
-          );
-          setIsSubmitting(false);
-          return;
-        }
-      }
+      const answersPayload = fields.map((field) => ({
+        fieldId: field.id,
+        value: formatAnswerForApi(field, answerOf(field)),
+      }));
 
       const result = await apiClient.POST(
         "/api/v1/tournaments/{tournamentId}/solo-register",
         {
           params: { path: { tournamentId } },
           headers: { Authorization: authorizationHeader },
+          body: { answers: answersPayload },
         }
       );
       if (result.error || !result.data) {

@@ -183,12 +183,13 @@ func RegisterRegistrationFormRoutes(
 		return &SaveRegistrationFormOutput{Body: toRegistrationFormResponse(form)}, nil
 	})
 
+	// DEPRECATED: This standalone endpoint shall be removed once both solo and team registration flows are fully complete.
 	huma.Register(api, huma.Operation{
 		OperationID: "submit-form-response",
 		Method:      http.MethodPost,
 		Path:        "/api/v1/tournaments/{tournamentId}/form/responses",
 		Summary:     "Submit answers for tournament registration form",
-		Description: "Submits answers for a tournament registration form. One submission per participant.",
+		Description: "DEPRECATED: Submits answers for a tournament registration form. One submission per participant. Will be removed once solo and team registration flows are fully unified.",
 		Tags:        []string{"Registration Forms"},
 		Middlewares: huma.Middlewares{auth},
 		Security:    []map[string][]string{{"bearer": {}}},
