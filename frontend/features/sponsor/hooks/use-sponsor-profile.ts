@@ -6,13 +6,9 @@ import { useAuth } from "@/context/auth-context";
 import { $api, apiClient } from "@/lib/api/client";
 import { extractProblemMessage } from "@/lib/schemas";
 import type { components } from "@/lib/api/schema";
-import {
-  sponsorProfileSchema,
-  type SponsorProfileInput,
-} from "../schemas";
+import { sponsorProfileSchema, type SponsorProfileInput } from "../schemas";
 
-export type SponsorProfile =
-  components["schemas"]["SponsorProfileResponse"];
+export type SponsorProfile = components["schemas"]["SponsorProfileResponse"];
 
 export interface UseSponsorProfileOptions {
   /**
@@ -135,6 +131,8 @@ export function useSponsorProfile(
             body: {
               sponsorName: validation.data.sponsorName,
               sponsorEmail: validation.data.sponsorEmail,
+              category: validation.data.category,
+              directoryVisible: validation.data.directoryVisible,
             },
           }
         );

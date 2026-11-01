@@ -20,6 +20,8 @@ import { SponsorProfileView } from "./sponsor-profile-view";
 interface SponsorProfileData {
   sponsorName: string;
   sponsorEmail?: string | null;
+  category?: string;
+  directoryVisible?: boolean;
 }
 
 export function SponsorProfileManager() {
@@ -27,9 +29,7 @@ export function SponsorProfileManager() {
   const [mode, setMode] = useState<"view" | "edit">("view");
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
-  const [override, setOverride] = useState<SponsorProfileData | null>(
-    null
-  );
+  const [override, setOverride] = useState<SponsorProfileData | null>(null);
 
   const {
     data: profile,
@@ -62,6 +62,8 @@ export function SponsorProfileManager() {
           body: {
             sponsorName: data.sponsorName,
             sponsorEmail: data.sponsorEmail,
+            category: data.category,
+            directoryVisible: data.directoryVisible,
           },
         }
       );
@@ -121,6 +123,8 @@ export function SponsorProfileManager() {
       <SponsorProfileForm
         initialName={current.sponsorName}
         initialEmail={current.sponsorEmail ?? ""}
+        initialCategory={current.category ?? ""}
+        initialDirectoryVisible={current.directoryVisible ?? false}
         onCancel={() => setMode("view")}
         onConfirmSave={handleConfirmSave}
         isSaving={isSaving}
@@ -133,6 +137,8 @@ export function SponsorProfileManager() {
     <SponsorProfileView
       sponsorName={current.sponsorName}
       sponsorEmail={current.sponsorEmail}
+      category={current.category}
+      directoryVisible={current.directoryVisible}
       onEdit={() => setMode("edit")}
     />
   );
