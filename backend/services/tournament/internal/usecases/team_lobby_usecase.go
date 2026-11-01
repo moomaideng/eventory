@@ -32,9 +32,10 @@ func ValidateInviteCode(code string) bool {
 }
 
 type TeamMemberView struct {
-	Member      models.TournamentTeamMember
-	Handle      string
-	DisplayName string
+	RegistrationComplete bool
+	Member               models.TournamentTeamMember
+	Handle               string
+	DisplayName          string
 }
 
 func NewTeamMemberViews(members []models.TournamentTeamMember, accounts map[uuid.UUID]ports.AccountInfo) []TeamMemberView {
@@ -113,7 +114,7 @@ func (u *TeamLobbyUseCase) ensureActiveAccount(ctx context.Context, accountID uu
 	return err
 }
 
-func (u *TeamLobbyUseCase) Create(ctx context.Context, tournamentID, captainAccountID uuid.UUID, name string) (*TeamLobbyView, error) {
+func (u *TeamLobbyUseCase) Create(ctx context.Context, tournamentID, captainAccountID uuid.UUID, name string, submitted ...[]models.FieldAnswer) (*TeamLobbyView, error) {
 	if err := u.ensureActiveAccount(ctx, captainAccountID); err != nil {
 		return nil, err
 	}
@@ -130,6 +131,10 @@ func (u *TeamLobbyUseCase) Create(ctx context.Context, tournamentID, captainAcco
 	}
 	if tournament.Status != models.TournamentStatusRegistrationOpen {
 		return nil, ErrRegistrationNotOpen
+	}
+	answers := firstAnswers(submitted)
+	if err := u.saveNewRegistrationAnswers(ctx, tournamentID, captainAccountID, answers); err != nil {
+		return nil, err
 	}
 
 	inviteCode, err := generateInviteCode()
@@ -270,7 +275,7 @@ func (u *TeamLobbyUseCase) GetActiveForTournament(ctx context.Context, tournamen
 	return u.toView(ctx, team)
 }
 
-func (u *TeamLobbyUseCase) Join(ctx context.Context, inviteCode string, memberAccountID uuid.UUID) (*TeamLobbyView, error) {
+func (u *TeamLobbyUseCase) Join(ctx context.Context, inviteCode string, memberAccountID uuid.UUID, submitted ...[]models.FieldAnswer) (*TeamLobbyView, error) {
 	if err := u.ensureActiveAccount(ctx, memberAccountID); err != nil {
 		return nil, err
 	}
@@ -280,6 +285,10 @@ func (u *TeamLobbyUseCase) Join(ctx context.Context, inviteCode string, memberAc
 	}
 	team, err := u.repo.FindByInviteCode(ctx, normalized)
 	if err != nil {
+		return nil, err
+	}
+	answers := firstAnswers(submitted)
+	if err := u.saveNewRegistrationAnswers(ctx, team.TournamentID, memberAccountID, answers); err != nil {
 		return nil, err
 	}
 	joined, err := u.repo.Join(ctx, team.ID, memberAccountID)
@@ -311,10 +320,22 @@ func (u *TeamLobbyUseCase) Lock(ctx context.Context, teamID, accountID uuid.UUID
 	if err := u.ensureActiveAccount(ctx, accountID); err != nil {
 		return nil, err
 	}
-	if _, err := u.captainTeam(ctx, teamID, accountID); err != nil {
+	team, err := u.captainTeam(ctx, teamID, accountID)
+	if err != nil {
 		return nil, err
 	}
-	_, err := u.repo.Lock(ctx, teamID)
+	if team.Status == models.TournamentTeamStatusForming {
+		ready, err := u.memberReadiness(ctx, team)
+		if err != nil {
+			return nil, err
+		}
+		for _, complete := range ready {
+			if !complete {
+				return nil, ErrMemberAnswersIncomplete
+			}
+		}
+	}
+	_, err = u.repo.Lock(ctx, teamID, team.Members)
 	if err != nil {
 		return nil, err
 	}
@@ -355,6 +376,13 @@ func (u *TeamLobbyUseCase) toView(ctx context.Context, team *models.TournamentTe
 		return nil, err
 	}
 	view := NewTeamLobbyView(team, names[team.Tournament.ID], NewTeamMemberViews(team.Members, accounts))
+	ready, err := u.memberReadiness(ctx, team)
+	if err != nil {
+		return nil, err
+	}
+	for i := range view.Members {
+		view.Members[i].RegistrationComplete = ready[view.Members[i].Member.AccountID]
+	}
 	return &view, nil
 }
 

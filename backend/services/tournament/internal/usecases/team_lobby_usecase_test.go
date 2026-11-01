@@ -15,6 +15,8 @@ import (
 )
 
 type teamLobbyRepositoryStub struct {
+	joined     bool
+	locked     bool
 	tournament *models.Tournament
 	team       *models.TournamentTeam
 	activeTeam *models.TournamentTeam
@@ -33,6 +35,9 @@ func (s *teamLobbyRepositoryStub) FindByID(_ context.Context, _ uuid.UUID) (*mod
 	return s.team, nil
 }
 func (s *teamLobbyRepositoryStub) FindByInviteCode(_ context.Context, _ string) (*models.TournamentTeam, error) {
+	if s.team != nil {
+		return s.team, nil
+	}
 	return nil, repositories.ErrTeamLobbyNotFound
 }
 func (s *teamLobbyRepositoryStub) FindActiveByTournamentAndAccount(_ context.Context, _ uuid.UUID, _ uuid.UUID) (*models.TournamentTeam, error) {
@@ -45,9 +50,13 @@ func (s *teamLobbyRepositoryStub) Create(_ context.Context, team *models.Tournam
 	captain.TournamentTeamID = team.ID
 	team.Members = []models.TournamentTeamMember{*captain}
 	s.created, s.captain, s.team = team, captain, team
+	if s.tournament != nil {
+		team.Tournament = *s.tournament
+	}
 	return team, nil
 }
 func (s *teamLobbyRepositoryStub) Join(_ context.Context, _ uuid.UUID, _ uuid.UUID) (*models.TournamentTeam, error) {
+	s.joined = true
 	return s.team, nil
 }
 func (s *teamLobbyRepositoryStub) RegenerateInvite(_ context.Context, _ uuid.UUID, inviteCode string) (*models.TournamentTeam, error) {
@@ -56,7 +65,8 @@ func (s *teamLobbyRepositoryStub) RegenerateInvite(_ context.Context, _ uuid.UUI
 	}
 	return s.team, nil
 }
-func (s *teamLobbyRepositoryStub) Lock(_ context.Context, _ uuid.UUID) (*models.TournamentTeam, error) {
+func (s *teamLobbyRepositoryStub) Lock(_ context.Context, _ uuid.UUID, _ ...[]models.TournamentTeamMember) (*models.TournamentTeam, error) {
+	s.locked = true
 	if s.team != nil {
 		s.team.Status = models.TournamentTeamStatusLocked
 	}
@@ -87,6 +97,11 @@ func (s *teamLobbyRepositoryStub) ApplyPayment(_ context.Context, _ *models.Tour
 }
 
 type registrationFormRepositoryStub struct {
+	responses   map[uuid.UUID]*models.FormResponse
+	batchCalls  int
+	batchError  error
+	upsertError error
+
 	form     *models.RegistrationForm
 	response *models.FormResponse
 	upserted *models.FormResponse
@@ -108,6 +123,13 @@ func (s *registrationFormRepositoryStub) CreateResponse(_ context.Context, resp 
 	return resp, nil
 }
 func (s *registrationFormRepositoryStub) UpsertResponse(_ context.Context, resp *models.FormResponse) (*models.FormResponse, error) {
+	if s.upsertError != nil {
+		return nil, s.upsertError
+	}
+	if s.responses == nil {
+		s.responses = make(map[uuid.UUID]*models.FormResponse)
+	}
+	s.responses[resp.AccountID] = resp
 	s.upserted = resp
 	return resp, nil
 }
@@ -501,4 +523,30 @@ func TestSubmissionRequiresAuthoritativeMatchingInvoice(t *testing.T) {
 			}
 		})
 	}
+}
+
+func (s *teamLobbyRepositoryStub) LockRegistration(_ context.Context, _ uuid.UUID) (repositories.TeamRegistrationLock, error) {
+	if s.team == nil {
+		return nil, repositories.ErrTeamLobbyNotFound
+	}
+	return &registrationLockStub{team: s.team}, nil
+}
+
+type registrationLockStub struct{ team *models.TournamentTeam }
+
+func (s *registrationLockStub) Team() *models.TournamentTeam { return s.team }
+func (s *registrationLockStub) Release() error               { return nil }
+
+func (s *registrationFormRepositoryStub) GetResponsesByAccounts(_ context.Context, tournamentID uuid.UUID, accountIDs []uuid.UUID) ([]models.FormResponse, error) {
+	s.batchCalls++
+	if s.batchError != nil {
+		return nil, s.batchError
+	}
+	responses := make([]models.FormResponse, 0, len(accountIDs))
+	for _, id := range accountIDs {
+		if r := s.responses[id]; r != nil && r.TournamentID == tournamentID {
+			responses = append(responses, *r)
+		}
+	}
+	return responses, nil
 }

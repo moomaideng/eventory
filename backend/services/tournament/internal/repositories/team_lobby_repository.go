@@ -21,6 +21,7 @@ var (
 	ErrTournamentRegistrationClosed = errors.New("tournament registration is not open")
 	ErrCannotRemoveCaptain          = errors.New("captain cannot be removed")
 	ErrCannotDisbandLobby           = errors.New("only a forming team can be disbanded")
+	ErrRosterChanged                = errors.New("roster changed; refresh and retry")
 )
 
 // TeamLobbyRepository uses TournamentTeam as the canonical persistence model.
@@ -32,8 +33,9 @@ type TeamLobbyRepository interface {
 	FindActiveByTournamentAndAccount(ctx context.Context, tournamentID, accountID uuid.UUID) (*models.TournamentTeam, error)
 	Create(ctx context.Context, team *models.TournamentTeam, captain *models.TournamentTeamMember) (*models.TournamentTeam, error)
 	Join(ctx context.Context, teamID, accountID uuid.UUID) (*models.TournamentTeam, error)
+	LockRegistration(ctx context.Context, teamID uuid.UUID) (TeamRegistrationLock, error)
 	RegenerateInvite(ctx context.Context, teamID uuid.UUID, inviteCode string) (*models.TournamentTeam, error)
-	Lock(ctx context.Context, teamID uuid.UUID) (*models.TournamentTeam, error)
+	Lock(ctx context.Context, teamID uuid.UUID, expected ...[]models.TournamentTeamMember) (*models.TournamentTeam, error)
 	RemoveMember(ctx context.Context, teamID, memberID uuid.UUID) (*models.TournamentTeam, error)
 	Disband(ctx context.Context, teamID uuid.UUID) error
 	Pending(ctx context.Context) ([]models.TournamentTeam, error)
@@ -137,13 +139,14 @@ func (r *teamLobbyRepository) Join(ctx context.Context, teamID, accountID uuid.U
 		if err := accountHasActiveTournamentTeam(tx, team.TournamentID, accountID); err != nil {
 			return err
 		}
-		return tx.Create(&models.TournamentTeamMember{
+		member := &models.TournamentTeamMember{
 			ID:               uuid.New(),
 			TournamentTeamID: team.ID,
 			AccountID:        accountID,
 			Role:             models.TournamentTeamMemberRoleMember,
 			JoinedAt:         time.Now().UTC(),
-		}).Error
+		}
+		return tx.Create(member).Error
 	})
 	if err != nil {
 		return nil, err
@@ -170,7 +173,7 @@ func (r *teamLobbyRepository) RegenerateInvite(ctx context.Context, teamID uuid.
 	return r.FindByID(ctx, teamID)
 }
 
-func (r *teamLobbyRepository) Lock(ctx context.Context, teamID uuid.UUID) (*models.TournamentTeam, error) {
+func (r *teamLobbyRepository) Lock(ctx context.Context, teamID uuid.UUID, expected ...[]models.TournamentTeamMember) (*models.TournamentTeam, error) {
 	err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		var initial models.TournamentTeam
 		if err := tx.First(&initial, "id = ?", teamID).Error; err != nil {
@@ -189,6 +192,20 @@ func (r *teamLobbyRepository) Lock(ctx context.Context, teamID uuid.UUID) (*mode
 		}
 		if team.Status != models.TournamentTeamStatusForming {
 			return ErrTeamLobbyNotForming
+		}
+		if len(expected) > 0 {
+			if len(expected[0]) != len(team.Members) {
+				return ErrRosterChanged
+			}
+			members := make(map[uuid.UUID]bool, len(expected[0]))
+			for _, member := range expected[0] {
+				members[member.ID] = true
+			}
+			for _, member := range team.Members {
+				if !members[member.ID] {
+					return ErrRosterChanged
+				}
+			}
 		}
 		now := time.Now().UTC().Truncate(time.Microsecond)
 		if !tournament.Published || tournament.Status != models.TournamentStatusRegistrationOpen || !now.Before(tournament.RegistrationDeadline) {

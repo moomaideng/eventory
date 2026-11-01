@@ -288,3 +288,14 @@ func TestRegistrationFormUseCase_SubmitResponse(t *testing.T) {
 		}
 	})
 }
+
+func (s *formRepoStub) GetResponsesByAccounts(ctx context.Context, tournamentID uuid.UUID, accountIDs []uuid.UUID) ([]models.FormResponse, error) {
+	responses := make([]models.FormResponse, 0, len(accountIDs))
+	for _, accountID := range accountIDs {
+		response, err := s.GetResponseByAccount(ctx, tournamentID, accountID)
+		if err == nil {
+			responses = append(responses, *response)
+		}
+	}
+	return responses, nil
+}

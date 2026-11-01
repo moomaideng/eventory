@@ -52,7 +52,8 @@ export function LobbyDetailsCard({
   const isForming = lobby.status === "FORMING";
   const rosterReady =
     members.length >= lobby.tournament.minTeamSize &&
-    members.length <= lobby.tournament.maxTeamSize;
+    members.length <= lobby.tournament.maxTeamSize &&
+    members.every((member) => member.registrationComplete);
   const registrationOpen =
     lobby.tournament.status === "REGISTRATION_OPEN" &&
     new Date(lobby.tournament.registrationDeadline).getTime() > now;
@@ -83,7 +84,7 @@ export function LobbyDetailsCard({
           {isForming && (
             <p>
               {!rosterReady
-                ? `Roster needs ${lobby.tournament.minTeamSize}–${lobby.tournament.maxTeamSize} members.`
+                ? `Roster needs ${lobby.tournament.minTeamSize}–${lobby.tournament.maxTeamSize} members and complete registration answers from everyone.`
                 : !registrationOpen
                   ? "Registration is closed."
                   : lobby.tournament.entryFee > 0

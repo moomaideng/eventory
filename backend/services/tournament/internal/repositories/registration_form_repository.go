@@ -13,8 +13,8 @@ import (
 )
 
 var (
-	ErrFormNotFound         = errors.New("registration form not found")
-	ErrResponseNotFound     = errors.New("registration form response not found")
+	ErrFormNotFound          = errors.New("registration form not found")
+	ErrResponseNotFound      = errors.New("registration form response not found")
 	ErrResponseAlreadyExists = errors.New("registration form response already submitted")
 )
 
@@ -31,6 +31,7 @@ type RegistrationFormRepository interface {
 	UpsertResponse(ctx context.Context, resp *models.FormResponse) (*models.FormResponse, error)
 	GetResponseByAccount(ctx context.Context, tournamentID uuid.UUID, accountID uuid.UUID) (*models.FormResponse, error)
 	ListResponsesByTournamentID(ctx context.Context, tournamentID uuid.UUID) ([]models.FormResponse, error)
+	GetResponsesByAccounts(ctx context.Context, tournamentID uuid.UUID, accountIDs []uuid.UUID) ([]models.FormResponse, error)
 }
 
 type registrationFormRepositoryImpl struct {
@@ -169,4 +170,20 @@ func (r *registrationFormRepositoryImpl) ListResponsesByTournamentID(ctx context
 		list = []models.FormResponse{}
 	}
 	return list, nil
+}
+
+func (r *registrationFormRepositoryImpl) GetResponsesByAccounts(ctx context.Context, tournamentID uuid.UUID, accountIDs []uuid.UUID) ([]models.FormResponse, error) {
+	responses := make([]models.FormResponse, 0)
+	if len(accountIDs) == 0 {
+		return responses, nil
+	}
+	cursor, err := r.responsesCol.Find(ctx, bson.M{"tournament_id": tournamentID, "account_id": bson.M{"$in": accountIDs}})
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(ctx)
+	if err := cursor.All(ctx, &responses); err != nil {
+		return nil, err
+	}
+	return responses, nil
 }

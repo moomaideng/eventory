@@ -211,35 +211,15 @@ func TestRegistrationFormRoutes(t *testing.T) {
 		assert.Equal(t, "Championship Registration", out.Title)
 	})
 
-	t.Run("POST submit form response", func(t *testing.T) {
-		body := map[string]any{
-			"answers": []map[string]any{
-				{"fieldId": "ign", "value": "Faker"},
-				{"fieldId": "tier", "value": "gold"},
-			},
-		}
-
-		resp := api.Post("/api/v1/tournaments/"+tournamentID.String()+"/form/responses", body)
-		assert.Equal(t, http.StatusCreated, resp.Code)
-
-		var out rest.FormResponseItem
-		require.NoError(t, json.Unmarshal(resp.Body.Bytes(), &out))
-		assert.Equal(t, tournamentID, out.TournamentID)
-		assert.Equal(t, participantAccountID, out.AccountID)
-		assert.Len(t, out.Answers, 2)
+	t.Run("standalone response submission is removed", func(t *testing.T) {
+		resp := api.Post("/api/v1/tournaments/"+tournamentID.String()+"/form/responses", map[string]any{"answers": []any{}})
+		assert.Equal(t, http.StatusMethodNotAllowed, resp.Code)
 	})
-
-	t.Run("POST duplicate submit response gives 409", func(t *testing.T) {
-		body := map[string]any{
-			"answers": []map[string]any{
-				{"fieldId": "ign", "value": "Faker"},
-				{"fieldId": "tier", "value": "gold"},
-			},
-		}
-
-		resp := api.Post("/api/v1/tournaments/"+tournamentID.String()+"/form/responses", body)
-		assert.Equal(t, http.StatusConflict, resp.Code)
-	})
+	// Existing saved answers remain readable after removing the standalone writer.
+	fRepo.responses[tournamentID.String()+":"+participantAccountID.String()] = &models.FormResponse{
+		TournamentID: tournamentID, AccountID: participantAccountID,
+		Answers: []models.FieldAnswer{{FieldID: "ign", Value: "Faker"}, {FieldID: "tier", Value: "gold"}},
+	}
 
 	t.Run("GET my form response", func(t *testing.T) {
 		resp := api.Get("/api/v1/tournaments/" + tournamentID.String() + "/form/responses/me")
@@ -263,4 +243,15 @@ func TestRegistrationFormRoutes(t *testing.T) {
 		assert.Equal(t, 1, out.Total)
 		assert.Len(t, out.Items, 1)
 	})
+}
+
+func (s *mockFormRepo) GetResponsesByAccounts(ctx context.Context, tournamentID uuid.UUID, accountIDs []uuid.UUID) ([]models.FormResponse, error) {
+	responses := make([]models.FormResponse, 0, len(accountIDs))
+	for _, accountID := range accountIDs {
+		response, err := s.GetResponseByAccount(ctx, tournamentID, accountID)
+		if err == nil {
+			responses = append(responses, *response)
+		}
+	}
+	return responses, nil
 }

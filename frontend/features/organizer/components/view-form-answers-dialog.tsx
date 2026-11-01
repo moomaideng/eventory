@@ -61,9 +61,7 @@ export function ViewFormAnswersDialog({
   const isLoading = formQuery.isLoading || responsesQuery.isLoading;
   const form = formQuery.data;
   const responses = responsesQuery.data?.items ?? [];
-  const participantResponse = responses.find(
-    (item) => item.accountId === accountId
-  );
+  const participantResponse = responses.find((item) => item.accountId === accountId);
 
   const answerMap = new Map<string, unknown>();
   if (participantResponse?.answers) {
