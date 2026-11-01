@@ -398,10 +398,14 @@ func (u *TeamLobbyUseCase) Reconcile(ctx context.Context, team *models.Tournamen
 	if team.PaymentAttemptID == nil || team.PaymentPayerID == nil || team.PaymentExpiresAt == nil {
 		return ErrPaymentUnavailable
 	}
+	desc := "Team registration"
+	if team.Tournament.Name != "" {
+		desc = "Registration for " + team.Tournament.Name
+	}
 	request := ports.RegistrationPaymentRequest{
 		PayerAccountID: *team.PaymentPayerID, Source: "TEAM_REGISTRATION",
 		Reference: team.ID.String() + ":" + team.PaymentAttemptID.String(), IdempotencyKey: team.PaymentAttemptID.String(),
-		Description: "Team registration " + team.ID.String(), AmountMinor: team.PaymentAmountMinor, Currency: "THB", ExpiresAt: *team.PaymentExpiresAt,
+		Description: desc, AmountMinor: team.PaymentAmountMinor, Currency: "THB", ExpiresAt: *team.PaymentExpiresAt,
 	}
 	payment, err := u.payments.EnsureInvoice(ctx, request)
 	if err != nil {

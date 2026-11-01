@@ -10,6 +10,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/google/uuid"
+	"github.com/moomaideng/eventory/internal/events"
 	"github.com/moomaideng/eventory/services/tournament/internal/ports"
 	"github.com/moomaideng/eventory/services/tournament/internal/repositories"
 	"github.com/moomaideng/eventory/services/tournament/models"
@@ -61,14 +62,25 @@ type TeamReviewUseCase struct {
 	repo       repositories.TeamReviewRepository
 	accountSvc ports.AccountService
 	payments   ports.RegistrationRefundService
+	publisher  events.Publisher
 }
 
 func NewTeamReviewUseCase(
 	repo repositories.TeamReviewRepository,
 	accountSvc ports.AccountService,
 	payments ports.RegistrationRefundService,
+	publisher ...events.Publisher,
 ) *TeamReviewUseCase {
-	return &TeamReviewUseCase{repo: repo, accountSvc: accountSvc, payments: payments}
+	var pub events.Publisher = events.NoopPublisher{}
+	if len(publisher) > 0 && publisher[0] != nil {
+		pub = publisher[0]
+	}
+	return &TeamReviewUseCase{
+		repo:       repo,
+		accountSvc: accountSvc,
+		payments:   payments,
+		publisher:  pub,
+	}
 }
 
 // Review accepts or rejects an application, recording who decided and why.
@@ -76,8 +88,6 @@ func NewTeamReviewUseCase(
 // NOTE(design): Review is a one-time decision. Only applications waiting in
 // LOCKED status can be reviewed. Once decided (ACCEPTED or REJECTED), the decision
 // is final and cannot be switched.
-//
-// TODO(sprint-next): notify the applicant. No notification system exists yet.
 func (u *TeamReviewUseCase) Review(
 	ctx context.Context,
 	accountID, tournamentID, entryID uuid.UUID,
@@ -118,6 +128,62 @@ func (u *TeamReviewUseCase) Review(
 			slog.WarnContext(ctx, "refund rejected registration will retry", "entry_id", entryID, "error", err)
 		}
 	}
+
+	// Determine notification recipient: team captain or solo applicant
+	var recipientID uuid.UUID
+	for _, member := range review.Team.Members {
+		if member.Role == models.TournamentTeamMemberRoleCaptain {
+			recipientID = member.AccountID
+			break
+		}
+	}
+	if recipientID == uuid.Nil && len(review.Team.Members) > 0 {
+		recipientID = review.Team.Members[0].AccountID
+	}
+
+	var recipientName, recipientEmail string
+	if recipientID != uuid.Nil {
+		if acc, err := u.accountSvc.GetAccount(ctx, recipientID); err == nil && acc != nil {
+			recipientName = acc.DisplayName
+			recipientEmail = acc.Email
+		}
+	}
+
+	eventType := events.RegistrationApprovedType
+	if to == models.TournamentTeamStatusRejected {
+		eventType = events.RegistrationRejectedType
+	}
+
+	tournName := review.Tournament.Name
+	if tournName == "" {
+		tournName = "Tournament"
+	}
+	teamName := review.Team.Name
+	if teamName == "" {
+		teamName = "Team"
+	}
+
+	event := events.RegistrationReviewed{
+		SpecVersion:   events.EventSpecVersion,
+		ID:            uuid.New(),
+		Type:          eventType,
+		Source:        "tournament-service",
+		OccurredAt:    review.CreatedAt,
+		CorrelationID: uuid.New(),
+		Data: events.RegistrationReviewedData{
+			TournamentID:   review.TournamentID,
+			TournamentName: tournName,
+			TeamID:         review.TournamentTeamID,
+			TeamName:       teamName,
+			Recipient: events.EventRecipient{
+				AccountID:   recipientID,
+				DisplayName: recipientName,
+				Email:       recipientEmail,
+			},
+			Reason: reason,
+		},
+	}
+	_ = u.publisher.Publish(ctx, eventType, event)
 
 	return &ReviewResult{
 		ID:                  review.ID,

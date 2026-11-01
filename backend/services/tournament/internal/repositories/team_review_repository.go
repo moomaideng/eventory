@@ -76,6 +76,7 @@ func (r *teamReviewRepository) ApplyReview(
 		// taking the tournament lock.
 		var team models.TournamentTeam
 		err = tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+			Preload("Members").
 			Where("id = ? AND tournament_id = ?", teamID, tournamentID).
 			First(&team).Error
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -105,7 +106,9 @@ func (r *teamReviewRepository) ApplyReview(
 
 		review = models.TournamentTeamReview{
 			TournamentID:        tournament.ID,
+			Tournament:          tournament,
 			TournamentTeamID:    team.ID,
+			Team:                team,
 			FromStatus:          from,
 			ToStatus:            to,
 			Reason:              reason,

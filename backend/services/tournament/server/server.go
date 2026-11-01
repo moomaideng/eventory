@@ -10,6 +10,7 @@ import (
 	"github.com/danielgtaylor/huma/v2/adapters/humachi"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/cors"
+	"github.com/moomaideng/eventory/internal/events"
 	"github.com/moomaideng/eventory/internal/middlewares"
 	"github.com/moomaideng/eventory/internal/telemetry"
 	"github.com/moomaideng/eventory/services/tournament/config"
@@ -61,7 +62,16 @@ func newApp(db *gorm.DB, mongoDB *mongo.Database, cfg config.Config, accountSvc 
 	}
 	teamLobbyUseCase := usecases.NewTeamLobbyUseCase(teamLobbyRepo, accountSvc, payments, formRepo, fieldRegistry)
 	sponsorships := usecases.NewSponsorshipUseCase(repositories.NewSponsorshipRepository(db), repositories.NewTournamentRepository(db), accountSvc, payments)
-	teamReviews := usecases.NewTeamReviewUseCase(repositories.NewTeamReviewRepository(db), accountSvc, payments)
+
+	var eventPublisher events.Publisher = events.NoopPublisher{}
+	if cfg.BrokerURL != "" {
+		if pub, err := events.NewRabbitMQPublisher(cfg.BrokerURL); err == nil {
+			eventPublisher = pub
+		} else {
+			slog.Warn("failed to initialize rabbitmq publisher, using noop", "error", err)
+		}
+	}
+	teamReviews := usecases.NewTeamReviewUseCase(repositories.NewTeamReviewRepository(db), accountSvc, payments, eventPublisher)
 	return &App{
 		HTTP: newHTTPRouter(db, mongoDB, cfg, accountSvc, teamLobbyUseCase, sponsorships, teamReviews),
 		RunSubmissions: func(ctx context.Context) {

@@ -2,12 +2,14 @@ package server
 
 import (
 	"context"
+	"log/slog"
 	"net/http"
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/danielgtaylor/huma/v2/adapters/humachi"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/cors"
+	"github.com/moomaideng/eventory/internal/events"
 	"github.com/moomaideng/eventory/internal/middlewares"
 	"github.com/moomaideng/eventory/internal/telemetry"
 	"github.com/moomaideng/eventory/services/payment/config"
@@ -51,7 +53,15 @@ func NewApp(db *gorm.DB, cfg config.Config) *App {
 		}
 		return nil, nil
 	})
-	uc := usecases.NewPaymentUseCase(repositories.NewPaymentRepository(db))
+	var eventPublisher events.Publisher = events.NoopPublisher{}
+	if cfg.BrokerURL != "" {
+		if pub, err := events.NewRabbitMQPublisher(cfg.BrokerURL); err == nil {
+			eventPublisher = pub
+		} else {
+			slog.Warn("failed to initialize rabbitmq publisher, using noop", "error", err)
+		}
+	}
+	uc := usecases.NewPaymentUseCase(repositories.NewPaymentRepository(db), eventPublisher)
 	rest.RegisterInternalRoutes(api, uc, cfg.ServiceKey)
 	group := huma.NewGroup(api, "/api/v1/payments")
 	group.UseMiddleware(middlewares.NewAuthMiddleware(api, cfg.SupabaseURL, cfg.Environment).HumaMiddleware())

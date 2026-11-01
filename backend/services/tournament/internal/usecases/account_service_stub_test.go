@@ -28,6 +28,13 @@ func (s *stubAccountService) withAccount(id uuid.UUID, handle, displayName strin
 	return s
 }
 
+func (s *stubAccountService) withAccountEmail(id uuid.UUID, handle, displayName, email string) *stubAccountService {
+	s.accounts[id] = ports.AccountInfo{
+		ID: id, Handle: handle, DisplayName: displayName, Email: email, Status: ports.AccountStatusActive,
+	}
+	return s
+}
+
 func (s *stubAccountService) withAccountStatus(id uuid.UUID, handle, displayName string, status ports.AccountStatus) *stubAccountService {
 	s.accounts[id] = ports.AccountInfo{
 		ID: id, Handle: handle, DisplayName: displayName, Status: status,
