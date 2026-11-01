@@ -15,6 +15,7 @@ type Config struct {
 	Environment string               `mapstructure:"environment"`
 	CORSOrigins []string             `mapstructure:"cors_allowed_origins"`
 	ServiceKey  string               `mapstructure:"payment_service_key"`
+	BrokerURL   string               `mapstructure:"broker_url"`
 	Logging     sharedconfig.Logging `mapstructure:",squash"`
 	OTel        sharedconfig.OTel    `mapstructure:",squash"`
 }

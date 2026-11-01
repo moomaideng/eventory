@@ -8,6 +8,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/google/uuid"
+	"github.com/moomaideng/eventory/internal/events"
 	"github.com/moomaideng/eventory/services/payment/internal/repositories"
 	"github.com/moomaideng/eventory/services/payment/models"
 	"gorm.io/gorm"
@@ -27,11 +28,15 @@ type CreatePayment struct {
 }
 
 type PaymentUseCase struct {
-	repo repositories.PaymentRepository
+	repo      repositories.PaymentRepository
+	publisher events.Publisher
 }
 
-func NewPaymentUseCase(repo repositories.PaymentRepository) *PaymentUseCase {
-	return &PaymentUseCase{repo}
+func NewPaymentUseCase(repo repositories.PaymentRepository, publisher events.Publisher) *PaymentUseCase {
+	if publisher == nil {
+		publisher = events.NoopPublisher{}
+	}
+	return &PaymentUseCase{repo: repo, publisher: publisher}
 }
 
 func (uc *PaymentUseCase) Create(ctx context.Context, input CreatePayment) (*models.Invoice, error) {
@@ -129,11 +134,11 @@ func (uc *PaymentUseCase) ListOwned(ctx context.Context, payer uuid.UUID, from, 
 	return uc.repo.ListOwned(ctx, payer, filter)
 }
 
-func (uc *PaymentUseCase) CompleteMock(ctx context.Context, payer, id uuid.UUID, result models.MockResult) (*models.Invoice, error) {
+func (uc *PaymentUseCase) CompleteMock(ctx context.Context, payer, id uuid.UUID, result models.MockResult, payerEmail ...string) (*models.Invoice, error) {
 	if result != models.Succeeded && result != models.Failed && result != models.Cancelled {
 		return nil, ErrInvalid
 	}
-	return uc.repo.Complete(ctx, payer, id, func(payment *models.Invoice) error {
+	invoice, err := uc.repo.Complete(ctx, payer, id, func(payment *models.Invoice) error {
 		if payment.Provider != "MOCK" {
 			return repositories.ErrConflict
 		}
@@ -152,6 +157,38 @@ func (uc *PaymentUseCase) CompleteMock(ctx context.Context, payer, id uuid.UUID,
 		}
 		return nil
 	})
+	if err != nil {
+		return nil, err
+	}
+
+	if result == models.Succeeded && invoice != nil && invoice.PaidAt != nil && uc.publisher != nil {
+		var email string
+		if len(payerEmail) > 0 {
+			email = payerEmail[0]
+		}
+		event := events.PaymentConfirmed{
+			SpecVersion:   events.EventSpecVersion,
+			ID:            uuid.New(),
+			Type:          events.PaymentConfirmedType,
+			Source:        "payment-service",
+			OccurredAt:    *invoice.PaidAt,
+			CorrelationID: uuid.New(),
+			Data: events.PaymentConfirmedData{
+				PaymentID:      invoice.ID,
+				PayerAccountID: invoice.PayerAccountID,
+				AmountMinor:    invoice.AmountMinor,
+				Currency:       invoice.Currency,
+				Description:    invoice.Description,
+				Recipient: events.EventRecipient{
+					AccountID: invoice.PayerAccountID,
+					Email:     email,
+				},
+			},
+		}
+		_ = uc.publisher.Publish(ctx, events.PaymentConfirmedType, event)
+	}
+
+	return invoice, nil
 }
 
 func (uc *PaymentUseCase) GetReceipt(ctx context.Context, payer, id uuid.UUID) (*models.Invoice, error) {

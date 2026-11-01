@@ -159,7 +159,8 @@ func RegisterPaymentRoutes(api huma.API, uc *usecases.PaymentUseCase) {
 			if err != nil {
 				return nil, huma.Error401Unauthorized("Authentication required")
 			}
-			payment, err := uc.CompleteMock(ctx, payer, input.ID, input.Body.Result)
+			email, _ := middlewares.GetAuthEmail(ctx)
+			payment, err := uc.CompleteMock(ctx, payer, input.ID, input.Body.Result, email)
 			if err != nil {
 				return nil, paymentError(err)
 			}

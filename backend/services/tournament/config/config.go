@@ -15,6 +15,7 @@ const (
 
 // Config holds tournament-service settings.
 type Config struct {
+	BrokerURL         string               `mapstructure:"broker_url"`
 	PaymentURL        string               `mapstructure:"payment_url"`
 	PaymentServiceKey string               `mapstructure:"payment_service_key"`
 	HTTPPort          string               `mapstructure:"http_port"`

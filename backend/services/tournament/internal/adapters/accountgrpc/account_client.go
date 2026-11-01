@@ -70,6 +70,7 @@ func (c *AccountClient) BatchGetAccounts(ctx context.Context, ids []uuid.UUID) (
 			DisplayName: account.GetDisplayName(),
 			Status:      ports.AccountStatus(account.GetStatus()),
 			SponsorName: account.GetSponsorName(),
+			Email:       account.GetEmail(),
 		}
 	}
 	return out, nil
