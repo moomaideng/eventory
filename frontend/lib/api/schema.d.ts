@@ -1269,8 +1269,6 @@ export interface components {
             accountId: string;
             answers: components["schemas"]["FieldAnswer"][] | null;
             id: string;
-            /** @description Team application owning these answers; omitted for legacy responses */
-            teamId?: string;
             tournamentId: string;
         };
         InviteStaffRequest: {

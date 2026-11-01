@@ -155,7 +155,6 @@ export function RegistrationTable({
                             </p>
                             <ViewFormAnswersDialog
                               tournamentId={tournamentId}
-                              teamId={entry.id}
                               accountId={member.accountId}
                               applicantName={
                                 member.displayName || member.handle
