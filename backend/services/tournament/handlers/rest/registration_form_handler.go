@@ -46,7 +46,6 @@ type SaveRegistrationFormOutput struct {
 }
 
 type FormResponseItem struct {
-	TeamID       *uuid.UUID           `json:"teamId,omitempty" doc:"Team application owning these answers; omitted for legacy responses"`
 	ID           string               `json:"id"`
 	TournamentID uuid.UUID            `json:"tournamentId"`
 	AccountID    uuid.UUID            `json:"accountId"`
@@ -98,7 +97,6 @@ func toRegistrationFormResponse(form *models.RegistrationForm) RegistrationFormR
 
 func toFormResponseItem(resp *models.FormResponse) FormResponseItem {
 	return FormResponseItem{
-		TeamID:       resp.TeamID,
 		ID:           resp.ID.Hex(),
 		TournamentID: resp.TournamentID,
 		AccountID:    resp.AccountID,

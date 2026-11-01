@@ -7,6 +7,7 @@ import (
 	"github.com/moomaideng/eventory/tests/internal/apptest"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
+	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
 	"net/http"
@@ -14,7 +15,7 @@ import (
 	"time"
 )
 
-// US4-8: exercise real Mongo form definitions, SQL member answers, and the
+// US4-8: exercise Mongo form answers, PostgreSQL team state, and the
 // HTTP create -> join -> edit -> submit -> whole-team rejection workflow.
 func TestMemberRegistrationAnswers(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
@@ -131,8 +132,8 @@ func TestMemberRegistrationAnswers(t *testing.T) {
 		t.Fatalf("organizer received %d responses", len(responses.Items))
 	}
 	for _, entry := range responses.Items {
-		if entry.TeamID == nil || *entry.TeamID != lobby.ID || len(entry.Answers) != 2 {
-			t.Fatal("answers not tied to the team application")
+		if len(entry.Answers) != 2 {
+			t.Fatal("organizer did not receive each member's answers")
 		}
 	}
 	request(http.MethodGet, tourPath+"/form/responses", nil, member, 403)
@@ -143,26 +144,24 @@ func TestMemberRegistrationAnswers(t *testing.T) {
 	if persisted.Status != models.TournamentTeamStatusRejected || len(persisted.Members) != 2 {
 		t.Fatal("reject must apply to the whole team")
 	}
-	// Both members are released to reapply, while the old answers stay associated
-	// with the rejected application rather than being overwritten.
-	var oldAnswers models.TournamentTeamMember
-	if err := app.DB.First(&oldAnswers, "tournament_team_id = ? AND account_id = ?", lobby.ID, member.ID).Error; err != nil {
-		t.Fatal(err)
-	}
-	if !oldAnswers.RegistrationSubmitted || len(oldAnswers.RegistrationAnswers) != 2 {
-		t.Fatal("SQL answers not persisted")
-	}
-	oldValue := oldAnswers.RegistrationAnswers[0].Value
+	// Reapplication updates the existing (tournament, account) Mongo response.
 	reapplied := request(http.MethodPost, tourPath+"/lobbies", map[string]any{"name": "Second application", "answers": []models.FieldAnswer{{FieldID: "ign", Value: "New captain"}, {FieldID: "age", Value: 22}}}, captain, 201)
 	var newLobby handlers.TeamLobbyResponse
 	if err := reapplied.JSON(&newLobby); err != nil {
 		t.Fatal(err)
 	}
 	request(http.MethodPost, "/lobbies/"+*newLobby.InviteCode+"/join", map[string]any{"answers": []models.FieldAnswer{{FieldID: "ign", Value: "New member"}, {FieldID: "age", Value: 23}}}, member, 200)
-	if err := app.DB.First(&oldAnswers, "id = ?", oldAnswers.ID).Error; err != nil {
+	var current models.FormResponse
+	collection := mongoClient.Database("member_answers_test").Collection("tournament_form_responses")
+	filter := bson.M{"tournament_id": s.tournament.ID, "account_id": member.ID}
+	if err := collection.FindOne(ctx, filter).Decode(&current); err != nil {
 		t.Fatal(err)
 	}
-	if oldAnswers.RegistrationAnswers[0].Value != oldValue {
-		t.Fatal("reapplication overwrote the rejected team's answers")
+	if len(current.Answers) != 2 || current.Answers[0].Value != "New member" {
+		t.Fatal("reapplication did not update the member's Mongo response")
+	}
+	total, err := collection.CountDocuments(ctx, filter)
+	if err != nil || total != 1 {
+		t.Fatalf("duplicate member responses: count=%d err=%v", total, err)
 	}
 }

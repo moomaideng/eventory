@@ -49,25 +49,52 @@ func (u *TeamLobbyUseCase) validateRegistrationAnswers(ctx context.Context, tour
 	return u.registry.ValidateFormAnswers(fields, answers)
 }
 
+func (u *TeamLobbyUseCase) saveNewRegistrationAnswers(ctx context.Context, tournamentID, accountID uuid.UUID, answers []models.FieldAnswer) error {
+	if err := u.validateRegistrationAnswers(ctx, tournamentID, answers); err != nil {
+		return err
+	}
+	if _, err := u.repo.FindActiveByTournamentAndAccount(ctx, tournamentID, accountID); err == nil {
+		return repositories.ErrAlreadyInTournamentLobby
+	} else if !errors.Is(err, repositories.ErrTeamLobbyNotFound) {
+		return err
+	}
+	return u.storeRegistrationAnswers(ctx, tournamentID, accountID, answers)
+}
+
+func (u *TeamLobbyUseCase) storeRegistrationAnswers(ctx context.Context, tournamentID, accountID uuid.UUID, answers []models.FieldAnswer) error {
+	if u.formRepo == nil {
+		return nil
+	}
+	_, err := u.formRepo.UpsertResponse(ctx, &models.FormResponse{TournamentID: tournamentID, AccountID: accountID, Answers: answers})
+	return err
+}
+
 func (u *TeamLobbyUseCase) memberReadiness(ctx context.Context, team *models.TournamentTeam) (map[uuid.UUID]bool, error) {
 	fields, err := u.registrationFields(ctx, team.TournamentID)
 	if err != nil {
 		return nil, err
 	}
 	ready := make(map[uuid.UUID]bool, len(team.Members))
-	for _, member := range team.Members {
-		answers := member.RegistrationAnswers
-		// Old memberships keep their existing Mongo responses until the member edits.
-		if !member.RegistrationSubmitted && len(fields) > 0 && u.formRepo != nil {
-			response, err := u.formRepo.GetResponseByAccount(ctx, team.TournamentID, member.AccountID)
-			if err != nil && !errors.Is(err, repositories.ErrResponseNotFound) {
-				return nil, err
-			}
-			if err == nil {
-				answers = response.Answers
-			}
+	if len(fields) == 0 {
+		for _, member := range team.Members {
+			ready[member.AccountID] = true
 		}
-		ready[member.AccountID] = u.registry == nil || u.registry.ValidateFormAnswers(fields, answers) == nil
+		return ready, nil
+	}
+	accountIDs := make([]uuid.UUID, 0, len(team.Members))
+	for _, member := range team.Members {
+		accountIDs = append(accountIDs, member.AccountID)
+	}
+	responses, err := u.formRepo.GetResponsesByAccounts(ctx, team.TournamentID, accountIDs)
+	if err != nil {
+		return nil, err
+	}
+	byAccount := make(map[uuid.UUID][]models.FieldAnswer, len(responses))
+	for _, response := range responses {
+		byAccount[response.AccountID] = response.Answers
+	}
+	for _, member := range team.Members {
+		ready[member.AccountID] = u.registry.ValidateFormAnswers(fields, byAccount[member.AccountID]) == nil
 	}
 	return ready, nil
 }
@@ -77,10 +104,12 @@ func (u *TeamLobbyUseCase) SaveRegistrationAnswers(ctx context.Context, teamID, 
 	if err := u.ensureActiveAccount(ctx, accountID); err != nil {
 		return nil, err
 	}
-	team, err := u.repo.FindByID(ctx, teamID)
+	registration, err := u.repo.LockRegistration(ctx, teamID)
 	if err != nil {
 		return nil, err
 	}
+	defer registration.Release()
+	team := registration.Team()
 	member := false
 	for _, entry := range team.Members {
 		if entry.AccountID == accountID {
@@ -99,11 +128,7 @@ func (u *TeamLobbyUseCase) SaveRegistrationAnswers(ctx context.Context, teamID, 
 	if err := u.validateRegistrationAnswers(ctx, team.TournamentID, answers); err != nil {
 		return nil, err
 	}
-	if err := u.repo.SaveMemberAnswers(ctx, teamID, accountID, answers); err != nil {
-		return nil, err
-	}
-	team, err = u.repo.FindByID(ctx, teamID)
-	if err != nil {
+	if err := u.storeRegistrationAnswers(ctx, team.TournamentID, accountID, answers); err != nil {
 		return nil, err
 	}
 	return u.toView(ctx, team)

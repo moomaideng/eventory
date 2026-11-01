@@ -121,7 +121,7 @@ func TestRegistrationFormUseCase_SaveForm(t *testing.T) {
 	tRepo := &tournamentRepoStub{tournaments: tournaments}
 	fRepo := newFormRepoStub()
 	registry := forms.NewDefaultRegistry()
-	uc := usecases.NewRegistrationFormUseCase(tRepo, fRepo, registry, nil)
+	uc := usecases.NewRegistrationFormUseCase(tRepo, fRepo, registry)
 
 	t.Run("tournament not found", func(t *testing.T) {
 		_, err := uc.SaveForm(ctx, organizerID, uuid.New(), "Title", "Desc", nil)
@@ -216,7 +216,7 @@ func TestRegistrationFormUseCase_SubmitResponse(t *testing.T) {
 	tRepo := &tournamentRepoStub{tournaments: tournaments}
 	fRepo := newFormRepoStub()
 	registry := forms.NewDefaultRegistry()
-	uc := usecases.NewRegistrationFormUseCase(tRepo, fRepo, registry, nil)
+	uc := usecases.NewRegistrationFormUseCase(tRepo, fRepo, registry)
 
 	// Setup form
 	_, err := uc.SaveForm(ctx, organizerID, tournamentID, "Reg Form", "", []models.FormField{
@@ -287,4 +287,15 @@ func TestRegistrationFormUseCase_SubmitResponse(t *testing.T) {
 			t.Fatalf("expected ErrResponseAlreadyExists, got %v", err)
 		}
 	})
+}
+
+func (s *formRepoStub) GetResponsesByAccounts(ctx context.Context, tournamentID uuid.UUID, accountIDs []uuid.UUID) ([]models.FormResponse, error) {
+	responses := make([]models.FormResponse, 0, len(accountIDs))
+	for _, accountID := range accountIDs {
+		response, err := s.GetResponseByAccount(ctx, tournamentID, accountID)
+		if err == nil {
+			responses = append(responses, *response)
+		}
+	}
+	return responses, nil
 }
