@@ -104,6 +104,7 @@ func toProtoAccount(account *models.Account) *accountv1.Account {
 		DisplayName: account.DisplayName,
 		Status:      string(account.Status),
 		SponsorName: sponsorName,
+		Email:       account.Email,
 	}
 }
 

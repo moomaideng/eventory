@@ -75,6 +75,7 @@ tasks:
       - go -C backend run ./services/account/cmd/seed
       - go -C backend run ./services/tournament/cmd/seed
       - go -C backend run ./services/payment/cmd/seed
+      - go -C backend run ./services/notification/cmd/seed
 
   db:reset:
     desc: Stop the stack and delete the local Postgres, MongoDB, RabbitMQ, Loki, Tempo, and Grafana volumes
