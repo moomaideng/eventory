@@ -10,16 +10,24 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/cors"
 	"github.com/moomaideng/eventory/internal/events"
+	"github.com/moomaideng/eventory/internal/grpcx"
 	"github.com/moomaideng/eventory/internal/middlewares"
 	"github.com/moomaideng/eventory/internal/telemetry"
 	"github.com/moomaideng/eventory/services/payment/config"
+	protohandlers "github.com/moomaideng/eventory/services/payment/handlers/proto"
 	rest "github.com/moomaideng/eventory/services/payment/handlers/rest"
 	"github.com/moomaideng/eventory/services/payment/internal/repositories"
 	"github.com/moomaideng/eventory/services/payment/internal/usecases"
+	paymentv1 "github.com/moomaideng/eventory/services/payment/pkg/proto/payment/v1"
+	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
+	"google.golang.org/grpc"
 	"gorm.io/gorm"
 )
 
-type App struct{ HTTP http.Handler }
+type App struct {
+	HTTP http.Handler
+	GRPC *grpc.Server
+}
 
 func NewApp(db *gorm.DB, cfg config.Config) *App {
 	router := chi.NewMux()
@@ -39,8 +47,7 @@ func NewApp(db *gorm.DB, cfg config.Config) *App {
 	}
 	humaConfig := huma.DefaultConfig("Eventory Payment API (mock)", "1.0.0")
 	humaConfig.Components.SecuritySchemes = map[string]*huma.SecurityScheme{
-		"bearer":     {Type: "http", Scheme: "bearer", BearerFormat: "JWT"},
-		"serviceKey": {Type: "apiKey", In: "header", Name: "X-Payment-Service-Key", Description: "Server-only secret; never send this from a browser"},
+		"bearer": {Type: "http", Scheme: "bearer", BearerFormat: "JWT"},
 	}
 	api := humachi.New(router, humaConfig)
 	huma.Register(api, huma.Operation{OperationID: "payment-health", Method: http.MethodGet, Path: "/health"}, func(ctx context.Context, input *struct{}) (*struct{}, error) {
@@ -62,9 +69,10 @@ func NewApp(db *gorm.DB, cfg config.Config) *App {
 		}
 	}
 	uc := usecases.NewPaymentUseCase(repositories.NewPaymentRepository(db), eventPublisher)
-	rest.RegisterInternalRoutes(api, uc, cfg.ServiceKey)
+	grpcServer := grpc.NewServer(grpc.StatsHandler(otelgrpc.NewServerHandler()), grpc.ChainUnaryInterceptor(grpcx.UnaryServerLogging(cfg.Logging.SlowRequestMS), protohandlers.ServiceAuth(cfg.ServiceKey)))
+	paymentv1.RegisterPaymentServiceServer(grpcServer, protohandlers.NewPaymentServer(uc))
 	group := huma.NewGroup(api, "/api/v1/payments")
 	group.UseMiddleware(middlewares.NewAuthMiddleware(api, cfg.SupabaseURL, cfg.Environment).HumaMiddleware())
 	rest.RegisterPaymentRoutes(group, uc)
-	return &App{HTTP: router}
+	return &App{HTTP: router, GRPC: grpcServer}
 }

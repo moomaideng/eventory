@@ -3,6 +3,16 @@ plugins:
   - remote: buf.build/protocolbuffers/go
     out: services/account/pkg/proto
     opt: paths=source_relative
+    types: [account.v1.AccountService]
   - remote: buf.build/grpc/go
     out: services/account/pkg/proto
     opt: paths=source_relative
+    types: [account.v1.AccountService]
+  - remote: buf.build/protocolbuffers/go
+    out: services/payment/pkg/proto
+    opt: paths=source_relative
+    types: [payment.v1.PaymentService]
+  - remote: buf.build/grpc/go
+    out: services/payment/pkg/proto
+    opt: paths=source_relative
+    types: [payment.v1.PaymentService]

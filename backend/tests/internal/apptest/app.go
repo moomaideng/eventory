@@ -1,10 +1,11 @@
 package apptest
 
 import (
-	"go.mongodb.org/mongo-driver/v2/mongo"
 	"net"
 	"net/http/httptest"
 	"testing"
+
+	"go.mongodb.org/mongo-driver/v2/mongo"
 
 	accountconfig "github.com/moomaideng/eventory/services/account/config"
 	accountserver "github.com/moomaideng/eventory/services/account/server"
@@ -72,21 +73,30 @@ func NewApp(tb testing.TB, dsn string, formDB ...*mongo.Database) *App {
 	if err := paymentdb.AutoMigrate(db); err != nil {
 		tb.Fatal(err)
 	}
-	paymentTS := httptest.NewServer(paymentserver.NewApp(db, paymentconfig.Config{Environment: "development", SupabaseURL: jwksServer.URL(), ServiceKey: "test-team-payment-service-key-12345678"}).HTTP)
+	paymentApp := paymentserver.NewApp(db, paymentconfig.Config{Environment: "development", SupabaseURL: jwksServer.URL(), ServiceKey: "test-team-payment-service-key-12345678"})
+	paymentLis, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		tb.Fatal(err)
+	}
+	go func() { _ = paymentApp.GRPC.Serve(paymentLis) }()
+	tb.Cleanup(paymentApp.GRPC.Stop)
+	paymentTS := httptest.NewServer(paymentApp.HTTP)
 	tb.Cleanup(paymentTS.Close)
 	var mongoDB *mongo.Database
 	if len(formDB) > 0 {
 		mongoDB = formDB[0]
 	}
 	tournamentApp := tournamentserver.NewAppWithAccountConn(db, mongoDB, tournamentconfig.Config{
-		Environment: "development",
-		SupabaseURL: jwksServer.URL(),
-		PaymentURL:  paymentTS.URL, PaymentServiceKey: "test-team-payment-service-key-12345678",
+		Environment:     "development",
+		SupabaseURL:     jwksServer.URL(),
+		PaymentGRPCAddr: paymentLis.Addr().String(), PaymentServiceKey: "test-team-payment-service-key-12345678",
 	}, conn)
+	tb.Cleanup(func() { _ = tournamentApp.Close() })
 	tournamentTS := httptest.NewServer(tournamentApp.HTTP)
 	tb.Cleanup(tournamentTS.Close)
 
-	return &App{PaymentServer: paymentTS,
+	return &App{
+		PaymentServer:    paymentTS,
 		AccountServer:    accountTS,
 		TournamentServer: tournamentTS,
 		DB:               db,

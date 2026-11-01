@@ -125,7 +125,7 @@ Each service loads `services/<name>/.env.default`, then an optional `.env` in th
 | `ACCOUNT_GRPC_ADDR`    | Where Tournament calls Account. `127.0.0.1:9091` on the host, `account:9091` in Compose |
 | `MONGO_URI`            | MongoDB connection URI for Tournament Service dynamic forms                             |
 | `MONGO_DB_NAME`        | MongoDB database name for Tournament Service (`tournament_db`)                          |
-| `PAYMENT_SERVICE_KEY`  | Server-only secret for internal Payment endpoints (`X-Payment-Service-Key`)             |
+| `PAYMENT_SERVICE_KEY`  | Server-only secret for Payment gRPC metadata (`x-payment-service-key`)             |
 | `AMQP_URL`             | RabbitMQ connection used by Notification                                                |
 | `SMTP_*`               | Notification SMTP relay, credentials, sender, TLS, and timeout                          |
 | `RETRY_DELAYS`         | Notification retry TTLs; project default `30s,5m,30m`                                   |
@@ -151,3 +151,11 @@ The backend never sees a password. It only checks that the ticket's signature is
 ---
 
 Something broken? → **[Troubleshooting](../docs/troubleshooting.md)**
+
+### Internal Payment gRPC
+
+Payment exposes trusted operations at `localhost:9093` (`GRPC_PORT`); Tournament uses `PAYMENT_GRPC_ADDR=payment:9093` in Compose. All RPCs require `x-payment-service-key` metadata matching `PAYMENT_SERVICE_KEY`. These use the private service network, following Account's plaintext gRPC transport; production does not publish this port.
+
+The contract is `services/payment/api/proto/payment/v1/payment.proto`: `CreatePayment`, `GetPayment`, and `RefundRegistration`. Creation and refunds are idempotent; Tournament applies a five-second deadline and bounded retries for transient errors. Invalid inputs return InvalidArgument, unknown invoices NotFound, conflicting requests FailedPrecondition, and missing/incorrect keys Unauthenticated.
+
+The former `/internal/v1/payments` HTTP routes have been removed. Browser checkout, history, and receipts continue through `/api/v1/payments` on HTTP port 8083. Deploy Payment and Tournament together and replace `PAYMENT_URL` with `PAYMENT_GRPC_ADDR` in local overrides. Regenerate both service contracts with `task gen-proto`.

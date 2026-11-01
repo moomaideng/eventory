@@ -4,6 +4,7 @@ import "testing"
 
 func TestServiceKeyConfiguration(t *testing.T) {
 	t.Setenv("HTTP_PORT", "8083")
+	t.Setenv("GRPC_PORT", "9093")
 	t.Setenv("DB_DSN", "postgresql://unused/payment_db")
 	t.Setenv("ENVIRONMENT", "production")
 	for _, key := range []string{"short", "local-payment-service-key-not-for-production"} {
