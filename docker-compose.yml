@@ -171,6 +171,13 @@ services:
       - grafana_data:/var/lib/grafana
     depends_on:
       - loki
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:3000/api/health"]
+      start_period: 60s
+      start_interval: 1s
+      interval: 5s
+      timeout: 5s
+      retries: 30
     labels:
       - traefik.enable=true
       - traefik.docker.network=eventory_default
