@@ -133,7 +133,7 @@ func (u *TeamLobbyUseCase) Create(ctx context.Context, tournamentID, captainAcco
 		return nil, ErrRegistrationNotOpen
 	}
 	answers := firstAnswers(submitted)
-	if err := u.validateRegistrationAnswers(ctx, tournamentID, answers); err != nil {
+	if err := u.saveNewRegistrationAnswers(ctx, tournamentID, captainAccountID, answers); err != nil {
 		return nil, err
 	}
 
@@ -149,7 +149,6 @@ func (u *TeamLobbyUseCase) Create(ctx context.Context, tournamentID, captainAcco
 	captainMember := &models.TournamentTeamMember{
 		ID: uuid.New(), AccountID: captainAccountID,
 		Role: models.TournamentTeamMemberRoleCaptain, JoinedAt: now,
-		RegistrationAnswers: answers, RegistrationSubmitted: true,
 	}
 	created, err := u.repo.Create(ctx, team, captainMember)
 	if err != nil {
@@ -289,10 +288,10 @@ func (u *TeamLobbyUseCase) Join(ctx context.Context, inviteCode string, memberAc
 		return nil, err
 	}
 	answers := firstAnswers(submitted)
-	if err := u.validateRegistrationAnswers(ctx, team.TournamentID, answers); err != nil {
+	if err := u.saveNewRegistrationAnswers(ctx, team.TournamentID, memberAccountID, answers); err != nil {
 		return nil, err
 	}
-	joined, err := u.repo.Join(ctx, team.ID, memberAccountID, answers)
+	joined, err := u.repo.Join(ctx, team.ID, memberAccountID)
 	if err != nil {
 		return nil, err
 	}

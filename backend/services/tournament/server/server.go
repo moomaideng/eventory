@@ -217,7 +217,7 @@ func newHTTPRouter(db *gorm.DB, mongoDB *mongo.Database, cfg config.Config, acco
 			slog.Error("failed to ensure registration form indexes", "error", err)
 		}
 		fieldRegistry := forms.NewDefaultRegistry()
-		formUseCase := usecases.NewRegistrationFormUseCase(tournamentRepo, formRepo, fieldRegistry, repositories.NewTeamLobbyRepository(db))
+		formUseCase := usecases.NewRegistrationFormUseCase(tournamentRepo, formRepo, fieldRegistry)
 		resthandlers.RegisterRegistrationFormRoutes(api, auth, organizer, formUseCase)
 	}
 

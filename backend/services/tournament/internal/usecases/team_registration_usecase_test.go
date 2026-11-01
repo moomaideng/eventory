@@ -19,11 +19,12 @@ func teamAnswerFixture() (*usecases.TeamLobbyUseCase, *teamLobbyRepositoryStub, 
 	repo := &teamLobbyRepositoryStub{tournament: tournament, team: &models.TournamentTeam{
 		ID: uuid.New(), TournamentID: tournament.ID, Tournament: *tournament, Status: models.TournamentTeamStatusForming,
 		Members: []models.TournamentTeamMember{
-			{ID: uuid.New(), AccountID: captain, Role: models.TournamentTeamMemberRoleCaptain, RegistrationSubmitted: true, RegistrationAnswers: validTeamAnswers()},
-			{ID: uuid.New(), AccountID: member, Role: models.TournamentTeamMemberRoleMember, RegistrationSubmitted: true},
+			{ID: uuid.New(), AccountID: captain, Role: models.TournamentTeamMemberRoleCaptain},
+			{ID: uuid.New(), AccountID: member, Role: models.TournamentTeamMemberRoleMember},
 		}}}
 	form := &registrationFormRepositoryStub{form: &models.RegistrationForm{TournamentID: tournament.ID,
 		Fields: []models.FormField{{ID: "ign", Type: models.FieldTypeShortText, Label: "In-game name", Required: true}}}}
+	form.responses = map[uuid.UUID]*models.FormResponse{captain: {TournamentID: tournament.ID, AccountID: captain, Answers: validTeamAnswers()}}
 	accounts := newStubAccountService().withAccount(captain, "captain", "Captain").withAccount(member, "member", "Member")
 	return usecases.NewTeamLobbyUseCase(repo, accounts, nil, form, forms.NewDefaultRegistry()), repo, form, captain, member
 }
@@ -52,13 +53,13 @@ func TestTeamRegistration_CreateValidatesBeforeCreatingMembership(t *testing.T) 
 			}
 		})
 	}
-	u, repo, _, captain, _ := teamAnswerFixture()
+	u, repo, form, captain, _ := teamAnswerFixture()
 	result, err := u.Create(context.Background(), repo.tournament.ID, captain, "Team", validTeamAnswers())
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !repo.captain.RegistrationSubmitted || len(repo.captain.RegistrationAnswers) != 1 || !result.Members[0].RegistrationComplete {
-		t.Fatal("captain answers were not bound to membership")
+	if form.upserted == nil || len(form.upserted.Answers) != 1 || !result.Members[0].RegistrationComplete {
+		t.Fatal("captain answers were not saved in MongoDB")
 	}
 }
 
@@ -97,10 +98,10 @@ func TestTeamRegistration_IncompleteMemberBlocksFreeAndPaidSubmission(t *testing
 
 func TestTeamRegistration_OnlyOwnAnswersCanChangeWhileForming(t *testing.T) {
 	for _, status := range []models.TournamentTeamStatus{models.TournamentTeamStatusLocked, models.TournamentTeamStatusAccepted, models.TournamentTeamStatusRejected, models.TournamentTeamStatusPaymentPending} {
-		u, repo, _, _, member := teamAnswerFixture()
+		u, repo, form, _, member := teamAnswerFixture()
 		repo.team.Status = status
 		_, err := u.SaveRegistrationAnswers(context.Background(), repo.team.ID, member, validTeamAnswers())
-		if !errors.Is(err, repositories.ErrTeamLobbyNotForming) || repo.team.Members[1].RegistrationVersion != 0 {
+		if !errors.Is(err, repositories.ErrTeamLobbyNotForming) || form.upserted != nil {
 			t.Fatalf("status=%s err=%v", status, err)
 		}
 	}
@@ -115,10 +116,41 @@ func TestTeamRegistration_OnlyOwnAnswersCanChangeWhileForming(t *testing.T) {
 
 func TestTeamRegistration_FormChangesInvalidateReadiness(t *testing.T) {
 	u, repo, form, captain, _ := teamAnswerFixture()
-	repo.team.Members[1].RegistrationAnswers = validTeamAnswers()
+	form.responses[repo.team.Members[1].AccountID] = &models.FormResponse{TournamentID: repo.tournament.ID, AccountID: repo.team.Members[1].AccountID, Answers: validTeamAnswers()}
 	form.form.Fields = append(form.form.Fields, models.FormField{ID: "age", Type: models.FieldTypeNumber, Label: "Age", Required: true})
 	_, err := u.Lock(context.Background(), repo.team.ID, captain)
 	if !errors.Is(err, usecases.ErrMemberAnswersIncomplete) || repo.locked {
 		t.Fatalf("Lock after form change error=%v", err)
+	}
+}
+
+func TestTeamRegistration_ReadinessUsesOneBatchAndFailsClosed(t *testing.T) {
+	u, repo, form, captain, _ := teamAnswerFixture()
+	view, err := u.GetByInviteCode(context.Background(), "ABC123", captain)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if form.batchCalls != 1 || !view.Members[0].RegistrationComplete || view.Members[1].RegistrationComplete {
+		t.Fatalf("unexpected readiness: batch calls=%d members=%+v", form.batchCalls, view.Members)
+	}
+	form.batchError = errors.New("MongoDB unavailable")
+	_, err = u.Lock(context.Background(), repo.team.ID, captain)
+	if !errors.Is(err, form.batchError) || repo.locked {
+		t.Fatalf("Lock error=%v locked=%v", err, repo.locked)
+	}
+}
+
+func TestTeamRegistration_StorageFailureAndDuplicateDoNotChangeMembership(t *testing.T) {
+	u, repo, form, captain, _ := teamAnswerFixture()
+	form.upsertError = errors.New("MongoDB unavailable")
+	_, err := u.Create(context.Background(), repo.tournament.ID, captain, "Team", validTeamAnswers())
+	if !errors.Is(err, form.upsertError) || repo.created != nil {
+		t.Fatalf("Create error=%v created=%v", err, repo.created)
+	}
+	form.upsertError = nil
+	repo.activeTeam = repo.team
+	_, err = u.Create(context.Background(), repo.tournament.ID, captain, "Duplicate", validTeamAnswers())
+	if !errors.Is(err, repositories.ErrAlreadyInTournamentLobby) || form.upserted != nil {
+		t.Fatalf("duplicate error=%v overwrote=%v", err, form.upserted)
 	}
 }
