@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/moomaideng/eventory/internal/events"
 	amqp "github.com/rabbitmq/amqp091-go"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
@@ -84,8 +85,15 @@ func (broker *Broker) declareTopology(prefetch int) error {
 	if _, err := broker.consumeCh.QueueDeclare(MainQueue, true, false, false, false, nil); err != nil {
 		return err
 	}
-	if err := broker.consumeCh.QueueBind(MainQueue, RegistrationKey, DomainExchange, false, nil); err != nil {
-		return err
+	for _, key := range []string{
+		RegistrationKey,
+		events.RegistrationApprovedType,
+		events.RegistrationRejectedType,
+		events.PaymentConfirmedType,
+	} {
+		if err := broker.consumeCh.QueueBind(MainQueue, key, DomainExchange, false, nil); err != nil {
+			return err
+		}
 	}
 	for index, delay := range broker.retryDelays {
 		queueName := retryQueueName(index + 1)
@@ -104,8 +112,15 @@ func (broker *Broker) declareTopology(prefetch int) error {
 	if _, err := broker.consumeCh.QueueDeclare(DeadQueue, true, false, false, false, nil); err != nil {
 		return err
 	}
-	if err := broker.consumeCh.QueueBind(DeadQueue, RegistrationKey, DeadExchange, false, nil); err != nil {
-		return err
+	for _, key := range []string{
+		RegistrationKey,
+		events.RegistrationApprovedType,
+		events.RegistrationRejectedType,
+		events.PaymentConfirmedType,
+	} {
+		if err := broker.consumeCh.QueueBind(DeadQueue, key, DeadExchange, false, nil); err != nil {
+			return err
+		}
 	}
 	if err := broker.consumeCh.Qos(prefetch, 0, false); err != nil {
 		return err

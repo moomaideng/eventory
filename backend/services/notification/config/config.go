@@ -40,6 +40,8 @@ type Config struct {
 	ProcessingLeaseRaw string               `mapstructure:"processing_lease"`
 	SMTPTimeoutRaw     string               `mapstructure:"smtp_timeout"`
 	BrokerReconnectRaw string               `mapstructure:"broker_reconnect_delay"`
+	SupabaseURL        string               `mapstructure:"supabase_url"`
+	CORSOrigins        []string             `mapstructure:"cors_allowed_origins"`
 	Logging            sharedconfig.Logging `mapstructure:",squash"`
 	OTel               sharedconfig.OTel    `mapstructure:",squash"`
 

@@ -396,6 +396,17 @@ services:
     restart: unless-stopped
     labels:
       - eventory.logs=true
+      - traefik.enable=true
+      - traefik.docker.network=eventory-production_default
+      - traefik.http.routers.notification.rule=Host(`eventory.ddns.net`) && PathPrefix(`/api/v1/notifications`)
+      - traefik.http.routers.notification.entrypoints=websecure
+      - traefik.http.routers.notification.tls=true
+      - traefik.http.routers.notification.tls.certresolver=letsencrypt
+      - traefik.http.routers.notification.priority=100
+      - traefik.http.routers.notification-internal.rule=Host(`traefik`) && PathPrefix(`/api/v1/notifications`)
+      - traefik.http.routers.notification-internal.entrypoints=web
+      - traefik.http.routers.notification-internal.service=notification
+      - traefik.http.services.notification.loadbalancer.server.port=8084
 
   frontend:
     image: ghcr.io/moomaideng/eventory-frontend:${IMAGE_TAG:?IMAGE_TAG is required}
