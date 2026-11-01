@@ -15,6 +15,8 @@ import (
 	accountserver "github.com/moomaideng/eventory/services/account/server"
 	paymentconfig "github.com/moomaideng/eventory/services/payment/config"
 	paymentserver "github.com/moomaideng/eventory/services/payment/server"
+	notificationconfig "github.com/moomaideng/eventory/services/notification/config"
+	notificationserver "github.com/moomaideng/eventory/services/notification/server"
 	"github.com/moomaideng/eventory/services/tournament/config"
 	"github.com/moomaideng/eventory/services/tournament/internal/ports"
 	"github.com/moomaideng/eventory/services/tournament/internal/repositories"
@@ -102,6 +104,13 @@ func TestTournamentOpenAPISpec(t *testing.T) {
 		paymentDoc, err := fetchOpenAPI(paymentApp.HTTP)
 		require.NoError(t, err)
 
+		notificationApp := notificationserver.NewApp(db, nil, nil, notificationconfig.Config{
+			Environment: "development",
+			HTTPPort:    "8084",
+		})
+		notificationDoc, err := fetchOpenAPI(notificationApp.HTTP)
+		require.NoError(t, err)
+
 		merged := map[string]any{
 			"openapi": "3.1.0",
 			"info": map[string]any{
@@ -127,6 +136,7 @@ func TestTournamentOpenAPISpec(t *testing.T) {
 			{"account", accountDoc},
 			{"tournament", tournamentDoc},
 			{"payment", paymentDoc},
+			{"notification", notificationDoc},
 		}
 
 		for _, src := range sources {
@@ -136,6 +146,9 @@ func TestTournamentOpenAPISpec(t *testing.T) {
 					continue
 				}
 				if src.name == "payment" && (len(p) < 16 || p[:16] != "/api/v1/payments") {
+					continue
+				}
+				if src.name == "notification" && (len(p) < 21 || p[:21] != "/api/v1/notifications") {
 					continue
 				}
 				mergedPaths[p] = op

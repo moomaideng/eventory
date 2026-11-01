@@ -36,4 +36,4 @@ type Delivery struct {
 
 func (Delivery) TableName() string { return "notification_deliveries" }
 
-func All() []any { return []any{&Delivery{}} }
+func All() []any { return []any{&Delivery{}, &Notification{}} }

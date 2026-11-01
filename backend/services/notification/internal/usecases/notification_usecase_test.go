@@ -150,3 +150,146 @@ func TestRenderRegistrationEmailStripsHeaderNewlines(t *testing.T) {
 		t.Fatalf("subject contains a newline: %q", message.Subject)
 	}
 }
+
+type inAppCreatorStub struct {
+	created []*models.Notification
+}
+
+func (c *inAppCreatorStub) Create(_ context.Context, n *models.Notification) (*models.Notification, error) {
+	c.created = append(c.created, n)
+	return n, nil
+}
+
+func TestProcessRegistrationApproved(t *testing.T) {
+	store := &storeStub{}
+	mailer := &mailerStub{}
+	inApp := &inAppCreatorStub{}
+	useCase := NewNotificationUseCase(store, mailer, "https://eventory.example/", time.Minute).WithInAppCreator(inApp)
+
+	recipientID := uuid.New()
+	event := events.RegistrationReviewed{
+		SpecVersion:   events.EventSpecVersion,
+		ID:            uuid.New(),
+		Type:          events.RegistrationApprovedType,
+		Source:        "tournament-service",
+		OccurredAt:    time.Now().UTC(),
+		CorrelationID: uuid.New(),
+		Data: events.RegistrationReviewedData{
+			TournamentID:   uuid.New(),
+			TournamentName: "Grand Masters 2026",
+			TeamID:         uuid.New(),
+			TeamName:       "Titans",
+			Recipient: events.EventRecipient{
+				AccountID:   recipientID,
+				Email:       "captain@titans.test",
+				DisplayName: "Titan Captain",
+				Role:        events.RecipientRoleCaptain,
+			},
+		},
+	}
+
+	outcome, err := useCase.ProcessRegistrationApproved(context.Background(), event, false)
+	if err != nil || outcome != OutcomeSent {
+		t.Fatalf("expected sent outcome, got outcome=%v err=%v", outcome, err)
+	}
+	if len(mailer.messages) != 1 || mailer.messages[0].To != "captain@titans.test" {
+		t.Fatalf("unexpected mailer messages: %#v", mailer.messages)
+	}
+	if len(inApp.created) != 1 {
+		t.Fatalf("expected 1 in-app notification created, got %d", len(inApp.created))
+	}
+	noti := inApp.created[0]
+	if noti.UserID != recipientID || noti.Type != models.NotificationTypeRegistrationApproved {
+		t.Fatalf("unexpected in-app notification: %#v", noti)
+	}
+}
+
+func TestProcessRegistrationRejected(t *testing.T) {
+	store := &storeStub{}
+	mailer := &mailerStub{}
+	inApp := &inAppCreatorStub{}
+	useCase := NewNotificationUseCase(store, mailer, "https://eventory.example/", time.Minute).WithInAppCreator(inApp)
+
+	recipientID := uuid.New()
+	event := events.RegistrationReviewed{
+		SpecVersion:   events.EventSpecVersion,
+		ID:            uuid.New(),
+		Type:          events.RegistrationRejectedType,
+		Source:        "tournament-service",
+		OccurredAt:    time.Now().UTC(),
+		CorrelationID: uuid.New(),
+		Data: events.RegistrationReviewedData{
+			TournamentID:   uuid.New(),
+			TournamentName: "Grand Masters 2026",
+			TeamID:         uuid.New(),
+			TeamName:       "Titans",
+			Reason:         "Roster incomplete",
+			Recipient: events.EventRecipient{
+				AccountID:   recipientID,
+				Email:       "captain@titans.test",
+				DisplayName: "Titan Captain",
+				Role:        events.RecipientRoleCaptain,
+			},
+		},
+	}
+
+	outcome, err := useCase.ProcessRegistrationRejected(context.Background(), event, false)
+	if err != nil || outcome != OutcomeSent {
+		t.Fatalf("expected sent outcome, got outcome=%v err=%v", outcome, err)
+	}
+	if len(inApp.created) != 1 {
+		t.Fatalf("expected 1 in-app notification created, got %d", len(inApp.created))
+	}
+	noti := inApp.created[0]
+	if noti.UserID != recipientID || noti.Type != models.NotificationTypeRegistrationRejected {
+		t.Fatalf("unexpected in-app notification: %#v", noti)
+	}
+	if !strings.Contains(noti.Message, "Roster incomplete") {
+		t.Fatalf("expected message to mention rejection reason, got %q", noti.Message)
+	}
+}
+
+func TestProcessPaymentConfirmed(t *testing.T) {
+	store := &storeStub{}
+	mailer := &mailerStub{}
+	inApp := &inAppCreatorStub{}
+	useCase := NewNotificationUseCase(store, mailer, "https://eventory.example/", time.Minute).WithInAppCreator(inApp)
+
+	payerID := uuid.New()
+	paymentID := uuid.New()
+	event := events.PaymentConfirmed{
+		SpecVersion:   events.EventSpecVersion,
+		ID:            uuid.New(),
+		Type:          events.PaymentConfirmedType,
+		Source:        "payment-service",
+		OccurredAt:    time.Now().UTC(),
+		CorrelationID: uuid.New(),
+		Data: events.PaymentConfirmedData{
+			PaymentID:      paymentID,
+			PayerAccountID: payerID,
+			AmountMinor:    125000,
+			Currency:       "THB",
+			Description:    "Grand Masters 2026 Entry Fee",
+			Recipient: events.EventRecipient{
+				AccountID:   payerID,
+				Email:       "payer@example.com",
+				DisplayName: "Team Payer",
+			},
+		},
+	}
+
+	outcome, err := useCase.ProcessPaymentConfirmed(context.Background(), event, false)
+	if err != nil || outcome != OutcomeSent {
+		t.Fatalf("expected sent outcome, got outcome=%v err=%v", outcome, err)
+	}
+	if len(inApp.created) != 1 {
+		t.Fatalf("expected 1 in-app notification created, got %d", len(inApp.created))
+	}
+	noti := inApp.created[0]
+	if noti.UserID != payerID || noti.Type != models.NotificationTypePaymentConfirmed {
+		t.Fatalf("unexpected in-app notification: %#v", noti)
+	}
+	if !strings.Contains(noti.Message, "1250.00 THB") {
+		t.Fatalf("expected notification message to format amount in THB, got %q", noti.Message)
+	}
+}

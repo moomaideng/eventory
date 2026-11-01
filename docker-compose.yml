@@ -265,6 +265,7 @@ services:
       PAYMENT_SERVICE_KEY: ${PAYMENT_SERVICE_KEY:-local-payment-service-key-not-for-production}
       MONGO_URI: mongodb://${MONGO_USER:-admin}:${MONGO_PASSWORD:-password123}@mongodb:27017/tournament_db?authSource=admin
       MONGO_DB_NAME: tournament_db
+      BROKER_URL: amqp://${RABBITMQ_USER:-eventory}:${RABBITMQ_PASSWORD:-eventory}@rabbitmq:5672/
       OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
     ports:
       - "127.0.0.1:8082:8082"
@@ -287,6 +288,8 @@ services:
       postgres:
         condition: service_healthy
       mongodb:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
       tournament-migrate:
         condition: service_completed_successfully
@@ -320,6 +323,7 @@ services:
       ENVIRONMENT: development
       DB_DSN: postgresql://${POSTGRES_USER:-admin}:${POSTGRES_PASSWORD:-password123}@postgres:5432/payment_db?sslmode=disable
       PAYMENT_SERVICE_KEY: ${PAYMENT_SERVICE_KEY:-local-payment-service-key-not-for-production}
+      BROKER_URL: amqp://${RABBITMQ_USER:-eventory}:${RABBITMQ_PASSWORD:-eventory}@rabbitmq:5672/
       OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
     ports:
       - "127.0.0.1:8083:8083"
@@ -340,6 +344,8 @@ services:
       retries: 30
     depends_on:
       postgres:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
       payment-migrate:
         condition: service_completed_successfully
@@ -406,6 +412,11 @@ services:
     restart: unless-stopped
     labels:
       - eventory.logs=true
+      - traefik.enable=true
+      - traefik.docker.network=eventory_default
+      - traefik.http.routers.notification.rule=PathPrefix(`/api/v1/notifications`)
+      - traefik.http.routers.notification.entrypoints=web
+      - traefik.http.services.notification.loadbalancer.server.port=8084
 
   frontend:
     image: eventory-frontend:local

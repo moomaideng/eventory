@@ -55,12 +55,15 @@ func main() {
 		FromName: cfg.SMTPFromName, StartTLS: cfg.SMTPStartTLS, Timeout: cfg.SMTPTimeout,
 	})
 	deliveryRepo := repositories.NewDeliveryRepository(db)
-	useCase := usecases.NewNotificationUseCase(deliveryRepo, mailer, cfg.PublicWebURL, cfg.ProcessingLease)
+	notificationRepo := repositories.NewNotificationRepository(db)
+	inAppUC := usecases.NewInAppNotificationUseCase(notificationRepo)
+	useCase := usecases.NewNotificationUseCase(deliveryRepo, mailer, cfg.PublicWebURL, cfg.ProcessingLease).WithInAppCreator(notificationRepo)
 	consumer := worker.New(broker, useCase, len(cfg.RetryDelays), cfg.BrokerReconnectDelay)
 
+	app := server.NewApp(db, broker, inAppUC, cfg)
 	httpServer := &http.Server{
 		Addr:              ":" + cfg.HTTPPort,
-		Handler:           server.New(db, broker),
+		Handler:           app.HTTP,
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 
