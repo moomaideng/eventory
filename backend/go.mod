@@ -27,6 +27,7 @@ require (
 	google.golang.org/grpc v1.84.0
 	google.golang.org/protobuf v1.36.12
 	gorm.io/driver/postgres v1.6.2
+	gorm.io/driver/sqlite v1.6.0
 	gorm.io/gorm v1.31.2
 	gorm.io/plugin/opentelemetry v0.1.16
 )
@@ -77,6 +78,7 @@ require (
 	github.com/klauspost/compress v1.20.3 // indirect
 	github.com/lufia/plan9stats v0.0.0-20260330125221-c963978e514e // indirect
 	github.com/magiconair/properties v1.8.10 // indirect
+	github.com/mattn/go-sqlite3 v1.14.22 // indirect
 	github.com/moby/docker-image-spec v1.3.1 // indirect
 	github.com/moby/go-archive v0.2.0 // indirect
 	github.com/moby/moby/api v1.55.0 // indirect
