@@ -1,0 +1,51 @@
+syntax = "proto3";
+
+package payment.v1;
+
+option go_package = "github.com/moomaideng/eventory/services/payment/pkg/proto/payment/v1;paymentv1";
+
+import "google/protobuf/timestamp.proto";
+
+// Trusted backend operations. All calls require x-payment-service-key metadata.
+service PaymentService {
+  // Exact retries return the original invoice, including its current status.
+  rpc CreatePayment(CreatePaymentRequest) returns (CreatePaymentResponse);
+  rpc GetPayment(GetPaymentRequest) returns (GetPaymentResponse);
+  // Idempotent refund, restricted to the supplied rejected registration entry.
+  rpc RefundRegistration(RefundRegistrationRequest) returns (RefundRegistrationResponse);
+}
+
+message CreatePaymentRequest {
+  string payer_account_id = 1;
+  string source = 2;
+  string reference = 3;
+  string idempotency_key = 4;
+  string description = 5;
+  int64 amount_minor = 6;
+  string currency = 7;
+  google.protobuf.Timestamp expires_at = 8;
+}
+message CreatePaymentResponse { Payment payment = 1; }
+message GetPaymentRequest { string id = 1; }
+message GetPaymentResponse { Payment payment = 1; }
+message RefundRegistrationRequest {
+  string id = 1;
+  string entry_id = 2;
+}
+message RefundRegistrationResponse { Payment payment = 1; }
+
+message Payment {
+  string id = 1;
+  string payer_account_id = 2;
+  string source = 3;
+  string reference = 4;
+  string description = 5;
+  int64 amount_minor = 6;
+  string currency = 7;
+  string provider = 8;
+  string status = 9;
+  google.protobuf.Timestamp created_at = 10;
+  google.protobuf.Timestamp expires_at = 11;
+  google.protobuf.Timestamp paid_at = 12;
+  google.protobuf.Timestamp refunded_at = 13;
+}

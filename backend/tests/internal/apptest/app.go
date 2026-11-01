@@ -71,13 +71,21 @@ func NewApp(tb testing.TB, dsn string) *App {
 	if err := paymentdb.AutoMigrate(db); err != nil {
 		tb.Fatal(err)
 	}
-	paymentTS := httptest.NewServer(paymentserver.NewApp(db, paymentconfig.Config{Environment: "development", SupabaseURL: jwksServer.URL(), ServiceKey: "test-team-payment-service-key-12345678"}).HTTP)
+	paymentApp := paymentserver.NewApp(db, paymentconfig.Config{Environment: "development", SupabaseURL: jwksServer.URL(), ServiceKey: "test-team-payment-service-key-12345678"})
+	paymentLis, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		tb.Fatal(err)
+	}
+	go func() { _ = paymentApp.GRPC.Serve(paymentLis) }()
+	tb.Cleanup(paymentApp.GRPC.Stop)
+	paymentTS := httptest.NewServer(paymentApp.HTTP)
 	tb.Cleanup(paymentTS.Close)
 	tournamentApp := tournamentserver.NewAppWithAccountConn(db, nil, tournamentconfig.Config{
-		Environment: "development",
-		SupabaseURL: jwksServer.URL(),
-		PaymentURL:  paymentTS.URL, PaymentServiceKey: "test-team-payment-service-key-12345678",
+		Environment:     "development",
+		SupabaseURL:     jwksServer.URL(),
+		PaymentGRPCAddr: paymentLis.Addr().String(), PaymentServiceKey: "test-team-payment-service-key-12345678",
 	}, conn)
+	tb.Cleanup(func() { _ = tournamentApp.Close() })
 	tournamentTS := httptest.NewServer(tournamentApp.HTTP)
 	tb.Cleanup(tournamentTS.Close)
 

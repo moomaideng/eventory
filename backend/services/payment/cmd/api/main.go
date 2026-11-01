@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"net"
 	"net/http"
 	"os/signal"
 	"syscall"
@@ -40,7 +41,17 @@ func main() {
 	app := server.NewApp(db, cfg)
 	httpServer := &http.Server{Addr: ":" + cfg.HTTPPort, Handler: app.HTTP, ReadHeaderTimeout: 10 * time.Second}
 
-	errorsChannel := make(chan error, 1)
+	lis, err := net.Listen("tcp", ":"+cfg.GRPCPort)
+	if err != nil {
+		panic(err)
+	}
+	errorsChannel := make(chan error, 2)
+	go func() {
+		slog.Info("payment gRPC listening", "port", cfg.GRPCPort)
+		if err := app.GRPC.Serve(lis); err != nil {
+			errorsChannel <- err
+		}
+	}()
 	go func() {
 		slog.Info("payment API listening", "addr", httpServer.Addr)
 		if err := httpServer.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
@@ -60,6 +71,13 @@ func main() {
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	_ = httpServer.Shutdown(shutdownCtx)
+	stopped := make(chan struct{})
+	go func() { app.GRPC.GracefulStop(); close(stopped) }()
+	select {
+	case <-stopped:
+	case <-shutdownCtx.Done():
+		app.GRPC.Stop()
+	}
 	if err := shutdownTelemetry(shutdownCtx); err != nil {
 		slog.Error("telemetry shutdown failed", "error", err)
 	}

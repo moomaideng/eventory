@@ -46,7 +46,7 @@ traefik GET → tournament GET → select … (GORM)
 ```
 
 - **Gateway:** Traefik starts the root span and forwards `traceparent` to the services. Calls straight to a service port (for example `:8082`) start at that service instead.
-- **Cross-service calls:** Tournament → Account gRPC and Tournament → Payment HTTP carry the trace context.
+- **Cross-service calls:** Tournament → Account gRPC and Tournament → Payment gRPC carry the trace context.
 - **Messaging:** publishing to RabbitMQ writes `traceparent` into the message headers, and the Notification worker continues the trace, so its GORM queries and logs join the producer's trace. No service publishes yet; `cmd/publish-registration-submitted` shows how a producer should do it.
 - **Postgres:** every GORM query is a span under the calling request.
 - **MongoDB:** every Tournament Mongo command is a client span such as `find tournament_forms`.

@@ -40,10 +40,14 @@ func TestPaymentAPI(t *testing.T) {
 	jwt := apptest.StartMockJWKSServer()
 	key := "test-private-payment-service-key-123456"
 	app := server.NewApp(db, config.Config{Environment: "production", SupabaseURL: jwt.URL(), ServiceKey: key})
+	client := paymentClient(t, app.GRPC)
 	owner, other := uuid.New(), uuid.New()
 	ownerToken := "Bearer " + jwt.SignJWT(owner, "payer@example.test")
 	otherToken := "Bearer " + jwt.SignJWT(other, "other@example.test")
 	request := func(method, path, body, token, serviceKey string) *httptest.ResponseRecorder {
+		if strings.HasPrefix(path, "/internal/v1/payments") {
+			return internalRPC(client, method, path, body, serviceKey)
+		}
 		r := httptest.NewRequest(method, path, strings.NewReader(body))
 		r.Header.Set("Content-Type", "application/json")
 		r.Header.Set("Authorization", token)
