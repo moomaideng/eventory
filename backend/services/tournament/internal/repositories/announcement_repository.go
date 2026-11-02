@@ -9,6 +9,15 @@ import (
 	"gorm.io/gorm"
 )
 
+// AnnouncementAudience is who an announcement is delivered to.
+type AnnouncementAudience struct {
+	TournamentName string
+	// AccountIDs are the members of every accepted team. A solo player is a
+	// one-person team, so they are included too. An account can be in only one
+	// team per tournament, so an ID appears at most once.
+	AccountIDs []uuid.UUID
+}
+
 // AnnouncementRepository persists tournament announcements (US3-4).
 //
 // A tournament the caller may not see or manage reports ErrTournamentNotFound,
@@ -28,6 +37,10 @@ type AnnouncementRepository interface {
 	// published tournament is visible; a draft reports ErrTournamentNotFound,
 	// so it looks identical to one that does not exist.
 	List(ctx context.Context, tournamentID uuid.UUID) ([]models.TournamentAnnouncement, error)
+
+	// Audience returns the tournament's name and the accounts that should be
+	// notified of a new announcement.
+	Audience(ctx context.Context, tournamentID uuid.UUID) (*AnnouncementAudience, error)
 }
 
 type announcementRepository struct {
@@ -96,4 +109,34 @@ func (r *announcementRepository) List(
 		return nil, err
 	}
 	return announcements, nil
+}
+
+func (r *announcementRepository) Audience(
+	ctx context.Context,
+	tournamentID uuid.UUID,
+) (*AnnouncementAudience, error) {
+	var tournament models.Tournament
+	err := r.db.WithContext(ctx).
+		Select("id", "name").
+		Where("id = ?", tournamentID).
+		First(&tournament).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, ErrTournamentNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	var accountIDs []uuid.UUID
+	err = r.db.WithContext(ctx).
+		Model(&models.TournamentTeamMember{}).
+		Joins("JOIN tournament_teams ON tournament_teams.id = tournament_team_members.tournament_team_id").
+		Where("tournament_teams.tournament_id = ? AND tournament_teams.status = ?",
+			tournamentID, models.TournamentTeamStatusAccepted).
+		Pluck("tournament_team_members.account_id", &accountIDs).Error
+	if err != nil {
+		return nil, err
+	}
+
+	return &AnnouncementAudience{TournamentName: tournament.Name, AccountIDs: accountIDs}, nil
 }

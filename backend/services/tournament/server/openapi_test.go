@@ -13,10 +13,10 @@ import (
 	"github.com/google/uuid"
 	accountconfig "github.com/moomaideng/eventory/services/account/config"
 	accountserver "github.com/moomaideng/eventory/services/account/server"
-	paymentconfig "github.com/moomaideng/eventory/services/payment/config"
-	paymentserver "github.com/moomaideng/eventory/services/payment/server"
 	notificationconfig "github.com/moomaideng/eventory/services/notification/config"
 	notificationserver "github.com/moomaideng/eventory/services/notification/server"
+	paymentconfig "github.com/moomaideng/eventory/services/payment/config"
+	paymentserver "github.com/moomaideng/eventory/services/payment/server"
 	"github.com/moomaideng/eventory/services/tournament/config"
 	"github.com/moomaideng/eventory/services/tournament/internal/ports"
 	"github.com/moomaideng/eventory/services/tournament/internal/repositories"
@@ -70,10 +70,11 @@ func TestTournamentOpenAPISpec(t *testing.T) {
 	teamLobbyUseCase := usecases.NewTeamLobbyUseCase(teamLobbyRepo, accSvc, nil, nil, nil)
 	sponsorships := usecases.NewSponsorshipUseCase(repositories.NewSponsorshipRepository(db), repositories.NewTournamentRepository(db), accSvc, nil)
 	teamReviews := usecases.NewTeamReviewUseCase(repositories.NewTeamReviewRepository(db), accSvc, nil)
+	announcements := usecases.NewAnnouncementUseCase(repositories.NewAnnouncementRepository(db), accSvc, nil)
 	opts := options.Client().ApplyURI("mongodb://localhost:27017").SetServerSelectionTimeout(50 * time.Millisecond)
 	client, _ := mongo.Connect(opts)
 	mongoDB := client.Database("tournament_db")
-	tournamentRouter := newHTTPRouter(db, mongoDB, tournamentCfg, accSvc, teamLobbyUseCase, sponsorships, teamReviews)
+	tournamentRouter := newHTTPRouter(db, mongoDB, tournamentCfg, accSvc, teamLobbyUseCase, sponsorships, teamReviews, announcements)
 
 	tournamentDoc, err := fetchOpenAPI(tournamentRouter)
 	require.NoError(t, err)
