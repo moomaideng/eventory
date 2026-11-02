@@ -12,6 +12,7 @@ const (
 	NotificationTypeRegistrationApproved NotificationType = "REGISTRATION_APPROVED"
 	NotificationTypeRegistrationRejected NotificationType = "REGISTRATION_REJECTED"
 	NotificationTypePaymentConfirmed     NotificationType = "PAYMENT_CONFIRMED"
+	NotificationTypeAnnouncementCreated  NotificationType = "ANNOUNCEMENT_CREATED"
 )
 
 // Notification represents an in-app user notification scoped to an account.

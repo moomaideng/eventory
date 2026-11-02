@@ -139,6 +139,14 @@ func (worker *Worker) handle(
 		}
 		eventID = event.ID
 		outcome, _ = worker.useCase.ProcessPaymentConfirmed(ctx, event, finalAttempt)
+	case events.AnnouncementCreatedType:
+		var event events.AnnouncementCreated
+		if err := json.Unmarshal(body, &event); err != nil {
+			worker.deadLetter(ctx, body, attempt, "invalid AnnouncementCreated payload", ack, nack)
+			return
+		}
+		eventID = event.ID
+		outcome, _ = worker.useCase.ProcessAnnouncementCreated(ctx, event, finalAttempt)
 	default:
 		worker.deadLetter(ctx, body, attempt, fmt.Sprintf("unsupported event type %q", env.Type), ack, nack)
 		return

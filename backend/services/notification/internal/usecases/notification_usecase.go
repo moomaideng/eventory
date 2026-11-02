@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"strings"
 	"time"
 
@@ -343,4 +344,90 @@ func resolveRecipientEmail(recipient events.EventRecipient) string {
 		}
 		return "dev@eventory.gg"
 	}
+}
+
+const announcementPreviewLength = 140
+
+// announcementPreview shortens an announcement for the notification box: line
+// breaks become spaces and anything past the limit is cut with an ellipsis.
+func announcementPreview(body string) string {
+	flat := strings.Join(strings.Fields(body), " ")
+	runes := []rune(flat)
+	if len(runes) <= announcementPreviewLength {
+		return flat
+	}
+	return string(runes[:announcementPreviewLength]) + "…"
+}
+
+// ProcessAnnouncementCreated emails one recipient about a new announcement and
+// adds it to their notification box.
+//
+// Unlike the other handlers it does not invent an address for a recipient
+// without an email: the email is skipped and only the in-app notification is
+// created.
+func (useCase *NotificationUseCase) ProcessAnnouncementCreated(ctx context.Context, event events.AnnouncementCreated, finalAttempt bool) (Outcome, error) {
+	event.Normalize()
+	if err := event.Validate(); err != nil {
+		return OutcomePermanentFailure, err
+	}
+	payload, err := json.Marshal(event)
+	if err != nil {
+		return OutcomePermanentFailure, fmt.Errorf("marshal normalized event: %w", err)
+	}
+	digest := sha256.Sum256(payload)
+	payloadHash := hex.EncodeToString(digest[:])
+	now := useCase.now()
+	delivery, claim, err := useCase.store.Claim(ctx, event.ID, event.Type, event.Data.Recipient.Email, announcementTemplateKey, payloadHash, event.OccurredAt, now, useCase.lease)
+	if err != nil {
+		return OutcomeRetry, err
+	}
+	if claim == repositories.PayloadConflict {
+		return OutcomePermanentFailure, errors.New("event ID was reused with a different payload")
+	}
+	if claim == repositories.AlreadyHandled || claim == repositories.AlreadyProcessing {
+		if claim == repositories.AlreadyHandled {
+			return OutcomeAlreadyHandled, nil
+		}
+		return OutcomeRetry, errors.New("delivery processing lease is still active")
+	}
+
+	if event.Data.Recipient.Email != "" && useCase.mailer != nil {
+		message, err := RenderAnnouncementEmail(event, useCase.publicWebURL)
+		if err != nil {
+			_ = useCase.store.MarkFailed(ctx, delivery.ID, "email rendering failed")
+			return OutcomePermanentFailure, err
+		}
+		if err := useCase.mailer.Send(ctx, message); err != nil {
+			var classified permanentError
+			if errors.As(err, &classified) && classified.Permanent() {
+				_ = useCase.store.MarkFailed(ctx, delivery.ID, "permanent SMTP failure")
+				return OutcomePermanentFailure, err
+			}
+			if finalAttempt {
+				_ = useCase.store.MarkFailed(ctx, delivery.ID, "retry budget exhausted after transient SMTP failure")
+				return OutcomePermanentFailure, err
+			}
+			if storeErr := useCase.store.MarkRetry(ctx, delivery.ID, "transient SMTP failure"); storeErr != nil {
+				return OutcomeRetry, errors.Join(err, storeErr)
+			}
+			return OutcomeRetry, err
+		}
+	}
+	if err := useCase.store.MarkSent(ctx, delivery.ID, useCase.now()); err != nil {
+		return OutcomeRetry, err
+	}
+	if useCase.inApp != nil && event.Data.Recipient.AccountID != uuid.Nil {
+		_, err := useCase.inApp.Create(ctx, &models.Notification{
+			UserID:  event.Data.Recipient.AccountID,
+			Type:    models.NotificationTypeAnnouncementCreated,
+			Title:   event.Data.Title,
+			Message: fmt.Sprintf("%s: %s", event.Data.TournamentName, announcementPreview(event.Data.Body)),
+			Link:    fmt.Sprintf("/tournaments/%s", event.Data.TournamentID),
+		})
+		if err != nil {
+			slog.WarnContext(ctx, "announcement in-app notification not created",
+				"event_id", event.ID, "account_id", event.Data.Recipient.AccountID, "error", err)
+		}
+	}
+	return OutcomeSent, nil
 }
