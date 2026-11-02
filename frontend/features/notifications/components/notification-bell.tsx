@@ -10,6 +10,7 @@ import {
   CheckCheck,
   BellOff,
   ExternalLink,
+  Megaphone,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -56,6 +57,12 @@ function getNotificationIcon(type: string) {
       return (
         <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400">
           <Receipt className="size-4" />
+        </div>
+      );
+    case "ANNOUNCEMENT_CREATED":
+      return (
+        <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+          <Megaphone className="size-4" />
         </div>
       );
     default:
