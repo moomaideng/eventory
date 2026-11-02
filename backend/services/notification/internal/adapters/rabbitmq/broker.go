@@ -90,6 +90,7 @@ func (broker *Broker) declareTopology(prefetch int) error {
 		events.RegistrationApprovedType,
 		events.RegistrationRejectedType,
 		events.PaymentConfirmedType,
+		events.AnnouncementCreatedType,
 	} {
 		if err := broker.consumeCh.QueueBind(MainQueue, key, DomainExchange, false, nil); err != nil {
 			return err
@@ -117,6 +118,7 @@ func (broker *Broker) declareTopology(prefetch int) error {
 		events.RegistrationApprovedType,
 		events.RegistrationRejectedType,
 		events.PaymentConfirmedType,
+		events.AnnouncementCreatedType,
 	} {
 		if err := broker.consumeCh.QueueBind(DeadQueue, key, DeadExchange, false, nil); err != nil {
 			return err
