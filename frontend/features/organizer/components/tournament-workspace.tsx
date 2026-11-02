@@ -26,6 +26,7 @@ import {
   TournamentStaffSection,
 } from "@/features/tournament-staff";
 import { SponsorshipTierSection } from "@/features/sponsorship";
+import { AnnouncementSection } from "@/features/announcements";
 
 export function TournamentWorkspace({
   tournamentId,
@@ -65,6 +66,8 @@ export function TournamentWorkspace({
           {(() => {
             const isOwner = data.summary.role === "OWNER";
             const canReview = isOwner || data.summary.role === "ADMIN";
+            // Owners and admins may post announcements, like reviewing applications.
+            const canAnnounce = canReview;
             return (
               <>
                 <header className="flex flex-col items-start justify-between gap-5 sm:flex-row sm:items-center">
@@ -168,8 +171,15 @@ export function TournamentWorkspace({
                 <Tabs defaultValue="dashboard">
                   <TabsList>
                     <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
+                    {canAnnounce ? (
+                      <TabsTrigger value="announcements">
+                        Announcements
+                      </TabsTrigger>
+                    ) : null}
                     {isOwner ? (
-                      <TabsTrigger value="form">Registration questions</TabsTrigger>
+                      <TabsTrigger value="form">
+                        Registration questions
+                      </TabsTrigger>
                     ) : null}
                     {isOwner ? (
                       <TabsTrigger value="staff">Manage Staff</TabsTrigger>
@@ -204,6 +214,15 @@ export function TournamentWorkspace({
                       canReview={canReview}
                     />
                   </TabsContent>
+
+                  {canAnnounce ? (
+                    <TabsContent value="announcements" keepMounted>
+                      <AnnouncementSection
+                        tournamentId={tournamentId}
+                        published={data.summary.published}
+                      />
+                    </TabsContent>
+                  ) : null}
 
                   {isOwner ? (
                     <TabsContent value="form" keepMounted>
