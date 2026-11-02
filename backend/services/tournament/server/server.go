@@ -72,8 +72,9 @@ func newApp(db *gorm.DB, mongoDB *mongo.Database, cfg config.Config, accountSvc 
 		}
 	}
 	teamReviews := usecases.NewTeamReviewUseCase(repositories.NewTeamReviewRepository(db), accountSvc, payments, eventPublisher)
+	announcements := usecases.NewAnnouncementUseCase(repositories.NewAnnouncementRepository(db), accountSvc, eventPublisher)
 	return &App{
-		HTTP: newHTTPRouter(db, mongoDB, cfg, accountSvc, teamLobbyUseCase, sponsorships, teamReviews),
+		HTTP: newHTTPRouter(db, mongoDB, cfg, accountSvc, teamLobbyUseCase, sponsorships, teamReviews, announcements),
 		RunSubmissions: func(ctx context.Context) {
 			go sponsorshipPoller(sponsorships).run(ctx)
 			go refundPoller(teamReviews).run(ctx)
@@ -129,7 +130,7 @@ func refundPoller(u *usecases.TeamReviewUseCase) poller[models.TournamentTeam] {
 	}
 }
 
-func newHTTPRouter(db *gorm.DB, mongoDB *mongo.Database, cfg config.Config, accountSvc ports.AccountService, teamLobbyUseCase *usecases.TeamLobbyUseCase, sponsorships *usecases.SponsorshipUseCase, teamReviewUseCase *usecases.TeamReviewUseCase) http.Handler {
+func newHTTPRouter(db *gorm.DB, mongoDB *mongo.Database, cfg config.Config, accountSvc ports.AccountService, teamLobbyUseCase *usecases.TeamLobbyUseCase, sponsorships *usecases.SponsorshipUseCase, teamReviewUseCase *usecases.TeamReviewUseCase, announcementUseCase *usecases.AnnouncementUseCase) http.Handler {
 	router := chi.NewMux()
 	router.Use(telemetry.HTTPMiddleware(config.ServiceName))
 	router.Use(middlewares.RequestID)
@@ -194,7 +195,6 @@ func newHTTPRouter(db *gorm.DB, mongoDB *mongo.Database, cfg config.Config, acco
 	staffUseCase := usecases.NewTournamentStaffUseCase(tournamentStaffRepo, accountSvc)
 	sponsorshipTierUseCase := usecases.NewSponsorshipTierUseCase(sponsorshipTierRepo, tournamentRepo)
 	bracketUseCase := usecases.NewBracketUseCase(bracketRepo)
-	announcementUseCase := usecases.NewAnnouncementUseCase(repositories.NewAnnouncementRepository(db), accountSvc)
 
 	authMiddleware := middlewares.NewAuthMiddleware(api, cfg.SupabaseURL, cfg.Environment)
 	organizerMiddleware := tournamentmiddlewares.NewOrganizerMiddleware(api, accountSvc)
