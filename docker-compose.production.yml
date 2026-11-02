@@ -360,6 +360,8 @@ services:
       ENVIRONMENT: production
       HTTP_PORT: "8084"
       OTEL_EXPORTER_OTLP_ENDPOINT: http://alloy:4318
+      SUPABASE_URL: ${SUPABASE_URL:?SUPABASE_URL is required}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:?CORS_ALLOWED_ORIGINS is required}
       DB_DSN: postgresql://admin:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@postgres:5432/notification_db?sslmode=disable
       AMQP_HOST: rabbitmq
       AMQP_PORT: "5672"
