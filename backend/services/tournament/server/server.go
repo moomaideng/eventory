@@ -194,6 +194,7 @@ func newHTTPRouter(db *gorm.DB, mongoDB *mongo.Database, cfg config.Config, acco
 	staffUseCase := usecases.NewTournamentStaffUseCase(tournamentStaffRepo, accountSvc)
 	sponsorshipTierUseCase := usecases.NewSponsorshipTierUseCase(sponsorshipTierRepo, tournamentRepo)
 	bracketUseCase := usecases.NewBracketUseCase(bracketRepo)
+	announcementUseCase := usecases.NewAnnouncementUseCase(repositories.NewAnnouncementRepository(db), accountSvc)
 
 	authMiddleware := middlewares.NewAuthMiddleware(api, cfg.SupabaseURL, cfg.Environment)
 	organizerMiddleware := tournamentmiddlewares.NewOrganizerMiddleware(api, accountSvc)
@@ -210,6 +211,7 @@ func newHTTPRouter(db *gorm.DB, mongoDB *mongo.Database, cfg config.Config, acco
 	resthandlers.RegisterTeamReviewRoutes(api, auth, teamReviewUseCase)
 	resthandlers.RegisterBracketRoutes(api, auth, bracketUseCase)
 	resthandlers.RegisterSponsorshipRoutes(api, auth, sponsorships)
+	resthandlers.RegisterAnnouncementRoutes(api, auth, announcementUseCase)
 
 	if mongoDB != nil {
 		formRepo := repositories.NewRegistrationFormRepository(mongoDB)
