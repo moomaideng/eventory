@@ -12,9 +12,8 @@ import (
 // AnnouncementAudience is who an announcement is delivered to.
 type AnnouncementAudience struct {
 	TournamentName string
-	// AccountIDs are the members of every accepted team. A solo player is a
-	// one-person team, so they are included too. An account can be in only one
-	// team per tournament, so an ID appears at most once.
+	// AccountIDs are the members of every accepted team, each listed once. A
+	// solo player is a one-person team, so they are included too.
 	AccountIDs []uuid.UUID
 }
 
@@ -138,5 +137,20 @@ func (r *announcementRepository) Audience(
 		return nil, err
 	}
 
-	return &AnnouncementAudience{TournamentName: tournament.Name, AccountIDs: accountIDs}, nil
+	return &AnnouncementAudience{TournamentName: tournament.Name, AccountIDs: uniqueIDs(accountIDs)}, nil
+}
+
+// uniqueIDs drops repeated IDs, keeping the first of each, so nobody is
+// notified twice about the same announcement.
+func uniqueIDs(ids []uuid.UUID) []uuid.UUID {
+	seen := make(map[uuid.UUID]struct{}, len(ids))
+	out := make([]uuid.UUID, 0, len(ids))
+	for _, id := range ids {
+		if _, ok := seen[id]; ok {
+			continue
+		}
+		seen[id] = struct{}{}
+		out = append(out, id)
+	}
+	return out
 }
