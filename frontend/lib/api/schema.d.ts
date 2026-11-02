@@ -368,6 +368,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/tournaments/{id}/announcements": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List tournament announcements
+         * @description Returns a published tournament's announcements, newest first. No sign-in is required. A draft or missing tournament returns 404.
+         */
+        get: operations["list-announcements"];
+        put?: never;
+        /**
+         * Post a tournament announcement
+         * @description Posts an announcement (for example a venue change) to the tournament's announcement list. Only the tournament's owner or an admin may post.
+         */
+        post: operations["create-announcement"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/tournaments/{id}/bracket": {
         parameters: {
             query?: never;
@@ -1118,6 +1142,21 @@ export interface components {
             /** @description Sponsor company or organization name */
             sponsorName: string;
         };
+        AnnouncementResponse: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/AnnouncementResponse.json
+             */
+            readonly $schema?: string;
+            authorName: string;
+            body: string;
+            /** Format: date-time */
+            createdAt: string;
+            id: string;
+            title: string;
+            tournamentId: string;
+        };
         BracketResponse: {
             /**
              * Format: uri
@@ -1126,6 +1165,18 @@ export interface components {
              */
             readonly $schema?: string;
             matches: components["schemas"]["MatchResponse"][] | null;
+        };
+        CreateAnnouncementInputBody: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/CreateAnnouncementInputBody.json
+             */
+            readonly $schema?: string;
+            /** @description Announcement message (plain text) */
+            body: string;
+            /** @description Announcement title */
+            title: string;
         };
         CreateTeamLobbyRequest: {
             /**
@@ -1294,6 +1345,15 @@ export interface components {
              */
             readonly $schema?: string;
             items: components["schemas"]["SponsorResponse"][] | null;
+        };
+        ListAnnouncementsOutputBody: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/ListAnnouncementsOutputBody.json
+             */
+            readonly $schema?: string;
+            items: components["schemas"]["AnnouncementResponse"][] | null;
         };
         ListFormResponsesOutputBody: {
             /**
@@ -2835,6 +2895,74 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SponsorshipResponse"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "list-announcements": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Tournament ID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListAnnouncementsOutputBody"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "create-announcement": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Tournament ID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateAnnouncementInputBody"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnnouncementResponse"];
                 };
             };
             /** @description Error */
