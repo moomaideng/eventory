@@ -109,6 +109,10 @@ services:
       - --tracing.serviceName=traefik
       - --tracing.otlp.http=true
       - --tracing.otlp.http.endpoint=http://alloy:4318/v1/traces
+      # JSON access log with trace_id/span_id, so Traefik spans link to logs in Loki.
+      # Follows TRAEFIK_TRACING: off in plain `task dev`.
+      - --accesslog=${TRAEFIK_TRACING:-false}
+      - --accesslog.format=json
     ports:
       - "127.0.0.1:${BACKEND_PORT:-8080}:80"
     volumes:

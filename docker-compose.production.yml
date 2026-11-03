@@ -86,6 +86,9 @@ services:
       - --tracing.serviceName=traefik
       - --tracing.otlp.http=true
       - --tracing.otlp.http.endpoint=http://alloy:4318/v1/traces
+      # JSON access log with trace_id/span_id, so Traefik spans link to logs in Loki.
+      - --accesslog=true
+      - --accesslog.format=json
       - --certificatesresolvers.letsencrypt.acme.tlschallenge=true
       - --certificatesresolvers.letsencrypt.acme.email=${ACME_EMAIL:?ACME_EMAIL is required}
       - --certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json
@@ -189,6 +192,7 @@ services:
       GRPC_PORT: "9091"
       DB_DSN: postgresql://admin:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@postgres:5432/account_db?sslmode=disable
       OTEL_EXPORTER_OTLP_ENDPOINT: http://alloy:4318
+      LOGGING_LEVEL: debug
       SUPABASE_URL: ${SUPABASE_URL:?SUPABASE_URL is required}
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:?CORS_ALLOWED_ORIGINS is required}
     healthcheck:
@@ -256,6 +260,7 @@ services:
       MONGO_URI: mongodb://admin:${MONGO_PASSWORD:?MONGO_PASSWORD is required}@mongodb:27017/tournament_db?authSource=admin
       MONGO_DB_NAME: tournament_db
       OTEL_EXPORTER_OTLP_ENDPOINT: http://alloy:4318
+      LOGGING_LEVEL: debug
       SUPABASE_URL: ${SUPABASE_URL:?SUPABASE_URL is required}
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:?CORS_ALLOWED_ORIGINS is required}
     healthcheck:
@@ -312,6 +317,7 @@ services:
       DB_DSN: postgresql://admin:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@postgres:5432/payment_db?sslmode=disable
       PAYMENT_SERVICE_KEY: ${PAYMENT_SERVICE_KEY:?PAYMENT_SERVICE_KEY is required}
       OTEL_EXPORTER_OTLP_ENDPOINT: http://alloy:4318
+      LOGGING_LEVEL: debug
       SUPABASE_URL: ${SUPABASE_URL:?SUPABASE_URL is required}
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:?CORS_ALLOWED_ORIGINS is required}
     healthcheck:
@@ -360,6 +366,7 @@ services:
       ENVIRONMENT: production
       HTTP_PORT: "8084"
       OTEL_EXPORTER_OTLP_ENDPOINT: http://alloy:4318
+      LOGGING_LEVEL: debug
       SUPABASE_URL: ${SUPABASE_URL:?SUPABASE_URL is required}
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:?CORS_ALLOWED_ORIGINS is required}
       DB_DSN: postgresql://admin:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@postgres:5432/notification_db?sslmode=disable
@@ -438,6 +445,8 @@ services:
       - traefik.http.routers.frontend.tls=true
       - traefik.http.routers.frontend.tls.certresolver=letsencrypt
       - traefik.http.routers.frontend.priority=1
+      # Don't trace frontend page and asset traffic through the gateway.
+      - traefik.http.routers.frontend.observability.tracing=false
       - traefik.http.routers.frontend.service=frontend
       - traefik.http.routers.frontend-http.rule=Host(`eventory.ddns.net`)
       - traefik.http.routers.frontend-http.entrypoints=web
