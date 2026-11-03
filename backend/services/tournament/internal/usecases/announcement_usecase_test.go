@@ -174,7 +174,7 @@ func TestAnnouncementUseCase_Create(t *testing.T) {
 			{"title of only spaces", "   ", "Body", usecases.ErrAnnouncementTitleRequired},
 			{"empty message", "Title", "", usecases.ErrAnnouncementBodyRequired},
 			{"title over 150 characters", strings.Repeat("a", 151), "Body", usecases.ErrAnnouncementTitleTooLong},
-			{"message over 5000 characters", "Title", strings.Repeat("a", 5001), usecases.ErrAnnouncementBodyTooLong},
+			{"message over 2000 characters", "Title", strings.Repeat("a", 2001), usecases.ErrAnnouncementBodyTooLong},
 			{"Thai title over 150 characters", strings.Repeat("ก", 151), "Body", usecases.ErrAnnouncementTitleTooLong},
 		}
 		for _, tc := range cases {
@@ -193,11 +193,11 @@ func TestAnnouncementUseCase_Create(t *testing.T) {
 	})
 
 	t.Run("counts characters, not bytes", func(t *testing.T) {
-		// 150 Thai letters take 450 bytes, 5000 take 15000: both are within the limits.
+		// 150 Thai letters take 450 bytes, 2000 take 6000: both are within the limits.
 		repo := &mockAnnouncementRepo{audience: newAudience()}
 		uc := usecases.NewAnnouncementUseCase(repo, accSvc, &mockPublisher{})
 
-		_, err := uc.Create(context.Background(), authorID, tournamentID, strings.Repeat("ก", 150), strings.Repeat("ก", 5000))
+		_, err := uc.Create(context.Background(), authorID, tournamentID, strings.Repeat("ก", 150), strings.Repeat("ก", 2000))
 
 		require.NoError(t, err)
 	})

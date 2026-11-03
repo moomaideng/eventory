@@ -244,8 +244,8 @@ func (s *announcementScenarioContext) aUserPreparesAnAnnouncementWhere(situation
 		s.body = ""
 	case "the title is longer than 150 characters":
 		s.title = strings.Repeat("a", 151)
-	case "the message is longer than 5000 characters":
-		s.body = strings.Repeat("a", 5001)
+	case "the message is longer than 2000 characters":
+		s.body = strings.Repeat("a", 2001)
 	case "the user does not manage the tournament":
 		s.expectedBlockStatus = http.StatusNotFound
 		stranger := apptest.NewTestUser()

@@ -2,7 +2,7 @@ import { z } from "zod";
 
 // Same limits as the API, which counts characters (so Thai text is not penalised).
 export const ANNOUNCEMENT_TITLE_MAX = 150;
-export const ANNOUNCEMENT_BODY_MAX = 5000;
+export const ANNOUNCEMENT_BODY_MAX = 2000;
 
 export const announcementSchema = z.object({
   title: z
