@@ -17,7 +17,7 @@ import (
 
 const (
 	announcementTitleMaxLength = 150
-	announcementBodyMaxLength  = 5000
+	announcementBodyMaxLength  = 2000
 
 	// announcementNotifyTimeout bounds how long a post can be held up by
 	// publishing notifications, so a slow broker never stalls the organizer.
@@ -28,7 +28,7 @@ var (
 	ErrAnnouncementTitleRequired = errors.New("title is required")
 	ErrAnnouncementTitleTooLong  = errors.New("title must be at most 150 characters")
 	ErrAnnouncementBodyRequired  = errors.New("body is required")
-	ErrAnnouncementBodyTooLong   = errors.New("body must be at most 5000 characters")
+	ErrAnnouncementBodyTooLong   = errors.New("body must be at most 2000 characters")
 )
 
 // AnnouncementUseCase posts and lists tournament announcements (US3-4).

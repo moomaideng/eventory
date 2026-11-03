@@ -16,7 +16,7 @@ type CreateAnnouncementInput struct {
 	TournamentID uuid.UUID `path:"id" doc:"Tournament ID"`
 	Body         struct {
 		Title string `json:"title" minLength:"1" maxLength:"150" doc:"Announcement title"`
-		Body  string `json:"body" minLength:"1" maxLength:"5000" doc:"Announcement message (plain text)"`
+		Body  string `json:"body" minLength:"1" maxLength:"2000" doc:"Announcement message (plain text)"`
 	}
 }
 
@@ -126,7 +126,7 @@ func announcementHTTPError(err error) error {
 	case errors.Is(err, usecases.ErrAnnouncementBodyRequired):
 		return huma.Error422UnprocessableEntity("Message is required")
 	case errors.Is(err, usecases.ErrAnnouncementBodyTooLong):
-		return huma.Error422UnprocessableEntity("Message must be at most 5000 characters")
+		return huma.Error422UnprocessableEntity("Message must be at most 2000 characters")
 	default:
 		return huma.Error500InternalServerError("Unable to process the announcement request", err)
 	}

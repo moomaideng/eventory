@@ -59,7 +59,7 @@ Feature: Tournament announcements
       | the title contains only spaces                 |
       | the message is empty                           |
       | the title is longer than 150 characters        |
-      | the message is longer than 5000 characters     |
+      | the message is longer than 2000 characters     |
       | the user does not manage the tournament        |
       | the user is only a referee of the tournament   |
 
