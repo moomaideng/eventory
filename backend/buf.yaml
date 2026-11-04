@@ -2,6 +2,7 @@
 version: v2
 modules:
   - path: services/account/api/proto
+  - path: services/payment/api/proto
 lint:
   use:
     - STANDARD

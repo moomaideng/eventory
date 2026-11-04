@@ -62,6 +62,7 @@ func main() {
 	}
 
 	app := server.NewApp(db, mongoDB, appConfig)
+	defer app.Close()
 	go app.RunSubmissions(ctx)
 
 	httpServer := &http.Server{Addr: ":" + appConfig.HTTPPort, Handler: app.HTTP}

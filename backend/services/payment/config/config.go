@@ -9,6 +9,7 @@ import (
 const ServiceName = "payment"
 
 type Config struct {
+	GRPCPort    string               `mapstructure:"grpc_port"`
 	HTTPPort    string               `mapstructure:"http_port"`
 	DBDSN       string               `mapstructure:"db_dsn"`
 	SupabaseURL string               `mapstructure:"supabase_url"`
@@ -25,7 +26,7 @@ func Load() (Config, error) {
 	if err != nil {
 		return Config{}, err
 	}
-	if err := sharedconfig.RequireNonEmpty(map[string]string{"HTTP_PORT": cfg.HTTPPort, "DB_DSN": cfg.DBDSN}); err != nil {
+	if err := sharedconfig.RequireNonEmpty(map[string]string{"HTTP_PORT": cfg.HTTPPort, "GRPC_PORT": cfg.GRPCPort, "DB_DSN": cfg.DBDSN}); err != nil {
 		return Config{}, err
 	}
 	if len(cfg.ServiceKey) < 32 {

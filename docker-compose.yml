@@ -265,7 +265,7 @@ services:
       ENVIRONMENT: development
       DB_DSN: postgresql://${POSTGRES_USER:-admin}:${POSTGRES_PASSWORD:-password123}@postgres:5432/tournament_db?sslmode=disable
       ACCOUNT_GRPC_ADDR: account:9091
-      PAYMENT_URL: http://payment:8083
+      PAYMENT_GRPC_ADDR: payment:9093
       PAYMENT_SERVICE_KEY: ${PAYMENT_SERVICE_KEY:-local-payment-service-key-not-for-production}
       MONGO_URI: mongodb://${MONGO_USER:-admin}:${MONGO_PASSWORD:-password123}@mongodb:27017/tournament_db?authSource=admin
       MONGO_DB_NAME: tournament_db
@@ -324,6 +324,7 @@ services:
     profiles: [apps]
     environment:
       SERVICE: payment
+      GRPC_PORT: "9093"
       ENVIRONMENT: development
       DB_DSN: postgresql://${POSTGRES_USER:-admin}:${POSTGRES_PASSWORD:-password123}@postgres:5432/payment_db?sslmode=disable
       PAYMENT_SERVICE_KEY: ${PAYMENT_SERVICE_KEY:-local-payment-service-key-not-for-production}
@@ -331,6 +332,7 @@ services:
       OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
     ports:
       - "127.0.0.1:8083:8083"
+      - "127.0.0.1:9093:9093"
     healthcheck:
       test:
         [
