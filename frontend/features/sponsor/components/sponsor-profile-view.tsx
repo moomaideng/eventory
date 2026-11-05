@@ -1,5 +1,6 @@
 "use client";
 
+import { Badge } from "@/components/ui/badge";
 import { Pencil } from "lucide-react";
 import {
   Card,
@@ -14,16 +15,14 @@ import { Button } from "@/components/ui/button";
 interface SponsorProfileViewProps {
   sponsorName: string;
   sponsorEmail?: string | null;
-  category?: string;
-  directoryVisible?: boolean;
+  tags: string[];
   onEdit: () => void;
 }
 
 export function SponsorProfileView({
   sponsorName,
   sponsorEmail,
-  category,
-  directoryVisible,
+  tags,
   onEdit,
 }: SponsorProfileViewProps) {
   return (
@@ -31,7 +30,8 @@ export function SponsorProfileView({
       <CardHeader>
         <CardTitle>Sponsor profile</CardTitle>
         <CardDescription>
-          This information is shown to organizers when you sponsor a tournament.
+          Your sponsor name, contact email and tags are visible to organizers in
+          the sponsor directory.
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
@@ -49,12 +49,14 @@ export function SponsorProfileView({
         </div>
         <div className="border-border space-y-2 border-t pt-4">
           <p className="font-medium">Sponsor directory</p>
-          <p className="text-muted-foreground text-sm">
-            {directoryVisible
-              ? "Visible to organizers"
-              : "Hidden from organizers"}
-          </p>
-          {category ? <p className="text-sm">Category: {category}</p> : null}
+          <p className="text-muted-foreground text-sm">Visible to organizers</p>
+          <div className="flex flex-wrap gap-2">
+            {tags.map((tag) => (
+              <Badge key={tag} variant="secondary">
+                {tag}
+              </Badge>
+            ))}
+          </div>
         </div>
       </CardContent>
       <CardFooter className="justify-end">

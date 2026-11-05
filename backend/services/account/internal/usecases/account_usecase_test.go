@@ -2,6 +2,7 @@ package usecases_test
 
 import (
 	"context"
+	"slices"
 	"sort"
 	"strings"
 	"testing"
@@ -112,9 +113,7 @@ func (m *mockAccountRepository) UpsertSponsorProfile(ctx context.Context, profil
 	if existing, exists := m.sponsorProfiles[profile.AccountID]; exists {
 		existing.SponsorName = profile.SponsorName
 		existing.SponsorEmail = profile.SponsorEmail
-		existing.Category = profile.Category
-		existing.DirectoryVisible = profile.DirectoryVisible
-		existing.DirectoryEmailConfirmed = profile.DirectoryEmailConfirmed
+		existing.Tags = profile.Tags
 		return existing, nil
 	}
 	m.sponsorProfiles[profile.AccountID] = profile
@@ -125,13 +124,13 @@ func (m *mockAccountRepository) ListVisibleSponsorProfiles(_ context.Context, se
 	var items []models.SponsorProfile
 	for _, profile := range m.sponsorProfiles {
 		account := m.accounts[profile.AccountID]
-		if account == nil || account.Status != models.AccountStatusActive || !profile.DirectoryVisible || !profile.DirectoryEmailConfirmed || profile.SponsorEmail == "" {
+		if account == nil || account.Status != models.AccountStatusActive || profile.SponsorEmail == "" {
 			continue
 		}
 		if search != "" && !strings.Contains(strings.ToLower(profile.SponsorName), strings.ToLower(search)) {
 			continue
 		}
-		if category != "" && !strings.EqualFold(profile.Category, category) {
+		if category != "" && !slices.Contains(profile.Tags, strings.ToLower(category)) {
 			continue
 		}
 		items = append(items, *profile)
@@ -149,12 +148,14 @@ func (m *mockAccountRepository) ListVisibleSponsorProfiles(_ context.Context, se
 	return items[start:end], total, nil
 }
 
-func (m *mockAccountRepository) ListVisibleSponsorCategories(_ context.Context) ([]string, error) {
+func (m *mockAccountRepository) ListSponsorTags(_ context.Context) ([]string, error) {
 	seen := map[string]bool{}
 	for _, profile := range m.sponsorProfiles {
 		account := m.accounts[profile.AccountID]
-		if account != nil && account.Status == models.AccountStatusActive && profile.DirectoryVisible && profile.DirectoryEmailConfirmed && profile.SponsorEmail != "" {
-			seen[profile.Category] = true
+		if account != nil && account.Status == models.AccountStatusActive && profile.SponsorEmail != "" {
+			for _, tag := range profile.Tags {
+				seen[tag] = true
+			}
 		}
 	}
 	var categories []string
@@ -165,94 +166,73 @@ func (m *mockAccountRepository) ListVisibleSponsorCategories(_ context.Context) 
 	return categories, nil
 }
 
-func TestSponsorDirectoryRequiresOptInAndOrganizer(t *testing.T) {
+func TestSponsorDirectoryListsProfilesAndRequiresOrganizer(t *testing.T) {
 	ctx := context.Background()
 	repo := newMockAccountRepository()
 	uc := usecases.NewAccountUseCase(repo)
-	organizerID, visibleID, hiddenID := uuid.New(), uuid.New(), uuid.New()
-	for _, id := range []uuid.UUID{organizerID, visibleID, hiddenID} {
-		repo.accounts[id] = &models.Account{ID: id, Status: models.AccountStatusActive, Email: "test@example.com"}
+	organizerID, sponsorID, suspendedID := uuid.New(), uuid.New(), uuid.New()
+	for _, id := range []uuid.UUID{organizerID, sponsorID, suspendedID} {
+		repo.accounts[id] = &models.Account{ID: id, Email: "test@example.com", Status: models.AccountStatusActive}
 	}
 	repo.organizerProfiles[organizerID] = &models.OrganizerProfile{AccountID: organizerID, OrganizerName: "Organizer"}
-	for _, id := range []uuid.UUID{visibleID, hiddenID} {
-		if _, err := uc.UpsertSponsorProfile(ctx, id, usecases.UpsertSponsorProfileInput{SponsorName: "Tech Partner"}); err != nil {
+	for _, id := range []uuid.UUID{sponsorID, suspendedID} {
+		_, err := uc.UpsertSponsorProfile(ctx, id, usecases.UpsertSponsorProfileInput{SponsorName: "Test Brand", Tags: []string{" Valorant ", "CHESS", "valorant"}})
+		if err != nil {
 			t.Fatal(err)
 		}
 	}
-	page, err := uc.ListSponsorDirectory(ctx, organizerID, "", "", 1, 12)
-	if err != nil || page.Total != 0 {
-		t.Fatalf("new sponsor should be hidden: page=%+v err=%v", page, err)
+	repo.accounts[suspendedID].Status = models.AccountStatusSuspended
+	page, err := uc.ListSponsorDirectory(ctx, organizerID, "test", "CHESS", 1, 12)
+	if err != nil || page.Total != 1 || len(page.Items) != 1 || page.Items[0].AccountID != sponsorID {
+		t.Fatalf("expected new profile immediately visible, got %+v %v", page, err)
 	}
-	// A profile opted in under the old separate-email flow must confirm sharing its contact email.
-	repo.sponsorProfiles[visibleID].DirectoryVisible = true
-	page, err = uc.ListSponsorDirectory(ctx, organizerID, "", "", 1, 12)
-	if err != nil || page.Total != 0 {
-		t.Fatalf("legacy opt-in must remain hidden until email consent: page=%+v err=%v", page, err)
+	if !slices.Equal(page.Items[0].Tags, []string{"valorant", "chess"}) {
+		t.Fatalf("tags not normalized: %v", page.Items[0].Tags)
 	}
-	category, contactEmail, visible := "Technology", "partners@example.com", true
-	_, err = uc.UpsertSponsorProfile(ctx, visibleID, usecases.UpsertSponsorProfileInput{
-		SponsorName: "Tech Partner", SponsorEmail: &contactEmail, Category: &category, DirectoryVisible: &visible,
-	})
+	if len(page.Tags) != 2 {
+		t.Fatalf("expected two tag filters: %v", page.Tags)
+	}
+	if _, err := uc.ListSponsorDirectory(ctx, sponsorID, "", "", 1, 12); err != usecases.ErrSponsorDirectoryForbidden {
+		t.Fatalf("expected organizer guard: %v", err)
+	}
+	email := "updated@example.com"
+	_, err = uc.UpsertSponsorProfile(ctx, sponsorID, usecases.UpsertSponsorProfileInput{SponsorName: "New Brand", SponsorEmail: &email, Tags: []string{"volleyball"}})
 	if err != nil {
 		t.Fatal(err)
 	}
-	page, err = uc.ListSponsorDirectory(ctx, organizerID, "tech", "technology", 1, 12)
-	if err != nil || page.Total != 1 || page.Items[0].AccountID != visibleID {
-		t.Fatalf("expected opted-in sponsor only: page=%+v err=%v", page, err)
+	page, err = uc.ListSponsorDirectory(ctx, organizerID, "new", "volleyball", 1, 12)
+	if err != nil || page.Total != 1 || page.Items[0].SponsorEmail != email {
+		t.Fatalf("updated profile should remain visible: %+v %v", page, err)
 	}
-	if page.Items[0].SponsorEmail != contactEmail || len(page.Categories) != 1 || page.Categories[0] != category {
-		t.Fatalf("directory must show contact email and category: %+v", page)
-	}
-	if _, err := uc.ListSponsorDirectory(ctx, hiddenID, "", "", 1, 12); err != usecases.ErrSponsorDirectoryForbidden {
-		t.Fatalf("expected organizer guard, got %v", err)
-	}
-	visible = false
-	_, err = uc.UpsertSponsorProfile(ctx, visibleID, usecases.UpsertSponsorProfileInput{SponsorName: "Tech Partner", DirectoryVisible: &visible})
-	if err != nil {
-		t.Fatal(err)
-	}
-	page, err = uc.ListSponsorDirectory(ctx, organizerID, "", "", 1, 12)
+	page, err = uc.ListSponsorDirectory(ctx, organizerID, "", "chess", 1, 12)
 	if err != nil || page.Total != 0 {
-		t.Fatalf("opt-out should hide sponsor: page=%+v err=%v", page, err)
-	}
-	visible = true
-	if _, err := uc.UpsertSponsorProfile(ctx, visibleID, usecases.UpsertSponsorProfileInput{SponsorName: "Tech Partner", DirectoryVisible: &visible}); err != nil {
-		t.Fatal(err)
-	}
-	newEmail := "new@example.com"
-	if _, err := uc.UpsertSponsorProfile(ctx, visibleID, usecases.UpsertSponsorProfileInput{SponsorName: "Tech Partner", SponsorEmail: &newEmail}); err != nil {
-		t.Fatal(err)
-	}
-	page, err = uc.ListSponsorDirectory(ctx, organizerID, "", "", 1, 12)
-	if err != nil || page.Total != 0 {
-		t.Fatalf("changing contact email without fresh consent must hide sponsor: page=%+v err=%v", page, err)
+		t.Fatalf("old tags should no longer match: %+v %v", page, err)
 	}
 }
 
-func TestSponsorDirectoryRequiresValidContactEmailAndCategory(t *testing.T) {
-	ctx := context.Background()
-	repo := newMockAccountRepository()
-	uc := usecases.NewAccountUseCase(repo)
-	id := uuid.New()
-	repo.accounts[id] = &models.Account{ID: id, Email: "", Status: models.AccountStatusActive}
-	category, visible := "Technology", true
-	_, err := uc.UpsertSponsorProfile(ctx, id, usecases.UpsertSponsorProfileInput{SponsorName: "Brand", Category: &category, DirectoryVisible: &visible})
-	if err != usecases.ErrInvalidSponsorDirectory {
-		t.Fatalf("expected validation error, got %v", err)
-	}
-	if repo.sponsorProfiles[id] != nil {
-		t.Fatal("invalid opt-in must not be saved")
-	}
-	badEmail := "not-an-email"
-	_, err = uc.UpsertSponsorProfile(ctx, id, usecases.UpsertSponsorProfileInput{SponsorName: "Brand", SponsorEmail: &badEmail, Category: &category, DirectoryVisible: &visible})
-	if err != usecases.ErrInvalidSponsorDirectory {
-		t.Fatalf("invalid contact email should be rejected, got %v", err)
-	}
-	unknownCategory := "Tech"
-	validEmail := "brand@example.com"
-	_, err = uc.UpsertSponsorProfile(ctx, id, usecases.UpsertSponsorProfileInput{SponsorName: "Brand", SponsorEmail: &validEmail, Category: &unknownCategory, DirectoryVisible: &visible})
-	if err != usecases.ErrInvalidSponsorDirectory {
-		t.Fatalf("unlisted category should be rejected, got %v", err)
+func TestSponsorProfileRequiresValidEmailAndTags(t *testing.T) {
+	for _, tc := range []struct {
+		name, email string
+		tags        []string
+	}{
+		{"empty tags", "brand@example.com", nil},
+		{"blank tags", "brand@example.com", []string{"  "}},
+		{"long tag", "brand@example.com", []string{strings.Repeat("a", 41)}},
+		{"many tags", "brand@example.com", []string{"1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11"}},
+		{"bad email", "invalid", []string{"chess"}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			repo := newMockAccountRepository()
+			id := uuid.New()
+			repo.accounts[id] = &models.Account{ID: id, Email: tc.email}
+			_, err := usecases.NewAccountUseCase(repo).UpsertSponsorProfile(context.Background(), id, usecases.UpsertSponsorProfileInput{SponsorName: "Brand", SponsorEmail: &tc.email, Tags: tc.tags})
+			if err != usecases.ErrInvalidSponsorDirectory {
+				t.Fatalf("expected validation error, got %v", err)
+			}
+			if len(repo.sponsorProfiles) != 0 {
+				t.Fatal("invalid profile was saved")
+			}
+		})
 	}
 }
 

@@ -1,10 +1,17 @@
 import { z } from "zod";
-import { sponsorCategories } from "./categories";
 
-/**
- * Validates the sponsor profile form (#63) before sending to
- * upsert-my-sponsor-profile. Mirrors UpsertSponsorProfileRequest.
- */
+export const sponsorTagsSchema = z
+  .array(z.string())
+  .transform((tags) => [
+    ...new Set(tags.map((tag) => tag.trim().toLowerCase()).filter(Boolean)),
+  ])
+  .pipe(
+    z
+      .array(z.string().max(40, "Each tag must be 40 characters or fewer."))
+      .min(1, "Enter at least one tag.")
+      .max(10, "Use up to 10 tags.")
+  );
+
 export const sponsorOnboardingSchema = z.object({
   sponsorName: z
     .string()
@@ -14,25 +21,10 @@ export const sponsorOnboardingSchema = z.object({
   sponsorEmail: z
     .string()
     .trim()
-    .transform((val) => (val === "" ? undefined : val))
-    .pipe(z.string().email("Enter a valid email address.").optional()),
+    .email("Enter a valid contact email.")
+    .max(255),
+  tags: sponsorTagsSchema,
 });
-
+export const sponsorProfileSchema = sponsorOnboardingSchema;
 export type SponsorOnboardingValues = z.infer<typeof sponsorOnboardingSchema>;
-
-export const sponsorProfileSchema = sponsorOnboardingSchema
-  .extend({
-    category: z.union([z.enum(sponsorCategories), z.literal("")]).optional(),
-    directoryVisible: z.boolean().optional(),
-  })
-  .refine(
-    (value) =>
-      !value.directoryVisible ||
-      Boolean(value.category && value.sponsorEmail),
-    {
-      message: "Choose a category and enter a contact email before joining the directory.",
-      path: ["directoryVisible"],
-    }
-  );
-
 export type SponsorProfileInput = z.infer<typeof sponsorProfileSchema>;

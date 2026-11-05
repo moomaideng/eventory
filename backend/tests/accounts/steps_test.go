@@ -252,6 +252,7 @@ func (s *accountScenarioContext) theUserUpsertsTheirSponsorProfile(sponsorName, 
 	body := handlers.UpsertSponsorProfileRequest{
 		SponsorName:  sponsorName,
 		SponsorEmail: &email,
+		Tags:         []string{"gaming"},
 	}
 	resp, err := s.client.Do(http.MethodPut, "/accounts/me/sponsor-profile", body, s.currentUser.AuthHeaders())
 	if err != nil {
@@ -315,6 +316,7 @@ func (s *accountScenarioContext) theAccountOwnerHasAnExistingRoleProfile(role st
 		resp, err := s.client.Do(http.MethodPut, "/accounts/me/sponsor-profile", handlers.UpsertSponsorProfileRequest{
 			SponsorName:  s.existingProfileName,
 			SponsorEmail: &email,
+			Tags:         []string{"gaming"},
 		}, s.currentUser.AuthHeaders())
 		if err != nil {
 			return err

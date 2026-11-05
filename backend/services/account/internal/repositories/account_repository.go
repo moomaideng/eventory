@@ -24,8 +24,8 @@ type AccountRepository interface {
 	UpsertOrganizerProfile(ctx context.Context, profile *models.OrganizerProfile) (*models.OrganizerProfile, error)
 	FindSponsorProfileByAccountID(ctx context.Context, accountID uuid.UUID) (*models.SponsorProfile, error)
 	UpsertSponsorProfile(ctx context.Context, profile *models.SponsorProfile) (*models.SponsorProfile, error)
-	ListVisibleSponsorProfiles(ctx context.Context, search, category string, page, pageSize int) ([]models.SponsorProfile, int64, error)
-	ListVisibleSponsorCategories(ctx context.Context) ([]string, error)
+	ListVisibleSponsorProfiles(ctx context.Context, search, tag string, page, pageSize int) ([]models.SponsorProfile, int64, error)
+	ListSponsorTags(ctx context.Context) ([]string, error)
 }
 
 // accountRepositoryImpl is the concrete implementation of AccountRepository using GORM.
@@ -181,9 +181,7 @@ func (r *accountRepositoryImpl) UpsertSponsorProfile(ctx context.Context, profil
 				if rerr := r.db.WithContext(ctx).Where("account_id = ?", profile.AccountID).First(&fallback).Error; rerr == nil {
 					fallback.SponsorName = profile.SponsorName
 					fallback.SponsorEmail = profile.SponsorEmail
-					fallback.Category = profile.Category
-					fallback.DirectoryVisible = profile.DirectoryVisible
-					fallback.DirectoryEmailConfirmed = profile.DirectoryEmailConfirmed
+					fallback.Tags = profile.Tags
 					if err := r.db.WithContext(ctx).Save(&fallback).Error; err != nil {
 						return nil, err
 					}
@@ -198,27 +196,25 @@ func (r *accountRepositoryImpl) UpsertSponsorProfile(ctx context.Context, profil
 
 	existing.SponsorName = profile.SponsorName
 	existing.SponsorEmail = profile.SponsorEmail
-	existing.Category = profile.Category
-	existing.DirectoryVisible = profile.DirectoryVisible
-	existing.DirectoryEmailConfirmed = profile.DirectoryEmailConfirmed
+	existing.Tags = profile.Tags
 	if err := r.db.WithContext(ctx).Save(&existing).Error; err != nil {
 		return nil, err
 	}
 	return &existing, nil
 }
 
-// ListVisibleSponsorProfiles returns only sponsors that opted in and have a contact address.
-func (r *accountRepositoryImpl) ListVisibleSponsorProfiles(ctx context.Context, search, category string, page, pageSize int) ([]models.SponsorProfile, int64, error) {
+// ListVisibleSponsorProfiles returns only active sponsor profiles with a contact address.
+func (r *accountRepositoryImpl) ListVisibleSponsorProfiles(ctx context.Context, search, tag string, page, pageSize int) ([]models.SponsorProfile, int64, error) {
 	query := r.db.WithContext(ctx).Model(&models.SponsorProfile{}).
 		Joins("JOIN accounts ON accounts.id = sponsor_profiles.account_id").
-		Where("sponsor_profiles.directory_visible = ? AND sponsor_profiles.directory_email_confirmed = ? AND sponsor_profiles.sponsor_email <> ? AND accounts.status = ?", true, true, "", models.AccountStatusActive)
+		Where("sponsor_profiles.sponsor_email <> ? AND accounts.status = ?", "", models.AccountStatusActive)
 	if search != "" {
 		// Escape LIKE wildcards so the search box treats input as plain text.
 		escaped := strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`).Replace(strings.ToLower(search))
 		query = query.Where(`LOWER(sponsor_profiles.sponsor_name) LIKE ? ESCAPE '\'`, "%"+escaped+"%")
 	}
-	if category != "" {
-		query = query.Where("LOWER(sponsor_profiles.category) = ?", strings.ToLower(category))
+	if tag != "" {
+		query = query.Where("jsonb_exists(sponsor_profiles.tags, ?)", strings.ToLower(tag))
 	}
 	var total int64
 	if err := query.Count(&total).Error; err != nil {
@@ -231,11 +227,10 @@ func (r *accountRepositoryImpl) ListVisibleSponsorProfiles(ctx context.Context, 
 	return profiles, total, nil
 }
 
-func (r *accountRepositoryImpl) ListVisibleSponsorCategories(ctx context.Context) ([]string, error) {
-	var categories []string
-	err := r.db.WithContext(ctx).Model(&models.SponsorProfile{}).
-		Joins("JOIN accounts ON accounts.id = sponsor_profiles.account_id").
-		Where("sponsor_profiles.directory_visible = ? AND sponsor_profiles.directory_email_confirmed = ? AND sponsor_profiles.sponsor_email <> ? AND accounts.status = ?", true, true, "", models.AccountStatusActive).
-		Distinct("sponsor_profiles.category").Order("sponsor_profiles.category ASC").Pluck("sponsor_profiles.category", &categories).Error
-	return categories, err
+func (r *accountRepositoryImpl) ListSponsorTags(ctx context.Context) ([]string, error) {
+	var tags []string
+	err := r.db.WithContext(ctx).Raw(`SELECT DISTINCT jsonb_array_elements_text(s.tags) AS tag
+ FROM sponsor_profiles s JOIN accounts a ON a.id = s.account_id
+ WHERE s.sponsor_email <> '' AND a.status = ? ORDER BY tag`, models.AccountStatusActive).Scan(&tags).Error
+	return tags, err
 }
