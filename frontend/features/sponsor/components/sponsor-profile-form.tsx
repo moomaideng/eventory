@@ -32,27 +32,19 @@ import {
   FieldLabel,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
-import { sponsorCategories } from "../categories";
+import { SponsorTagsField } from "./sponsor-tags-field";
 import { sponsorProfileSchema, type SponsorProfileInput } from "../schemas";
 
 type FieldErrors = Partial<
-  Record<
-    | "sponsorName"
-    | "sponsorEmail"
-    | "category"
-    | "directoryVisible",
-    string
-  >
+  Record<"sponsorName" | "sponsorEmail" | "tags", string>
 >;
 
 interface SponsorProfileFormProps {
   initialName: string;
   initialEmail: string;
-  initialCategory: string;
-  initialDirectoryVisible: boolean;
+  initialTags: string[];
   onCancel: () => void;
   onConfirmSave: (data: SponsorProfileInput) => Promise<boolean>;
   isSaving: boolean;
@@ -62,8 +54,7 @@ interface SponsorProfileFormProps {
 export function SponsorProfileForm({
   initialName,
   initialEmail,
-  initialCategory,
-  initialDirectoryVisible,
+  initialTags,
   onCancel,
   onConfirmSave,
   isSaving,
@@ -71,14 +62,8 @@ export function SponsorProfileForm({
 }: SponsorProfileFormProps) {
   const [sponsorName, setSponsorName] = useState(initialName);
   const [sponsorEmail, setSponsorEmail] = useState(initialEmail);
-  const [category, setCategory] = useState(
-    sponsorCategories.some((option) => option === initialCategory)
-      ? initialCategory
-      : initialCategory ? "Other" : ""
-  );
-  const [directoryVisible, setDirectoryVisible] = useState(
-    initialDirectoryVisible
-  );
+  const [tags, setTags] = useState(initialTags);
+  const [tagDraft, setTagDraft] = useState("");
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [dialogOpen, setDialogOpen] = useState(false);
   const [pendingData, setPendingData] = useState<SponsorProfileInput | null>(
@@ -91,8 +76,7 @@ export function SponsorProfileForm({
     const result = sponsorProfileSchema.safeParse({
       sponsorName,
       sponsorEmail,
-      category,
-      directoryVisible,
+      tags: [...tags, tagDraft],
     });
 
     if (!result.success) {
@@ -100,8 +84,7 @@ export function SponsorProfileForm({
       setFieldErrors({
         sponsorName: flat.sponsorName?.[0],
         sponsorEmail: flat.sponsorEmail?.[0],
-        category: flat.category?.[0],
-        directoryVisible: flat.directoryVisible?.[0],
+        tags: flat.tags?.[0],
       });
       return;
     }
@@ -129,7 +112,8 @@ export function SponsorProfileForm({
       <CardHeader>
         <CardTitle>Sponsor profile</CardTitle>
         <CardDescription>
-          This information is shown to organizers when you sponsor a tournament.
+          Your sponsor name, contact email and tags are visible to organizers in
+          the sponsor directory.
         </CardDescription>
       </CardHeader>
       <form onSubmit={handleSubmit} noValidate>
@@ -173,76 +157,20 @@ export function SponsorProfileForm({
                 aria-invalid={Boolean(fieldErrors.sponsorEmail)}
               />
               <FieldDescription>
-                Organizers can see this email when you choose to appear in the sponsor directory.
+                Organizers can use this email to contact you from the sponsor
+                directory.
               </FieldDescription>
               {fieldErrors.sponsorEmail ? (
                 <FieldError>{fieldErrors.sponsorEmail}</FieldError>
               ) : null}
             </Field>
-            <div className="border-border space-y-4 rounded-lg border p-4">
-              <div>
-                <p className="font-medium">Sponsor directory</p>
-                <p className="text-muted-foreground text-sm">
-                  Organizers can find you only when you choose to appear here.
-                  New profiles start hidden.
-                </p>
-              </div>
-              <Field data-invalid={Boolean(fieldErrors.category)}>
-                <FieldLabel htmlFor="sponsor-category">
-                  Business category
-                </FieldLabel>
-                <Select
-                  items={sponsorCategories.map((option) => ({ label: option, value: option }))}
-                  value={category || null}
-                  onValueChange={(value) => {
-                    setCategory(String(value ?? ""));
-                    setFieldErrors((prev) => ({
-                      ...prev,
-                      category: undefined,
-                    }));
-                  }}
-                >
-                  <SelectTrigger id="sponsor-category" className="w-full" aria-invalid={Boolean(fieldErrors.category)}>
-                    <SelectValue placeholder="Choose a category" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectGroup>
-                      {sponsorCategories.map((option) => (
-                        <SelectItem key={option} value={option}>{option}</SelectItem>
-                      ))}
-                    </SelectGroup>
-                  </SelectContent>
-                </Select>
-                {fieldErrors.category ? (
-                  <FieldError>{fieldErrors.category}</FieldError>
-                ) : null}
-              </Field>
-              <label
-                className="flex items-start gap-3 text-sm"
-                htmlFor="directory-visible"
-              >
-                <input
-                  id="directory-visible"
-                  type="checkbox"
-                  checked={directoryVisible}
-                  className="border-input accent-primary mt-0.5 size-4 rounded border"
-                  onChange={(event) => {
-                    setDirectoryVisible(event.target.checked);
-                    setFieldErrors((prev) => ({
-                      ...prev,
-                      directoryVisible: undefined,
-                    }));
-                  }}
-                />
-                <span>
-                  Show my sponsor name, category and contact email to
-                  organizers
-                </span>
-              </label>
-              {fieldErrors.directoryVisible ? (
-                <FieldError>{fieldErrors.directoryVisible}</FieldError>
-              ) : null}
-            </div>
+            <SponsorTagsField
+              value={tags}
+              onChange={setTags}
+              draft={tagDraft}
+              onDraftChange={setTagDraft}
+              error={fieldErrors.tags}
+            />
           </FieldGroup>
         </CardContent>
         <CardFooter className="justify-end gap-3">
@@ -261,9 +189,8 @@ export function SponsorProfileForm({
           <AlertDialogHeader>
             <AlertDialogTitle>Save changes?</AlertDialogTitle>
             <AlertDialogDescription>
-              {pendingData?.directoryVisible
-                ? "Your sponsor name, category and contact email will be available to organizers in the directory."
-                : "Your sponsor profile will be saved. Your directory listing will remain hidden."}
+              Your sponsor name, tags and contact email will be available to
+              organizers in the directory.
             </AlertDialogDescription>
           </AlertDialogHeader>
           {saveError ? (

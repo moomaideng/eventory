@@ -131,8 +131,7 @@ export function useSponsorProfile(
             body: {
               sponsorName: validation.data.sponsorName,
               sponsorEmail: validation.data.sponsorEmail,
-              category: validation.data.category,
-              directoryVisible: validation.data.directoryVisible,
+              tags: validation.data.tags,
             },
           }
         );

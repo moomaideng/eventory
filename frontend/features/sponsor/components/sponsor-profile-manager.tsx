@@ -20,8 +20,7 @@ import { SponsorProfileView } from "./sponsor-profile-view";
 interface SponsorProfileData {
   sponsorName: string;
   sponsorEmail?: string | null;
-  category?: string;
-  directoryVisible?: boolean;
+  tags?: string[] | null;
 }
 
 export function SponsorProfileManager() {
@@ -62,8 +61,7 @@ export function SponsorProfileManager() {
           body: {
             sponsorName: data.sponsorName,
             sponsorEmail: data.sponsorEmail,
-            category: data.category,
-            directoryVisible: data.directoryVisible,
+            tags: data.tags,
           },
         }
       );
@@ -123,8 +121,7 @@ export function SponsorProfileManager() {
       <SponsorProfileForm
         initialName={current.sponsorName}
         initialEmail={current.sponsorEmail ?? ""}
-        initialCategory={current.category ?? ""}
-        initialDirectoryVisible={current.directoryVisible ?? false}
+        initialTags={current.tags ?? []}
         onCancel={() => setMode("view")}
         onConfirmSave={handleConfirmSave}
         isSaving={isSaving}
@@ -137,8 +134,7 @@ export function SponsorProfileManager() {
     <SponsorProfileView
       sponsorName={current.sponsorName}
       sponsorEmail={current.sponsorEmail}
-      category={current.category}
-      directoryVisible={current.directoryVisible}
+      tags={current.tags ?? []}
       onEdit={() => setMode("edit")}
     />
   );

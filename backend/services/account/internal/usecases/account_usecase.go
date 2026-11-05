@@ -25,7 +25,7 @@ var (
 	ErrSponsorProfileNotFound    = errors.New("sponsor profile not found")
 	ErrInvalidOrganizerName      = errors.New("organizer name cannot be empty")
 	ErrInvalidSponsorName        = errors.New("sponsor name cannot be empty")
-	ErrInvalidSponsorDirectory   = errors.New("valid contact email and category are required when appearing in the sponsor directory")
+	ErrInvalidSponsorDirectory   = errors.New("a valid contact email and 1 to 10 tags of at most 40 characters are required")
 	ErrSponsorDirectoryForbidden = errors.New("an active organizer profile is required")
 )
 
@@ -51,18 +51,17 @@ type UpsertOrganizerProfileInput struct {
 
 // UpsertSponsorProfileInput specifies input parameters for creating or updating a sponsor profile.
 type UpsertSponsorProfileInput struct {
-	SponsorName      string
-	SponsorEmail     *string
-	Category         *string
-	DirectoryVisible *bool
+	SponsorName  string
+	SponsorEmail *string
+	Tags         []string
 }
 
 type SponsorDirectoryPage struct {
-	Items      []models.SponsorProfile
-	Categories []string
-	Total      int64
-	Page       int
-	PageSize   int
+	Items    []models.SponsorProfile
+	Tags     []string
+	Total    int64
+	Page     int
+	PageSize int
 }
 
 // AccountUseCase handles core business logic for user accounts.
@@ -434,59 +433,21 @@ func (u *AccountUseCase) UpsertSponsorProfile(ctx context.Context, accountID uui
 		}
 	}
 
-	existing, err := u.accountRepo.FindSponsorProfileByAccountID(ctx, accountID)
+	tags, err := models.NormalizeSponsorTags(input.Tags)
 	if err != nil {
-		return nil, err
-	}
-	profile := &models.SponsorProfile{
-		AccountID:    accountID,
-		SponsorName:  name,
-		SponsorEmail: email,
-	}
-	if existing != nil {
-		profile.Category = existing.Category
-		profile.DirectoryVisible = existing.DirectoryVisible
-		profile.DirectoryEmailConfirmed = existing.DirectoryEmailConfirmed
-	}
-	if input.Category != nil {
-		profile.Category = strings.TrimSpace(*input.Category)
-		if profile.Category != "" && !validSponsorCategory(profile.Category) {
-			return nil, ErrInvalidSponsorDirectory
-		}
-	}
-	if input.DirectoryVisible != nil {
-		profile.DirectoryVisible = *input.DirectoryVisible
-		profile.DirectoryEmailConfirmed = *input.DirectoryVisible
-	} else if existing != nil && profile.SponsorEmail != existing.SponsorEmail {
-		profile.DirectoryVisible = false
-		profile.DirectoryEmailConfirmed = false
-	}
-	if len(profile.Category) > 80 || len(profile.SponsorEmail) > 255 {
 		return nil, ErrInvalidSponsorDirectory
 	}
-	if profile.DirectoryVisible {
-		parsed, parseErr := mail.ParseAddress(profile.SponsorEmail)
-		if profile.Category == "" || parseErr != nil || parsed.Address != profile.SponsorEmail {
-			return nil, ErrInvalidSponsorDirectory
-		}
+	parsed, parseErr := mail.ParseAddress(email)
+	if len(email) > 255 || parseErr != nil || parsed.Address != email {
+		return nil, ErrInvalidSponsorDirectory
 	}
+	profile := &models.SponsorProfile{AccountID: accountID, SponsorName: name, SponsorEmail: email, Tags: tags}
 
 	return u.accountRepo.UpsertSponsorProfile(ctx, profile)
 }
 
-func validSponsorCategory(category string) bool {
-	switch category {
-	case "Technology", "Gaming & Esports", "Food & Beverage", "Fashion & Apparel",
-		"Health & Wellness", "Education", "Finance", "Travel & Hospitality",
-		"Media & Entertainment", "Other":
-		return true
-	default:
-		return false
-	}
-}
-
-// ListSponsorDirectory is available only to active organizers. The repository enforces opt-in visibility.
-func (u *AccountUseCase) ListSponsorDirectory(ctx context.Context, organizerID uuid.UUID, search, category string, page, pageSize int) (*SponsorDirectoryPage, error) {
+// ListSponsorDirectory is available only to active organizers. Creating a sponsor profile makes it visible to organizers.
+func (u *AccountUseCase) ListSponsorDirectory(ctx context.Context, organizerID uuid.UUID, search, tag string, page, pageSize int) (*SponsorDirectoryPage, error) {
 	account, err := u.accountRepo.FindByID(ctx, organizerID)
 	if err != nil {
 		return nil, err
@@ -511,26 +472,26 @@ func (u *AccountUseCase) ListSponsorDirectory(ctx context.Context, organizerID u
 		pageSize = 50
 	}
 	search = strings.TrimSpace(search)
-	category = strings.TrimSpace(category)
+	tag = strings.ToLower(strings.TrimSpace(tag))
 	if len(search) > 100 {
 		search = search[:100]
 	}
-	if len(category) > 80 {
-		category = category[:80]
+	if len(tag) > 40 {
+		tag = tag[:40]
 	}
-	items, total, err := u.accountRepo.ListVisibleSponsorProfiles(ctx, search, category, page, pageSize)
+	items, total, err := u.accountRepo.ListVisibleSponsorProfiles(ctx, search, tag, page, pageSize)
 	if err != nil {
 		return nil, err
 	}
 	if items == nil {
 		items = []models.SponsorProfile{}
 	}
-	categories, err := u.accountRepo.ListVisibleSponsorCategories(ctx)
+	tags, err := u.accountRepo.ListSponsorTags(ctx)
 	if err != nil {
 		return nil, err
 	}
-	if categories == nil {
-		categories = []string{}
+	if tags == nil {
+		tags = []string{}
 	}
-	return &SponsorDirectoryPage{Items: items, Categories: categories, Total: total, Page: page, PageSize: pageSize}, nil
+	return &SponsorDirectoryPage{Items: items, Tags: tags, Total: total, Page: page, PageSize: pageSize}, nil
 }

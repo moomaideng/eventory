@@ -116,18 +116,21 @@ func SeedAccounts(db *gorm.DB) error {
 			AccountID:    accounts[0].ID,
 			SponsorName:  "Alex Ventures (Dev)",
 			SponsorEmail: "dev@eventory.gg",
+			Tags:         []string{"gaming"},
 		},
 		// Somchai: Sponsor Profile Only
 		{
 			AccountID:    accounts[2].ID,
 			SponsorName:  "Bright Future Co.",
 			SponsorEmail: "partnerships@example.com",
+			Tags:         []string{"gaming"},
 		},
 		// Maya: Both Organizer and Sponsor Profiles
 		{
 			AccountID:    accounts[3].ID,
 			SponsorName:  "Maya Works Studio",
 			SponsorEmail: "studio@example.com",
+			Tags:         []string{"gaming"},
 		},
 	}
 

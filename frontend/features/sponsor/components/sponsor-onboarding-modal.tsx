@@ -31,6 +31,8 @@ import {
   type SponsorOnboardingValues,
 } from "../schemas";
 
+import { SponsorTagsField } from "./sponsor-tags-field";
+
 type FieldErrors = Partial<Record<keyof SponsorOnboardingValues, string>>;
 
 interface SponsorOnboardingFormProps {
@@ -56,6 +58,8 @@ function SponsorOnboardingForm({
 
   const [sponsorName, setSponsorName] = useState(user.displayName || "");
   const [sponsorEmail, setSponsorEmail] = useState(user.email || "");
+  const [tags, setTags] = useState<string[]>([]);
+  const [tagDraft, setTagDraft] = useState("");
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [apiError, setApiError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -67,6 +71,7 @@ function SponsorOnboardingForm({
     const validation = sponsorOnboardingSchema.safeParse({
       sponsorName,
       sponsorEmail,
+      tags: [...tags, tagDraft],
     });
 
     if (!validation.success) {
@@ -88,6 +93,7 @@ function SponsorOnboardingForm({
       const { data, error } = await upsertProfile({
         sponsorName: validation.data.sponsorName,
         sponsorEmail: validation.data.sponsorEmail,
+        tags: validation.data.tags,
       });
 
       if (error || !data) {
@@ -118,19 +124,20 @@ function SponsorOnboardingForm({
         <AlertDialogTitle className="text-xl font-bold">
           Set Up Sponsor Profile
         </AlertDialogTitle>
-        <AlertDialogDescription className="text-sm text-muted-foreground">
-          Choose a sponsor or brand name and contact email to start sponsoring tournaments.
+        <AlertDialogDescription className="text-muted-foreground text-sm">
+          Create your sponsor profile to join the directory. Your sponsor name,
+          contact email and tags will be visible to organizers.
         </AlertDialogDescription>
       </AlertDialogHeader>
 
       {/* Connected Account Identity Card */}
-      <div className="mt-1 flex items-center justify-between gap-3 rounded-lg border border-border/70 bg-muted/30 p-3">
+      <div className="border-border/70 bg-muted/30 mt-1 flex items-center justify-between gap-3 rounded-lg border p-3">
         <div className="flex min-w-0 items-center gap-3">
-          <Avatar size="default" className="border border-border">
+          <Avatar size="default" className="border-border border">
             {user.avatarUrl && (
               <AvatarImage src={user.avatarUrl} alt={user.displayName} />
             )}
-            <AvatarFallback className="font-semibold text-xs uppercase">
+            <AvatarFallback className="text-xs font-semibold uppercase">
               {user.displayName?.charAt(0) || user.email.charAt(0) || "S"}
             </AvatarFallback>
           </Avatar>
@@ -138,7 +145,7 @@ function SponsorOnboardingForm({
             <span className="text-muted-foreground text-xs font-medium">
               Connected Account
             </span>
-            <span className="truncate text-sm font-semibold text-foreground">
+            <span className="text-foreground truncate text-sm font-semibold">
               {user.email}
             </span>
           </div>
@@ -221,13 +228,22 @@ function SponsorOnboardingForm({
               <FieldError>{fieldErrors.sponsorEmail}</FieldError>
             )}
           </Field>
+          <SponsorTagsField
+            id="onboarding-sponsor-tags"
+            value={tags}
+            onChange={setTags}
+            draft={tagDraft}
+            onDraftChange={setTagDraft}
+            error={fieldErrors.tags}
+            disabled={isSubmitting}
+          />
         </FieldGroup>
 
         {/* API Error Message */}
         {apiError && (
           <div
             role="alert"
-            className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive"
+            className="border-destructive/30 bg-destructive/10 text-destructive rounded-lg border p-3 text-sm"
           >
             {apiError}
           </div>
@@ -337,7 +353,7 @@ export function SponsorOnboardingModal({
         }
       }}
     >
-      <AlertDialogContent className="sm:max-w-md">
+      <AlertDialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-xl">
         <SponsorOnboardingForm
           key={user.id}
           user={user}

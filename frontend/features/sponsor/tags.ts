@@ -1,4 +1,4 @@
-export const sponsorCategories = [
+export const suggestedSponsorTags = [
   "Technology",
   "Gaming & Esports",
   "Food & Beverage",
@@ -8,5 +8,10 @@ export const sponsorCategories = [
   "Finance",
   "Travel & Hospitality",
   "Media & Entertainment",
-  "Other",
 ] as const;
+
+export function normalizeSponsorTags(tags: string[]) {
+  return [
+    ...new Set(tags.map((tag) => tag.trim().toLowerCase()).filter(Boolean)),
+  ];
+}

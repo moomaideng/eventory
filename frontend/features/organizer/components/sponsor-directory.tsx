@@ -14,11 +14,13 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty";
+import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
   SelectItem,
+  SelectGroup,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
@@ -27,25 +29,29 @@ import { Skeleton } from "@/components/ui/skeleton";
 export function SponsorDirectory() {
   const { authorizationHeader, isLoading: authLoading } = useAuth();
   const [searchDraft, setSearchDraft] = useState("");
-  const [categoryDraft, setCategoryDraft] = useState("__all__");
+  const [tagDraft, setTagDraft] = useState("");
   const [search, setSearch] = useState("");
-  const [category, setCategory] = useState("");
+  const [tag, setTag] = useState("");
   const [page, setPage] = useState(1);
   const { data, error, isLoading, isFetching, refetch } = $api.useQuery(
     "get",
     "/api/v1/accounts/sponsors",
     {
-      params: { query: { search, category, page, pageSize: 12 } },
+      params: { query: { search, tag, page, pageSize: 12 } },
       headers: { Authorization: authorizationHeader ?? "" },
     },
-    { enabled: Boolean(authorizationHeader), retry: false }
+    {
+      enabled: Boolean(authorizationHeader),
+      retry: false,
+      placeholderData: (previousData) => previousData,
+    }
   );
 
   function applyFilters(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setPage(1);
     setSearch(searchDraft.trim());
-    setCategory(categoryDraft === "__all__" ? "" : categoryDraft);
+    setTag(tagDraft === "" ? "" : tagDraft);
   }
 
   return (
@@ -56,8 +62,7 @@ export function SponsorDirectory() {
         </p>
         <h1 className="text-2xl font-bold sm:text-3xl">Sponsor directory</h1>
         <p className="text-muted-foreground text-sm">
-          Find sponsors who chose to share their contact details with
-          organizers.
+          Find sponsor profiles and contact them about your tournament.
         </p>
       </header>
 
@@ -82,32 +87,34 @@ export function SponsorDirectory() {
         </div>
         <div>
           <label
-            htmlFor="sponsor-category-filter"
+            htmlFor="sponsor-tag-filter"
             className="mb-1 block text-sm font-medium"
           >
-            Category
+            Tag
           </label>
           <Select
             items={[
-              { label: "All categories", value: "__all__" },
-              ...(data?.categories ?? []).map((value) => ({
+              { label: "All tags", value: "" },
+              ...(data?.tags ?? []).map((value) => ({
                 label: value,
                 value,
               })),
             ]}
-            value={categoryDraft}
-            onValueChange={(value) => setCategoryDraft(String(value))}
+            value={tagDraft}
+            onValueChange={(value) => setTagDraft(String(value))}
           >
-            <SelectTrigger id="sponsor-category-filter" className="w-full">
+            <SelectTrigger id="sponsor-tag-filter" className="w-full">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="__all__">All categories</SelectItem>
-              {(data?.categories ?? []).map((value) => (
-                <SelectItem key={value} value={value}>
-                  {value}
-                </SelectItem>
-              ))}
+              <SelectGroup>
+                <SelectItem value="">All tags</SelectItem>
+                {(data?.tags ?? []).map((value) => (
+                  <SelectItem key={value} value={value}>
+                    {value}
+                  </SelectItem>
+                ))}
+              </SelectGroup>
             </SelectContent>
           </Select>
         </div>
@@ -164,19 +171,19 @@ export function SponsorDirectory() {
             </EmptyMedia>
             <EmptyTitle>No sponsors found</EmptyTitle>
             <EmptyDescription>
-              Try a different name or category. Sponsors appear here only after
-              they opt in.
+              Try a different name or tag. Sponsors appear here after creating a
+              profile.
             </EmptyDescription>
           </EmptyHeader>
-          {page > 1 || search || category ? (
+          {page > 1 || search || tag ? (
             <Button
               variant="outline"
               onClick={() => {
                 setPage(1);
                 setSearch("");
-                setCategory("");
+                setTag("");
                 setSearchDraft("");
-                setCategoryDraft("__all__");
+                setTagDraft("");
               }}
             >
               Clear filters
@@ -198,9 +205,13 @@ export function SponsorDirectory() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  <p className="text-muted-foreground text-sm">
-                    {sponsor.category}
-                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {(sponsor.tags ?? []).map((tag) => (
+                      <Badge key={tag} variant="secondary">
+                        {tag}
+                      </Badge>
+                    ))}
+                  </div>
                   <a
                     className="text-primary inline-flex items-center gap-2 text-sm font-medium hover:underline"
                     href={`mailto:${sponsor.contactEmail}`}

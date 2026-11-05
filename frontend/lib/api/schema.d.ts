@@ -1107,19 +1107,17 @@ export interface components {
             readonly $schema?: string;
             /** @description Associated account UUID */
             accountId: string;
-            /** @description Sponsor business category */
-            category: string;
             /**
              * Format: date-time
              * @description Timestamp of profile creation
              */
             createdAt: string;
-            /** @description Whether this sponsor opted in to the organizer directory */
-            directoryVisible: boolean;
             /** @description Contact email for sponsorship communications */
             sponsorEmail: string;
             /** @description Sponsor company or organization name */
             sponsorName: string;
+            /** @description Sponsor interests and business tags */
+            tags: string[] | null;
             /**
              * Format: date-time
              * @description Timestamp of last profile update
@@ -1161,14 +1159,15 @@ export interface components {
              * @example https://example.com/schemas/UpsertSponsorProfileRequest.json
              */
             readonly $schema?: string;
-            /** @description Sponsor business category */
-            category?: string;
-            /** @description Explicit opt-in to the organizer directory */
-            directoryVisible?: boolean;
-            /** @description Contact email for sponsorship communications */
-            sponsorEmail?: string;
+            /**
+             * Format: email
+             * @description Contact email shown to organizers
+             */
+            sponsorEmail: string | null;
             /** @description Sponsor company or organization name */
             sponsorName: string;
+            /** @description Free-form sponsor tags, each up to 40 characters */
+            tags: string[] | null;
         };
         AnnouncementResponse: {
             /**
@@ -2186,9 +2185,10 @@ export interface components {
         };
         SponsorDirectoryItem: {
             accountId: string;
-            category: string;
             contactEmail: string;
             sponsorName: string;
+            /** @description Sponsor interests and business tags */
+            tags: string[] | null;
         };
         SponsorDirectoryOutputBody: {
             /**
@@ -2197,12 +2197,12 @@ export interface components {
              * @example https://example.com/schemas/SponsorDirectoryOutputBody.json
              */
             readonly $schema?: string;
-            categories: string[] | null;
             items: components["schemas"]["SponsorDirectoryItem"][] | null;
             /** Format: int64 */
             page: number;
             /** Format: int64 */
             pageSize: number;
+            tags: string[] | null;
             /** Format: int64 */
             total: number;
         };
@@ -4253,8 +4253,8 @@ export interface operations {
             query?: {
                 /** @description Search sponsor name */
                 search?: string;
-                /** @description Filter business category */
-                category?: string;
+                /** @description Filter by an exact tag (case-insensitive) */
+                tag?: string;
                 page?: number;
                 pageSize?: number;
             };
