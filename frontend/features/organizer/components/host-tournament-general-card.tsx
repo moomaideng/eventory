@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { MarkdownEditor } from "@/components/ui/markdown-editor";
 
 export interface HostTournamentGeneralCardProps {
   organizerName?: string;
@@ -30,7 +31,9 @@ export interface HostTournamentGeneralCardProps {
   onLocationChange: (value: string) => void;
   description: string;
   onDescriptionChange: (value: string) => void;
-  errors: Partial<Record<"name" | "game" | "location" | "description", string>>;
+  detail: string;
+  onDetailChange: (value: string) => void;
+  errors: Partial<Record<"name" | "game" | "location" | "description" | "detail", string>>;
 }
 
 export function HostTournamentGeneralCard({
@@ -44,6 +47,8 @@ export function HostTournamentGeneralCard({
   onLocationChange,
   description,
   onDescriptionChange,
+  detail,
+  onDetailChange,
   errors,
 }: HostTournamentGeneralCardProps) {
   return (
@@ -116,14 +121,17 @@ export function HostTournamentGeneralCard({
           </Field>
 
           <Field data-invalid={Boolean(errors.description)}>
-            <FieldLabel htmlFor="tournament-desc">
-              Tournament Description & Rules
-            </FieldLabel>
+            <div className="flex items-center justify-between">
+              <FieldLabel htmlFor="tournament-desc">Short Description</FieldLabel>
+              <span className="text-[11px] text-muted-foreground">
+                Appears on tournament cards & listings
+              </span>
+            </div>
             <Textarea
               id="tournament-desc"
-              placeholder="Outline match formats, map pools, bracket rules, check-in instructions, and communication channels..."
-              rows={4}
-              maxLength={4000}
+              placeholder="A brief summary for tournament cards and search listings..."
+              rows={2}
+              maxLength={500}
               value={description}
               onChange={(e) => onDescriptionChange(e.target.value)}
               aria-invalid={Boolean(errors.description)}
@@ -131,6 +139,27 @@ export function HostTournamentGeneralCard({
             {errors.description ? (
               <FieldError>{errors.description}</FieldError>
             ) : null}
+          </Field>
+
+          <Field data-invalid={Boolean(errors.detail)}>
+            <div className="flex items-center justify-between">
+              <FieldLabel htmlFor="tournament-detail">
+                Tournament Details & Rules
+              </FieldLabel>
+              <span className="text-[11px] text-muted-foreground">
+                Markdown supported (full rules page)
+              </span>
+            </div>
+            <MarkdownEditor
+              id="tournament-detail"
+              value={detail}
+              onChange={onDetailChange}
+              placeholder="Outline match formats, map pools, bracket rules, check-in instructions, prize distribution, and communication channels..."
+              rows={8}
+              maxLength={10000}
+              aria-invalid={Boolean(errors.detail)}
+            />
+            {errors.detail ? <FieldError>{errors.detail}</FieldError> : null}
           </Field>
         </FieldGroup>
       </CardContent>

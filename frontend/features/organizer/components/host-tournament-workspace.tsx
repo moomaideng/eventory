@@ -18,6 +18,7 @@ export function HostTournamentWorkspace() {
     game: "",
     location: "Online",
     description: "",
+    detail: "",
     registrationMode: "TEAM",
     minTeamSize: 5,
     maxTeamSize: 5,

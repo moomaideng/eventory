@@ -9,6 +9,7 @@ import {
   WalletCards,
 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
+import { MarkdownContent } from "@/components/ui/markdown-content";
 import type { OrganizerSummary } from "@/features/organizer/utils";
 import {
   formatDateRange,
@@ -205,6 +206,15 @@ export function DashboardOverview({ summary }: { summary: OrganizerSummary }) {
               <p className="text-muted-foreground text-sm leading-relaxed">
                 {tournament.description}
               </p>
+            ) : null}
+
+            {tournament.detail ? (
+              <div className="flex flex-col gap-2 rounded-md border border-border/60 bg-muted/20 p-3.5">
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Tournament Details & Rules
+                </h3>
+                <MarkdownContent content={tournament.detail} />
+              </div>
             ) : null}
 
             {tournament.status === "CROWDFUNDING" ? (

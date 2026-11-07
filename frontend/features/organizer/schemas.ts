@@ -50,7 +50,12 @@ export const createTournamentFormSchema = z
     description: z
       .string()
       .trim()
-      .max(4000, "Description must be 4,000 characters or fewer.")
+      .max(500, "Short description must be 500 characters or fewer.")
+      .default(""),
+    detail: z
+      .string()
+      .trim()
+      .max(10000, "Tournament details & rules must be 10,000 characters or fewer.")
       .default(""),
     registrationMode: z.enum(["SOLO", "TEAM"]),
     minTeamSize: z.coerce
@@ -200,7 +205,8 @@ export function plannedEventDetailsSchema(fundingDeadline: string) {
   return z
     .object({
       location: z.string().trim().min(1, "Enter a planned location.").max(160),
-      description: z.string().trim().max(4000),
+      description: z.string().trim().max(500, "Short description must be 500 characters or fewer.").default(""),
+      detail: z.string().trim().max(10000, "Tournament details & rules must be 10,000 characters or fewer.").default(""),
       registrationDeadline: z
         .string()
         .min(1, "Choose a registration deadline."),

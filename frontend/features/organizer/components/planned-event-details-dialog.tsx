@@ -28,11 +28,13 @@ import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
 import { toLocalInput } from "@/features/organizer/utils";
+import { MarkdownEditor } from "@/components/ui/markdown-editor";
 import { plannedEventDetailsSchema } from "../schemas";
 
 type Details = {
   location: string;
   description: string;
+  detail?: string;
   registrationDeadline: string;
   startAt: string;
   endAt: string;
@@ -50,6 +52,7 @@ export function PlannedEventDetailsDialog({
   const [open, setOpen] = useState(false);
   const [location, setLocation] = useState(details.location);
   const [description, setDescription] = useState(details.description);
+  const [detail, setDetail] = useState(details.detail || "");
   const [registrationDeadline, setRegistrationDeadline] = useState(
     toLocalInput(details.registrationDeadline)
   );
@@ -67,6 +70,7 @@ export function PlannedEventDetailsDialog({
     if (next) {
       setLocation(details.location);
       setDescription(details.description);
+      setDetail(details.detail || "");
       setRegistrationDeadline(toLocalInput(details.registrationDeadline));
       setStartAt(toLocalInput(details.startAt));
       setEndAt(toLocalInput(details.endAt));
@@ -81,6 +85,7 @@ export function PlannedEventDetailsDialog({
     const parsed = plannedEventDetailsSchema(fundingDeadline).safeParse({
       location,
       description,
+      detail,
       registrationDeadline,
       startAt,
       endAt,
@@ -90,6 +95,7 @@ export function PlannedEventDetailsDialog({
       setErrors({
         location: fields.location?.[0],
         description: fields.description?.[0],
+        detail: fields.detail?.[0],
         registrationDeadline: fields.registrationDeadline?.[0],
         startAt: fields.startAt?.[0],
         endAt: fields.endAt?.[0],
@@ -112,6 +118,7 @@ export function PlannedEventDetailsDialog({
           body: {
             location: parsed.data.location,
             description: parsed.data.description,
+            detail: parsed.data.detail,
             registrationDeadline: new Date(
               parsed.data.registrationDeadline
             ).toISOString(),
@@ -187,17 +194,35 @@ export function PlannedEventDetailsDialog({
             </Field>
             <Field data-invalid={Boolean(errors.description)}>
               <FieldLabel htmlFor="planned-description">
-                Event description
+                Short description
               </FieldLabel>
               <Textarea
                 id="planned-description"
                 value={description}
                 onChange={(event) => setDescription(event.target.value)}
-                rows={3}
+                rows={2}
+                maxLength={500}
+                placeholder="A brief summary for cards and search listings..."
                 aria-invalid={Boolean(errors.description)}
               />
               {errors.description ? (
                 <FieldError>{errors.description}</FieldError>
+              ) : null}
+            </Field>
+            <Field data-invalid={Boolean(errors.detail)}>
+              <FieldLabel htmlFor="planned-detail">
+                Tournament Details & Rules (Markdown)
+              </FieldLabel>
+              <MarkdownEditor
+                id="planned-detail"
+                value={detail}
+                onChange={setDetail}
+                rows={6}
+                maxLength={10000}
+                aria-invalid={Boolean(errors.detail)}
+              />
+              {errors.detail ? (
+                <FieldError>{errors.detail}</FieldError>
               ) : null}
             </Field>
             {fields.map(({ key, label, value, onChange }) => (

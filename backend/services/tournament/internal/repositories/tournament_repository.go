@@ -237,6 +237,7 @@ func (r *tournamentRepositoryImpl) Update(
 			Updates(map[string]any{
 				"name":                  tournament.Name,
 				"description":           tournament.Description,
+				"detail":                tournament.Detail,
 				"game":                  tournament.Game,
 				"location":              tournament.Location,
 				"start_at":              tournament.StartsAt,

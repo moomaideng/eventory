@@ -3,6 +3,7 @@ package usecases_test
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -107,6 +108,7 @@ func validCreateInput(now time.Time) usecases.CreateTournamentInput {
 	return usecases.CreateTournamentInput{
 		Name:                 "Valid Cup",
 		Description:          "Tournament rules",
+		Detail:               "## Full Rules\n\n- Fair play only",
 		Game:                 "Chess",
 		Location:             "Online",
 		StartsAt:             now.Add(48 * time.Hour),
@@ -303,6 +305,8 @@ func TestCreateTournament_ValidationErrors(t *testing.T) {
 		{name: "invalid mode", modify: func(in *usecases.CreateTournamentInput) { in.RegistrationMode = "SQUAD" }, wantErr: usecases.ErrInvalidRegistrationMode},
 		{name: "team mode min > max", modify: func(in *usecases.CreateTournamentInput) { in.MinTeamSize, in.MaxTeamSize = 5, 3 }, wantErr: usecases.ErrInvalidTeamSize},
 		{name: "team mode min < 1", modify: func(in *usecases.CreateTournamentInput) { in.MinTeamSize = 0 }, wantErr: usecases.ErrInvalidTeamSize},
+		{name: "description exceeds max length", modify: func(in *usecases.CreateTournamentInput) { in.Description = strings.Repeat("a", 501) }, wantErr: usecases.ErrInvalidTournamentDescription},
+		{name: "detail exceeds max length", modify: func(in *usecases.CreateTournamentInput) { in.Detail = strings.Repeat("b", 10001) }, wantErr: usecases.ErrInvalidTournamentDetail},
 		{name: "funding goal without deadline", modify: func(in *usecases.CreateTournamentInput) { in.FundingGoal = ptr(int64(1000)) }, wantErr: usecases.ErrInvalidCrowdfunding},
 		{name: "funding deadline without goal", modify: func(in *usecases.CreateTournamentInput) { in.FundingDeadline = ptr(now.Add(time.Hour)) }, wantErr: usecases.ErrInvalidCrowdfunding},
 		{name: "zero funding goal", modify: func(in *usecases.CreateTournamentInput) {
@@ -523,6 +527,7 @@ func TestUpdateTournament_Success(t *testing.T) {
 		updated, err := useCase.UpdateTournament(context.Background(), ownerID, tournamentID, usecases.UpdateTournamentInput{
 			Name:        ptr("  Trimmed Cup  "),
 			Description: ptr("  Trimmed Rules  "),
+			Detail:      ptr("  ## Formatted Rules  "),
 			Game:        ptr("  Overwatch 2  "),
 			Location:    ptr("  Siam Paragon  "),
 			EntryFee:    ptr(int64(0)),
@@ -532,6 +537,7 @@ func TestUpdateTournament_Success(t *testing.T) {
 			t.Fatalf("unexpected error: %v", err)
 		}
 		if updated.Name != "Trimmed Cup" || updated.Description != "Trimmed Rules" ||
+			updated.Detail != "## Formatted Rules" ||
 			updated.Game != "Overwatch 2" || updated.Location != "Siam Paragon" ||
 			updated.EntryFee != 0 || updated.Capacity != 32 {
 			t.Fatalf("fields were not properly trimmed or updated: %+v", updated)
@@ -620,6 +626,8 @@ func TestUpdateCrowdfundingConfiguration(t *testing.T) {
 		want   error
 	}{
 		{"not owner", nil, uuid.New(), usecases.UpdateTournamentInput{FundingGoal: ptr(int64(3000))}, usecases.ErrNotTournamentOwner},
+		{"description exceeds max length", nil, ownerID, usecases.UpdateTournamentInput{Description: ptr(strings.Repeat("a", 501))}, usecases.ErrInvalidTournamentDescription},
+		{"detail exceeds max length", nil, ownerID, usecases.UpdateTournamentInput{Detail: ptr(strings.Repeat("b", 10001))}, usecases.ErrInvalidTournamentDetail},
 		{"zero goal", nil, ownerID, usecases.UpdateTournamentInput{FundingGoal: ptr(int64(0))}, usecases.ErrInvalidCrowdfunding},
 		{"deadline after registration", nil, ownerID, usecases.UpdateTournamentInput{FundingDeadline: ptr(now.Add(30 * time.Hour))}, usecases.ErrInvalidCrowdfunding},
 		{"registration deadline moved before funding deadline", nil, ownerID, usecases.UpdateTournamentInput{RegistrationDeadline: ptr(now.Add(4 * time.Hour))}, usecases.ErrInvalidCrowdfunding},

@@ -109,6 +109,7 @@ export function TournamentWorkspace({
                         details={{
                           location: data.summary.tournament.location,
                           description: data.summary.tournament.description,
+                          detail: data.summary.tournament.detail,
                           registrationDeadline:
                             data.summary.tournament.registrationDeadline,
                           startAt: data.summary.tournament.startAt,
