@@ -436,6 +436,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/tournaments/{id}/bracket/swap": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Swap two teams in the bracket
+         * @description Exchanges two teams between unfinished matches of the same stage. Staff only.
+         */
+        post: operations["swap-bracket-teams"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/tournaments/{id}/dashboard": {
         parameters: {
             query?: never;
@@ -1783,6 +1803,22 @@ export interface components {
             tournamentId: string;
             /** Format: date-time */
             updatedAt: string;
+        };
+        SwapSlotItem: {
+            /** @description Match the team is currently in */
+            matchId: string;
+            /** @description Team to move */
+            teamId: string;
+        };
+        SwapTeamsInputBody: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/SwapTeamsInputBody.json
+             */
+            readonly $schema?: string;
+            first: components["schemas"]["SwapSlotItem"];
+            second: components["schemas"]["SwapSlotItem"];
         };
         TeamLobbyMemberResponse: {
             accountId: string;
@@ -3162,6 +3198,42 @@ export interface operations {
         responses: {
             /** @description Created */
             201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BracketResponse"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "swap-bracket-teams": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Tournament ID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SwapTeamsInputBody"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };

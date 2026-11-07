@@ -133,6 +133,19 @@ type MatchOutput struct {
 	Body MatchResponse
 }
 
+type SwapSlotItem struct {
+	MatchID uuid.UUID `json:"matchId" doc:"Match the team is currently in"`
+	TeamID  uuid.UUID `json:"teamId" doc:"Team to move"`
+}
+
+type SwapTeamsInput struct {
+	TournamentID uuid.UUID `path:"id" doc:"Tournament ID"`
+	Body         struct {
+		First  SwapSlotItem `json:"first"`
+		Second SwapSlotItem `json:"second"`
+	}
+}
+
 type GetBracketInput struct {
 	TournamentID uuid.UUID `path:"id" doc:"Tournament ID"`
 }
@@ -286,7 +299,35 @@ func RegisterBracketRoutes(
 		return &MatchOutput{Body: toMatchResponses([]models.Match{*match})[0]}, nil
 	})
 
-	// 5. View Bracket: GET /api/v1/tournaments/{id}/bracket
+	// 5. Swap Teams: POST /api/v1/tournaments/{id}/bracket/swap
+	huma.Register(api, huma.Operation{
+		OperationID: "swap-bracket-teams",
+		Method:      http.MethodPost,
+		Path:        "/api/v1/tournaments/{id}/bracket/swap",
+		Summary:     "Swap two teams in the bracket",
+		Description: "Exchanges two teams between unfinished matches of the same stage. Staff only.",
+		Tags:        []string{"Tournament Bracket"},
+		Middlewares: huma.Middlewares{auth},
+		Security:    []map[string][]string{{"bearer": {}}},
+	}, func(ctx context.Context, input *SwapTeamsInput) (*BracketOutput, error) {
+		callerID, err := authenticatedAccountID(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		first, second := input.Body.First, input.Body.Second
+		matches, err := bracketUseCase.SwapTeams(ctx, callerID, input.TournamentID,
+			usecases.SwapSlot{MatchID: first.MatchID, TeamID: first.TeamID},
+			usecases.SwapSlot{MatchID: second.MatchID, TeamID: second.TeamID},
+		)
+		if err != nil {
+			return nil, bracketHTTPError(err)
+		}
+
+		return &BracketOutput{Body: BracketResponse{Matches: toMatchResponses(matches)}}, nil
+	})
+
+	// 6. View Bracket: GET /api/v1/tournaments/{id}/bracket
 	huma.Register(api, huma.Operation{
 		OperationID: "get-tournament-bracket",
 		Method:      http.MethodGet,
@@ -394,7 +435,10 @@ func bracketHTTPError(err error) error {
 		errors.Is(err, usecases.ErrBracketInvalidPlacementRank),
 		errors.Is(err, usecases.ErrBracketDuplicatePlacementTeam),
 		errors.Is(err, usecases.ErrBracketStage1CapacityMismatch),
-		errors.Is(err, usecases.ErrBracketScheduleInPast):
+		errors.Is(err, usecases.ErrBracketScheduleInPast),
+		errors.Is(err, usecases.ErrBracketSwapSameMatch),
+		errors.Is(err, usecases.ErrBracketSwapStageMismatch),
+		errors.Is(err, usecases.ErrBracketSwapTeamNotInMatch):
 		return huma.Error400BadRequest(err.Error(), err)
 	default:
 		return huma.Error500InternalServerError("Tournament bracket operation failed", err)
