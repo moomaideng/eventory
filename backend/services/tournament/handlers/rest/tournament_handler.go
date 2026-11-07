@@ -19,7 +19,8 @@ type TournamentOutput struct {
 
 type CreateTournamentRequest struct {
 	Name                 string     `json:"name" minLength:"1" maxLength:"160" doc:"Tournament name"`
-	Description          string     `json:"description" doc:"Tournament description or rules"`
+	Description          string     `json:"description" minLength:"1" maxLength:"500" doc:"Short summary description"`
+	Detail               string     `json:"detail,omitempty" maxLength:"10000" doc:"Tournament rules and full details (Markdown supported)"`
 	Game                 string     `json:"game" minLength:"1" maxLength:"80" doc:"Game title"`
 	Location             string     `json:"location" minLength:"1" maxLength:"160" doc:"Location or 'Online'"`
 	StartAt              time.Time  `json:"startAt" doc:"Tournament start timestamp (RFC 3339)"`
@@ -45,7 +46,8 @@ type CreateTournamentOutput struct {
 
 type UpdateTournamentRequest struct {
 	Name                 *string    `json:"name,omitempty" minLength:"1" maxLength:"160" doc:"New tournament name"`
-	Description          *string    `json:"description,omitempty" doc:"New tournament description"`
+	Description          *string    `json:"description,omitempty" maxLength:"500" doc:"New short summary"`
+	Detail               *string    `json:"detail,omitempty" maxLength:"10000" doc:"New tournament rules and full details (Markdown supported)"`
 	Game                 *string    `json:"game,omitempty" minLength:"1" maxLength:"80" doc:"New game title"`
 	Location             *string    `json:"location,omitempty" minLength:"1" maxLength:"160" doc:"New location"`
 	StartAt              *time.Time `json:"startAt,omitempty" doc:"New start timestamp"`
@@ -68,7 +70,8 @@ type UpdateTournamentInput struct {
 type TournamentResponse struct {
 	ID                   uuid.UUID `json:"id"`
 	Name                 string    `json:"name"`
-	Description          string    `json:"description"`
+	Description          string    `json:"description" doc:"Short summary description"`
+	Detail               string    `json:"detail" doc:"Tournament rules and full details (Markdown supported)"`
 	Game                 string    `json:"game"`
 	Location             string    `json:"location"`
 	OrganizerName        string    `json:"organizerName"`
@@ -241,6 +244,7 @@ func RegisterTournamentRoutes(
 		tournament, err := tournamentUseCase.CreateTournament(ctx, organizer.AccountID, usecases.CreateTournamentInput{
 			Name:                 input.Body.Name,
 			Description:          input.Body.Description,
+			Detail:               input.Body.Detail,
 			Game:                 input.Body.Game,
 			Location:             input.Body.Location,
 			StartsAt:             input.Body.StartAt,
@@ -290,6 +294,7 @@ func RegisterTournamentRoutes(
 		tournament, err := tournamentUseCase.UpdateTournament(ctx, organizer.AccountID, input.TournamentID, usecases.UpdateTournamentInput{
 			Name:                 input.Body.Name,
 			Description:          input.Body.Description,
+			Detail:               input.Body.Detail,
 			Game:                 input.Body.Game,
 			Location:             input.Body.Location,
 			StartsAt:             input.Body.StartAt,
@@ -332,6 +337,8 @@ func tournamentHTTPError(err error) error {
 		return huma.Error409Conflict(err.Error(), err)
 	case errors.Is(err, usecases.ErrInvalidTournamentDates),
 		errors.Is(err, usecases.ErrInvalidTournamentName),
+		errors.Is(err, usecases.ErrInvalidTournamentDescription),
+		errors.Is(err, usecases.ErrInvalidTournamentDetail),
 		errors.Is(err, usecases.ErrInvalidTournamentGame),
 		errors.Is(err, usecases.ErrInvalidTournamentLocation),
 		errors.Is(err, usecases.ErrInvalidTournamentFee),
@@ -355,6 +362,7 @@ func optionalFee(value int64) *int64 {
 func toTournamentResponse(tournament models.Tournament, organizerName string, registeredCount int) TournamentResponse {
 	return TournamentResponse{
 		ID: tournament.ID, Name: tournament.Name, Description: tournament.Description,
+		Detail: tournament.Detail,
 		Game: tournament.Game, Location: tournament.Location,
 		OrganizerName: organizerName,
 		StartAt:       tournament.StartsAt, EndAt: tournament.EndsAt,

@@ -10,6 +10,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { MarkdownContent } from "@/components/ui/markdown-content";
 import {
   formatDateRange,
   formatMoney,
@@ -37,9 +38,19 @@ export function TournamentAboutCard({
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-6">
-        <p className="text-muted-foreground leading-7">
-          {tournament.description}
-        </p>
+        {tournament.description ? (
+          <p className="text-muted-foreground leading-relaxed text-sm">
+            {tournament.description}
+          </p>
+        ) : null}
+        {tournament.detail ? (
+          <div className="flex flex-col gap-3 rounded-lg border border-border/70 bg-card/60 p-4 shadow-xs">
+            <h3 className="text-sm font-semibold text-foreground tracking-tight">
+              Tournament Details & Rules
+            </h3>
+            <MarkdownContent content={tournament.detail} />
+          </div>
+        ) : null}
         {tournament.status !== "CROWDFUNDING" ? (
           <>
             <Separator />

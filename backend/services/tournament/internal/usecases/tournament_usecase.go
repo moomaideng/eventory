@@ -40,9 +40,13 @@ var (
 	ErrCrowdfundingGoalNotReached = errors.New("funding goal has not been reached")
 	ErrCrowdfundingPlanIncomplete = errors.New("event details or registration rules are incomplete")
 	ErrTournamentStateChanged     = errors.New("tournament status changed; refresh and try again")
+	ErrInvalidTournamentDescription = errors.New("tournament description exceeds maximum length of 500 characters")
+	ErrInvalidTournamentDetail      = errors.New("tournament detail exceeds maximum length of 10000 characters")
 )
 
 const (
+	tournamentDescriptionMaxLength = 500
+	tournamentDetailMaxLength      = 10000
 	overrideReasonMinLength = 10
 	overrideReasonMaxLength = 500
 )
@@ -50,6 +54,7 @@ const (
 type CreateTournamentInput struct {
 	Name                 string
 	Description          string
+	Detail               string
 	Game                 string
 	Location             string
 	StartsAt             time.Time
@@ -67,6 +72,7 @@ type CreateTournamentInput struct {
 type UpdateTournamentInput struct {
 	Name                 *string
 	Description          *string
+	Detail               *string
 	Game                 *string
 	Location             *string
 	StartsAt             *time.Time
@@ -379,6 +385,13 @@ func (u *TournamentUseCase) CreateTournament(
 		return nil, ErrInvalidTournamentLocation
 	}
 	description := strings.TrimSpace(input.Description)
+	if utf8.RuneCountInString(description) > tournamentDescriptionMaxLength {
+		return nil, ErrInvalidTournamentDescription
+	}
+	detail := strings.TrimSpace(input.Detail)
+	if utf8.RuneCountInString(detail) > tournamentDetailMaxLength {
+		return nil, ErrInvalidTournamentDetail
+	}
 
 	if !input.RegistrationDeadline.Before(input.StartsAt) || !input.StartsAt.Before(input.EndsAt) {
 		return nil, ErrInvalidTournamentDates
@@ -430,6 +443,7 @@ func (u *TournamentUseCase) CreateTournament(
 		},
 		Name:                 name,
 		Description:          description,
+		Detail:               detail,
 		Game:                 game,
 		Location:             location,
 		StartsAt:             input.StartsAt,
@@ -594,7 +608,18 @@ func (u *TournamentUseCase) UpdateTournament(
 		tournament.Name = trimmed
 	}
 	if input.Description != nil {
-		tournament.Description = strings.TrimSpace(*input.Description)
+		desc := strings.TrimSpace(*input.Description)
+		if utf8.RuneCountInString(desc) > tournamentDescriptionMaxLength {
+			return nil, ErrInvalidTournamentDescription
+		}
+		tournament.Description = desc
+	}
+	if input.Detail != nil {
+		det := strings.TrimSpace(*input.Detail)
+		if utf8.RuneCountInString(det) > tournamentDetailMaxLength {
+			return nil, ErrInvalidTournamentDetail
+		}
+		tournament.Detail = det
 	}
 	if input.Game != nil {
 		trimmed := strings.TrimSpace(*input.Game)
