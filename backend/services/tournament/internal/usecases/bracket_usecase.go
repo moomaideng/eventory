@@ -49,6 +49,9 @@ var (
 	ErrBracketSeedExceedsTeamCount   = errors.New("seeded teams exceed match team count")
 	ErrBracketStage1CapacityMismatch = errors.New("total Stage 1 match slots must equal the number of accepted teams")
 	ErrBracketScheduleInPast         = errors.New("match time cannot be in the past")
+	ErrBracketSwapSameMatch          = errors.New("teams to swap must be in different matches")
+	ErrBracketSwapStageMismatch      = errors.New("teams to swap must be in the same stage")
+	ErrBracketSwapTeamNotInMatch     = errors.New("team is not a participant of the given match")
 )
 
 type DefineBracketMatchInput struct {
@@ -64,6 +67,12 @@ type DefineBracketMatchInput struct {
 type Stage1SeedAssignment struct {
 	MatchID uuid.UUID
 	TeamIDs []uuid.UUID
+}
+
+// SwapSlot identifies one team inside one match.
+type SwapSlot struct {
+	MatchID uuid.UUID
+	TeamID  uuid.UUID
 }
 
 type TeamPlacementInput struct {
@@ -594,6 +603,62 @@ func (u *BracketUseCase) ScheduleMatch(
 		return nil, err
 	}
 	return u.repo.GetMatch(ctx, tournamentID, matchID)
+}
+
+// SwapTeams exchanges two teams between unfinished matches of the same stage. Staff only.
+func (u *BracketUseCase) SwapTeams(
+	ctx context.Context,
+	accountID, tournamentID uuid.UUID,
+	a, b SwapSlot,
+) ([]models.Match, error) {
+	tournament, err := u.checkStaffResultAuth(ctx, tournamentID, accountID)
+	if err != nil {
+		return nil, err
+	}
+	if tournament.Status == models.TournamentStatusCompleted ||
+		tournament.Status == models.TournamentStatusCancelled {
+		return nil, ErrBracketTournamentImmutable
+	}
+	if a.MatchID == b.MatchID {
+		return nil, ErrBracketSwapSameMatch
+	}
+
+	matchA, err := u.swappableMatch(ctx, tournamentID, a)
+	if err != nil {
+		return nil, err
+	}
+	matchB, err := u.swappableMatch(ctx, tournamentID, b)
+	if err != nil {
+		return nil, err
+	}
+	if matchA.StageLevel != matchB.StageLevel {
+		return nil, ErrBracketSwapStageMismatch
+	}
+
+	if err := u.repo.SwapMatchEntries(ctx, a.MatchID, a.TeamID, b.MatchID, b.TeamID); err != nil {
+		return nil, err
+	}
+	return u.repo.GetBracket(ctx, tournamentID)
+}
+
+// swappableMatch loads the slot's match and checks it is unfinished and contains the team.
+func (u *BracketUseCase) swappableMatch(ctx context.Context, tournamentID uuid.UUID, slot SwapSlot) (*models.Match, error) {
+	match, err := u.repo.GetMatch(ctx, tournamentID, slot.MatchID)
+	if err != nil {
+		if errors.Is(err, repositories.ErrBracketMatchNotFound) {
+			return nil, ErrBracketMatchNotFound
+		}
+		return nil, err
+	}
+	if match.IsCompleted {
+		return nil, ErrBracketMatchAlreadyCompleted
+	}
+	for _, e := range match.Entries {
+		if e.TeamID == slot.TeamID {
+			return match, nil
+		}
+	}
+	return nil, ErrBracketSwapTeamNotInMatch
 }
 
 func (u *BracketUseCase) GetBracket(ctx context.Context, tournamentID uuid.UUID) ([]models.Match, error) {

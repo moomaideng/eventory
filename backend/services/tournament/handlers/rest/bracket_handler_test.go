@@ -88,6 +88,10 @@ func (m *mockBracketRepoForHandler) UpdateMatchSchedule(_ context.Context, _, ma
 	return nil
 }
 
+func (m *mockBracketRepoForHandler) SwapMatchEntries(_ context.Context, _, _, _, _ uuid.UUID) error {
+	return nil
+}
+
 func (m *mockBracketRepoForHandler) RecordMatchResults(
 	_ context.Context,
 	_, matchID uuid.UUID,
