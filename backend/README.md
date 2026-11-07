@@ -121,6 +121,7 @@ Each service loads `services/<name>/.env.default`, then an optional `.env` in th
 | `HTTP_PORT`            | Account listens on 8081. Tournament listens on 8082                                     |
 | `GRPC_PORT`            | Account gRPC port. Default 9091                                                         |
 | `DB_DSN`               | Database address. Account uses `account_db`. Tournament uses `tournament_db`            |
+| `DB_MAX_OPEN_CONNS`    | Postgres pool cap per process. Default 20. Keep services × cap under `max_connections`  |
 | `ACCOUNT_GRPC_ADDR`    | Where Tournament calls Account. `127.0.0.1:9091` on the host, `account:9091` in Compose |
 | `MONGO_URI`            | MongoDB connection URI for Tournament Service dynamic forms                             |
 | `MONGO_DB_NAME`        | MongoDB database name for Tournament Service (`tournament_db`)                          |
