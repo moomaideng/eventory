@@ -449,6 +449,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/tournaments/{id}/matches/{matchId}/schedule": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Set match time and venue
+         * @description Sets the display start time and venue of an unfinished match. Staff only; the time must be in the future.
+         */
+        put: operations["schedule-match"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/tournaments/{id}/seed": {
         parameters: {
             query?: never;
@@ -1328,6 +1348,12 @@ export interface components {
             teamName?: string;
         };
         MatchResponse: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/MatchResponse.json
+             */
+            readonly $schema?: string;
             /** Format: int64 */
             advancingCount: number;
             /** Format: date-time */
@@ -1336,6 +1362,8 @@ export interface components {
             id: string;
             isCompleted: boolean;
             name: string;
+            /** Format: date-time */
+            scheduledAt?: string;
             /** Format: int64 */
             stageLevel: number;
             targetMatchId?: string;
@@ -1533,6 +1561,21 @@ export interface components {
             fields: components["schemas"]["FormField"][] | null;
             /** @description Form title */
             title: string;
+        };
+        ScheduleMatchRequest: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/ScheduleMatchRequest.json
+             */
+            readonly $schema?: string;
+            /**
+             * Format: date-time
+             * @description Match start time; must be in the future
+             */
+            scheduledAt: string;
+            /** @description Physical or virtual location (e.g. 'Field 2', a Discord link) */
+            venue: string;
         };
         SeedTournamentRequest: {
             /**
@@ -3010,6 +3053,44 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RecordMatchResultsResponse"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "schedule-match": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Tournament ID */
+                id: string;
+                /** @description Match ID */
+                matchId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ScheduleMatchRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MatchResponse"];
                 };
             };
             /** @description Error */

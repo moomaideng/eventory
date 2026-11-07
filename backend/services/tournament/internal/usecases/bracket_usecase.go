@@ -5,6 +5,7 @@ import (
 	"errors"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/moomaideng/eventory/services/tournament/internal/repositories"
@@ -47,6 +48,7 @@ var (
 	ErrBracketIncomingExceedsTarget  = ErrBracketIncomingMismatchTarget
 	ErrBracketSeedExceedsTeamCount   = errors.New("seeded teams exceed match team count")
 	ErrBracketStage1CapacityMismatch = errors.New("total Stage 1 match slots must equal the number of accepted teams")
+	ErrBracketScheduleInPast         = errors.New("match time cannot be in the past")
 )
 
 type DefineBracketMatchInput struct {
@@ -556,6 +558,42 @@ func (u *BracketUseCase) RecordMatchResults(
 		AdvancingTeams: advancingTeamIDs,
 		TargetMatchID:  match.TargetMatchID,
 	}, nil
+}
+
+// ScheduleMatch sets a match's display time and venue. Staff only; the time must be in the future.
+func (u *BracketUseCase) ScheduleMatch(
+	ctx context.Context,
+	accountID, tournamentID, matchID uuid.UUID,
+	scheduledAt time.Time,
+	venue string,
+) (*models.Match, error) {
+	tournament, err := u.checkStaffResultAuth(ctx, tournamentID, accountID)
+	if err != nil {
+		return nil, err
+	}
+	if tournament.Status == models.TournamentStatusCompleted ||
+		tournament.Status == models.TournamentStatusCancelled {
+		return nil, ErrBracketTournamentImmutable
+	}
+	if !scheduledAt.After(time.Now()) {
+		return nil, ErrBracketScheduleInPast
+	}
+
+	match, err := u.repo.GetMatch(ctx, tournamentID, matchID)
+	if err != nil {
+		if errors.Is(err, repositories.ErrBracketMatchNotFound) {
+			return nil, ErrBracketMatchNotFound
+		}
+		return nil, err
+	}
+	if match.IsCompleted {
+		return nil, ErrBracketMatchAlreadyCompleted
+	}
+
+	if err := u.repo.UpdateMatchSchedule(ctx, tournamentID, matchID, scheduledAt, strings.TrimSpace(venue)); err != nil {
+		return nil, err
+	}
+	return u.repo.GetMatch(ctx, tournamentID, matchID)
 }
 
 func (u *BracketUseCase) GetBracket(ctx context.Context, tournamentID uuid.UUID) ([]models.Match, error) {
