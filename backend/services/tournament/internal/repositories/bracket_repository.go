@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"sort"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/moomaideng/eventory/services/tournament/models"
@@ -28,6 +29,8 @@ type BracketRepository interface {
 	GetAcceptedTeams(ctx context.Context, tournamentID uuid.UUID) ([]models.TournamentTeam, error)
 	SeedStage1(ctx context.Context, tournamentID uuid.UUID, stage1MatchIDs []uuid.UUID, entries []models.MatchEntry) error
 	GetMatch(ctx context.Context, tournamentID, matchID uuid.UUID) (*models.Match, error)
+	UpdateMatchSchedule(ctx context.Context, tournamentID, matchID uuid.UUID, scheduledAt time.Time, venue string) error
+	SwapMatchEntries(ctx context.Context, matchA, teamA, matchB, teamB uuid.UUID) error
 	RecordMatchResults(
 		ctx context.Context,
 		tournamentID, matchID uuid.UUID,
@@ -215,6 +218,26 @@ func (r *bracketRepository) GetMatch(ctx context.Context, tournamentID, matchID 
 		return nil, err
 	}
 	return &match, nil
+}
+
+func (r *bracketRepository) UpdateMatchSchedule(ctx context.Context, tournamentID, matchID uuid.UUID, scheduledAt time.Time, venue string) error {
+	return r.db.WithContext(ctx).Model(&models.Match{}).
+		Where("id = ? AND tournament_id = ?", matchID, tournamentID).
+		Updates(map[string]any{"scheduled_at": scheduledAt, "venue": venue}).Error
+}
+
+// SwapMatchEntries moves teamA into matchB and teamB into matchA in one transaction.
+func (r *bracketRepository) SwapMatchEntries(ctx context.Context, matchA, teamA, matchB, teamB uuid.UUID) error {
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := tx.Model(&models.MatchEntry{}).
+			Where("match_id = ? AND team_id = ?", matchA, teamA).
+			Update("match_id", matchB).Error; err != nil {
+			return err
+		}
+		return tx.Model(&models.MatchEntry{}).
+			Where("match_id = ? AND team_id = ?", matchB, teamB).
+			Update("match_id", matchA).Error
+	})
 }
 
 func (r *bracketRepository) RecordMatchResults(

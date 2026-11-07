@@ -48,6 +48,10 @@ export function BracketWorkspace({ tournamentId }: BracketWorkspaceProps) {
     isSeeding,
     recordResults,
     isRecording,
+    scheduleMatch,
+    isScheduling,
+    swapTeams,
+    isSwapping,
   } = useBracket({ tournamentId });
 
   // Local draft overrides (null means directly in sync with server data)
@@ -76,6 +80,7 @@ export function BracketWorkspace({ tournamentId }: BracketWorkspaceProps) {
         tournamentId,
         name: node.name,
         venue: node.venue,
+        scheduledAt: existing?.scheduledAt,
         stageLevel: node.stageLevel,
         teamCount: node.teamCount,
         advancingCount: node.advancingCount,
@@ -345,6 +350,15 @@ export function BracketWorkspace({ tournamentId }: BracketWorkspaceProps) {
         onDeleteNode={handleDeleteNode}
         onRecordScores={recordResults}
         isRecording={isRecording}
+        onScheduleMatch={
+          matches.some((m) => m.id === selectedMatch?.id) ? scheduleMatch : undefined
+        }
+        isScheduling={isScheduling}
+        onSwapTeams={
+          matches.some((m) => m.id === selectedMatch?.id) ? swapTeams : undefined
+        }
+        isSwapping={isSwapping}
+        bracketMatches={matches}
       />
 
       {/* Reset Modal (Reset Stage 1 teams or Reset Entire Bracket) */}

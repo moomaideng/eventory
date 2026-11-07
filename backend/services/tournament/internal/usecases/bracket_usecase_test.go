@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/moomaideng/eventory/services/tournament/internal/repositories"
@@ -35,6 +36,7 @@ type mockBracketRepository struct {
 	lastRecordedScores      map[uuid.UUID]*string
 	lastRecordedAdvances    map[uuid.UUID]bool
 	lastAdvancingTeamIDs    []uuid.UUID
+	lastSwap                []uuid.UUID
 }
 
 func (m *mockBracketRepository) GetTournament(_ context.Context, _ uuid.UUID) (*models.Tournament, error) {
@@ -102,6 +104,18 @@ func (m *mockBracketRepository) GetMatch(_ context.Context, _, matchID uuid.UUID
 		return nil, repositories.ErrBracketMatchNotFound
 	}
 	return match, nil
+}
+
+func (m *mockBracketRepository) UpdateMatchSchedule(_ context.Context, _, matchID uuid.UUID, scheduledAt time.Time, venue string) error {
+	match := m.matchesMap[matchID]
+	match.ScheduledAt = &scheduledAt
+	match.Venue = venue
+	return nil
+}
+
+func (m *mockBracketRepository) SwapMatchEntries(_ context.Context, matchA, teamA, matchB, teamB uuid.UUID) error {
+	m.lastSwap = []uuid.UUID{matchA, teamA, matchB, teamB}
+	return nil
 }
 
 func (m *mockBracketRepository) RecordMatchResults(
@@ -811,4 +825,91 @@ func TestRecordMatchResults(t *testing.T) {
 			t.Errorf("expected 0 advancing teams for final, got %v", result.AdvancingTeams)
 		}
 	})
+}
+
+func TestScheduleMatch(t *testing.T) {
+	referee := models.TournamentStaffRoleReferee
+	tournamentID, matchID := uuid.New(), uuid.New()
+	future := time.Now().Add(48 * time.Hour)
+
+	tests := []struct {
+		name    string
+		role    *models.TournamentStaffRole
+		at      time.Time
+		wantErr error
+	}{
+		{"staff sets future time", &referee, future, nil},
+		{"past time rejected", &referee, time.Now().Add(-24 * time.Hour), usecases.ErrBracketScheduleInPast},
+		{"non-staff rejected", nil, future, usecases.ErrBracketCallerNotStaff},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			repo := &mockBracketRepository{
+				tournament: &models.Tournament{ID: tournamentID, Status: models.TournamentStatusOngoing},
+				staffRole:  tt.role,
+				matchesMap: map[uuid.UUID]*models.Match{
+					matchID: {ID: matchID, TournamentID: tournamentID},
+				},
+			}
+			if tt.role == nil {
+				repo.staffErr = repositories.ErrBracketStaffNotFound
+			}
+
+			match, err := usecases.NewBracketUseCase(repo).ScheduleMatch(context.Background(), uuid.New(), tournamentID, matchID, tt.at, " Field 2 ")
+			if !errors.Is(err, tt.wantErr) {
+				t.Fatalf("want error %v, got %v", tt.wantErr, err)
+			}
+			if tt.wantErr == nil && (match.Venue != "Field 2" || !match.ScheduledAt.Equal(tt.at)) {
+				t.Errorf("schedule not saved: venue=%q at=%v", match.Venue, match.ScheduledAt)
+			}
+		})
+	}
+}
+
+func TestSwapTeams(t *testing.T) {
+	referee := models.TournamentStaffRoleReferee
+	tournamentID := uuid.New()
+	m1, m2, m3 := uuid.New(), uuid.New(), uuid.New()
+	t1, t2, t3 := uuid.New(), uuid.New(), uuid.New()
+	newRepo := func(role *models.TournamentStaffRole, m2Completed bool) *mockBracketRepository {
+		repo := &mockBracketRepository{
+			tournament: &models.Tournament{ID: tournamentID, Status: models.TournamentStatusOngoing},
+			staffRole:  role,
+			matchesMap: map[uuid.UUID]*models.Match{
+				m1: {ID: m1, StageLevel: 1, Entries: []models.MatchEntry{{TeamID: t1}}},
+				m2: {ID: m2, StageLevel: 1, IsCompleted: m2Completed, Entries: []models.MatchEntry{{TeamID: t2}}},
+				m3: {ID: m3, StageLevel: 2, Entries: []models.MatchEntry{{TeamID: t3}}},
+			},
+		}
+		if role == nil {
+			repo.staffErr = repositories.ErrBracketStaffNotFound
+		}
+		return repo
+	}
+
+	tests := []struct {
+		name    string
+		repo    *mockBracketRepository
+		second  usecases.SwapSlot
+		wantErr error
+	}{
+		{"swaps teams in same stage", newRepo(&referee, false), usecases.SwapSlot{MatchID: m2, TeamID: t2}, nil},
+		{"completed match rejected", newRepo(&referee, true), usecases.SwapSlot{MatchID: m2, TeamID: t2}, usecases.ErrBracketMatchAlreadyCompleted},
+		{"different stage rejected", newRepo(&referee, false), usecases.SwapSlot{MatchID: m3, TeamID: t3}, usecases.ErrBracketSwapStageMismatch},
+		{"non-staff rejected", newRepo(nil, false), usecases.SwapSlot{MatchID: m2, TeamID: t2}, usecases.ErrBracketCallerNotStaff},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := usecases.NewBracketUseCase(tt.repo).SwapTeams(context.Background(), uuid.New(), tournamentID,
+				usecases.SwapSlot{MatchID: m1, TeamID: t1}, tt.second)
+			if !errors.Is(err, tt.wantErr) {
+				t.Fatalf("want error %v, got %v", tt.wantErr, err)
+			}
+			if (tt.wantErr == nil) != (tt.repo.lastSwap != nil) {
+				t.Errorf("swap saved = %v, want %v", tt.repo.lastSwap != nil, tt.wantErr == nil)
+			}
+		})
+	}
 }

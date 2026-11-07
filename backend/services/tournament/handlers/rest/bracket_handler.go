@@ -49,6 +49,7 @@ type MatchResponse struct {
 	TournamentID   uuid.UUID            `json:"tournamentId"`
 	Name           string               `json:"name"`
 	Venue          string               `json:"venue"`
+	ScheduledAt    *time.Time           `json:"scheduledAt,omitempty"`
 	StageLevel     int                  `json:"stageLevel"`
 	TeamCount      int                  `json:"teamCount"`
 	AdvancingCount int                  `json:"advancingCount"`
@@ -115,6 +116,34 @@ type RecordMatchResultsResponse struct {
 
 type RecordMatchResultsOutput struct {
 	Body RecordMatchResultsResponse
+}
+
+type ScheduleMatchRequest struct {
+	ScheduledAt time.Time `json:"scheduledAt" doc:"Match start time; must be in the future"`
+	Venue       string    `json:"venue" minLength:"1" maxLength:"160" pattern:"\\S" doc:"Physical or virtual location (e.g. 'Field 2', a Discord link)"`
+}
+
+type ScheduleMatchInput struct {
+	TournamentID uuid.UUID `path:"id" doc:"Tournament ID"`
+	MatchID      uuid.UUID `path:"matchId" doc:"Match ID"`
+	Body         ScheduleMatchRequest
+}
+
+type MatchOutput struct {
+	Body MatchResponse
+}
+
+type SwapSlotItem struct {
+	MatchID uuid.UUID `json:"matchId" doc:"Match the team is currently in"`
+	TeamID  uuid.UUID `json:"teamId" doc:"Team to move"`
+}
+
+type SwapTeamsInput struct {
+	TournamentID uuid.UUID `path:"id" doc:"Tournament ID"`
+	Body         struct {
+		First  SwapSlotItem `json:"first"`
+		Second SwapSlotItem `json:"second"`
+	}
 }
 
 type GetBracketInput struct {
@@ -246,7 +275,59 @@ func RegisterBracketRoutes(
 		}, nil
 	})
 
-	// 4. View Bracket: GET /api/v1/tournaments/{id}/bracket
+	// 4. Schedule Match: PUT /api/v1/tournaments/{id}/matches/{matchId}/schedule
+	huma.Register(api, huma.Operation{
+		OperationID: "schedule-match",
+		Method:      http.MethodPut,
+		Path:        "/api/v1/tournaments/{id}/matches/{matchId}/schedule",
+		Summary:     "Set match time and venue",
+		Description: "Sets the display start time and venue of an unfinished match. Staff only; the time must be in the future.",
+		Tags:        []string{"Tournament Bracket"},
+		Middlewares: huma.Middlewares{auth},
+		Security:    []map[string][]string{{"bearer": {}}},
+	}, func(ctx context.Context, input *ScheduleMatchInput) (*MatchOutput, error) {
+		callerID, err := authenticatedAccountID(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		match, err := bracketUseCase.ScheduleMatch(ctx, callerID, input.TournamentID, input.MatchID, input.Body.ScheduledAt, input.Body.Venue)
+		if err != nil {
+			return nil, bracketHTTPError(err)
+		}
+
+		return &MatchOutput{Body: toMatchResponses([]models.Match{*match})[0]}, nil
+	})
+
+	// 5. Swap Teams: POST /api/v1/tournaments/{id}/bracket/swap
+	huma.Register(api, huma.Operation{
+		OperationID: "swap-bracket-teams",
+		Method:      http.MethodPost,
+		Path:        "/api/v1/tournaments/{id}/bracket/swap",
+		Summary:     "Swap two teams in the bracket",
+		Description: "Exchanges two teams between unfinished matches of the same stage. Staff only.",
+		Tags:        []string{"Tournament Bracket"},
+		Middlewares: huma.Middlewares{auth},
+		Security:    []map[string][]string{{"bearer": {}}},
+	}, func(ctx context.Context, input *SwapTeamsInput) (*BracketOutput, error) {
+		callerID, err := authenticatedAccountID(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		first, second := input.Body.First, input.Body.Second
+		matches, err := bracketUseCase.SwapTeams(ctx, callerID, input.TournamentID,
+			usecases.SwapSlot{MatchID: first.MatchID, TeamID: first.TeamID},
+			usecases.SwapSlot{MatchID: second.MatchID, TeamID: second.TeamID},
+		)
+		if err != nil {
+			return nil, bracketHTTPError(err)
+		}
+
+		return &BracketOutput{Body: BracketResponse{Matches: toMatchResponses(matches)}}, nil
+	})
+
+	// 6. View Bracket: GET /api/v1/tournaments/{id}/bracket
 	huma.Register(api, huma.Operation{
 		OperationID: "get-tournament-bracket",
 		Method:      http.MethodGet,
@@ -292,6 +373,7 @@ func toMatchResponses(matches []models.Match) []MatchResponse {
 			TournamentID:   m.TournamentID,
 			Name:           m.Name,
 			Venue:          m.Venue,
+			ScheduledAt:    m.ScheduledAt,
 			StageLevel:     m.StageLevel,
 			TeamCount:      m.TeamCount,
 			AdvancingCount: m.AdvancingCount,
@@ -317,7 +399,7 @@ func bracketHTTPError(err error) error {
 	case errors.Is(err, usecases.ErrBracketCallerNotOwner):
 		return huma.Error403Forbidden("Only tournament owner can define or seed the bracket", err)
 	case errors.Is(err, usecases.ErrBracketCallerNotStaff):
-		return huma.Error403Forbidden("Only tournament staff (owner, admin, referee) can record match results", err)
+		return huma.Error403Forbidden("Only tournament staff (owner, admin, referee) can manage matches", err)
 	case errors.Is(err, usecases.ErrBracketTournamentImmutable):
 		return huma.Error409Conflict("Bracket operations cannot be performed while tournament is ongoing, completed, or cancelled", err)
 	case errors.Is(err, usecases.ErrBracketAlreadyCompleted):
@@ -352,7 +434,11 @@ func bracketHTTPError(err error) error {
 		errors.Is(err, usecases.ErrBracketUnknownTeamPlacement),
 		errors.Is(err, usecases.ErrBracketInvalidPlacementRank),
 		errors.Is(err, usecases.ErrBracketDuplicatePlacementTeam),
-		errors.Is(err, usecases.ErrBracketStage1CapacityMismatch):
+		errors.Is(err, usecases.ErrBracketStage1CapacityMismatch),
+		errors.Is(err, usecases.ErrBracketScheduleInPast),
+		errors.Is(err, usecases.ErrBracketSwapSameMatch),
+		errors.Is(err, usecases.ErrBracketSwapStageMismatch),
+		errors.Is(err, usecases.ErrBracketSwapTeamNotInMatch):
 		return huma.Error400BadRequest(err.Error(), err)
 	default:
 		return huma.Error500InternalServerError("Tournament bracket operation failed", err)
