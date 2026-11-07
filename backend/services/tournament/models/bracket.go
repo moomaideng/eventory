@@ -13,6 +13,7 @@ type Match struct {
 	Tournament     Tournament   `gorm:"foreignKey:TournamentID;constraint:OnDelete:CASCADE;"`
 	Name           string       `gorm:"type:varchar(160);not null"`
 	Venue          string       `gorm:"type:varchar(160);not null"`
+	ScheduledAt    *time.Time   `gorm:"type:timestamptz"`
 	StageLevel     int          `gorm:"not null;index"`
 	TeamCount      int          `gorm:"not null"`
 	AdvancingCount int          `gorm:"not null"`

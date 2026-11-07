@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"testing"
+	"time"
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/danielgtaylor/huma/v2/humatest"
@@ -19,12 +20,12 @@ import (
 )
 
 type mockBracketRepoForHandler struct {
-	tournament     *models.Tournament
-	staffRole      models.TournamentStaffRole
-	matches        []models.Match
-	stage1Matches  []models.Match
-	acceptedTeams  []models.TournamentTeam
-	matchMap       map[uuid.UUID]*models.Match
+	tournament    *models.Tournament
+	staffRole     models.TournamentStaffRole
+	matches       []models.Match
+	stage1Matches []models.Match
+	acceptedTeams []models.TournamentTeam
+	matchMap      map[uuid.UUID]*models.Match
 }
 
 func (m *mockBracketRepoForHandler) GetTournament(_ context.Context, id uuid.UUID) (*models.Tournament, error) {
@@ -77,6 +78,14 @@ func (m *mockBracketRepoForHandler) GetMatch(_ context.Context, _, matchID uuid.
 		return nil, repositories.ErrBracketMatchNotFound
 	}
 	return match, nil
+}
+
+func (m *mockBracketRepoForHandler) UpdateMatchSchedule(_ context.Context, _, matchID uuid.UUID, scheduledAt time.Time, venue string) error {
+	if match, ok := m.matchMap[matchID]; ok {
+		match.ScheduledAt = &scheduledAt
+		match.Venue = venue
+	}
+	return nil
 }
 
 func (m *mockBracketRepoForHandler) RecordMatchResults(

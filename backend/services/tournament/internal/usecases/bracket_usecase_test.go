@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/moomaideng/eventory/services/tournament/internal/repositories"
@@ -102,6 +103,13 @@ func (m *mockBracketRepository) GetMatch(_ context.Context, _, matchID uuid.UUID
 		return nil, repositories.ErrBracketMatchNotFound
 	}
 	return match, nil
+}
+
+func (m *mockBracketRepository) UpdateMatchSchedule(_ context.Context, _, matchID uuid.UUID, scheduledAt time.Time, venue string) error {
+	match := m.matchesMap[matchID]
+	match.ScheduledAt = &scheduledAt
+	match.Venue = venue
+	return nil
 }
 
 func (m *mockBracketRepository) RecordMatchResults(
@@ -811,4 +819,44 @@ func TestRecordMatchResults(t *testing.T) {
 			t.Errorf("expected 0 advancing teams for final, got %v", result.AdvancingTeams)
 		}
 	})
+}
+
+func TestScheduleMatch(t *testing.T) {
+	referee := models.TournamentStaffRoleReferee
+	tournamentID, matchID := uuid.New(), uuid.New()
+	future := time.Now().Add(48 * time.Hour)
+
+	tests := []struct {
+		name    string
+		role    *models.TournamentStaffRole
+		at      time.Time
+		wantErr error
+	}{
+		{"staff sets future time", &referee, future, nil},
+		{"past time rejected", &referee, time.Now().Add(-24 * time.Hour), usecases.ErrBracketScheduleInPast},
+		{"non-staff rejected", nil, future, usecases.ErrBracketCallerNotStaff},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			repo := &mockBracketRepository{
+				tournament: &models.Tournament{ID: tournamentID, Status: models.TournamentStatusOngoing},
+				staffRole:  tt.role,
+				matchesMap: map[uuid.UUID]*models.Match{
+					matchID: {ID: matchID, TournamentID: tournamentID},
+				},
+			}
+			if tt.role == nil {
+				repo.staffErr = repositories.ErrBracketStaffNotFound
+			}
+
+			match, err := usecases.NewBracketUseCase(repo).ScheduleMatch(context.Background(), uuid.New(), tournamentID, matchID, tt.at, " Field 2 ")
+			if !errors.Is(err, tt.wantErr) {
+				t.Fatalf("want error %v, got %v", tt.wantErr, err)
+			}
+			if tt.wantErr == nil && (match.Venue != "Field 2" || !match.ScheduledAt.Equal(tt.at)) {
+				t.Errorf("schedule not saved: venue=%q at=%v", match.Venue, match.ScheduledAt)
+			}
+		})
+	}
 }
