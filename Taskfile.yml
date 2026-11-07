@@ -158,6 +158,12 @@ tasks:
       - task: load:run
         vars: { NAME: spike }
 
+  load:breakpoint:
+    desc: k6 breakpoint test (300 to 1600 VUs, ~3.5 min); finds the concurrent-user limit
+    cmds:
+      - task: load:run
+        vars: { NAME: breakpoint }
+
   load:all:
     desc: Run baseline, stress and spike in order (~7 min)
     cmds:

@@ -167,3 +167,18 @@ export function phaseThresholds(names) {
   }
   return t;
 }
+
+// Stepped ramp: for each level, a 10 s ramp (tagged `ramp`) then a 30 s hold
+// (tagged `vu<N>`), so results are reported per steady level without ramp blur.
+// Returns k6 `stages`, the phase `schedule` for phaseAt(), and phase names.
+export function steppedStages(levels, ramp = 10, hold = 30) {
+  const stages = [];
+  const schedule = [];
+  let t = 0;
+  for (const target of levels) {
+    stages.push({ duration: `${ramp}s`, target }, { duration: `${hold}s`, target });
+    schedule.push({ until: (t += ramp), name: "ramp" }, { until: (t += hold), name: `vu${target}` });
+  }
+  stages.push({ duration: "5s", target: 0 });
+  return { stages, schedule, phases: ["ramp", ...levels.map((l) => `vu${l}`)] };
+}
