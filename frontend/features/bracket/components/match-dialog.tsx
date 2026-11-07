@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Check, Settings2, Trash2, Trophy } from "lucide-react";
+import { CalendarClock, Check, Settings2, Trash2, Trophy } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -11,6 +11,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -23,6 +24,7 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Spinner } from "@/components/ui/spinner";
+import { MatchScheduleForm } from "./match-schedule-form";
 import type { MatchResponse } from "../utils";
 import type { BracketMatchNode, TeamPlacementInput } from "../schemas";
 
@@ -36,6 +38,8 @@ interface MatchDialogProps {
   onDeleteNode?: (tempId: string) => void;
   onRecordScores?: (matchId: string, placements: TeamPlacementInput[]) => Promise<void>;
   isRecording?: boolean;
+  onScheduleMatch?: (matchId: string, scheduledAt: string, venue: string) => Promise<void>;
+  isScheduling?: boolean;
 }
 
 export function MatchDialog({
@@ -48,6 +52,8 @@ export function MatchDialog({
   onDeleteNode,
   onRecordScores,
   isRecording = false,
+  onScheduleMatch,
+  isScheduling = false,
 }: MatchDialogProps) {
   if (!open) return null;
 
@@ -64,6 +70,8 @@ export function MatchDialog({
           onDeleteNode={onDeleteNode}
           onRecordScores={onRecordScores}
           isRecording={isRecording}
+          onScheduleMatch={onScheduleMatch}
+          isScheduling={isScheduling}
         />
       </DialogContent>
     </Dialog>
@@ -79,6 +87,8 @@ interface MatchDialogContentProps {
   onDeleteNode?: (tempId: string) => void;
   onRecordScores?: (matchId: string, placements: TeamPlacementInput[]) => Promise<void>;
   isRecording: boolean;
+  onScheduleMatch?: (matchId: string, scheduledAt: string, venue: string) => Promise<void>;
+  isScheduling: boolean;
 }
 
 function MatchDialogContent({
@@ -90,6 +100,8 @@ function MatchDialogContent({
   onDeleteNode,
   onRecordScores,
   isRecording,
+  onScheduleMatch,
+  isScheduling,
 }: MatchDialogContentProps) {
   // Other matches in bracket (excluding current one being edited)
   const otherMatches = allMatches.filter((m) => m.tempId !== (match?.id ?? ""));
@@ -131,6 +143,7 @@ function MatchDialogContent({
   const entries = match?.entries ?? [];
   const hasEntries = entries.length > 0;
   const isCompleted = match?.isCompleted ?? false;
+  const canSchedule = Boolean(onScheduleMatch) && !isCompleted;
 
   const [placements, setPlacements] = useState<Record<string, { rank: number; score: string }>>(() => {
     const initial: Record<string, { rank: number; score: string }> = {};
@@ -413,7 +426,7 @@ function MatchDialogContent({
       ) : null}
 
       <Tabs value={activeTab} onValueChange={(val) => setActiveTab(val as string)} className="gap-3">
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className={cn("grid w-full", canSchedule ? "grid-cols-3" : "grid-cols-2")}>
           <TabsTrigger value="scores" className="gap-1.5 text-xs">
             <Trophy className="size-3.5" />
             Scores & Results
@@ -422,6 +435,12 @@ function MatchDialogContent({
             <Settings2 className="size-3.5" />
             Format Settings
           </TabsTrigger>
+          {canSchedule ? (
+            <TabsTrigger value="schedule" className="gap-1.5 text-xs">
+              <CalendarClock className="size-3.5" />
+              Schedule
+            </TabsTrigger>
+          ) : null}
         </TabsList>
 
         {/* Tab 1: Scores & Results */}
@@ -683,6 +702,18 @@ function MatchDialogContent({
             </DialogFooter>
           </form>
         </TabsContent>
+
+        {/* Tab 3: Schedule (time + venue, saved matches only) */}
+        {canSchedule && onScheduleMatch ? (
+          <TabsContent value="schedule" className="pt-1">
+            <MatchScheduleForm
+              match={match}
+              onSchedule={onScheduleMatch}
+              isScheduling={isScheduling}
+              onClose={onClose}
+            />
+          </TabsContent>
+        ) : null}
       </Tabs>
     </>
   );

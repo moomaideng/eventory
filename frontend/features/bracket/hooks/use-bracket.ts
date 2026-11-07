@@ -45,6 +45,10 @@ export function useBracket({ tournamentId }: { tournamentId: string }) {
     "post",
     "/api/v1/tournaments/{id}/matches/{matchId}/results"
   );
+  const scheduleMutation = $api.useMutation(
+    "put",
+    "/api/v1/tournaments/{id}/matches/{matchId}/schedule"
+  );
 
   const matches: MatchResponse[] = bracketQuery.data?.matches ?? [];
 
@@ -93,6 +97,16 @@ export function useBracket({ tournamentId }: { tournamentId: string }) {
     await queryClient.invalidateQueries();
   }
 
+  async function handleScheduleMatch(matchId: string, scheduledAt: string, venue: string) {
+    await scheduleMutation.mutateAsync({
+      params: { path: { id: tournamentId, matchId } },
+      headers: authorizationHeader ? { Authorization: authorizationHeader } : undefined,
+      body: { scheduledAt, venue },
+    });
+
+    await queryClient.invalidateQueries();
+  }
+
   return {
     matches,
     acceptedCount,
@@ -106,5 +120,7 @@ export function useBracket({ tournamentId }: { tournamentId: string }) {
     isSeeding: seedMutation.isPending,
     recordResults: handleRecordResults,
     isRecording: recordMutation.isPending,
+    scheduleMatch: handleScheduleMatch,
+    isScheduling: scheduleMutation.isPending,
   };
 }
