@@ -24,6 +24,7 @@ interface AnnouncementListProps {
   isLoading: boolean;
   isError: boolean;
   onRetry: () => void;
+  emptyDescription?: string;
 }
 
 export function AnnouncementList({
@@ -31,6 +32,7 @@ export function AnnouncementList({
   isLoading,
   isError,
   onRetry,
+  emptyDescription,
 }: AnnouncementListProps) {
   if (isLoading) {
     return (
@@ -65,7 +67,8 @@ export function AnnouncementList({
           </EmptyMedia>
           <EmptyTitle>No announcements yet</EmptyTitle>
           <EmptyDescription>
-            Announcements you post will appear here, newest first.
+            {emptyDescription ??
+              "Announcements you post will appear here, newest first."}
           </EmptyDescription>
         </EmptyHeader>
       </Empty>
@@ -75,7 +78,7 @@ export function AnnouncementList({
   return (
     <ul className="flex flex-col gap-3">
       {announcements.map((announcement) => (
-        <li key={announcement.id}>
+        <li key={announcement.id} id={`announcement-${announcement.id}`}>
           <Card>
             <CardHeader>
               <CardTitle>{announcement.title}</CardTitle>

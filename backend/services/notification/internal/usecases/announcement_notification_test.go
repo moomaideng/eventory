@@ -66,7 +66,7 @@ func TestProcessAnnouncementCreatedSendsEmailAndNotification(t *testing.T) {
 	if noti.UserID != event.Data.Recipient.AccountID || noti.Type != models.NotificationTypeAnnouncementCreated {
 		t.Fatalf("unexpected in-app notification: %#v", noti)
 	}
-	if noti.Title != "Venue change" || noti.Link != "/tournaments/"+event.Data.TournamentID.String() {
+	if noti.Title != "Venue change" || noti.Link != "/tournaments/"+event.Data.TournamentID.String()+"/announcements" {
 		t.Fatalf("unexpected title or link: %#v", noti)
 	}
 	if !strings.Contains(noti.Message, "Eventory Cup") || !strings.Contains(noti.Message, "The final moves to room 301.") {
