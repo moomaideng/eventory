@@ -6,6 +6,8 @@ import { useAuth } from "@/context/auth-context";
 import type { MatchResponse } from "../utils";
 import type { BracketMatchNode, Stage1SeedAssignment, TeamPlacementInput } from "../schemas";
 
+export type SwapSlot = { matchId: string; teamId: string };
+
 export function useBracket({ tournamentId }: { tournamentId: string }) {
   const { authorizationHeader } = useAuth();
   const queryClient = useQueryClient();
@@ -45,6 +47,7 @@ export function useBracket({ tournamentId }: { tournamentId: string }) {
     "post",
     "/api/v1/tournaments/{id}/matches/{matchId}/results"
   );
+  const swapMutation = $api.useMutation("post", "/api/v1/tournaments/{id}/bracket/swap");
   const scheduleMutation = $api.useMutation(
     "put",
     "/api/v1/tournaments/{id}/matches/{matchId}/schedule"
@@ -107,6 +110,16 @@ export function useBracket({ tournamentId }: { tournamentId: string }) {
     await queryClient.invalidateQueries();
   }
 
+  async function handleSwapTeams(first: SwapSlot, second: SwapSlot) {
+    await swapMutation.mutateAsync({
+      params: { path: { id: tournamentId } },
+      headers: authorizationHeader ? { Authorization: authorizationHeader } : undefined,
+      body: { first, second },
+    });
+
+    await queryClient.invalidateQueries();
+  }
+
   return {
     matches,
     acceptedCount,
@@ -122,5 +135,7 @@ export function useBracket({ tournamentId }: { tournamentId: string }) {
     isRecording: recordMutation.isPending,
     scheduleMatch: handleScheduleMatch,
     isScheduling: scheduleMutation.isPending,
+    swapTeams: handleSwapTeams,
+    isSwapping: swapMutation.isPending,
   };
 }

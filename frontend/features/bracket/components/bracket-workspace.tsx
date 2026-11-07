@@ -50,6 +50,8 @@ export function BracketWorkspace({ tournamentId }: BracketWorkspaceProps) {
     isRecording,
     scheduleMatch,
     isScheduling,
+    swapTeams,
+    isSwapping,
   } = useBracket({ tournamentId });
 
   // Local draft overrides (null means directly in sync with server data)
@@ -352,6 +354,11 @@ export function BracketWorkspace({ tournamentId }: BracketWorkspaceProps) {
           matches.some((m) => m.id === selectedMatch?.id) ? scheduleMatch : undefined
         }
         isScheduling={isScheduling}
+        onSwapTeams={
+          matches.some((m) => m.id === selectedMatch?.id) ? swapTeams : undefined
+        }
+        isSwapping={isSwapping}
+        bracketMatches={matches}
       />
 
       {/* Reset Modal (Reset Stage 1 teams or Reset Entire Bracket) */}

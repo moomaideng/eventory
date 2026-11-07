@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { CalendarClock, Check, Settings2, Trash2, Trophy } from "lucide-react";
+import { ArrowLeftRight, CalendarClock, Check, Settings2, Trash2, Trophy } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -25,6 +25,8 @@ import {
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Spinner } from "@/components/ui/spinner";
 import { MatchScheduleForm } from "./match-schedule-form";
+import { MatchSwapForm } from "./match-swap-form";
+import type { SwapSlot } from "../hooks/use-bracket";
 import type { MatchResponse } from "../utils";
 import type { BracketMatchNode, TeamPlacementInput } from "../schemas";
 
@@ -39,6 +41,9 @@ interface MatchDialogProps {
   onRecordScores?: (matchId: string, placements: TeamPlacementInput[]) => Promise<void>;
   isRecording?: boolean;
   onScheduleMatch?: (matchId: string, scheduledAt: string, venue: string) => Promise<void>;
+  onSwapTeams?: (first: SwapSlot, second: SwapSlot) => Promise<void>;
+  isSwapping?: boolean;
+  bracketMatches?: MatchResponse[];
   isScheduling?: boolean;
 }
 
@@ -54,6 +59,9 @@ export function MatchDialog({
   isRecording = false,
   onScheduleMatch,
   isScheduling = false,
+  onSwapTeams,
+  isSwapping = false,
+  bracketMatches = [],
 }: MatchDialogProps) {
   if (!open) return null;
 
@@ -72,6 +80,9 @@ export function MatchDialog({
           isRecording={isRecording}
           onScheduleMatch={onScheduleMatch}
           isScheduling={isScheduling}
+          onSwapTeams={onSwapTeams}
+          isSwapping={isSwapping}
+          bracketMatches={bracketMatches}
         />
       </DialogContent>
     </Dialog>
@@ -88,6 +99,9 @@ interface MatchDialogContentProps {
   onRecordScores?: (matchId: string, placements: TeamPlacementInput[]) => Promise<void>;
   isRecording: boolean;
   onScheduleMatch?: (matchId: string, scheduledAt: string, venue: string) => Promise<void>;
+  onSwapTeams?: (first: SwapSlot, second: SwapSlot) => Promise<void>;
+  isSwapping?: boolean;
+  bracketMatches?: MatchResponse[];
   isScheduling: boolean;
 }
 
@@ -102,6 +116,9 @@ function MatchDialogContent({
   isRecording,
   onScheduleMatch,
   isScheduling,
+  onSwapTeams,
+  isSwapping = false,
+  bracketMatches = [],
 }: MatchDialogContentProps) {
   // Other matches in bracket (excluding current one being edited)
   const otherMatches = allMatches.filter((m) => m.tempId !== (match?.id ?? ""));
@@ -144,6 +161,8 @@ function MatchDialogContent({
   const hasEntries = entries.length > 0;
   const isCompleted = match?.isCompleted ?? false;
   const canSchedule = Boolean(onScheduleMatch) && !isCompleted;
+  const canSwap = Boolean(onSwapTeams) && !isCompleted && hasEntries;
+  const tabCount = 2 + Number(canSchedule) + Number(canSwap);
 
   const [placements, setPlacements] = useState<Record<string, { rank: number; score: string }>>(() => {
     const initial: Record<string, { rank: number; score: string }> = {};
@@ -426,7 +445,7 @@ function MatchDialogContent({
       ) : null}
 
       <Tabs value={activeTab} onValueChange={(val) => setActiveTab(val as string)} className="gap-3">
-        <TabsList className={cn("grid w-full", canSchedule ? "grid-cols-3" : "grid-cols-2")}>
+        <TabsList className={cn("grid w-full", { 2: "grid-cols-2", 3: "grid-cols-3", 4: "grid-cols-4" }[tabCount])}>
           <TabsTrigger value="scores" className="gap-1.5 text-xs">
             <Trophy className="size-3.5" />
             Scores & Results
@@ -439,6 +458,12 @@ function MatchDialogContent({
             <TabsTrigger value="schedule" className="gap-1.5 text-xs">
               <CalendarClock className="size-3.5" />
               Schedule
+            </TabsTrigger>
+          ) : null}
+          {canSwap ? (
+            <TabsTrigger value="swap" className="gap-1.5 text-xs">
+              <ArrowLeftRight className="size-3.5" />
+              Swap
             </TabsTrigger>
           ) : null}
         </TabsList>
@@ -710,6 +735,19 @@ function MatchDialogContent({
               match={match}
               onSchedule={onScheduleMatch}
               isScheduling={isScheduling}
+              onClose={onClose}
+            />
+          </TabsContent>
+        ) : null}
+
+        {/* Tab 4: Swap a team with another unfinished match in the same stage */}
+        {canSwap && onSwapTeams ? (
+          <TabsContent value="swap" className="pt-1">
+            <MatchSwapForm
+              match={match}
+              bracketMatches={bracketMatches}
+              onSwap={onSwapTeams}
+              isSwapping={isSwapping}
               onClose={onClose}
             />
           </TabsContent>
