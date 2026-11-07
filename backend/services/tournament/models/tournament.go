@@ -50,6 +50,7 @@ type Tournament struct {
 	ID                   uuid.UUID                  `gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
 	Name                 string                     `gorm:"type:varchar(160);not null"`
 	Description          string                     `gorm:"type:text;not null"`
+	Detail               string                     `gorm:"type:text;not null;default:''"`
 	Game                 string                     `gorm:"type:varchar(80);not null"`
 	Location             string                     `gorm:"type:varchar(160);not null"`
 	StartsAt             time.Time                  `gorm:"column:start_at;not null;index:idx_tournaments_public_start,priority:3"`

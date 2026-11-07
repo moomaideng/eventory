@@ -35,6 +35,7 @@ export function HostTournamentForm({
   const [game, setGame] = useState("");
   const [location, setLocation] = useState("Online");
   const [description, setDescription] = useState("");
+  const [detail, setDetail] = useState("");
   const [registrationMode, setRegistrationMode] = useState<"SOLO" | "TEAM">(
     "TEAM"
   );
@@ -60,6 +61,7 @@ export function HostTournamentForm({
       game,
       location,
       description,
+      detail,
       registrationMode,
       minTeamSize: registrationMode === "SOLO" ? 1 : minTeamSize,
       maxTeamSize: registrationMode === "SOLO" ? 1 : maxTeamSize,
@@ -100,6 +102,7 @@ export function HostTournamentForm({
       game,
       location,
       description,
+      detail,
       registrationMode,
       minTeamSize: registrationMode === "SOLO" ? 1 : minTeamSize,
       maxTeamSize: registrationMode === "SOLO" ? 1 : maxTeamSize,
@@ -142,6 +145,7 @@ export function HostTournamentForm({
           game: result.data.game,
           location: result.data.location,
           description: result.data.description,
+          detail: result.data.detail,
           registrationMode: result.data.registrationMode,
           minTeamSize: result.data.minTeamSize,
           maxTeamSize: result.data.maxTeamSize,
@@ -217,6 +221,12 @@ export function HostTournamentForm({
           setDescription(val);
           setFieldErrors((prev) => ({ ...prev, description: undefined }));
           updateAndNotify({ description: val });
+        }}
+        detail={detail}
+        onDetailChange={(val) => {
+          setDetail(val);
+          setFieldErrors((prev) => ({ ...prev, detail: undefined }));
+          updateAndNotify({ detail: val });
         }}
         errors={fieldErrors}
       />

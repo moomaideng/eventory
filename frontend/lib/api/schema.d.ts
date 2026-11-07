@@ -96,6 +96,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/accounts/sponsors": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Browse Sponsor Directory
+         * @description Lists active sponsors who explicitly opted in, for authenticated organizers.
+         */
+        get: operations["list-sponsor-directory"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/accounts/{id}": {
         parameters: {
             query?: never;
@@ -973,26 +993,6 @@ export interface paths {
         patch: operations["mark-notification-read"];
         trace?: never;
     };
-    "/api/v1/accounts/sponsors": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Browse Sponsor Directory
-         * @description Lists active sponsors who explicitly opted in, for authenticated organizers.
-         */
-        get: operations["list-sponsor-directory"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1097,6 +1097,29 @@ export interface components {
              * @description Timestamp of last profile update
              */
             updatedAt: string;
+        };
+        SponsorDirectoryItem: {
+            accountId: string;
+            contactEmail: string;
+            sponsorName: string;
+            /** @description Sponsor interests and business tags */
+            tags: string[] | null;
+        };
+        SponsorDirectoryOutputBody: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/SponsorDirectoryOutputBody.json
+             */
+            readonly $schema?: string;
+            items: components["schemas"]["SponsorDirectoryItem"][] | null;
+            /** Format: int64 */
+            page: number;
+            /** Format: int64 */
+            pageSize: number;
+            tags: string[] | null;
+            /** Format: int64 */
+            total: number;
         };
         SponsorProfileResponse: {
             /**
@@ -1229,8 +1252,10 @@ export interface components {
              * @description Maximum participant or team capacity
              */
             capacity: number;
-            /** @description Tournament description or rules */
+            /** @description Short summary description */
             description: string;
+            /** @description Tournament rules and full details (Markdown supported) */
+            detail?: string;
             /**
              * Format: date-time
              * @description Tournament end timestamp (RFC 3339)
@@ -1870,7 +1895,10 @@ export interface components {
             /** Format: int64 */
             capacity: number;
             currency: string;
+            /** @description Short summary description */
             description: string;
+            /** @description Tournament rules and full details (Markdown supported) */
+            detail: string;
             /** Format: date-time */
             endAt: string;
             /**
@@ -1978,8 +2006,10 @@ export interface components {
              * @description New capacity
              */
             capacity?: number;
-            /** @description New tournament description */
+            /** @description New short summary */
             description?: string;
+            /** @description New tournament rules and full details (Markdown supported) */
+            detail?: string;
             /**
              * Format: date-time
              * @description New end timestamp
@@ -2182,29 +2212,6 @@ export interface components {
             notifications: components["schemas"]["NotificationItem"][] | null;
             /** Format: int64 */
             unreadCount: number;
-        };
-        SponsorDirectoryItem: {
-            accountId: string;
-            contactEmail: string;
-            sponsorName: string;
-            /** @description Sponsor interests and business tags */
-            tags: string[] | null;
-        };
-        SponsorDirectoryOutputBody: {
-            /**
-             * Format: uri
-             * @description A URL to the JSON Schema for this object.
-             * @example https://example.com/schemas/SponsorDirectoryOutputBody.json
-             */
-            readonly $schema?: string;
-            items: components["schemas"]["SponsorDirectoryItem"][] | null;
-            /** Format: int64 */
-            page: number;
-            /** Format: int64 */
-            pageSize: number;
-            tags: string[] | null;
-            /** Format: int64 */
-            total: number;
         };
     };
     responses: never;
@@ -2417,6 +2424,42 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SponsorProfileResponse"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "list-sponsor-directory": {
+        parameters: {
+            query?: {
+                /** @description Search sponsor name */
+                search?: string;
+                /** @description Filter by an exact tag (case-insensitive) */
+                tag?: string;
+                page?: number;
+                pageSize?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SponsorDirectoryOutputBody"];
                 };
             };
             /** @description Error */
@@ -4235,42 +4278,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["NotificationItem"];
-                };
-            };
-            /** @description Error */
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["ErrorModel"];
-                };
-            };
-        };
-    };
-    "list-sponsor-directory": {
-        parameters: {
-            query?: {
-                /** @description Search sponsor name */
-                search?: string;
-                /** @description Filter by an exact tag (case-insensitive) */
-                tag?: string;
-                page?: number;
-                pageSize?: number;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["SponsorDirectoryOutputBody"];
                 };
             };
             /** @description Error */
