@@ -422,7 +422,7 @@ func (useCase *NotificationUseCase) ProcessAnnouncementCreated(ctx context.Conte
 			Type:    models.NotificationTypeAnnouncementCreated,
 			Title:   event.Data.Title,
 			Message: fmt.Sprintf("%s: %s", event.Data.TournamentName, announcementPreview(event.Data.Body)),
-			Link:    fmt.Sprintf("/tournaments/%s", event.Data.TournamentID),
+			Link:    fmt.Sprintf("/tournaments/%s/announcements", event.Data.TournamentID),
 		})
 		if err != nil {
 			slog.WarnContext(ctx, "announcement in-app notification not created",

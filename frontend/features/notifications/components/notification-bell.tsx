@@ -90,7 +90,14 @@ export function NotificationBell() {
       await markAsRead(item.id);
     }
     if (item.link) {
-      router.push(item.link);
+      let targetLink = item.link;
+      if (
+        item.type === "ANNOUNCEMENT_CREATED" &&
+        !targetLink.endsWith("/announcements")
+      ) {
+        targetLink = `${targetLink.replace(/\/+$/, "")}/announcements`;
+      }
+      router.push(targetLink);
     }
   };
 
