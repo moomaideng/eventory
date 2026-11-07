@@ -259,6 +259,7 @@ services:
       PAYMENT_SERVICE_KEY: ${PAYMENT_SERVICE_KEY:?PAYMENT_SERVICE_KEY is required}
       MONGO_URI: mongodb://admin:${MONGO_PASSWORD:?MONGO_PASSWORD is required}@mongodb:27017/tournament_db?authSource=admin
       MONGO_DB_NAME: tournament_db
+      BROKER_URL: amqp://eventory:${RABBITMQ_PASSWORD:?RABBITMQ_PASSWORD is required}@rabbitmq:5672/
       OTEL_EXPORTER_OTLP_ENDPOINT: http://alloy:4318
       LOGGING_LEVEL: debug
       SUPABASE_URL: ${SUPABASE_URL:?SUPABASE_URL is required}
@@ -283,6 +284,8 @@ services:
       mongodb:
         condition: service_healthy
       account:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
     labels:
       - eventory.logs=true
@@ -316,6 +319,7 @@ services:
       HTTP_PORT: "8083"
       DB_DSN: postgresql://admin:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@postgres:5432/payment_db?sslmode=disable
       PAYMENT_SERVICE_KEY: ${PAYMENT_SERVICE_KEY:?PAYMENT_SERVICE_KEY is required}
+      BROKER_URL: amqp://eventory:${RABBITMQ_PASSWORD:?RABBITMQ_PASSWORD is required}@rabbitmq:5672/
       OTEL_EXPORTER_OTLP_ENDPOINT: http://alloy:4318
       LOGGING_LEVEL: debug
       SUPABASE_URL: ${SUPABASE_URL:?SUPABASE_URL is required}
@@ -336,6 +340,8 @@ services:
       start_period: 20s
     depends_on:
       postgres:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
     labels:
       - eventory.logs=true
