@@ -135,3 +135,39 @@ tasks:
       - npm --prefix frontend run lint
       - npm --prefix frontend run typecheck
       - npm --prefix frontend run test:payments
+
+  # --- Load testing (k6 in Docker) ---
+  # Needs the stack up and seeded: task dev:backend && task seed
+  # Tests insert rows; to start clean, run task db:reset first, then the line above.
+
+  load:baseline:
+    desc: k6 average-load baseline (20 VUs, ~1 min); HTML report in loadtest/results/
+    cmds:
+      - task: load:run
+        vars: { NAME: baseline }
+
+  load:stress:
+    desc: k6 stress test (50 to 300 VUs, ~3.5 min); HTML report in loadtest/results/
+    cmds:
+      - task: load:run
+        vars: { NAME: stress }
+
+  load:spike:
+    desc: k6 spike test (10 to 300 to 10 VUs, ~2.5 min); HTML report in loadtest/results/
+    cmds:
+      - task: load:run
+        vars: { NAME: spike }
+
+  load:all:
+    desc: Run baseline, stress and spike in order (~7 min)
+    cmds:
+      - task: load:baseline
+      - task: load:stress
+        ignore_error: true # crossing a threshold is a finding, not a failure
+      - task: load:spike
+        ignore_error: true
+
+  load:run:
+    internal: true
+    cmds:
+      - docker compose run --rm -e K6_WEB_DASHBOARD_EXPORT=loadtest/results/{{.NAME}}-report.html k6 run loadtest/{{.NAME}}.js
