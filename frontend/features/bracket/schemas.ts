@@ -32,3 +32,12 @@ export const stage1SeedAssignmentSchema = z.object({
 });
 
 export type Stage1SeedAssignment = z.infer<typeof stage1SeedAssignmentSchema>;
+
+export const matchScheduleSchema = z.object({
+  scheduledAt: z
+    .string()
+    .refine((v) => v !== "" && new Date(v).getTime() > Date.now(), "Pick a time in the future"),
+  venue: z.string().trim().min(1, "Venue is required").max(160, "Venue too long"),
+});
+
+export type MatchScheduleInput = z.infer<typeof matchScheduleSchema>;

@@ -381,8 +381,14 @@ export function BracketTreeView({
                             <CheckCircle2 className="size-2.5" /> Done
                           </span>
                         ) : (
-                          <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
-                            <Clock className="size-2.5" /> Pending
+                          <span className="text-[10px] text-muted-foreground flex items-center gap-0.5 shrink-0">
+                            <Clock className="size-2.5" />
+                            {m.scheduledAt
+                              ? new Date(m.scheduledAt).toLocaleString(undefined, {
+                                  dateStyle: "short",
+                                  timeStyle: "short",
+                                })
+                              : "Pending"}
                           </span>
                         )}
                       </div>
