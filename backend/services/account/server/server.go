@@ -95,7 +95,8 @@ func newHTTPRouter(db *gorm.DB, cfg config.Config, accountUseCase *usecases.Acco
 	authMiddleware := middlewares.NewAuthMiddleware(api, cfg.SupabaseURL, cfg.Environment)
 	accountGroup := huma.NewGroup(api, "/api/v1/accounts")
 	accountGroup.UseMiddleware(authMiddleware.HumaMiddleware())
-	resthandlers.RegisterAccountRoutes(accountGroup, accountUseCase)
+	publicGroup := huma.NewGroup(api, "/api/v1/accounts")
+	resthandlers.RegisterAccountRoutes(accountGroup, publicGroup, accountUseCase)
 
 	return router
 }

@@ -90,6 +90,7 @@ type SearchTournamentsInput struct {
 	MinEntryFee *int64
 	MaxEntryFee *int64
 	Status      string
+	OrganizerID *uuid.UUID
 	Sort        string
 	Page        int
 	PageSize    int
@@ -298,7 +299,7 @@ func (u *TournamentUseCase) Search(
 	repositoryItems, total, err := u.tournamentRepo.Search(ctx, repositories.TournamentFilters{
 		Query: query, StartFrom: startFrom, StartTo: startTo,
 		MinEntryFee: input.MinEntryFee, MaxEntryFee: input.MaxEntryFee,
-		Status: status, Sort: sort, Page: page, PageSize: pageSize,
+		Status: status, OrganizerID: input.OrganizerID, Sort: sort, Page: page, PageSize: pageSize,
 	})
 	if err != nil {
 		return nil, err

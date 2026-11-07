@@ -161,7 +161,7 @@ func getAuthAccount(ctx context.Context, uc *usecases.AccountUseCase) (*models.A
 }
 
 // RegisterAccountRoutes registers all account-related HTTP endpoints under the account group.
-func RegisterAccountRoutes(api huma.API, accountUseCase *usecases.AccountUseCase) {
+func RegisterAccountRoutes(api, publicApi huma.API, accountUseCase *usecases.AccountUseCase) {
 	// 1. GET /api/v1/accounts/me (Get Authenticated User's Account)
 	huma.Register(api, huma.Operation{
 		OperationID: "get-my-account",
@@ -329,6 +329,25 @@ func RegisterAccountRoutes(api huma.API, accountUseCase *usecases.AccountUseCase
 			return nil, huma.Error500InternalServerError("Failed to retrieve organizer profile", err)
 		}
 
+		return &OrganizerProfileOutput{Body: toOrganizerProfileResponse(profile)}, nil
+	})
+
+	// 6b. GET /api/v1/accounts/{id}/organizer-profile (Lookup Organizer Profile by Account ID)
+	huma.Register(publicApi, huma.Operation{
+		OperationID: "get-organizer-profile-by-id",
+		Method:      http.MethodGet,
+		Path:        "/{id}/organizer-profile",
+		Summary:     "Get Organizer Profile by ID",
+		Description: "Retrieves public organizer profile details for a given account UUID.",
+		Tags:        []string{"Accounts"},
+	}, func(ctx context.Context, input *GetAccountByIDInput) (*OrganizerProfileOutput, error) {
+		profile, err := accountUseCase.GetOrganizerProfile(ctx, input.ID)
+		if err != nil {
+			if errors.Is(err, usecases.ErrOrganizerProfileNotFound) {
+				return nil, huma.Error404NotFound("Organizer profile not found", err)
+			}
+			return nil, huma.Error500InternalServerError("Failed to retrieve organizer profile", err)
+		}
 		return &OrganizerProfileOutput{Body: toOrganizerProfileResponse(profile)}, nil
 	})
 

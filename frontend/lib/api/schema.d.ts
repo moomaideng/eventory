@@ -48,6 +48,26 @@ export interface paths {
         patch: operations["update-my-account"];
         trace?: never;
     };
+    "/api/v1/accounts/{id}/organizer-profile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Organizer Profile by ID
+         * @description Retrieves public organizer profile details for a given account UUID.
+         */
+        get: operations["get-organizer-profile-by-id"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/accounts/me/organizer-profile": {
         parameters: {
             query?: never;
@@ -1859,6 +1879,7 @@ export interface components {
             /** Format: int64 */
             minTeamSize: number;
             name: string;
+            organizerId: string;
             organizerName: string;
             /** Format: int64 */
             registeredCount: number;
@@ -2243,6 +2264,38 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AccountResponse"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "get-organizer-profile-by-id": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Internal account UUID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrganizerProfileResponse"];
                 };
             };
             /** @description Error */
@@ -2715,6 +2768,8 @@ export interface operations {
                 /** @description Maximum entry fee; omit to disable */
                 maxEntryFee?: number;
                 status?: "DRAFT" | "CROWDFUNDING" | "REGISTRATION_OPEN" | "REGISTRATION_CLOSED" | "ONGOING" | "COMPLETED" | "CANCELLED";
+                /** @description Filter tournaments hosted by an organizer account UUID */
+                organizerId?: string;
                 sort?: "start_asc" | "start_desc" | "fee_asc" | "fee_desc";
                 page?: number;
                 pageSize?: number;

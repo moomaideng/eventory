@@ -153,6 +153,30 @@ func TestSearchTournaments_NormalizesFilters(t *testing.T) {
 	}
 }
 
+func TestSearchTournaments_AppliesOrganizerIDFilter(t *testing.T) {
+	repo := &mockTournamentRepository{
+		items: []repositories.TournamentSearchItem{{
+			Tournament: models.Tournament{ID: uuid.New()}, RegisteredCount: 1,
+		}},
+		total: 1,
+	}
+	useCase := usecases.NewTournamentUseCase(repo, newStubAccountService())
+	orgID := uuid.New()
+
+	result, err := useCase.Search(context.Background(), usecases.SearchTournamentsInput{
+		OrganizerID: &orgID,
+	})
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if repo.filters.OrganizerID == nil || *repo.filters.OrganizerID != orgID {
+		t.Fatalf("expected organizer filter %v, got %v", orgID, repo.filters.OrganizerID)
+	}
+	if result.Total != 1 {
+		t.Fatalf("expected total 1, got %d", result.Total)
+	}
+}
+
 func TestSearchTournaments_RejectsInvalidRanges(t *testing.T) {
 	tests := []struct {
 		name  string

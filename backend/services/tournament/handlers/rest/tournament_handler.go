@@ -71,6 +71,7 @@ type TournamentResponse struct {
 	Description          string    `json:"description"`
 	Game                 string    `json:"game"`
 	Location             string    `json:"location"`
+	OrganizerID          uuid.UUID `json:"organizerId"`
 	OrganizerName        string    `json:"organizerName"`
 	StartAt              time.Time `json:"startAt"`
 	EndAt                time.Time `json:"endAt"`
@@ -92,6 +93,7 @@ type SearchTournamentsInput struct {
 	MinEntryFee int64  `query:"minEntryFee" default:"-1" minimum:"-1" doc:"Minimum entry fee; omit to disable"`
 	MaxEntryFee int64  `query:"maxEntryFee" default:"-1" minimum:"-1" doc:"Maximum entry fee; omit to disable"`
 	Status      string `query:"status" enum:"DRAFT,CROWDFUNDING,REGISTRATION_OPEN,REGISTRATION_CLOSED,ONGOING,COMPLETED,CANCELLED"`
+	OrganizerID string `query:"organizerId" doc:"Filter tournaments hosted by an organizer account UUID"`
 	Sort        string `query:"sort" default:"start_asc" enum:"start_asc,start_desc,fee_asc,fee_desc"`
 	Page        int    `query:"page" default:"1" minimum:"1"`
 	PageSize    int    `query:"pageSize" default:"12" minimum:"1" maximum:"100"`
@@ -151,10 +153,19 @@ func RegisterTournamentRoutes(
 		Description: "Returns published tournaments matching schedule, budget, status, and text filters.",
 		Tags:        []string{"Tournaments"},
 	}, func(ctx context.Context, input *SearchTournamentsInput) (*SearchTournamentsOutput, error) {
+		var organizerID *uuid.UUID
+		if input.OrganizerID != "" {
+			parsed, err := uuid.Parse(input.OrganizerID)
+			if err != nil {
+				return nil, huma.Error400BadRequest("Invalid organizerId", err)
+			}
+			organizerID = &parsed
+		}
+
 		result, err := tournamentUseCase.Search(ctx, usecases.SearchTournamentsInput{
 			Query: input.Q, StartFrom: input.StartFrom, StartTo: input.StartTo,
 			MinEntryFee: optionalFee(input.MinEntryFee), MaxEntryFee: optionalFee(input.MaxEntryFee),
-			Status: input.Status, Sort: input.Sort, Page: input.Page, PageSize: input.PageSize,
+			Status: input.Status, OrganizerID: organizerID, Sort: input.Sort, Page: input.Page, PageSize: input.PageSize,
 		})
 		if err != nil {
 			if errors.Is(err, usecases.ErrInvalidTournamentFilters) {
@@ -356,6 +367,7 @@ func toTournamentResponse(tournament models.Tournament, organizerName string, re
 	return TournamentResponse{
 		ID: tournament.ID, Name: tournament.Name, Description: tournament.Description,
 		Game: tournament.Game, Location: tournament.Location,
+		OrganizerID:   tournament.OwnerID(),
 		OrganizerName: organizerName,
 		StartAt:       tournament.StartsAt, EndAt: tournament.EndsAt,
 		RegistrationDeadline: tournament.RegistrationDeadline,

@@ -256,3 +256,7 @@ export const registrationRulesSchema = z
       });
     }
   });
+
+export const organizerIdParamSchema = z
+  .string()
+  .uuid("Invalid organizer ID.");

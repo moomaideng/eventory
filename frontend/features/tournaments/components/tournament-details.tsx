@@ -134,7 +134,17 @@ export function TournamentDetails({
             {tournament.name}
           </h1>
           <p className="text-muted-foreground text-base">
-            Hosted by {tournament.organizerName}
+            Hosted by{" "}
+            {tournament.organizerId ? (
+              <Link
+                href={`/organizers/${tournament.organizerId}`}
+                className="text-foreground font-medium transition-colors hover:underline"
+              >
+                {tournament.organizerName}
+              </Link>
+            ) : (
+              tournament.organizerName
+            )}
           </p>
         </div>
         {!sponsorMode && canCreateTeam ? (

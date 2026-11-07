@@ -25,6 +25,7 @@ type TournamentFilters struct {
 	MinEntryFee *int64
 	MaxEntryFee *int64
 	Status      models.TournamentStatus
+	OrganizerID *uuid.UUID
 	Sort        string
 	Page        int
 	PageSize    int
@@ -99,6 +100,13 @@ func (r *tournamentRepositoryImpl) Search(
 	}
 	if filters.Status != "" {
 		query = query.Where("status = ?", filters.Status)
+	}
+	if filters.OrganizerID != nil {
+		query = query.Where(
+			"EXISTS (SELECT 1 FROM tournament_staff WHERE tournament_staff.tournament_id = tournaments.id AND tournament_staff.account_id = ? AND tournament_staff.role = ?)",
+			*filters.OrganizerID,
+			models.TournamentStaffRoleOwner,
+		)
 	}
 
 	var total int64
