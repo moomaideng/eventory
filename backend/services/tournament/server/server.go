@@ -199,7 +199,7 @@ func newHTTPRouter(
 	resthandlers.RegisterAnnouncementRoutes(api, auth, announcementUseCase)
 
 	if formRepo != nil && fieldRegistry != nil {
-		formUseCase := usecases.NewRegistrationFormUseCase(tournamentRepo, formRepo, fieldRegistry)
+		formUseCase := usecases.NewRegistrationFormUseCase(tournamentRepo, formRepo, fieldRegistry, repositories.NewTeamLobbyRepository(db))
 		resthandlers.RegisterRegistrationFormRoutes(api, auth, organizer, formUseCase)
 	}
 

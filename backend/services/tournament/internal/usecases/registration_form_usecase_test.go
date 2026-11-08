@@ -82,7 +82,7 @@ func (s *formRepoStub) UpsertResponse(_ context.Context, resp *models.FormRespon
 	return resp, nil
 }
 
-func (s *formRepoStub) GetResponseByAccount(_ context.Context, tournamentID uuid.UUID, accountID uuid.UUID) (*models.FormResponse, error) {
+func (s *formRepoStub) GetResponseByAccount(_ context.Context, tournamentID uuid.UUID, accountID uuid.UUID, registrationID ...uuid.UUID) (*models.FormResponse, error) {
 	key := tournamentID.String() + ":" + accountID.String()
 	r, ok := s.responses[key]
 	if !ok {
@@ -120,7 +120,7 @@ func TestRegistrationFormUseCase_SaveForm(t *testing.T) {
 	tRepo := &tournamentRepoStub{tournaments: tournaments}
 	fRepo := newFormRepoStub()
 	registry := forms.NewDefaultRegistry()
-	uc := usecases.NewRegistrationFormUseCase(tRepo, fRepo, registry)
+	uc := usecases.NewRegistrationFormUseCase(tRepo, fRepo, registry, nil)
 
 	t.Run("tournament not found", func(t *testing.T) {
 		_, err := uc.SaveForm(ctx, organizerID, uuid.New(), "Title", "Desc", nil)
@@ -225,7 +225,7 @@ func TestRegistrationFormUseCase_SubmitResponse(t *testing.T) {
 	tRepo := &tournamentRepoStub{tournaments: tournaments}
 	fRepo := newFormRepoStub()
 	registry := forms.NewDefaultRegistry()
-	uc := usecases.NewRegistrationFormUseCase(tRepo, fRepo, registry)
+	uc := usecases.NewRegistrationFormUseCase(tRepo, fRepo, registry, nil)
 
 	// Setup form
 	_, err := uc.SaveForm(ctx, organizerID, tournamentID, "Reg Form", "", []models.FormField{

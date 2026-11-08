@@ -229,7 +229,7 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        /** Update your own registration answers while the team is forming */
+        /** Submit your own registration answers once while the team is forming */
         put: operations["update-member-registration-answers"];
         post?: never;
         delete?: never;
@@ -707,7 +707,7 @@ export interface paths {
         };
         /**
          * Get current user's submitted answers for a tournament
-         * @description Returns the authenticated participant's submitted answers for this tournament.
+         * @description Returns answers for the participant's active application, or 404 when there is no active application.
          */
         get: operations["get-my-form-response"];
         put?: never;
@@ -1389,6 +1389,10 @@ export interface components {
             accountId: string;
             answers: components["schemas"]["FieldAnswer"][] | null;
             id: string;
+            /** @description Membership ID for this application; zero for legacy responses */
+            registrationId: string;
+            /** @description Team for this application; zero for legacy responses */
+            teamId: string;
             tournamentId: string;
         };
         InviteStaffRequest: {

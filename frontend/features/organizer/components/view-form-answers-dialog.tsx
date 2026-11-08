@@ -6,6 +6,7 @@ import { useAuth } from "@/context/auth-context";
 import { $api } from "@/lib/api/client";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
   Dialog,
   DialogClose,
@@ -21,12 +22,14 @@ import { Spinner } from "@/components/ui/spinner";
 interface ViewFormAnswersDialogProps {
   tournamentId: string;
   accountId: string;
+  registrationId: string;
   applicantName: string;
 }
 
 export function ViewFormAnswersDialog({
   tournamentId,
   accountId,
+  registrationId,
   applicantName,
 }: ViewFormAnswersDialogProps) {
   const [open, setOpen] = useState(false);
@@ -42,6 +45,7 @@ export function ViewFormAnswersDialog({
     {
       enabled: open && Boolean(authorizationHeader),
       retry: false,
+      staleTime: 0,
     }
   );
 
@@ -55,13 +59,23 @@ export function ViewFormAnswersDialog({
     {
       enabled: open && Boolean(authorizationHeader),
       retry: false,
+      staleTime: 0,
     }
   );
 
-  const isLoading = formQuery.isLoading || responsesQuery.isLoading;
+  const isLoading = formQuery.isFetching || responsesQuery.isFetching;
   const form = formQuery.data;
   const responses = responsesQuery.data?.items ?? [];
-  const participantResponse = responses.find((item) => item.accountId === accountId);
+  const participantResponse =
+    responses.find(
+      (item) =>
+        item.accountId === accountId && item.registrationId === registrationId
+    ) ??
+    responses.find(
+      (item) =>
+        item.accountId === accountId &&
+        item.registrationId === "00000000-0000-0000-0000-000000000000"
+    );
 
   const answerMap = new Map<string, unknown>();
   if (participantResponse?.answers) {
@@ -100,20 +114,37 @@ export function ViewFormAnswersDialog({
           <DialogTitle>Registration Answers</DialogTitle>
           <DialogDescription>
             Submitted responses by{" "}
-            <span className="font-medium text-foreground">{applicantName}</span>
+            <span className="text-foreground font-medium">{applicantName}</span>
           </DialogDescription>
         </DialogHeader>
 
         {isLoading ? (
           <div className="flex items-center justify-center py-8">
-            <Spinner className="size-6 text-muted-foreground" />
+            <Spinner className="text-muted-foreground size-6" />
           </div>
+        ) : formQuery.isError || responsesQuery.isError ? (
+          <Alert variant="destructive">
+            <AlertTitle>Unable to load registration answers</AlertTitle>
+            <AlertDescription>
+              Please try again. Your answers may still be saved.
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  void formQuery.refetch();
+                  void responsesQuery.refetch();
+                }}
+              >
+                Retry
+              </Button>
+            </AlertDescription>
+          </Alert>
         ) : !form?.fields?.length ? (
-          <p className="py-4 text-center text-sm text-muted-foreground">
+          <p className="text-muted-foreground py-4 text-center text-sm">
             No registration questions configured for this tournament.
           </p>
         ) : !participantResponse ? (
-          <p className="py-4 text-center text-sm text-muted-foreground">
+          <p className="text-muted-foreground py-4 text-center text-sm">
             No registration answers submitted by this participant.
           </p>
         ) : (
@@ -124,7 +155,7 @@ export function ViewFormAnswersDialog({
               return (
                 <div
                   key={field.id}
-                  className="rounded-lg border bg-muted/30 p-3 text-sm"
+                  className="bg-muted/30 rounded-lg border p-3 text-sm"
                 >
                   <div className="flex items-center justify-between gap-2">
                     <span className="font-medium">{field.label}</span>
@@ -135,11 +166,11 @@ export function ViewFormAnswersDialog({
                     )}
                   </div>
                   {field.description ? (
-                    <p className="mt-0.5 text-xs text-muted-foreground">
+                    <p className="text-muted-foreground mt-0.5 text-xs">
                       {field.description}
                     </p>
                   ) : null}
-                  <p className="mt-2 text-sm whitespace-pre-wrap font-normal text-foreground">
+                  <p className="text-foreground mt-2 text-sm font-normal whitespace-pre-wrap">
                     {formatted}
                   </p>
                 </div>
@@ -149,9 +180,7 @@ export function ViewFormAnswersDialog({
         )}
 
         <DialogFooter>
-          <DialogClose render={<Button variant="outline" />}>
-            Close
-          </DialogClose>
+          <DialogClose render={<Button variant="outline" />}>Close</DialogClose>
         </DialogFooter>
       </DialogContent>
     </Dialog>

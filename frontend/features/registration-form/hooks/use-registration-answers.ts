@@ -13,7 +13,8 @@ import {
 
 export function useRegistrationAnswers(
   tournamentId: string,
-  authorizationHeader?: string | null
+  authorizationHeader?: string | null,
+  mode: "new" | "current" = "current"
 ) {
   const [answers, setAnswers] = useState<Record<string, AnswerValue>>({});
   const [errors, setErrors] = useState<Record<string, string | null>>({});
@@ -47,7 +48,9 @@ export function useRegistrationAnswers(
   });
   const saved = useQuery({
     queryKey: ["my-registration-answers", tournamentId, authorizationHeader],
-    enabled: Boolean(tournamentId && authorizationHeader),
+    staleTime: 0,
+    refetchOnMount: "always",
+    enabled: mode === "current" && Boolean(tournamentId && authorizationHeader),
     retry: false,
     queryFn: async () => {
       const result = await apiClient.GET(
@@ -57,16 +60,21 @@ export function useRegistrationAnswers(
           headers: { Authorization: authorizationHeader! },
         }
       );
-      if (result.response.status === 404) return [];
+      if (result.response.status === 404) return null;
       if (result.error || !result.data)
         throw new Error("Unable to load your saved answers.");
-      return result.data.answers;
+      return result.data;
     },
   });
+  const submittedResponse = mode === "current" ? saved.data : null;
+  const savedLoading =
+    mode === "current" && (saved.isPending || saved.isFetching);
+  const savedError = mode === "current" ? saved.error : null;
   const fields = form.data ?? [];
   const valueOf = (field: (typeof fields)[number]): AnswerValue => {
-    if (answers[field.id] !== undefined) return answers[field.id];
-    const previous = saved.data?.find(
+    if (!submittedResponse && answers[field.id] !== undefined)
+      return answers[field.id];
+    const previous = submittedResponse?.answers?.find(
       (answer) => answer.fieldId === field.id
     )?.value;
     if (field.type === "SELECT_MULTIPLE" && Array.isArray(previous))
@@ -78,9 +86,10 @@ export function useRegistrationAnswers(
     return emptyAnswer(field);
   };
   const blocked =
-    form.isPending || saved.isPending || form.isError || saved.isError;
+    form.isPending || savedLoading || form.isError || Boolean(savedError);
   function validate() {
     if (blocked) return null;
+    if (submittedResponse) return submittedResponse.answers ?? [];
     const next = Object.fromEntries(
       fields.map((field) => [field.id, validateAnswer(field, valueOf(field))])
     );
@@ -99,17 +108,20 @@ export function useRegistrationAnswers(
   }
   return {
     fields,
+    submitted: Boolean(submittedResponse),
+    submittedAnswers: submittedResponse?.answers ?? [],
     errors,
     valueOf,
     validate,
     blocked,
-    isLoading: form.isPending || saved.isPending,
-    error: form.error?.message ?? saved.error?.message,
+    isLoading: form.isPending || savedLoading,
+    error: form.error?.message ?? savedError?.message,
     retry: () => {
       void form.refetch();
-      void saved.refetch();
+      if (mode === "current") void saved.refetch();
     },
     change: (field: (typeof fields)[number], value: AnswerValue) => {
+      if (submittedResponse) return;
       setAnswers((previous) => ({ ...previous, [field.id]: value }));
       setErrors((previous) => ({
         ...previous,
@@ -117,6 +129,10 @@ export function useRegistrationAnswers(
       }));
     },
     refresh: () => saved.refetch(),
+    reset: () => {
+      setAnswers({});
+      setErrors({});
+    },
   };
 }
 

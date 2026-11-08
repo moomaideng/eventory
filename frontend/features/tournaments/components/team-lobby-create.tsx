@@ -4,6 +4,7 @@ import React from "react";
 import Link from "next/link";
 import { ArrowLeft, ShieldAlert, UsersRound } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { $api, apiClient } from "@/lib/api/client";
 import { useAuth } from "@/context/auth-context";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -42,13 +43,15 @@ import { RegistrationAnswerFields } from "@/features/registration-form/component
 
 export function TeamLobbyCreate({ tournamentId }: { tournamentId: string }) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const { user, isLoading: isAuthLoading, authorizationHeader } = useAuth();
   const [teamName, setTeamName] = React.useState("");
   const [formError, setFormError] = React.useState("");
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const registration = useRegistrationAnswers(
     tournamentId,
-    authorizationHeader
+    authorizationHeader,
+    "new"
   );
 
   const {
@@ -93,9 +96,19 @@ export function TeamLobbyCreate({ tournamentId }: { tournamentId: string }) {
         );
         return;
       }
+      registration.reset();
+      await queryClient.invalidateQueries({
+        queryKey: [
+          "my-registration-answers",
+          tournamentId,
+          authorizationHeader,
+        ],
+      });
       router.push(`/lobbies/${data.inviteCode}`);
     } catch {
-      setFormError("Connection error. Please check your network and try again.");
+      setFormError(
+        "Connection error. Please check your network and try again."
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -141,7 +154,9 @@ export function TeamLobbyCreate({ tournamentId }: { tournamentId: string }) {
       </Button>
 
       <div className="flex flex-col gap-3">
-        <Badge variant="secondary" className="w-fit">Team registration</Badge>
+        <Badge variant="secondary" className="w-fit">
+          Team registration
+        </Badge>
         <div className="flex flex-col gap-2">
           <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
             Create your team
