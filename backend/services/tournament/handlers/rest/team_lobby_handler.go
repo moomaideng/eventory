@@ -208,7 +208,7 @@ func RegisterTeamLobbyRoutes(
 		OperationID: "update-member-registration-answers",
 		Method:      http.MethodPut,
 		Path:        "/api/v1/lobbies/{id}/registration",
-		Summary:     "Update your own registration answers while the team is forming",
+		Summary:     "Submit your own registration answers once while the team is forming",
 		Tags:        []string{"Team lobbies"},
 		Middlewares: huma.Middlewares{auth},
 		Security:    []map[string][]string{{"bearer": {}}},
@@ -329,6 +329,8 @@ func teamLobbyHTTPError(err error) error {
 		return mapped
 	}
 	switch {
+	case errors.Is(err, repositories.ErrResponseAlreadyExists):
+		return huma.Error409Conflict("Registration answers have already been submitted and cannot be edited", err)
 	case errors.Is(err, usecases.ErrNotTeamMember):
 		return huma.Error403Forbidden(err.Error(), err)
 	case errors.Is(err, usecases.ErrMemberAnswersIncomplete), errors.Is(err, usecases.ErrRosterChanged):

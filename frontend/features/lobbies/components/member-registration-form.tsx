@@ -29,15 +29,17 @@ export function MemberRegistrationForm({
 }) {
   const { authorizationHeader } = useAuth();
   const queryClient = useQueryClient();
+  const joining = lobby.viewerRole === "INVITEE";
   const state = useRegistrationAnswers(
     lobby.tournament.id,
-    authorizationHeader
+    authorizationHeader,
+    joining ? "new" : "current"
   );
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
   const [saved, setSaved] = useState(false);
-  const joining = lobby.viewerRole === "INVITEE";
   const available =
+    (!state.submitted || joining) &&
     lobby.status === "FORMING" &&
     isRegistrationOpen(lobby.tournament) &&
     (!joining || (lobby.members?.length ?? 0) < lobby.tournament.maxTeamSize);
@@ -70,6 +72,7 @@ export function MemberRegistrationForm({
       await queryClient.invalidateQueries({
         queryKey: ["get", "/api/v1/tournaments/{tournamentId}/my-team"],
       });
+      state.reset();
       await state.refresh();
       await onSaved();
       setSaved(true);
@@ -90,9 +93,9 @@ export function MemberRegistrationForm({
           {joining ? "Register to join this team" : "Your registration answers"}
         </CardTitle>
         <CardDescription>
-          Answer for yourself. All members must complete the questions before
-          the captain can submit. The organizer accepts or rejects the whole
-          team.
+          Check your answers before submitting; they cannot be edited afterward.
+          All members must complete the questions before the captain can submit.
+          The organizer accepts or rejects the whole team.
         </CardDescription>
       </CardHeader>
       <form noValidate onSubmit={submit}>
@@ -109,20 +112,26 @@ export function MemberRegistrationForm({
           {saved && (
             <Alert>
               <AlertDescription>
-                Your registration answers have been saved.
+                Your registration answers have been submitted.
               </AlertDescription>
             </Alert>
           )}
         </CardContent>
-        <CardFooter>
-          <Button
-            type="submit"
-            disabled={!available || state.blocked || pending}
-          >
-            {pending && <Spinner data-icon="inline-start" />}
-            {joining ? "Submit answers & join team" : "Save my answers"}
-          </Button>
-        </CardFooter>
+        {(!state.submitted || joining) && (
+          <CardFooter>
+            <Button
+              type="submit"
+              disabled={!available || state.blocked || pending}
+            >
+              {pending && <Spinner data-icon="inline-start" />}
+              {joining
+                ? state.submitted
+                  ? "Join with submitted answers"
+                  : "Submit answers & join team"
+                : "Submit my answers"}
+            </Button>
+          </CardFooter>
+        )}
       </form>
     </Card>
   );

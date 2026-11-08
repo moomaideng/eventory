@@ -32,7 +32,7 @@ type TeamLobbyRepository interface {
 	FindByInviteCode(ctx context.Context, inviteCode string) (*models.TournamentTeam, error)
 	FindActiveByTournamentAndAccount(ctx context.Context, tournamentID, accountID uuid.UUID) (*models.TournamentTeam, error)
 	Create(ctx context.Context, team *models.TournamentTeam, captain *models.TournamentTeamMember) (*models.TournamentTeam, error)
-	Join(ctx context.Context, teamID, accountID uuid.UUID) (*models.TournamentTeam, error)
+	Join(ctx context.Context, teamID, accountID uuid.UUID, membershipID ...uuid.UUID) (*models.TournamentTeam, error)
 	LockRegistration(ctx context.Context, teamID uuid.UUID) (TeamRegistrationLock, error)
 	RegenerateInvite(ctx context.Context, teamID uuid.UUID, inviteCode string) (*models.TournamentTeam, error)
 	Lock(ctx context.Context, teamID uuid.UUID, expected ...[]models.TournamentTeamMember) (*models.TournamentTeam, error)
@@ -120,7 +120,7 @@ func (r *teamLobbyRepository) Create(ctx context.Context, team *models.Tournamen
 	return r.FindByID(ctx, team.ID)
 }
 
-func (r *teamLobbyRepository) Join(ctx context.Context, teamID, accountID uuid.UUID) (*models.TournamentTeam, error) {
+func (r *teamLobbyRepository) Join(ctx context.Context, teamID, accountID uuid.UUID, membershipID ...uuid.UUID) (*models.TournamentTeam, error) {
 	err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		team, err := r.lockTeam(tx, teamID)
 		if err != nil {
@@ -144,6 +144,9 @@ func (r *teamLobbyRepository) Join(ctx context.Context, teamID, accountID uuid.U
 			AccountID:        accountID,
 			Role:             models.TournamentTeamMemberRoleMember,
 			JoinedAt:         time.Now().UTC(),
+		}
+		if len(membershipID) > 0 {
+			member.ID = membershipID[0]
 		}
 		return tx.Create(member).Error
 	})

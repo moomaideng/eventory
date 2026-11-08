@@ -46,10 +46,12 @@ type SaveRegistrationFormOutput struct {
 }
 
 type FormResponseItem struct {
-	ID           string               `json:"id"`
-	TournamentID uuid.UUID            `json:"tournamentId"`
-	AccountID    uuid.UUID            `json:"accountId"`
-	Answers      []models.FieldAnswer `json:"answers"`
+	RegistrationID uuid.UUID            `json:"registrationId" doc:"Membership ID for this application; zero for legacy responses"`
+	TeamID         uuid.UUID            `json:"teamId" doc:"Team for this application; zero for legacy responses"`
+	ID             string               `json:"id"`
+	TournamentID   uuid.UUID            `json:"tournamentId"`
+	AccountID      uuid.UUID            `json:"accountId"`
+	Answers        []models.FieldAnswer `json:"answers"`
 }
 
 type SubmitFormResponseInput struct {
@@ -97,10 +99,12 @@ func toRegistrationFormResponse(form *models.RegistrationForm) RegistrationFormR
 
 func toFormResponseItem(resp *models.FormResponse) FormResponseItem {
 	return FormResponseItem{
-		ID:           resp.ID.Hex(),
-		TournamentID: resp.TournamentID,
-		AccountID:    resp.AccountID,
-		Answers:      resp.Answers,
+		ID:             resp.ID.Hex(),
+		RegistrationID: resp.RegistrationID,
+		TeamID:         resp.TeamID,
+		TournamentID:   resp.TournamentID,
+		AccountID:      resp.AccountID,
+		Answers:        resp.Answers,
 	}
 }
 
@@ -190,7 +194,7 @@ func RegisterRegistrationFormRoutes(
 		Method:      http.MethodGet,
 		Path:        "/api/v1/tournaments/{tournamentId}/form/responses/me",
 		Summary:     "Get current user's submitted answers for a tournament",
-		Description: "Returns the authenticated participant's submitted answers for this tournament.",
+		Description: "Returns answers for the participant's active application, or 404 when there is no active application.",
 		Tags:        []string{"Registration Forms"},
 		Middlewares: huma.Middlewares{auth},
 		Security:    []map[string][]string{{"bearer": {}}},

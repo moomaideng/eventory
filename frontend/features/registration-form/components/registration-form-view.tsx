@@ -17,7 +17,10 @@ import {
   validateAnswer,
   type AnswerValue,
 } from "@/features/registration-form/utils";
-import { formFieldSchema, type FormField } from "@/features/registration-form/schemas";
+import {
+  formFieldSchema,
+  type FormField,
+} from "@/features/registration-form/schemas";
 import type { components } from "@/lib/api/schema";
 import { isRegistrationOpen } from "@/features/tournaments/utils";
 
@@ -38,7 +41,11 @@ function toFormField(f: ApiFormField, i: number): FormField {
   return { ...candidate, type: "SHORT_TEXT", config: {} };
 }
 
-export function RegistrationFormView({ tournamentId }: { tournamentId: string }) {
+export function RegistrationFormView({
+  tournamentId,
+}: {
+  tournamentId: string;
+}) {
   const { authorizationHeader, isLoading: authLoading } = useAuth();
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -66,14 +73,24 @@ export function RegistrationFormView({ tournamentId }: { tournamentId: string })
   });
 
   const myTeamQuery = useQuery({
-    queryKey: ["get", "/api/v1/tournaments/{tournamentId}/my-team", tournamentId],
+    queryKey: [
+      "get",
+      "/api/v1/tournaments/{tournamentId}/my-team",
+      tournamentId,
+      authorizationHeader,
+    ],
+    staleTime: 0,
+    refetchOnMount: "always",
     enabled: Boolean(authorizationHeader),
     retry: false,
     queryFn: async () => {
-      const result = await apiClient.GET("/api/v1/tournaments/{tournamentId}/my-team", {
-        params: { path: { tournamentId } },
-        headers: { Authorization: authorizationHeader },
-      });
+      const result = await apiClient.GET(
+        "/api/v1/tournaments/{tournamentId}/my-team",
+        {
+          params: { path: { tournamentId } },
+          headers: { Authorization: authorizationHeader },
+        }
+      );
       if (result.response.status === 404) return null;
       if (result.error) throw new Error("Failed to check registration status");
       return result.data;
@@ -85,53 +102,35 @@ export function RegistrationFormView({ tournamentId }: { tournamentId: string })
     enabled: Boolean(authorizationHeader),
     retry: false,
     queryFn: async () => {
-      const result = await apiClient.GET("/api/v1/tournaments/{tournamentId}/form", {
-        params: { path: { tournamentId } },
-      });
+      const result = await apiClient.GET(
+        "/api/v1/tournaments/{tournamentId}/form",
+        {
+          params: { path: { tournamentId } },
+        }
+      );
       if (result.response.status === 404) return null;
-      if (result.error || !result.data) throw new Error("Unable to load registration questions");
+      if (result.error || !result.data)
+        throw new Error("Unable to load registration questions");
       return result.data;
     },
   });
-  const priorResponse = useQuery({
-    queryKey: ["my-solo-registration-answers", tournamentId],
-    enabled: Boolean(authorizationHeader),
-    retry: false,
-    queryFn: async () => {
-      const result = await apiClient.GET("/api/v1/tournaments/{tournamentId}/form/responses/me", {
-        params: { path: { tournamentId } },
-        headers: { Authorization: authorizationHeader },
-      });
-      if (result.response.status === 404) return null;
-      if (result.error || !result.data) throw new Error("Unable to load saved answers");
-      return result.data;
-    },
-  });
-
   const fields = useMemo(
     () =>
-      (data?.fields ?? [])
-        .map(toFormField)
-        .sort((a, b) => a.order - b.order),
+      (data?.fields ?? []).map(toFormField).sort((a, b) => a.order - b.order),
     [data]
   );
 
   const [answers, setAnswers] = useState<Record<string, AnswerValue>>({});
   const [errors, setErrors] = useState<Record<string, string | null>>({});
 
-  const answerOf = (field: FormField): AnswerValue => {
-    if (answers[field.id] !== undefined) return answers[field.id];
-    const previous = priorResponse.data?.answers?.find((answer) => answer.fieldId === field.id)?.value;
-    if (field.type === "SELECT_MULTIPLE" && Array.isArray(previous)) {
-      return previous.filter((value): value is string => typeof value === "string");
-    }
-    if (typeof previous === "number") return String(previous);
-    if (typeof previous === "string") return previous;
-    return emptyAnswer(field);
-  };
+  const answerOf = (field: FormField): AnswerValue =>
+    answers[field.id] ?? emptyAnswer(field);
 
   const setError = (field: FormField, value: AnswerValue) =>
-    setErrors((prev) => ({ ...prev, [field.id]: validateAnswer(field, value) }));
+    setErrors((prev) => ({
+      ...prev,
+      [field.id]: validateAnswer(field, value),
+    }));
 
   const handleChange = (field: FormField, value: AnswerValue) => {
     setAnswers((prev) => ({ ...prev, [field.id]: value }));
@@ -179,6 +178,8 @@ export function RegistrationFormView({ tournamentId }: { tournamentId: string })
         setIsSubmitting(false);
         return;
       }
+      setAnswers({});
+      setErrors({});
       setIsRedirecting(true);
       void queryClient.invalidateQueries({
         queryKey: ["get", "/api/v1/tournaments/{tournamentId}"],
@@ -195,15 +196,22 @@ export function RegistrationFormView({ tournamentId }: { tournamentId: string })
         router.push(`/tournaments/${tournamentId}`);
       }
     } catch {
-      setSubmitError("Registration is temporarily unavailable. Please try again.");
+      setSubmitError(
+        "Registration is temporarily unavailable. Please try again."
+      );
       setIsSubmitting(false);
     }
   };
 
-  if (authLoading || isLoading || priorResponse.isLoading || tournamentQuery.isLoading || myTeamQuery.isLoading) {
+  if (
+    authLoading ||
+    isLoading ||
+    tournamentQuery.isLoading ||
+    myTeamQuery.isLoading
+  ) {
     return (
       <div className="flex flex-1 items-center justify-center p-12">
-        <Spinner className="size-6 text-muted-foreground" />
+        <Spinner className="text-muted-foreground size-6" />
       </div>
     );
   }
@@ -214,8 +222,12 @@ export function RegistrationFormView({ tournamentId }: { tournamentId: string })
         <Card>
           <CardContent className="flex flex-col items-center gap-4 pt-6 text-center">
             <h2 className="text-xl font-semibold">Tournament Not Found</h2>
-            <p className="text-muted-foreground">The requested tournament could not be found.</p>
-            <Button onClick={() => router.push("/tournaments")}>Back to Tournaments</Button>
+            <p className="text-muted-foreground">
+              The requested tournament could not be found.
+            </p>
+            <Button onClick={() => router.push("/tournaments")}>
+              Back to Tournaments
+            </Button>
           </CardContent>
         </Card>
       </div>
@@ -231,7 +243,8 @@ export function RegistrationFormView({ tournamentId }: { tournamentId: string })
           <CardContent className="flex flex-col items-center gap-4 pt-6 text-center">
             <h2 className="text-xl font-semibold">Team Tournament</h2>
             <p className="text-muted-foreground">
-              This tournament requires team registration. Solo registration forms are not available for team tournaments.
+              This tournament requires team registration. Solo registration
+              forms are not available for team tournaments.
             </p>
             <Button onClick={() => router.push(`/tournaments/${tournamentId}`)}>
               Back to Tournament
@@ -278,13 +291,16 @@ export function RegistrationFormView({ tournamentId }: { tournamentId: string })
     );
   }
 
-  if (isError || priorResponse.isError) {
+  if (isError || myTeamQuery.isError) {
     return (
       <div className="mx-auto w-full max-w-3xl px-4 py-8">
         <Card>
-          <CardContent className="flex flex-col items-center gap-4 pt-6 text-center text-muted-foreground">
+          <CardContent className="text-muted-foreground flex flex-col items-center gap-4 pt-6 text-center">
             <p>Registration questions could not be loaded. Please try again.</p>
-            <Button variant="outline" onClick={() => router.push(`/tournaments/${tournamentId}`)}>
+            <Button
+              variant="outline"
+              onClick={() => router.push(`/tournaments/${tournamentId}`)}
+            >
               Back to Tournament
             </Button>
           </CardContent>
@@ -299,7 +315,7 @@ export function RegistrationFormView({ tournamentId }: { tournamentId: string })
       onSubmit={handleSubmit}
       className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-4 py-8"
     >
-      <Card className="border-border border-t-4 border-t-primary shadow-xs">
+      <Card className="border-border border-t-primary border-t-4 shadow-xs">
         <CardContent className="flex flex-col gap-3 pt-6">
           <div className="flex flex-wrap items-center gap-2">
             <Badge variant="outline">Solo Registration</Badge>
@@ -307,11 +323,11 @@ export function RegistrationFormView({ tournamentId }: { tournamentId: string })
               {tournament.name}
             </span>
           </div>
-          <h1 className="font-heading text-2xl font-bold leading-normal tracking-tight text-foreground">
+          <h1 className="font-heading text-foreground text-2xl leading-normal font-bold tracking-tight">
             {data?.title ?? "Individual registration"}
           </h1>
           {data?.description && (
-            <p className="whitespace-pre-wrap text-sm text-muted-foreground">
+            <p className="text-muted-foreground text-sm whitespace-pre-wrap">
               {data.description}
             </p>
           )}
@@ -332,6 +348,10 @@ export function RegistrationFormView({ tournamentId }: { tournamentId: string })
         ))}
       </div>
 
+      <p className="text-muted-foreground text-sm">
+        Check your answers before submitting. They cannot be edited afterward.
+      </p>
+
       {submitError && (
         <Alert variant="destructive" aria-live="polite">
           <AlertTitle>Registration was not completed</AlertTitle>
@@ -341,7 +361,9 @@ export function RegistrationFormView({ tournamentId }: { tournamentId: string })
 
       <div className="flex justify-end">
         <Button type="submit" disabled={isSubmitting || isRedirecting}>
-          {(isSubmitting || isRedirecting) && <Spinner data-icon="inline-start" />}
+          {(isSubmitting || isRedirecting) && (
+            <Spinner data-icon="inline-start" />
+          )}
           {isRedirecting ? "Redirecting..." : "Submit registration"}
         </Button>
       </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { apiClient } from "@/lib/api/client";
 import { problemMessage, type Lobby } from "@/features/lobbies/utils";
@@ -15,6 +16,7 @@ export function useLobbyActions({
   refetch: () => Promise<unknown>;
 }) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [actionError, setActionError] = React.useState("");
   const [pendingAction, setPendingAction] = React.useState<string | null>(null);
 
@@ -34,6 +36,12 @@ export function useLobbyActions({
         await refetch();
         return;
       }
+      await queryClient.invalidateQueries({
+        queryKey: ["my-registration-answers", lobby?.tournament.id],
+      });
+      await queryClient.invalidateQueries({
+        queryKey: ["my-solo-registration-answers", lobby?.tournament.id],
+      });
       afterSuccess?.(data as Lobby | undefined);
       if (!afterSuccess) {
         await refetch();

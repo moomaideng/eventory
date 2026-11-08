@@ -6,6 +6,7 @@ import { FieldGroup } from "@/components/ui/field";
 import { Skeleton } from "@/components/ui/skeleton";
 import { FormFieldAnswerCard } from "@/features/registration-form/components/form-field-answer-card";
 import type { RegistrationAnswersState } from "@/features/registration-form/hooks/use-registration-answers";
+import { SubmittedRegistrationAnswers } from "@/features/registration-form/components/submitted-registration-answers";
 
 export function RegistrationAnswerFields({
   state,
@@ -24,6 +25,13 @@ export function RegistrationAnswerFields({
           </Button>
         </AlertDescription>
       </Alert>
+    );
+  if (state.submitted)
+    return (
+      <SubmittedRegistrationAnswers
+        fields={state.fields}
+        answers={state.submittedAnswers}
+      />
     );
   return (
     <FieldGroup>

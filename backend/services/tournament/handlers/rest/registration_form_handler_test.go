@@ -108,7 +108,7 @@ func (m *mockFormRepo) UpsertResponse(_ context.Context, resp *models.FormRespon
 	return resp, nil
 }
 
-func (m *mockFormRepo) GetResponseByAccount(_ context.Context, tournamentID, accountID uuid.UUID) (*models.FormResponse, error) {
+func (m *mockFormRepo) GetResponseByAccount(_ context.Context, tournamentID, accountID uuid.UUID, registrationID ...uuid.UUID) (*models.FormResponse, error) {
 	key := tournamentID.String() + ":" + accountID.String()
 	r, ok := m.responses[key]
 	if !ok {
@@ -144,7 +144,7 @@ func TestRegistrationFormRoutes(t *testing.T) {
 	tRepo := &mockTournamentRepo{tournament: tourney}
 	fRepo := newMockFormRepo()
 	registry := forms.NewDefaultRegistry()
-	useCase := usecases.NewRegistrationFormUseCase(tRepo, fRepo, registry)
+	useCase := usecases.NewRegistrationFormUseCase(tRepo, fRepo, registry, &activeFormTeamStub{accountID: participantAccountID})
 
 	_, api := humatest.New(t)
 
@@ -259,4 +259,14 @@ func (s *mockFormRepo) GetResponsesByAccounts(ctx context.Context, tournamentID 
 		}
 	}
 	return responses, nil
+}
+
+// The participant has an existing membership with a legacy response.
+type activeFormTeamStub struct {
+	repositories.TeamLobbyRepository
+	accountID uuid.UUID
+}
+
+func (s *activeFormTeamStub) FindActiveByTournamentAndAccount(ctx context.Context, tournamentID, accountID uuid.UUID) (*models.TournamentTeam, error) {
+	return &models.TournamentTeam{TournamentID: tournamentID, Members: []models.TournamentTeamMember{{ID: uuid.New(), AccountID: s.accountID}}}, nil
 }

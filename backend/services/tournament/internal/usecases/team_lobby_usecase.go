@@ -179,7 +179,8 @@ func (u *TeamLobbyUseCase) Create(ctx context.Context, tournamentID, captainAcco
 		return nil, ErrRegistrationNotOpen
 	}
 	answers := firstAnswers(submitted)
-	if err := u.saveNewRegistrationAnswers(ctx, tournamentID, captainAccountID, answers); err != nil {
+	teamID, membershipID := uuid.New(), uuid.New()
+	if err := u.saveNewRegistrationAnswers(ctx, tournamentID, captainAccountID, teamID, membershipID, answers); err != nil {
 		return nil, translateLobbyError(err)
 	}
 
@@ -189,11 +190,11 @@ func (u *TeamLobbyUseCase) Create(ctx context.Context, tournamentID, captainAcco
 	}
 	now := time.Now().UTC()
 	team := &models.TournamentTeam{
-		ID: uuid.New(), TournamentID: tournamentID, Name: name,
+		ID: teamID, TournamentID: tournamentID, Name: name,
 		InviteCode: &inviteCode, Status: models.TournamentTeamStatusForming,
 	}
 	captainMember := &models.TournamentTeamMember{
-		ID: uuid.New(), AccountID: captainAccountID,
+		ID: membershipID, AccountID: captainAccountID,
 		Role: models.TournamentTeamMemberRoleCaptain, JoinedAt: now,
 	}
 	created, err := u.repo.Create(ctx, team, captainMember)
@@ -226,24 +227,9 @@ func (u *TeamLobbyUseCase) RegisterSolo(
 		return nil, ErrRegistrationNotOpen
 	}
 
-	if u.formRepo != nil && u.registry != nil {
-		form, err := u.formRepo.GetFormByTournamentID(ctx, tournamentID)
-		if err != nil && !errors.Is(err, repositories.ErrFormNotFound) {
-			return nil, err
-		}
-		if err == nil && form != nil && len(form.Fields) > 0 {
-			if err := u.registry.ValidateFormAnswers(form.Fields, answers); err != nil {
-				return nil, err
-			}
-			resp := &models.FormResponse{
-				TournamentID: tournamentID,
-				AccountID:    accountID,
-				Answers:      answers,
-			}
-			if _, err := u.formRepo.UpsertResponse(ctx, resp); err != nil {
-				return nil, err
-			}
-		}
+	teamID, membershipID := uuid.New(), uuid.New()
+	if err := u.saveNewRegistrationAnswers(ctx, tournamentID, accountID, teamID, membershipID, answers); err != nil {
+		return nil, err
 	}
 
 	name := strings.TrimSpace(account.DisplayName)
@@ -256,14 +242,14 @@ func (u *TeamLobbyUseCase) RegisterSolo(
 
 	now := time.Now().UTC()
 	team := &models.TournamentTeam{
-		ID:           uuid.New(),
+		ID:           teamID,
 		TournamentID: tournamentID,
 		Name:         name,
 		InviteCode:   nil,
 		Status:       models.TournamentTeamStatusForming,
 	}
 	captainMember := &models.TournamentTeamMember{
-		ID:        uuid.New(),
+		ID:        membershipID,
 		AccountID: accountID,
 		Role:      models.TournamentTeamMemberRoleCaptain,
 		JoinedAt:  now,
@@ -345,10 +331,11 @@ func (u *TeamLobbyUseCase) Join(ctx context.Context, inviteCode string, memberAc
 		return nil, ErrTeamLobbyFull
 	}
 	answers := firstAnswers(submitted)
-	if err := u.saveNewRegistrationAnswers(ctx, team.TournamentID, memberAccountID, answers); err != nil {
+	membershipID := uuid.New()
+	if err := u.saveNewRegistrationAnswers(ctx, team.TournamentID, memberAccountID, team.ID, membershipID, answers); err != nil {
 		return nil, translateLobbyError(err)
 	}
-	joined, err := u.repo.Join(ctx, team.ID, memberAccountID)
+	joined, err := u.repo.Join(ctx, team.ID, memberAccountID, membershipID)
 	if err != nil {
 		return nil, translateLobbyError(err)
 	}

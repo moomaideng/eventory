@@ -57,8 +57,11 @@ func (s *teamLobbyRepositoryStub) Create(_ context.Context, team *models.Tournam
 	}
 	return team, nil
 }
-func (s *teamLobbyRepositoryStub) Join(_ context.Context, _ uuid.UUID, _ uuid.UUID) (*models.TournamentTeam, error) {
+func (s *teamLobbyRepositoryStub) Join(_ context.Context, _ uuid.UUID, accountID uuid.UUID, membershipID ...uuid.UUID) (*models.TournamentTeam, error) {
 	s.joined = true
+	if len(membershipID) > 0 {
+		s.team.Members = append(s.team.Members, models.TournamentTeamMember{ID: membershipID[0], AccountID: accountID, TournamentTeamID: s.team.ID, Role: models.TournamentTeamMemberRoleMember})
+	}
 	return s.team, nil
 }
 func (s *teamLobbyRepositoryStub) RegenerateInvite(_ context.Context, _ uuid.UUID, inviteCode string) (*models.TournamentTeam, error) {
@@ -99,6 +102,7 @@ func (s *teamLobbyRepositoryStub) ApplyPayment(_ context.Context, _ *models.Tour
 }
 
 type registrationFormRepositoryStub struct {
+	history     []*models.FormResponse
 	responses   map[uuid.UUID]*models.FormResponse
 	batchCalls  int
 	batchError  error
@@ -121,26 +125,24 @@ func (s *registrationFormRepositoryStub) UpsertForm(_ context.Context, form *mod
 	return form, nil
 }
 func (s *registrationFormRepositoryStub) CreateResponse(_ context.Context, resp *models.FormResponse) (*models.FormResponse, error) {
-	s.response = resp
-	return resp, nil
-}
-func (s *registrationFormRepositoryStub) UpsertResponse(_ context.Context, resp *models.FormResponse) (*models.FormResponse, error) {
 	if s.upsertError != nil {
 		return nil, s.upsertError
 	}
 	if s.responses == nil {
 		s.responses = make(map[uuid.UUID]*models.FormResponse)
 	}
+	if previous, exists := s.responses[resp.AccountID]; exists && previous.RegistrationID == resp.RegistrationID {
+		return nil, repositories.ErrResponseAlreadyExists
+	}
+	s.history = append(s.history, resp)
 	s.responses[resp.AccountID] = resp
 	s.upserted = resp
+	s.response = resp
 	return resp, nil
 }
-func (s *registrationFormRepositoryStub) GetResponseByAccount(_ context.Context, _ uuid.UUID, _ uuid.UUID) (*models.FormResponse, error) {
-	if s.upserted != nil {
-		return s.upserted, nil
-	}
-	if s.response != nil {
-		return s.response, nil
+func (s *registrationFormRepositoryStub) GetResponseByAccount(_ context.Context, _ uuid.UUID, accountID uuid.UUID, registrationID ...uuid.UUID) (*models.FormResponse, error) {
+	if response, exists := s.responses[accountID]; exists && (len(registrationID) == 0 || response.RegistrationID == registrationID[0] || response.RegistrationID == uuid.Nil) {
+		return response, nil
 	}
 	return nil, repositories.ErrResponseNotFound
 }

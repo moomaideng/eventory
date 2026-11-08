@@ -53,6 +53,7 @@ func TestTeamRegistration_CreateValidatesBeforeCreatingMembership(t *testing.T) 
 		})
 	}
 	u, repo, form, captain, _ := teamAnswerFixture()
+	delete(form.responses, captain)
 	result, err := u.Create(context.Background(), repo.tournament.ID, captain, "Team", validTeamAnswers())
 	if err != nil {
 		t.Fatal(err)
@@ -95,7 +96,7 @@ func TestTeamRegistration_IncompleteMemberBlocksFreeAndPaidSubmission(t *testing
 	}
 }
 
-func TestTeamRegistration_OnlyOwnAnswersCanChangeWhileForming(t *testing.T) {
+func TestTeamRegistration_OnlyOwnFirstSubmissionAllowedWhileForming(t *testing.T) {
 	for _, status := range []models.TournamentTeamStatus{models.TournamentTeamStatusLocked, models.TournamentTeamStatusAccepted, models.TournamentTeamStatusRejected, models.TournamentTeamStatusPaymentPending} {
 		u, repo, form, _, member := teamAnswerFixture()
 		repo.team.Status = status
@@ -110,6 +111,76 @@ func TestTeamRegistration_OnlyOwnAnswersCanChangeWhileForming(t *testing.T) {
 	_, err := u.SaveRegistrationAnswers(context.Background(), repo.team.ID, outsider, validTeamAnswers())
 	if !errors.Is(err, usecases.ErrNotTeamMember) {
 		t.Fatalf("outsider error=%v, want ErrNotTeamMember", err)
+	}
+}
+
+func TestTeamRegistration_CannotReplaceSubmittedAnswers(t *testing.T) {
+	u, repo, form, captain, _ := teamAnswerFixture()
+	changed := []models.FieldAnswer{{FieldID: "ign", Value: "Changed"}}
+	_, err := u.SaveRegistrationAnswers(context.Background(), repo.team.ID, captain, changed)
+	if !errors.Is(err, repositories.ErrResponseAlreadyExists) || form.responses[captain].Answers[0].Value != "Player" || form.upserted != nil {
+		t.Fatalf("existing application answers must stay immutable: %v", err)
+	}
+}
+
+func TestTeamRegistration_ActiveApplicationCannotBeReplaced(t *testing.T) {
+	for _, action := range []string{"create", "join", "solo"} {
+		t.Run(action, func(t *testing.T) {
+			u, repo, form, captain, _ := teamAnswerFixture()
+			repo.activeTeam = repo.team
+			var err error
+			switch action {
+			case "create":
+				_, err = u.Create(context.Background(), repo.tournament.ID, captain, "Another team", validTeamAnswers())
+			case "join":
+				_, err = u.Join(context.Background(), "ABC123", captain, validTeamAnswers())
+			case "solo":
+				repo.tournament.MinTeamSize, repo.tournament.MaxTeamSize = 1, 1
+				_, err = u.RegisterSolo(context.Background(), repo.tournament.ID, captain, validTeamAnswers())
+			}
+			if !errors.Is(err, repositories.ErrAlreadyInTournamentLobby) || form.upserted != nil || repo.created != nil || repo.joined {
+				t.Fatalf("active application must block a new attempt: %v", err)
+			}
+		})
+	}
+}
+
+func TestTeamRegistration_NewApplicationGetsNewAnswers(t *testing.T) {
+	for _, action := range []string{"create", "join", "solo"} {
+		t.Run(action, func(t *testing.T) {
+			u, repo, form, captain, _ := teamAnswerFixture()
+			original := form.responses[captain]
+			changed := []models.FieldAnswer{{FieldID: "ign", Value: "New player"}}
+			var err error
+			switch action {
+			case "create":
+				_, err = u.Create(context.Background(), repo.tournament.ID, captain, "New team", changed)
+			case "join":
+				_, err = u.Join(context.Background(), "ABC123", captain, changed)
+			case "solo":
+				repo.tournament.MinTeamSize, repo.tournament.MaxTeamSize = 1, 1
+				_, err = u.RegisterSolo(context.Background(), repo.tournament.ID, captain, changed)
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			current := form.responses[captain]
+			if current == original || current.RegistrationID == uuid.Nil || current.Answers[0].Value != "New player" || original.Answers[0].Value != "Player" {
+				t.Fatal("new application must save a separate response and preserve original answers")
+			}
+		})
+	}
+}
+
+func TestTeamRegistration_SecondSaveRejectedEvenWithIdenticalAnswers(t *testing.T) {
+	u, repo, form, _, member := teamAnswerFixture()
+	if _, err := u.SaveRegistrationAnswers(context.Background(), repo.team.ID, member, validTeamAnswers()); err != nil {
+		t.Fatal(err)
+	}
+	original := form.responses[member]
+	_, err := u.SaveRegistrationAnswers(context.Background(), repo.team.ID, member, validTeamAnswers())
+	if !errors.Is(err, repositories.ErrResponseAlreadyExists) || form.responses[member] != original {
+		t.Fatalf("second save: %v", err)
 	}
 }
 

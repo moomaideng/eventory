@@ -2,6 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { ArrowLeft, Check, ShieldAlert } from "lucide-react";
 import { $api } from "@/lib/api/client";
 import { useAuth } from "@/context/auth-context";
@@ -24,6 +25,7 @@ import { LobbyDetailsCard } from "@/features/lobbies/components/lobby-details-ca
 import { MemberRegistrationForm } from "@/features/lobbies/components/member-registration-form";
 
 export function TeamLobbyWorkspace({ inviteCode }: { inviteCode: string }) {
+  const router = useRouter();
   const { user, isLoading: isAuthLoading, authorizationHeader } = useAuth();
   const [copied, setCopied] = React.useState(false);
   const [copyError, setCopyError] = React.useState("");
@@ -179,17 +181,17 @@ export function TeamLobbyWorkspace({ inviteCode }: { inviteCode: string }) {
             lobby={lobby}
             pendingAction={pendingAction}
             onJoinLobby={() =>
-              document
-                .getElementById("member-registration")
-                ?.scrollIntoView({ behavior: "smooth", block: "start" })
+              router.push(`/lobbies/${normalizedInviteCode}/join`)
             }
             onRemoveMember={removeMember}
           />
-          <MemberRegistrationForm
-            key={`${lobby.id}-${lobby.viewerRole}`}
-            lobby={lobby}
-            onSaved={refetch}
-          />
+          {lobby.viewerRole !== "INVITEE" && (
+            <MemberRegistrationForm
+              key={`${lobby.id}-${lobby.viewerRole}`}
+              lobby={lobby}
+              onSaved={refetch}
+            />
+          )}
         </div>
 
         <div className="flex flex-col gap-6">
