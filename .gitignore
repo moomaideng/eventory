@@ -9,7 +9,6 @@ temp/
 /.task/
 .cache/
 
-# k6 raw output; the HTML reports are kept for the write-up
+# k6 raw output
 loadtest/results/*
-!loadtest/results/*.html
 !loadtest/results/.gitkeep
