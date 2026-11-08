@@ -54,7 +54,7 @@ Single laptop, dev containers, k6 on the same machine. Compare steps with each o
 
 **Fix.** `backend/internal/database/database.go` now caps each service's pool at 20 open connections (`DB_MAX_OPEN_CONNS` to override). Keep instances x cap under Postgres `max_connections`. After the fix there were no errors at any level and throughput rose from 241 to 303 req/s.
 
-The before and after reports are kept in `loadtest/results/` as `before-*` and `after-*`.
+The before and after HTML reports are not committed (generated output). Regenerate them with `task load:*`.
 
 ## Concurrent-user limit
 
