@@ -991,26 +991,26 @@ Scenario Outline: Public live bracket view by tournament publication status
 
 ## EPIC 7: Transaction Management
 
-### US7-1: Secure External Payment Gateway Processing
+### US7-1: Secure Payment Processing
 > **User Story:**
 > As a competitor or sponsor,
-> I want to pay registration fees or sponsorship tier pledges through a secure external payment gateway
+> I want to pay registration fees or sponsorship tier pledges through the Payment Service
 > So that my payment is securely processed.
 
 #### Acceptance Criteria
 - **AC1 (Secure Payment Settlement):**
   - **Given** a user is on the checkout page for an entry fee or sponsorship pledge,
-  - **When** the user completes payment through the external payment gateway,
+  - **When** the user completes payment through the checkout flow,
   - **Then** the system should confirm the payment, generate a receipt, and update registration/sponsorship status without storing raw card numbers.
 - **AC2 (Declined Payment):**
-  - **Given** the payment gateway declines the transaction,
-  - **When** the callback is received,
+  - **Given** the Payment Service rejects or fails the transaction,
+  - **When** the result is processed,
   - **Then** the system should display an appropriate error message and prompt the user to retry payment.
 
 ```gherkin
-Scenario Outline: External payment checkout settlement
+Scenario Outline: Payment checkout settlement
   Given a user is at checkout for item "<itemType>" with fee "<amount>"
-  When the external payment gateway returns status "<callbackStatus>"
+  When the Payment Service returns status "<callbackStatus>"
   Then the system should <systemAction>
   And raw credit card numbers stored in platform database should be "<cardStorage>"
 

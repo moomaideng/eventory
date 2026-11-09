@@ -66,7 +66,7 @@ Eventory puts those flows on one platform. An organizer creates a tournament (wi
 
 1. Sponsor opens the tournament page and reviews available sponsorship packages/tiers and funding progress.
 2. Sponsor selects a package, uploads brand logo (and link if required), and starts checkout.
-3. System processes payment via the payment gateway.
+3. System processes payment via Payment Service.
 4. On success, the system records the pledge, updates funding progress, and shows the sponsor (e.g. logo) on the tournament page.
 
 **Postcondition**: A confirmed sponsorship exists; funding progress and public sponsor display are updated.
@@ -92,7 +92,7 @@ Eventory puts those flows on one platform. An organizer creates a tournament (wi
 2. Registration follows one of these branches:
    - **2a. Solo**: Competitor fills the tournament registration form and proceeds to pay entry fee if any.
    - **2b. Team**: Team members join the captain’s lobby via invite and fill in their individual registration forms. When the roster meets tournament size rules, the Team Captain locks the roster and pays the team entry fee if any.
-3. System processes payment when required (payment gateway).
+3. System processes payment when required (Payment Service).
 4. On success, the system submits the registration to the organizer for review/acceptance and confirms to the competitor.
 
 **Postcondition**: A registration entry exists and is visible to the organizer for review.
@@ -152,18 +152,18 @@ Eventory puts those flows on one platform. An organizer creates a tournament (wi
 ### Sponsorship
 
 - FR11: When a tournament is open for crowdfunding, the system shall display available sponsorship packages/tiers and funding progress.
-- FR12: When a sponsor submits a package selection for checkout, the system shall process the checkout through the payment gateway.
+- FR12: When a sponsor submits a package selection for checkout, the system shall process the checkout through Payment Service.
 - FR13: On successful payment, the system shall record the confirmed sponsorship with updated funding progress and public sponsor display on the tournament page.
 
 ### Registration
 
 FR14 is for Solo, FR15-18 for Team, and FR19-20 are shared.
 
-- FR14: When a competitor completes the registration form for a solo-format tournament, the system shall accept the form and process any entry fee through the payment gateway (or continue if free).
+- FR14: When a competitor completes the registration form for a solo-format tournament, the system shall accept the form and process any entry fee through Payment Service (or continue if free).
 - FR15: When a competitor creates a team for a team-format tournament and fills in their individual registration form, the system shall create a team lobby with an invite.
 - FR16: When a competitor joins with a valid invite and fills in their individual registration form, the system shall add the competitor to the team lobby before registration is submitted.
 - FR17: When a team captain submits a roster that meets tournament size rules, the system shall lock the team roster for registration submission.
-- FR18: When a team captain locks the team roster, the system shall process any team entry fee through the payment gateway.
+- FR18: When a team captain locks the team roster, the system shall process any team entry fee through Payment Service.
 - FR19: On successful payment when required (or immediately when free), the system shall submit the registration to the organizer for review with confirmation to the competitor.
 - FR20: When payment fails or a team roster fails required size checks, the system shall keep the registration unsubmitted with the team roster unlocked.
 
@@ -178,7 +178,7 @@ FR14 is for Solo, FR15-18 for Team, and FR19-20 are shared.
 ### Security & Privacy
 
 - NFR1: The system shall authenticate users with Google OAuth tokens only.
-- NFR2: The system shall process payments through an external payment gateway that handles card data.
+- NFR2: The system shall process payments through Payment Service, recording immutable transaction and ledger entries.
 - NFR3: The system shall accept match result recording from the tournament owner organizer or assigned tournament staff only.
 
 ### Usability
@@ -193,7 +193,7 @@ FR14 is for Solo, FR15-18 for Team, and FR19-20 are shared.
 
 ### Performance
 
-- NFR8: Under normal course-demo load, the system shall complete competitor registration confirmation with p95 latency under 3 seconds, excluding external payment-gateway processing time.
+- NFR8: Under normal course-demo load, the system shall complete competitor registration confirmation with p95 latency under 3 seconds, excluding payment processing time.
 
 ### Observability
 

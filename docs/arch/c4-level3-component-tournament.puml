@@ -10,7 +10,8 @@ Container(gateway, "API Gateway", "Traefik v3", "Routes incoming requests to han
 Container(account_service, "Account Service", "Go, Huma v2", "Account and profile management")
 Container(payment_service, "Payment Service", "Go, Huma v2", "Payment and invoice management")
 Container(broker, "Message Broker", "RabbitMQ", "Asynchronous domain event exchange")
-ContainerDb(tournament_db, "Tournament DB", "PostgreSQL", "Relational tournament data and logos")
+System_Ext(s3, "Object Storage", "S3-compatible storage for sponsor brand logos")
+ContainerDb(tournament_db, "Tournament DB", "PostgreSQL", "Relational tournament, bracket, and pledge data")
 ContainerDb(forms_db, "Forms DB", "MongoDB 7", "Dynamic form schemas and submissions")
 
 Container_Boundary(tournament, "Tournament Service") {
@@ -30,10 +31,11 @@ Container_Boundary(tournament, "Tournament Service") {
 
     Component(tournament_repo, "Tournament Repository", "GORM", "Persists tournaments, staff, and status changes")
     Component(bracket_repo, "Bracket Repository", "GORM", "Persists bracket rounds and match records")
-    Component(sponsorship_repo, "Sponsorship Repository", "GORM", "Persists pledges and logos (bytea)")
+    Component(sponsorship_repo, "Sponsorship Repository", "GORM", "Persists tiers and pledge records")
+    Component(s3_client, "S3 Logo Client", "AWS SDK / S3 Client", "Stores and retrieves sponsor brand logos")
     Component(form_repo, "Form Repository", "Mongo Driver", "Persists dynamic form documents")
-    Component(account_client, "Account Client", "gRPC / Protobuf", "Queries account and organizer profiles")
-    Component(payment_client, "Payment Client", "Go HTTP Client", "Calls internal payment API with service key")
+    Component(account_client, "Account Client", "accountgrpc / Protobuf", "Queries account and organizer profiles")
+    Component(payment_client, "Payment Client", "paymentgrpc / Protobuf", "Calls payment service gRPC for invoices and refunds")
     Component(event_pub, "Event Publisher", "AMQP Client", "Publishes domain events (registration, announcement)")
 }
 
@@ -58,7 +60,8 @@ Rel(lobby_uc, account_client, "Verifies member profiles")
 Rel(lobby_uc, payment_client, "Ensures entry fee invoice")
 Rel(lobby_uc, event_pub, "Publishes registration.submitted")
 
-Rel(sponsorship_uc, sponsorship_repo, "Reads/Writes pledges and logos")
+Rel(sponsorship_uc, sponsorship_repo, "Reads/Writes pledges")
+Rel(sponsorship_uc, s3_client, "Stores/fetches brand logos")
 Rel(sponsorship_uc, payment_client, "Ensures sponsorship invoice")
 
 Rel(bracket_uc, bracket_repo, "Reads/Writes match results")
@@ -68,8 +71,9 @@ Rel(tournament_repo, tournament_db, "Reads/Writes", "SQL")
 Rel(bracket_repo, tournament_db, "Reads/Writes", "SQL")
 Rel(sponsorship_repo, tournament_db, "Reads/Writes", "SQL")
 Rel(form_repo, forms_db, "Reads/Writes", "TCP")
+Rel(s3_client, s3, "Uploads/fetches logos", "HTTPS")
 
 Rel(account_client, account_service, "Fetches profiles", "gRPC")
-Rel(payment_client, payment_service, "Creates invoice", "HTTP")
+Rel(payment_client, payment_service, "CreatePayment / Refund", "gRPC")
 Rel(event_pub, broker, "Publishes", "AMQP")
 @enduml

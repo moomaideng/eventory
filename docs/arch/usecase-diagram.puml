@@ -16,21 +16,13 @@ rectangle Eventory {
   usecase "UC-03: Submit Registration" as UC03
 }
 
-rectangle "Payment Gateway" as PayGW <<actor>>
-
 Organizer --> UC01
 Organizer --> UC04
 Staff --> UC04
 Sponsor --> UC02
 Competitor --> UC03
 
-UC02 --> PayGW
-UC03 --> PayGW
-
 UCCrowd ..> UC01 : <<extend>>
 UC01 ..> UCForm : <<include>>
-
-UCForm -[hidden]right-> PayGW
-UC04 -[hidden]right-> PayGW
 
 @enduml

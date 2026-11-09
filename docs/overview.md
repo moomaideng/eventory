@@ -115,7 +115,7 @@ This document specifies the core end-to-end user journeys, role interactions, an
 
 1. **Discovery & Contact:** Sponsors browse tournaments seeking funding; organizers can also browse the public Sponsor Directory to initiate external outreach.
 2. **Self-Serve Pledge:** The sponsor navigates to the tournament page, selects an active sponsorship tier (e.g., Gold, Silver), enters their redirect URL, and uploads their brand logo.
-3. **Escrow & Refund Protection:** The sponsor checks out via the payment gateway. If the event is in crowdfunding and fails to reach its goal, the system automatically voids or refunds the transaction.
+3. **Escrow & Refund Protection:** The sponsor checks out via the Payment Service. If the event is in crowdfunding and fails to reach its goal, the system automatically voids or refunds the transaction.
 
 ---
 
@@ -155,8 +155,8 @@ This document specifies the core end-to-end user journeys, role interactions, an
 
 ```
 
-1. **Inbound Processing:** All entry fees and sponsorship tier payments are processed via external gateways (Stripe/sandbox) and recorded as immutable ledger entries.
-2. **Automated Safety Rails:** Webhooks automatically process refunds back to original payment methods if applications are rejected or campaigns fail.
+1. **Inbound Processing:** All entry fees and sponsorship tier payments are processed via the Payment Service and recorded as immutable ledger entries.
+2. **Automated Safety Rails:** The Payment Service automatically processes refunds and invoice cancellations if applications are rejected or campaigns fail.
 3. **Post-Event Settlement:** Once a tournament reaches `COMPLETED`, the organizer views a financial breakdown (Gross Revenue, Platform Deductions, Net Balance) and initiates outbound payouts to their registered bank account, alongside automated prize distribution to verified winners.
 
 ---

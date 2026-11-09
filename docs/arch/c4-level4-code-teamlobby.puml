@@ -82,6 +82,10 @@ package "Ports (Interfaces)" {
         +EnsureInvoice(ctx, req): RegistrationPayment
     }
 
+    interface RegistrationRefundService <<interface>> {
+        +RefundRegistration(ctx, paymentID, entryID): RegistrationPayment
+    }
+
     interface RegistrationFormRepository <<interface>> {
         +GetForm(ctx, tournamentID): FormDocument
         +SaveAnswers(ctx, answers): error
@@ -99,16 +103,16 @@ package "Adapters (Infrastructure)" {
     }
 
     class AccountGrpcClient {
-        -client: AccountServiceClient
+        -api: AccountServiceClient
         +GetAccount(ctx, id): AccountInfo
         +BatchGetAccounts(ctx, ids): map[UUID]AccountInfo
     }
 
-    class PaymentHttpClient {
-        -url: string
+    class PaymentGrpcClient {
+        -api: PaymentServiceClient
         -key: string
-        -http: *http.Client
         +EnsureInvoice(ctx, req): RegistrationPayment
+        +RefundRegistration(ctx, paymentID, entryID): RegistrationPayment
     }
 
     class MongoFormRepository {
@@ -131,7 +135,8 @@ TournamentTeam --> Tournament : belongs to
 
 SQLTeamLobbyRepository ..|> TeamLobbyRepository : implements
 AccountGrpcClient ..|> AccountService : implements
-PaymentHttpClient ..|> PaymentService : implements
+PaymentGrpcClient ..|> PaymentService : implements
+PaymentGrpcClient ..|> RegistrationRefundService : implements
 MongoFormRepository ..|> RegistrationFormRepository : implements
 
 @enduml

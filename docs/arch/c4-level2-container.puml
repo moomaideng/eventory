@@ -12,25 +12,38 @@ Person(sponsor, "Sponsor", "Funds tournaments via packages")
 Person(staff, "Tournament Staff", "Enters match results")
 
 System_Ext(supabase, "Supabase Auth", "Google OAuth and JWT token provider")
-System_Ext(payment_gw, "Payment Gateway", "Processes payments")
+System_Ext(s3, "Object Storage", "S3-compatible storage for sponsor logos")
 System_Ext(smtp, "SMTP Relay / Mailpit", "Delivers notification emails")
 
 System_Boundary(c1, "Eventory Platform") {
-    Container(web_app, "Web Client", "Next.js 16, React", "Browser interface for tournament management, lobbies, and checkout")
+    Container(web_app, "Web Client", "Next.js 16, React", "Browser interface for tournament management, lobbies, and mock checkout")
     Container(gateway, "API Gateway", "Traefik v3", "Edge reverse proxy routing requests and forwarding trace context")
 
-    Container(account_service, "Account Service", "Go, Huma v2", "Manages user accounts, profiles, and mode switching")
-    Container(tournament_service, "Tournament Service", "Go, Huma v2", "Manages tournaments, lobbies, brackets, forms, and sponsorships")
-    Container(payment_service, "Payment Service", "Go, Huma v2", "Handles invoices, checkout, and PDF receipts")
-    Container(notification_service, "Notification Service", "Go, Worker & REST", "Consumes domain events to send emails and in-app notices")
+    together {
+        Container(account_service, "Account Service", "Go, Huma v2", "Manages user accounts, profiles, and mode switching")
+        Container(tournament_service, "Tournament Service", "Go, Huma v2", "Manages tournaments, lobbies, brackets, forms, and sponsorships")
+        Container(payment_service, "Payment Service", "Go, Huma v2", "Manages invoices, mock checkout settlement, and PDF receipts")
+        Container(notification_service, "Notification Service", "Go, Worker & REST", "Consumes domain events to send emails and in-app notices")
+    }
 
-    ContainerDb(account_db, "Account DB", "PostgreSQL", "Stores user accounts and organizer/sponsor profiles")
-    ContainerDb(tournament_db, "Tournament DB", "PostgreSQL", "Stores tournaments, lobbies, brackets, and sponsor logos (bytea)")
-    ContainerDb(forms_db, "Forms DB", "MongoDB 7", "Stores custom form schemas and submission data")
-    ContainerDb(payment_db, "Payment DB", "PostgreSQL", "Stores invoices and payment ledger")
-    ContainerDb(notification_db, "Notification DB", "PostgreSQL", "Stores in-app notices and email delivery logs")
+    together {
+        ContainerDb(account_db, "Account DB", "PostgreSQL", "Stores user accounts and organizer/sponsor profiles")
+        ContainerDb(tournament_db, "Tournament DB", "PostgreSQL", "Stores tournaments, lobbies, and brackets")
+        ContainerDb(forms_db, "Forms DB", "MongoDB 7", "Stores custom form schemas and submission data")
+        ContainerDb(payment_db, "Payment DB", "PostgreSQL", "Stores invoices and payment ledger")
+        Container(broker, "Message Broker", "RabbitMQ", "Exchanges domain events with retries and dead-letter queues")
+        ContainerDb(notification_db, "Notification DB", "PostgreSQL", "Stores in-app notices and email delivery logs")
+    }
 
-    Container(broker, "Message Broker", "RabbitMQ", "Exchanges domain events with retries and dead-letter queues")
+    account_service -[hidden]right- tournament_service
+    tournament_service -[hidden]right- payment_service
+    payment_service -[hidden]right- notification_service
+
+    account_db -[hidden]right- tournament_db
+    tournament_db -[hidden]right- forms_db
+    forms_db -[hidden]right- payment_db
+    payment_db -[hidden]right- broker
+    broker -[hidden]right- notification_db
 }
 
 Rel(organizer, web_app, "Uses", "HTTPS")
@@ -38,27 +51,28 @@ Rel(competitor, web_app, "Uses", "HTTPS")
 Rel(sponsor, web_app, "Uses", "HTTPS")
 Rel(staff, web_app, "Uses", "HTTPS")
 
-Rel(web_app, supabase, "Authenticates via OAuth", "HTTPS")
-Rel(web_app, gateway, "API calls", "HTTPS")
+Rel_R(web_app, supabase, "Authenticates", "HTTPS")
+Rel_D(web_app, gateway, "API calls", "HTTPS")
 
-Rel(gateway, account_service, "Routes /api/v1/accounts", "HTTP")
-Rel(gateway, tournament_service, "Routes /api/v1/tournaments, /lobbies", "HTTP")
-Rel(gateway, payment_service, "Routes /api/v1/payments", "HTTP")
-Rel(gateway, notification_service, "Routes /api/v1/notifications", "HTTP")
+Rel_D(gateway, account_service, "/api/v1/accounts", "HTTP")
+Rel_D(gateway, tournament_service, "/api/v1/tournaments, /lobbies", "HTTP")
+Rel_D(gateway, payment_service, "/api/v1/payments", "HTTP")
+Rel_D(gateway, notification_service, "/api/v1/notifications", "HTTP")
 
-Rel(tournament_service, account_service, "Fetches profiles", "gRPC")
-Rel(tournament_service, payment_service, "Ensures invoices", "HTTP")
+Rel_L(tournament_service, account_service, "Fetches profiles", "gRPC")
+Rel_R(tournament_service, payment_service, "Creates and refunds invoices", "gRPC")
 
-Rel(payment_service, payment_gw, "Creates checkout session", "HTTPS")
+Rel_D(account_service, account_db, "Reads/Writes", "SQL")
+Rel_D(tournament_service, tournament_db, "Reads/Writes", "SQL")
+Rel_D(tournament_service, forms_db, "Reads/Writes", "TCP")
+Rel_D(payment_service, payment_db, "Reads/Writes", "SQL")
+Rel_D(notification_service, notification_db, "Reads/Writes", "SQL")
 
-Rel(account_service, account_db, "Reads/Writes", "SQL")
-Rel(tournament_service, tournament_db, "Reads/Writes", "SQL")
-Rel(tournament_service, forms_db, "Reads/Writes", "TCP")
-Rel(payment_service, payment_db, "Reads/Writes", "SQL")
-Rel(notification_service, notification_db, "Reads/Writes", "SQL")
+Rel_L(tournament_service, s3, "Stores/fetches logos", "HTTPS")
 
-Rel(tournament_service, broker, "Publishes events", "AMQP")
-Rel(payment_service, broker, "Publishes payment.confirmed", "AMQP")
-Rel(notification_service, broker, "Consumes events", "AMQP")
-Rel(notification_service, smtp, "Sends emails", "SMTP")
+Rel_D(tournament_service, broker, "Publishes events", "AMQP")
+Rel_D(payment_service, broker, "Publishes payment.confirmed", "AMQP")
+Rel_U(broker, notification_service, "Delivers events", "AMQP")
+Rel_R(notification_service, smtp, "Sends emails", "SMTP")
+
 @enduml

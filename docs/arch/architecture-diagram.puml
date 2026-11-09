@@ -14,7 +14,6 @@ rectangle "API Gateway\n(Traefik)" as GW
 
 cloud "Supabase Auth\n(external Identity Provider)" as Auth
 cloud "Object Storage\n(S3-compatible)" as S3
-cloud "Payment Gateway" as PayGW
 cloud "Email Provider" as Email
 
 rectangle "Eventory" as Eventory {
@@ -59,22 +58,21 @@ Client --> GW
 
 GW --> Account : CreateProfile /\nGetProfile
 GW --> Tournament : UC-01 Create Tournament\nUC-02 Sponsor Tournament\nUC-03 Submit Registration\nUC-04 Record Match Results
+GW --> Payment : Checkout /\nGetReceipt
+GW --> Notification : GetNotifications
 
-Tournament --> Account : GetAccount
-Tournament --> Payment : CreateCheckout /\nGetPaymentStatus
+Tournament --> Account : BatchGetAccounts (gRPC)
+Tournament --> Payment : CreatePayment /\nRefundRegistration (gRPC)
 Tournament --> S3 : store/fetch sponsor logo
 Tournament --> TourDB : persist tournament,\nlobby, match
 Tournament --> FormDB : persist form\nschema/answers
 
 Account --> AccDB : persist
-Payment --> PayDB : persist ledger/checkout
+Payment --> PayDB : persist ledger/invoice
 Notification --> NotifDB : persist delivery log
 
-Payment --> PayGW : charge / refund
-PayGW --> Payment : HandleGatewayCallback
-
-Payment --> Broker : publish payment.succeeded
-Tournament --> Broker : publish registration.submitted /\nmatch_result.recorded /\nsponsorship.confirmed
+Payment --> Broker : publish payment.confirmed
+Tournament --> Broker : publish registration.submitted /\nannouncement.created
 Notification --> Broker : consume events
 Notification --> Email : SendEmailNotification
 

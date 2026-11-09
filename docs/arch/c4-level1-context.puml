@@ -6,23 +6,23 @@ LAYOUT_WITH_LEGEND()
 
 title Level 1: System Context Diagram - Eventory
 
-Person(organizer, "Organizer", "Hosts tournaments, sets rules, and configures registration")
-Person(competitor, "Competitor / Captain", "Discovers events, forms team lobbies, registers, and pays fees")
+Person(organizer, "Organizer", "Hosts tournaments, sets rules, and configures registration forms")
+Person(competitor, "Competitor / Captain", "Discovers events, forms team lobbies, registers, and pays entry fees")
 Person(sponsor, "Sponsor", "Funds tournaments and pledges packages")
 Person(staff, "Tournament Staff", "Records match results and updates standings")
 
 System(eventory, "Eventory Platform", "Manages tournaments, registrations, team lobbies, payments, and notifications")
 
 System_Ext(supabase, "Supabase Auth", "Google OAuth and user session management")
-System_Ext(payment_gw, "Payment Gateway", "Processes credit card and PromptPay payments")
+System_Ext(s3, "Object Storage", "S3-compatible storage for sponsor brand logos")
 System_Ext(email_provider, "Email Service", "Delivers notification emails via SMTP")
 
 Rel(organizer, eventory, "Creates and runs tournaments", "HTTPS")
-Rel(competitor, eventory, "Registers solo/team and views brackets", "HTTPS")
+Rel(competitor, eventory, "Registers solo/team and pays", "HTTPS")
 Rel(sponsor, eventory, "Pledges sponsorship and pays", "HTTPS")
 Rel(staff, eventory, "Records match results", "HTTPS")
 
 Rel(eventory, supabase, "Authenticates users", "HTTPS")
-Rel(eventory, payment_gw, "Processes checkout and refunds", "HTTPS")
+Rel(eventory, s3, "Stores and retrieves sponsor logos", "HTTPS")
 Rel(eventory, email_provider, "Sends notification emails", "SMTP")
 @enduml
