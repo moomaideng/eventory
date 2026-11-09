@@ -2151,31 +2151,6 @@ export interface components {
             /** @enum {string} */
             result: "SUCCEEDED" | "FAILED" | "CANCELLED";
         };
-        CreatePayment: {
-            /**
-             * Format: uri
-             * @description A URL to the JSON Schema for this object.
-             * @example https://example.com/schemas/CreatePayment.json
-             */
-            readonly $schema?: string;
-            /**
-             * Format: int64
-             * @description Amount in satang; 100 satang = 1 THB
-             */
-            amountMinor: number;
-            /** @enum {string} */
-            currency: "THB";
-            description: string;
-            /**
-             * Format: date-time
-             * @description Caller-selected deadline; must be in the future for a new invoice
-             */
-            expiresAt: string;
-            idempotencyKey: string;
-            payerAccountId: string;
-            reference: string;
-            source: string;
-        };
         "List-my-paymentsResponse": {
             /**
              * Format: uri
@@ -2242,15 +2217,6 @@ export interface components {
             provider: "MOCK";
             reference: string;
             source: string;
-        };
-        "Refund-rejected-registrationRequest": {
-            /**
-             * Format: uri
-             * @description A URL to the JSON Schema for this object.
-             * @example https://example.com/schemas/Refund-rejected-registrationRequest.json
-             */
-            readonly $schema?: string;
-            entryId: string;
         };
         NotificationCountOutputBody: {
             /**

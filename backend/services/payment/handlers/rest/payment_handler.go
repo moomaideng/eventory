@@ -2,7 +2,6 @@ package rest
 
 import (
 	"context"
-	"crypto/subtle"
 	"errors"
 	"net/http"
 	"time"
@@ -57,47 +56,6 @@ func paymentError(err error) error {
 	default:
 		return huma.Error500InternalServerError("Unable to process payment", err)
 	}
-}
-
-func RegisterInternalRoutes(api huma.API, uc *usecases.PaymentUseCase, serviceKey string) {
-	internal := huma.NewGroup(api, "/internal/v1/payments")
-	internal.UseMiddleware(func(ctx huma.Context, next func(huma.Context)) {
-		if len(serviceKey) < 32 || subtle.ConstantTimeCompare([]byte(ctx.Header("X-Payment-Service-Key")), []byte(serviceKey)) != 1 {
-			_ = huma.WriteErr(api, ctx, http.StatusUnauthorized, "Trusted service authentication required")
-			return
-		}
-		next(ctx)
-	})
-	security := []map[string][]string{{"serviceKey": {}}}
-	huma.Register(internal, huma.Operation{OperationID: "create-payment", Method: http.MethodPost, Path: "", Summary: "Create a mock payment (trusted backend only)", Security: security},
-		func(ctx context.Context, input *struct{ Body usecases.CreatePayment }) (*PaymentOutput, error) {
-			payment, err := uc.Create(ctx, input.Body)
-			if err != nil {
-				return nil, paymentError(err)
-			}
-			return &PaymentOutput{Body: response(payment)}, nil
-		})
-	huma.Register(internal, huma.Operation{OperationID: "get-payment-for-service", Method: http.MethodGet, Path: "/{id}", Summary: "Query payment status (trusted backend only)", Security: security},
-		func(ctx context.Context, input *PaymentIDInput) (*PaymentOutput, error) {
-			payment, err := uc.GetForService(ctx, input.ID)
-			if err != nil {
-				return nil, paymentError(err)
-			}
-			return &PaymentOutput{Body: response(payment)}, nil
-		})
-	huma.Register(internal, huma.Operation{OperationID: "refund-rejected-registration", Method: http.MethodPost, Path: "/{id}/refund", Summary: "Refund a rejected registration (trusted backend only)", Security: security},
-		func(ctx context.Context, input *struct {
-			ID   uuid.UUID `path:"id"`
-			Body struct {
-				EntryID uuid.UUID `json:"entryId"`
-			}
-		}) (*PaymentOutput, error) {
-			payment, err := uc.RefundRegistration(ctx, input.ID, input.Body.EntryID)
-			if err != nil {
-				return nil, paymentError(err)
-			}
-			return &PaymentOutput{Body: response(payment)}, nil
-		})
 }
 
 func RegisterPaymentRoutes(api huma.API, uc *usecases.PaymentUseCase) {

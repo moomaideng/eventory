@@ -245,7 +245,7 @@ services:
       HTTP_PORT: "8082"
       DB_DSN: postgresql://admin:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@postgres:5432/tournament_db?sslmode=disable
       ACCOUNT_GRPC_ADDR: account:9091
-      PAYMENT_URL: http://payment:8083
+      PAYMENT_GRPC_ADDR: payment:9093
       PAYMENT_SERVICE_KEY: ${PAYMENT_SERVICE_KEY:?PAYMENT_SERVICE_KEY is required}
 
   tournament:
@@ -255,7 +255,7 @@ services:
       HTTP_PORT: "8082"
       DB_DSN: postgresql://admin:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@postgres:5432/tournament_db?sslmode=disable
       ACCOUNT_GRPC_ADDR: account:9091
-      PAYMENT_URL: http://payment:8083
+      PAYMENT_GRPC_ADDR: payment:9093
       PAYMENT_SERVICE_KEY: ${PAYMENT_SERVICE_KEY:?PAYMENT_SERVICE_KEY is required}
       MONGO_URI: mongodb://admin:${MONGO_PASSWORD:?MONGO_PASSWORD is required}@mongodb:27017/tournament_db?authSource=admin
       MONGO_DB_NAME: tournament_db
@@ -309,6 +309,7 @@ services:
     environment:
       ENVIRONMENT: production
       HTTP_PORT: "8083"
+      GRPC_PORT: "9093"
       DB_DSN: postgresql://admin:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@postgres:5432/payment_db?sslmode=disable
       PAYMENT_SERVICE_KEY: ${PAYMENT_SERVICE_KEY:?PAYMENT_SERVICE_KEY is required}
 
@@ -317,6 +318,7 @@ services:
     environment:
       ENVIRONMENT: production
       HTTP_PORT: "8083"
+      GRPC_PORT: "9093"
       DB_DSN: postgresql://admin:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@postgres:5432/payment_db?sslmode=disable
       PAYMENT_SERVICE_KEY: ${PAYMENT_SERVICE_KEY:?PAYMENT_SERVICE_KEY is required}
       BROKER_URL: amqp://eventory:${RABBITMQ_PASSWORD:?RABBITMQ_PASSWORD is required}@rabbitmq:5672/

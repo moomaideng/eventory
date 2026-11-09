@@ -2,7 +2,7 @@ package config
 
 import (
 	"errors"
-	"net/url"
+	"net"
 
 	sharedconfig "github.com/moomaideng/eventory/internal/config"
 )
@@ -16,7 +16,7 @@ const (
 // Config holds tournament-service settings.
 type Config struct {
 	BrokerURL         string               `mapstructure:"broker_url"`
-	PaymentURL        string               `mapstructure:"payment_url"`
+	PaymentGRPCAddr   string               `mapstructure:"payment_grpc_addr"`
 	PaymentServiceKey string               `mapstructure:"payment_service_key"`
 	HTTPPort          string               `mapstructure:"http_port"`
 	DBDSN             string               `mapstructure:"db_dsn"`
@@ -45,9 +45,8 @@ func Load() (Config, error) {
 		return Config{}, err
 	}
 
-	paymentURL, err := url.Parse(cfg.PaymentURL)
-	if err != nil || paymentURL.Host == "" || (paymentURL.Scheme != "http" && paymentURL.Scheme != "https") {
-		return Config{}, errors.New("PAYMENT_URL must be an HTTP service URL")
+	if host, port, err := net.SplitHostPort(cfg.PaymentGRPCAddr); err != nil || host == "" || port == "" {
+		return Config{}, errors.New("PAYMENT_GRPC_ADDR must be a host:port address")
 	}
 	if len(cfg.PaymentServiceKey) < 32 || (cfg.Environment == "production" && cfg.PaymentServiceKey == "local-payment-service-key-not-for-production") {
 		return Config{}, errors.New("PAYMENT_SERVICE_KEY must be at least 32 characters and use a private production value")

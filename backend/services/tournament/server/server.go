@@ -16,7 +16,7 @@ import (
 	"github.com/moomaideng/eventory/services/tournament/config"
 	resthandlers "github.com/moomaideng/eventory/services/tournament/handlers/rest"
 	"github.com/moomaideng/eventory/services/tournament/internal/adapters/accountgrpc"
-	"github.com/moomaideng/eventory/services/tournament/internal/adapters/paymenthttp"
+	"github.com/moomaideng/eventory/services/tournament/internal/adapters/paymentgrpc"
 	tournamentmiddlewares "github.com/moomaideng/eventory/services/tournament/internal/middlewares"
 	"github.com/moomaideng/eventory/services/tournament/internal/ports"
 
@@ -30,6 +30,7 @@ import (
 )
 
 type App struct {
+	Close          func() error
 	HTTP           http.Handler
 	RunSubmissions func(context.Context)
 }
@@ -49,7 +50,10 @@ func NewAppWithAccountConn(db *gorm.DB, mongoDB *mongo.Database, cfg config.Conf
 }
 
 func newApp(db *gorm.DB, mongoDB *mongo.Database, cfg config.Config, accountSvc ports.AccountService) *App {
-	payments := paymenthttp.New(cfg.PaymentURL, cfg.PaymentServiceKey)
+	payments, err := paymentgrpc.New(cfg.PaymentGRPCAddr, cfg.PaymentServiceKey, cfg.Logging.SlowRequestMS)
+	if err != nil {
+		panic(err)
+	}
 	teamLobbyRepo := repositories.NewTeamLobbyRepository(db)
 	var formRepo repositories.RegistrationFormRepository
 	var fieldRegistry *forms.FieldRegistry
@@ -74,7 +78,8 @@ func newApp(db *gorm.DB, mongoDB *mongo.Database, cfg config.Config, accountSvc 
 	teamReviews := usecases.NewTeamReviewUseCase(repositories.NewTeamReviewRepository(db), accountSvc, payments, eventPublisher)
 	announcements := usecases.NewAnnouncementUseCase(repositories.NewAnnouncementRepository(db), accountSvc, eventPublisher)
 	return &App{
-		HTTP: newHTTPRouter(db, mongoDB, cfg, accountSvc, teamLobbyUseCase, sponsorships, teamReviews, announcements),
+		Close: payments.Close,
+		HTTP:  newHTTPRouter(db, mongoDB, cfg, accountSvc, teamLobbyUseCase, sponsorships, teamReviews, announcements),
 		RunSubmissions: func(ctx context.Context) {
 			go sponsorshipPoller(sponsorships).run(ctx)
 			go refundPoller(teamReviews).run(ctx)
