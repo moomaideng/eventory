@@ -118,7 +118,7 @@ func TestTeamRegistration_CannotReplaceSubmittedAnswers(t *testing.T) {
 	u, repo, form, captain, _ := teamAnswerFixture()
 	changed := []models.FieldAnswer{{FieldID: "ign", Value: "Changed"}}
 	_, err := u.SaveRegistrationAnswers(context.Background(), repo.team.ID, captain, changed)
-	if !errors.Is(err, repositories.ErrResponseAlreadyExists) || form.responses[captain].Answers[0].Value != "Player" || form.upserted != nil {
+	if !errors.Is(err, usecases.ErrResponseAlreadyExists) || form.responses[captain].Answers[0].Value != "Player" || form.upserted != nil {
 		t.Fatalf("existing application answers must stay immutable: %v", err)
 	}
 }
@@ -138,14 +138,14 @@ func TestTeamRegistration_ActiveApplicationCannotBeReplaced(t *testing.T) {
 				repo.tournament.MinTeamSize, repo.tournament.MaxTeamSize = 1, 1
 				_, err = u.RegisterSolo(context.Background(), repo.tournament.ID, captain, validTeamAnswers())
 			}
-			if !errors.Is(err, repositories.ErrAlreadyInTournamentLobby) || form.upserted != nil || repo.created != nil || repo.joined {
+			if !errors.Is(err, usecases.ErrAlreadyInTournamentLobby) || form.upserted != nil || repo.created != nil || repo.joined {
 				t.Fatalf("active application must block a new attempt: %v", err)
 			}
 		})
 	}
 }
 
-func TestTeamRegistration_NewApplicationGetsNewAnswers(t *testing.T) {
+func TestTeamRegistration_NewApplicationOverwritesAccountAnswers(t *testing.T) {
 	for _, action := range []string{"create", "join", "solo"} {
 		t.Run(action, func(t *testing.T) {
 			u, repo, form, captain, _ := teamAnswerFixture()
@@ -165,8 +165,8 @@ func TestTeamRegistration_NewApplicationGetsNewAnswers(t *testing.T) {
 				t.Fatal(err)
 			}
 			current := form.responses[captain]
-			if current == original || current.RegistrationID == uuid.Nil || current.Answers[0].Value != "New player" || original.Answers[0].Value != "Player" {
-				t.Fatal("new application must save a separate response and preserve original answers")
+			if current == original || current.Answers[0].Value != "New player" || len(form.responses) != 1 {
+				t.Fatal("new application must replace the response at the same account key")
 			}
 		})
 	}
@@ -179,7 +179,7 @@ func TestTeamRegistration_SecondSaveRejectedEvenWithIdenticalAnswers(t *testing.
 	}
 	original := form.responses[member]
 	_, err := u.SaveRegistrationAnswers(context.Background(), repo.team.ID, member, validTeamAnswers())
-	if !errors.Is(err, repositories.ErrResponseAlreadyExists) || form.responses[member] != original {
+	if !errors.Is(err, usecases.ErrResponseAlreadyExists) || form.responses[member] != original {
 		t.Fatalf("second save: %v", err)
 	}
 }

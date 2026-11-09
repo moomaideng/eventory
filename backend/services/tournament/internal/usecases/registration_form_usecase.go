@@ -161,7 +161,12 @@ func (u *RegistrationFormUseCase) SubmitResponse(
 		Answers:      answers,
 	}
 
-	return u.formRepo.CreateResponse(ctx, resp)
+	if _, err := u.formRepo.GetResponseByAccount(ctx, tournamentID, accountID); err == nil {
+		return nil, ErrResponseAlreadyExists
+	} else if !errors.Is(err, repositories.ErrResponseNotFound) {
+		return nil, err
+	}
+	return u.formRepo.UpsertResponse(ctx, resp)
 }
 
 func (u *RegistrationFormUseCase) GetMyResponse(
@@ -189,7 +194,7 @@ func (u *RegistrationFormUseCase) GetMyResponse(
 	}
 	for _, member := range team.Members {
 		if member.AccountID == accountID {
-			return u.formRepo.GetResponseByAccount(ctx, tournamentID, accountID, member.ID)
+			return u.formRepo.GetResponseByAccount(ctx, tournamentID, accountID)
 		}
 	}
 	return nil, ErrResponseNotFound

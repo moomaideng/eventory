@@ -22,14 +22,12 @@ import { Spinner } from "@/components/ui/spinner";
 interface ViewFormAnswersDialogProps {
   tournamentId: string;
   accountId: string;
-  registrationId: string;
   applicantName: string;
 }
 
 export function ViewFormAnswersDialog({
   tournamentId,
   accountId,
-  registrationId,
   applicantName,
 }: ViewFormAnswersDialogProps) {
   const [open, setOpen] = useState(false);
@@ -66,16 +64,7 @@ export function ViewFormAnswersDialog({
   const isLoading = formQuery.isFetching || responsesQuery.isFetching;
   const form = formQuery.data;
   const responses = responsesQuery.data?.items ?? [];
-  const participantResponse =
-    responses.find(
-      (item) =>
-        item.accountId === accountId && item.registrationId === registrationId
-    ) ??
-    responses.find(
-      (item) =>
-        item.accountId === accountId &&
-        item.registrationId === "00000000-0000-0000-0000-000000000000"
-    );
+  const participantResponse = responses.find((item) => item.accountId === accountId);
 
   const answerMap = new Map<string, unknown>();
   if (participantResponse?.answers) {

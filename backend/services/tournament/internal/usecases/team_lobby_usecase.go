@@ -180,7 +180,7 @@ func (u *TeamLobbyUseCase) Create(ctx context.Context, tournamentID, captainAcco
 	}
 	answers := firstAnswers(submitted)
 	teamID, membershipID := uuid.New(), uuid.New()
-	if err := u.saveNewRegistrationAnswers(ctx, tournamentID, captainAccountID, teamID, membershipID, answers); err != nil {
+	if err := u.saveNewRegistrationAnswers(ctx, tournamentID, captainAccountID, answers); err != nil {
 		return nil, translateLobbyError(err)
 	}
 
@@ -228,7 +228,7 @@ func (u *TeamLobbyUseCase) RegisterSolo(
 	}
 
 	teamID, membershipID := uuid.New(), uuid.New()
-	if err := u.saveNewRegistrationAnswers(ctx, tournamentID, accountID, teamID, membershipID, answers); err != nil {
+	if err := u.saveNewRegistrationAnswers(ctx, tournamentID, accountID, answers); err != nil {
 		return nil, err
 	}
 
@@ -332,7 +332,7 @@ func (u *TeamLobbyUseCase) Join(ctx context.Context, inviteCode string, memberAc
 	}
 	answers := firstAnswers(submitted)
 	membershipID := uuid.New()
-	if err := u.saveNewRegistrationAnswers(ctx, team.TournamentID, memberAccountID, team.ID, membershipID, answers); err != nil {
+	if err := u.saveNewRegistrationAnswers(ctx, team.TournamentID, memberAccountID, answers); err != nil {
 		return nil, translateLobbyError(err)
 	}
 	joined, err := u.repo.Join(ctx, team.ID, memberAccountID, membershipID)

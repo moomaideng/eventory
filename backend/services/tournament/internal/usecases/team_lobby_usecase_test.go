@@ -102,7 +102,6 @@ func (s *teamLobbyRepositoryStub) ApplyPayment(_ context.Context, _ *models.Tour
 }
 
 type registrationFormRepositoryStub struct {
-	history     []*models.FormResponse
 	responses   map[uuid.UUID]*models.FormResponse
 	batchCalls  int
 	batchError  error
@@ -124,24 +123,21 @@ func (s *registrationFormRepositoryStub) UpsertForm(_ context.Context, form *mod
 	s.form = form
 	return form, nil
 }
-func (s *registrationFormRepositoryStub) CreateResponse(_ context.Context, resp *models.FormResponse) (*models.FormResponse, error) {
+func (s *registrationFormRepositoryStub) UpsertResponse(_ context.Context, resp *models.FormResponse) (*models.FormResponse, error) {
 	if s.upsertError != nil {
 		return nil, s.upsertError
 	}
 	if s.responses == nil {
 		s.responses = make(map[uuid.UUID]*models.FormResponse)
 	}
-	if previous, exists := s.responses[resp.AccountID]; exists && previous.RegistrationID == resp.RegistrationID {
-		return nil, repositories.ErrResponseAlreadyExists
-	}
-	s.history = append(s.history, resp)
+
 	s.responses[resp.AccountID] = resp
 	s.upserted = resp
 	s.response = resp
 	return resp, nil
 }
-func (s *registrationFormRepositoryStub) GetResponseByAccount(_ context.Context, _ uuid.UUID, accountID uuid.UUID, registrationID ...uuid.UUID) (*models.FormResponse, error) {
-	if response, exists := s.responses[accountID]; exists && (len(registrationID) == 0 || response.RegistrationID == registrationID[0] || response.RegistrationID == uuid.Nil) {
+func (s *registrationFormRepositoryStub) GetResponseByAccount(_ context.Context, _ uuid.UUID, accountID uuid.UUID) (*models.FormResponse, error) {
+	if response, exists := s.responses[accountID]; exists {
 		return response, nil
 	}
 	return nil, repositories.ErrResponseNotFound

@@ -49,7 +49,7 @@ func (u *TeamLobbyUseCase) validateRegistrationAnswers(ctx context.Context, tour
 	return u.registry.ValidateFormAnswers(fields, answers)
 }
 
-func (u *TeamLobbyUseCase) saveNewRegistrationAnswers(ctx context.Context, tournamentID, accountID, teamID, registrationID uuid.UUID, answers []models.FieldAnswer) error {
+func (u *TeamLobbyUseCase) saveNewRegistrationAnswers(ctx context.Context, tournamentID, accountID uuid.UUID, answers []models.FieldAnswer) error {
 	if err := u.validateRegistrationAnswers(ctx, tournamentID, answers); err != nil {
 		return err
 	}
@@ -58,16 +58,15 @@ func (u *TeamLobbyUseCase) saveNewRegistrationAnswers(ctx context.Context, tourn
 	} else if !errors.Is(err, repositories.ErrTeamLobbyNotFound) {
 		return translateLobbyError(err)
 	}
-	return u.storeRegistrationAnswers(ctx, tournamentID, accountID, teamID, registrationID, answers)
+	return u.storeRegistrationAnswers(ctx, tournamentID, accountID, answers)
 }
 
-func (u *TeamLobbyUseCase) storeRegistrationAnswers(ctx context.Context, tournamentID, accountID, teamID, registrationID uuid.UUID, answers []models.FieldAnswer) error {
+func (u *TeamLobbyUseCase) storeRegistrationAnswers(ctx context.Context, tournamentID, accountID uuid.UUID, answers []models.FieldAnswer) error {
 	if u.formRepo == nil {
 		return nil
 	}
-	_, err := u.formRepo.CreateResponse(ctx, &models.FormResponse{
-		TournamentID: tournamentID, AccountID: accountID, TeamID: teamID,
-		RegistrationID: registrationID, Answers: answers,
+	_, err := u.formRepo.UpsertResponse(ctx, &models.FormResponse{
+		TournamentID: tournamentID, AccountID: accountID, Answers: answers,
 	})
 	return err
 }
@@ -92,21 +91,12 @@ func (u *TeamLobbyUseCase) memberReadiness(ctx context.Context, team *models.Tou
 	if err != nil {
 		return nil, err
 	}
-	byRegistration := make(map[uuid.UUID][]models.FieldAnswer, len(responses))
-	legacy := make(map[uuid.UUID][]models.FieldAnswer)
+	byAccount := make(map[uuid.UUID][]models.FieldAnswer, len(responses))
 	for _, response := range responses {
-		if response.RegistrationID == uuid.Nil {
-			legacy[response.AccountID] = response.Answers
-		} else {
-			byRegistration[response.RegistrationID] = response.Answers
-		}
+		byAccount[response.AccountID] = response.Answers
 	}
 	for _, member := range team.Members {
-		answers, exists := byRegistration[member.ID]
-		if !exists {
-			answers = legacy[member.AccountID]
-		}
-		ready[member.AccountID] = u.registry.ValidateFormAnswers(fields, answers) == nil
+		ready[member.AccountID] = u.registry.ValidateFormAnswers(fields, byAccount[member.AccountID]) == nil
 	}
 	return ready, nil
 }
@@ -123,11 +113,9 @@ func (u *TeamLobbyUseCase) SaveRegistrationAnswers(ctx context.Context, teamID, 
 	defer registration.Release()
 	team := registration.Team()
 	member := false
-	var registrationID uuid.UUID
 	for _, entry := range team.Members {
 		if entry.AccountID == accountID {
 			member = true
-			registrationID = entry.ID
 		}
 	}
 	if !member {
@@ -143,7 +131,7 @@ func (u *TeamLobbyUseCase) SaveRegistrationAnswers(ctx context.Context, teamID, 
 		return nil, err
 	}
 	if u.formRepo != nil {
-		_, err := u.formRepo.GetResponseByAccount(ctx, team.TournamentID, accountID, registrationID)
+		_, err := u.formRepo.GetResponseByAccount(ctx, team.TournamentID, accountID)
 		if err == nil {
 			return nil, repositories.ErrResponseAlreadyExists
 		}
@@ -151,7 +139,7 @@ func (u *TeamLobbyUseCase) SaveRegistrationAnswers(ctx context.Context, teamID, 
 			return nil, err
 		}
 	}
-	if err := u.storeRegistrationAnswers(ctx, team.TournamentID, accountID, team.ID, registrationID, answers); err != nil {
+	if err := u.storeRegistrationAnswers(ctx, team.TournamentID, accountID, answers); err != nil {
 		return nil, err
 	}
 	return u.toView(ctx, team)
