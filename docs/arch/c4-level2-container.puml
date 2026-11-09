@@ -1,0 +1,64 @@
+@startuml c4-level2-container
+skinparam dpi 200
+!include <C4/C4_Container>
+
+LAYOUT_WITH_LEGEND()
+
+title Level 2: Container Diagram - Eventory
+
+Person(organizer, "Organizer", "Hosts and runs tournaments")
+Person(competitor, "Competitor / Captain", "Registers solo or with team")
+Person(sponsor, "Sponsor", "Funds tournaments via packages")
+Person(staff, "Tournament Staff", "Enters match results")
+
+System_Ext(supabase, "Supabase Auth", "Google OAuth and JWT token provider")
+System_Ext(payment_gw, "Payment Gateway", "Processes payments")
+System_Ext(smtp, "SMTP Relay / Mailpit", "Delivers notification emails")
+
+System_Boundary(c1, "Eventory Platform") {
+    Container(web_app, "Web Client", "Next.js 16, React", "Browser interface for tournament management, lobbies, and checkout")
+    Container(gateway, "API Gateway", "Traefik v3", "Edge reverse proxy routing requests and forwarding trace context")
+
+    Container(account_service, "Account Service", "Go, Huma v2", "Manages user accounts, profiles, and mode switching")
+    Container(tournament_service, "Tournament Service", "Go, Huma v2", "Manages tournaments, lobbies, brackets, forms, and sponsorships")
+    Container(payment_service, "Payment Service", "Go, Huma v2", "Handles invoices, checkout, and PDF receipts")
+    Container(notification_service, "Notification Service", "Go, Worker & REST", "Consumes domain events to send emails and in-app notices")
+
+    ContainerDb(account_db, "Account DB", "PostgreSQL", "Stores user accounts and organizer/sponsor profiles")
+    ContainerDb(tournament_db, "Tournament DB", "PostgreSQL", "Stores tournaments, lobbies, brackets, and sponsor logos (bytea)")
+    ContainerDb(forms_db, "Forms DB", "MongoDB 7", "Stores custom form schemas and submission data")
+    ContainerDb(payment_db, "Payment DB", "PostgreSQL", "Stores invoices and payment ledger")
+    ContainerDb(notification_db, "Notification DB", "PostgreSQL", "Stores in-app notices and email delivery logs")
+
+    Container(broker, "Message Broker", "RabbitMQ", "Exchanges domain events with retries and dead-letter queues")
+}
+
+Rel(organizer, web_app, "Uses", "HTTPS")
+Rel(competitor, web_app, "Uses", "HTTPS")
+Rel(sponsor, web_app, "Uses", "HTTPS")
+Rel(staff, web_app, "Uses", "HTTPS")
+
+Rel(web_app, supabase, "Authenticates via OAuth", "HTTPS")
+Rel(web_app, gateway, "API calls", "HTTPS")
+
+Rel(gateway, account_service, "Routes /api/v1/accounts", "HTTP")
+Rel(gateway, tournament_service, "Routes /api/v1/tournaments, /lobbies", "HTTP")
+Rel(gateway, payment_service, "Routes /api/v1/payments", "HTTP")
+Rel(gateway, notification_service, "Routes /api/v1/notifications", "HTTP")
+
+Rel(tournament_service, account_service, "Fetches profiles", "gRPC")
+Rel(tournament_service, payment_service, "Ensures invoices", "HTTP")
+
+Rel(payment_service, payment_gw, "Creates checkout session", "HTTPS")
+
+Rel(account_service, account_db, "Reads/Writes", "SQL")
+Rel(tournament_service, tournament_db, "Reads/Writes", "SQL")
+Rel(tournament_service, forms_db, "Reads/Writes", "TCP")
+Rel(payment_service, payment_db, "Reads/Writes", "SQL")
+Rel(notification_service, notification_db, "Reads/Writes", "SQL")
+
+Rel(tournament_service, broker, "Publishes events", "AMQP")
+Rel(payment_service, broker, "Publishes payment.confirmed", "AMQP")
+Rel(notification_service, broker, "Consumes events", "AMQP")
+Rel(notification_service, smtp, "Sends emails", "SMTP")
+@enduml

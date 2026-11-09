@@ -1,0 +1,137 @@
+@startuml c4-level4-code-teamlobby
+skinparam dpi 200
+skinparam classAttributeIconSize 0
+skinparam linetype ortho
+
+title Level 4: Code / Class Diagram - Team Lobby Component (Tournament Service)
+
+package "Presentation Layer" {
+    class TeamLobbyHandler {
+        -useCase: TeamLobbyUseCase
+        +CreateTeamLobby(ctx, input)
+        +JoinTeamLobby(ctx, input)
+        +LockTeamRoster(ctx, input)
+        +RemoveMember(ctx, input)
+        +DisbandTeamLobby(ctx, input)
+        +RegisterSolo(ctx, input)
+    }
+}
+
+package "Domain Layer" {
+    class TeamLobbyUseCase {
+        -repo: TeamLobbyRepository
+        -accountSvc: AccountService
+        -payments: PaymentService
+        -formRepo: RegistrationFormRepository
+        +Create(ctx, tournamentID, captainID, name): TeamLobbyView
+        +RegisterSolo(ctx, tournamentID, accountID): TeamLobbyView
+        +Join(ctx, inviteCode, memberAccountID): TeamLobbyView
+        +Lock(ctx, teamID, accountID): TeamLobbyView
+        +RemoveMember(ctx, teamID, memberID, accountID): TeamLobbyView
+        +Disband(ctx, teamID, accountID): error
+        +Reconcile(ctx, team): error
+    }
+
+    class TournamentTeam {
+        +ID: UUID
+        +TournamentID: UUID
+        +CaptainAccountID: UUID
+        +Name: string
+        +InviteCode: *string
+        +Status: string
+        +PaymentID: *UUID
+        +CreatedAt: Time
+    }
+
+    class TournamentTeamMember {
+        +ID: UUID
+        +TeamID: UUID
+        +AccountID: UUID
+        +Role: string
+        +JoinedAt: Time
+    }
+
+    class Tournament {
+        +ID: UUID
+        +Title: string
+        +Format: string
+        +MinTeamSize: int
+        +MaxTeamSize: int
+        +EntryFeeMinor: int64
+    }
+}
+
+package "Ports (Interfaces)" {
+    interface TeamLobbyRepository <<interface>> {
+        +FindByID(ctx, id): TournamentTeam
+        +FindByInviteCode(ctx, code): TournamentTeam
+        +Create(ctx, team, captain): TournamentTeam
+        +Join(ctx, teamID, accountID): TournamentTeam
+        +Lock(ctx, teamID): TournamentTeam
+        +RemoveMember(ctx, teamID, memberID): TournamentTeam
+        +Disband(ctx, teamID): error
+        +ApplyPayment(ctx, team, paymentID, status): error
+    }
+
+    interface AccountService <<interface>> {
+        +GetAccount(ctx, id): AccountInfo
+        +BatchGetAccounts(ctx, ids): map[UUID]AccountInfo
+    }
+
+    interface PaymentService <<interface>> {
+        +EnsureInvoice(ctx, req): RegistrationPayment
+    }
+
+    interface RegistrationFormRepository <<interface>> {
+        +GetForm(ctx, tournamentID): FormDocument
+        +SaveAnswers(ctx, answers): error
+    }
+}
+
+package "Adapters (Infrastructure)" {
+    class SQLTeamLobbyRepository {
+        -db: *gorm.DB
+        +FindByID(ctx, id): TournamentTeam
+        +FindByInviteCode(ctx, code): TournamentTeam
+        +Create(ctx, team, captain): TournamentTeam
+        +Lock(ctx, teamID): TournamentTeam
+        +ApplyPayment(ctx, team, paymentID, status): error
+    }
+
+    class AccountGrpcClient {
+        -client: AccountServiceClient
+        +GetAccount(ctx, id): AccountInfo
+        +BatchGetAccounts(ctx, ids): map[UUID]AccountInfo
+    }
+
+    class PaymentHttpClient {
+        -url: string
+        -key: string
+        -http: *http.Client
+        +EnsureInvoice(ctx, req): RegistrationPayment
+    }
+
+    class MongoFormRepository {
+        -client: *mongo.Client
+        +GetForm(ctx, tournamentID): FormDocument
+        +SaveAnswers(ctx, answers): error
+    }
+}
+
+TeamLobbyHandler --> TeamLobbyUseCase : invokes
+
+TeamLobbyUseCase --> TeamLobbyRepository : uses
+TeamLobbyUseCase --> AccountService : uses
+TeamLobbyUseCase --> PaymentService : uses
+TeamLobbyUseCase --> RegistrationFormRepository : uses
+
+TeamLobbyUseCase ..> TournamentTeam : creates / mutates
+TournamentTeam "1" *-- "1..*" TournamentTeamMember : contains
+TournamentTeam --> Tournament : belongs to
+
+SQLTeamLobbyRepository ..|> TeamLobbyRepository : implements
+AccountGrpcClient ..|> AccountService : implements
+PaymentHttpClient ..|> PaymentService : implements
+MongoFormRepository ..|> RegistrationFormRepository : implements
+
+@enduml

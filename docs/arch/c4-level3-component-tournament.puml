@@ -1,0 +1,75 @@
+@startuml c4-level3-component-tournament
+skinparam dpi 200
+!include <C4/C4_Component>
+
+LAYOUT_WITH_LEGEND()
+
+title Level 3: Component Diagram - Tournament Service
+
+Container(gateway, "API Gateway", "Traefik v3", "Routes incoming requests to handlers")
+Container(account_service, "Account Service", "Go, Huma v2", "Account and profile management")
+Container(payment_service, "Payment Service", "Go, Huma v2", "Payment and invoice management")
+Container(broker, "Message Broker", "RabbitMQ", "Asynchronous domain event exchange")
+ContainerDb(tournament_db, "Tournament DB", "PostgreSQL", "Relational tournament data and logos")
+ContainerDb(forms_db, "Forms DB", "MongoDB 7", "Dynamic form schemas and submissions")
+
+Container_Boundary(tournament, "Tournament Service") {
+    Component(tournament_handler, "Tournament Handler", "Huma v2 / Chi", "Handles tournament creation, draft settings, and publishing")
+    Component(form_handler, "Registration Form Handler", "Huma v2 / Chi", "Handles dynamic registration form schemas and answers")
+    Component(lobby_handler, "Team Lobby Handler", "Huma v2 / Chi", "Handles lobby creation, member joins, and roster lock")
+    Component(sponsorship_handler, "Sponsorship Handler", "Huma v2 / Chi", "Handles sponsorship tiers, pledges, and logo uploads")
+    Component(bracket_handler, "Bracket Handler", "Huma v2 / Chi", "Handles tournament brackets, matches, and score recording")
+    Component(announcement_handler, "Announcement Handler", "Huma v2 / Chi", "Handles tournament organizer announcements")
+
+    Component(tournament_uc, "Tournament UseCase", "Go", "Coordinates tournament lifecycle and validation")
+    Component(form_uc, "Registration Form UseCase", "Go", "Validates dynamic schemas and participant form fields")
+    Component(lobby_uc, "Team Lobby UseCase", "Go", "Enforces roster rules, locks teams, and coordinates fees")
+    Component(sponsorship_uc, "Sponsorship UseCase", "Go", "Validates brand assets and handles package pledges")
+    Component(bracket_uc, "Bracket UseCase", "Go", "Validates match outcomes and updates standings")
+    Component(announcement_uc, "Announcement UseCase", "Go", "Manages broadcast announcements")
+
+    Component(tournament_repo, "Tournament Repository", "GORM", "Persists tournaments, staff, and status changes")
+    Component(bracket_repo, "Bracket Repository", "GORM", "Persists bracket rounds and match records")
+    Component(sponsorship_repo, "Sponsorship Repository", "GORM", "Persists pledges and logos (bytea)")
+    Component(form_repo, "Form Repository", "Mongo Driver", "Persists dynamic form documents")
+    Component(account_client, "Account Client", "gRPC / Protobuf", "Queries account and organizer profiles")
+    Component(payment_client, "Payment Client", "Go HTTP Client", "Calls internal payment API with service key")
+    Component(event_pub, "Event Publisher", "AMQP Client", "Publishes domain events (registration, announcement)")
+}
+
+Rel(gateway, tournament_handler, "Routes /api/v1/tournaments", "HTTP")
+Rel(gateway, form_handler, "Routes /api/v1/tournaments/:id/form", "HTTP")
+Rel(gateway, lobby_handler, "Routes /api/v1/lobbies", "HTTP")
+Rel(gateway, sponsorship_handler, "Routes /api/v1/tournaments/:id/sponsorships", "HTTP")
+Rel(gateway, bracket_handler, "Routes /api/v1/tournaments/:id/bracket", "HTTP")
+Rel(gateway, announcement_handler, "Routes /api/v1/tournaments/:id/announcements", "HTTP")
+
+Rel(tournament_handler, tournament_uc, "Invokes")
+Rel(form_handler, form_uc, "Invokes")
+Rel(lobby_handler, lobby_uc, "Invokes")
+Rel(sponsorship_handler, sponsorship_uc, "Invokes")
+Rel(bracket_handler, bracket_uc, "Invokes")
+Rel(announcement_handler, announcement_uc, "Invokes")
+
+Rel(tournament_uc, tournament_repo, "Reads/Writes")
+Rel(form_uc, form_repo, "Reads/Writes")
+
+Rel(lobby_uc, account_client, "Verifies member profiles")
+Rel(lobby_uc, payment_client, "Ensures entry fee invoice")
+Rel(lobby_uc, event_pub, "Publishes registration.submitted")
+
+Rel(sponsorship_uc, sponsorship_repo, "Reads/Writes pledges and logos")
+Rel(sponsorship_uc, payment_client, "Ensures sponsorship invoice")
+
+Rel(bracket_uc, bracket_repo, "Reads/Writes match results")
+Rel(announcement_uc, event_pub, "Publishes announcement.created")
+
+Rel(tournament_repo, tournament_db, "Reads/Writes", "SQL")
+Rel(bracket_repo, tournament_db, "Reads/Writes", "SQL")
+Rel(sponsorship_repo, tournament_db, "Reads/Writes", "SQL")
+Rel(form_repo, forms_db, "Reads/Writes", "TCP")
+
+Rel(account_client, account_service, "Fetches profiles", "gRPC")
+Rel(payment_client, payment_service, "Creates invoice", "HTTP")
+Rel(event_pub, broker, "Publishes", "AMQP")
+@enduml
