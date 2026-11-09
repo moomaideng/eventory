@@ -48,10 +48,8 @@ type FieldAnswer struct {
 }
 
 type FormResponse struct {
-	RegistrationID uuid.UUID     `bson:"registration_id,omitempty" json:"registrationId"`
-	TeamID         uuid.UUID     `bson:"team_id,omitempty" json:"teamId"`
-	ID             bson.ObjectID `bson:"_id,omitempty" json:"id"`
-	TournamentID   uuid.UUID     `bson:"tournament_id" json:"tournamentId"`
-	AccountID      uuid.UUID     `bson:"account_id" json:"accountId"`
-	Answers        []FieldAnswer `bson:"answers" json:"answers"`
+	ID           bson.ObjectID `bson:"_id,omitempty" json:"id"`
+	TournamentID uuid.UUID     `bson:"tournament_id" json:"tournamentId"`
+	AccountID    uuid.UUID     `bson:"account_id" json:"accountId"`
+	Answers      []FieldAnswer `bson:"answers" json:"answers"`
 }

@@ -27,8 +27,8 @@ type RegistrationFormRepository interface {
 	EnsureIndexes(ctx context.Context) error
 	GetFormByTournamentID(ctx context.Context, tournamentID uuid.UUID) (*models.RegistrationForm, error)
 	UpsertForm(ctx context.Context, form *models.RegistrationForm) (*models.RegistrationForm, error)
-	CreateResponse(ctx context.Context, resp *models.FormResponse) (*models.FormResponse, error)
-	GetResponseByAccount(ctx context.Context, tournamentID uuid.UUID, accountID uuid.UUID, registrationID ...uuid.UUID) (*models.FormResponse, error)
+	UpsertResponse(ctx context.Context, resp *models.FormResponse) (*models.FormResponse, error)
+	GetResponseByAccount(ctx context.Context, tournamentID uuid.UUID, accountID uuid.UUID) (*models.FormResponse, error)
 	ListResponsesByTournamentID(ctx context.Context, tournamentID uuid.UUID) ([]models.FormResponse, error)
 	GetResponsesByAccounts(ctx context.Context, tournamentID uuid.UUID, accountIDs []uuid.UUID) ([]models.FormResponse, error)
 }
@@ -54,23 +54,13 @@ func (r *registrationFormRepositoryImpl) EnsureIndexes(ctx context.Context) erro
 		return err
 	}
 
-	_, err = r.responsesCol.Indexes().CreateOne(ctx, mongo.IndexModel{
-		Keys: bson.D{
-			{Key: "tournament_id", Value: 1},
-			{Key: "account_id", Value: 1},
-			{Key: "registration_id", Value: 1},
-		},
-		Options: options.Index().SetUnique(true),
-	})
-	if err != nil {
+	if err := r.migrateResponseKeys(ctx); err != nil {
 		return err
 	}
-	// Build the replacement before dropping the old tournament-wide constraint.
-	err = r.responsesCol.Indexes().DropOne(ctx, "tournament_id_1_account_id_1")
-	var commandError mongo.CommandError
-	if errors.As(err, &commandError) && commandError.Code == 27 {
-		return nil
-	}
+	_, err = r.responsesCol.Indexes().CreateOne(ctx, mongo.IndexModel{
+		Keys:    bson.D{{Key: "tournament_id", Value: 1}, {Key: "account_id", Value: 1}},
+		Options: options.Index().SetUnique(true),
+	})
 	return err
 }
 
@@ -112,39 +102,25 @@ func (r *registrationFormRepositoryImpl) UpsertForm(ctx context.Context, form *m
 	return r.GetFormByTournamentID(ctx, form.TournamentID)
 }
 
-func (r *registrationFormRepositoryImpl) CreateResponse(ctx context.Context, resp *models.FormResponse) (*models.FormResponse, error) {
-	res, err := r.responsesCol.InsertOne(ctx, resp)
-	if err != nil {
-		if mongo.IsDuplicateKeyError(err) {
-			return nil, ErrResponseAlreadyExists
-		}
-		return nil, err
+func (r *registrationFormRepositoryImpl) UpsertResponse(ctx context.Context, resp *models.FormResponse) (*models.FormResponse, error) {
+	filter := bson.M{"tournament_id": resp.TournamentID, "account_id": resp.AccountID}
+	update := bson.M{
+		"$set":         bson.M{"answers": resp.Answers},
+		"$setOnInsert": filter,
 	}
-
-	if oid, ok := res.InsertedID.(bson.ObjectID); ok {
-		resp.ID = oid
-	}
-	return resp, nil
+	var saved models.FormResponse
+	err := r.responsesCol.FindOneAndUpdate(ctx, filter, update,
+		options.FindOneAndUpdate().SetUpsert(true).SetReturnDocument(options.After)).Decode(&saved)
+	return &saved, err
 }
 
-func (r *registrationFormRepositoryImpl) GetResponseByAccount(ctx context.Context, tournamentID uuid.UUID, accountID uuid.UUID, registrationID ...uuid.UUID) (*models.FormResponse, error) {
+func (r *registrationFormRepositoryImpl) GetResponseByAccount(ctx context.Context, tournamentID uuid.UUID, accountID uuid.UUID) (*models.FormResponse, error) {
 	var resp models.FormResponse
 	filter := bson.M{
 		"tournament_id": tournamentID,
 		"account_id":    accountID,
 	}
-	if len(registrationID) > 0 {
-		filter["registration_id"] = registrationID[0]
-	} else {
-		filter["registration_id"] = bson.M{"$exists": false}
-	}
 	err := r.responsesCol.FindOne(ctx, filter).Decode(&resp)
-	// Older responses have no membership ID. Keep them read-only for existing
-	// memberships; newly created memberships always have their own response.
-	if errors.Is(err, mongo.ErrNoDocuments) && len(registrationID) > 0 {
-		filter["registration_id"] = bson.M{"$exists": false}
-		err = r.responsesCol.FindOne(ctx, filter).Decode(&resp)
-	}
 	if err != nil {
 		if errors.Is(err, mongo.ErrNoDocuments) {
 			return nil, ErrResponseNotFound

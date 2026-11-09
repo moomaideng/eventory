@@ -11,6 +11,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { LobbyWorkspaceSkeleton } from "@/features/lobbies/components/lobby-skeleton";
 import { MemberRegistrationForm } from "@/features/lobbies/components/member-registration-form";
+import { isRegistrationOpen } from "@/features/tournaments/utils";
 
 export function TeamLobbyJoin({ inviteCode }: { inviteCode: string }) {
   const router = useRouter();
@@ -56,7 +57,7 @@ export function TeamLobbyJoin({ inviteCode }: { inviteCode: string }) {
   const unavailable =
     !lobby ||
     lobby.status !== "FORMING" ||
-    lobby.tournament.status !== "REGISTRATION_OPEN" ||
+    !isRegistrationOpen(lobby.tournament) ||
     (lobby.members?.length ?? 0) >= lobby.tournament.maxTeamSize;
 
   return (

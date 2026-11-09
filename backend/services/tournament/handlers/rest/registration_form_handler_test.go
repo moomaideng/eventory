@@ -91,16 +91,6 @@ func (m *mockFormRepo) UpsertForm(_ context.Context, form *models.RegistrationFo
 	return form, nil
 }
 
-func (m *mockFormRepo) CreateResponse(_ context.Context, resp *models.FormResponse) (*models.FormResponse, error) {
-	key := resp.TournamentID.String() + ":" + resp.AccountID.String()
-	if _, ok := m.responses[key]; ok {
-		return nil, repositories.ErrResponseAlreadyExists
-	}
-	resp.ID = bson.NewObjectID()
-	m.responses[key] = resp
-	return resp, nil
-}
-
 func (m *mockFormRepo) UpsertResponse(_ context.Context, resp *models.FormResponse) (*models.FormResponse, error) {
 	key := resp.TournamentID.String() + ":" + resp.AccountID.String()
 	resp.ID = bson.NewObjectID()
@@ -108,7 +98,7 @@ func (m *mockFormRepo) UpsertResponse(_ context.Context, resp *models.FormRespon
 	return resp, nil
 }
 
-func (m *mockFormRepo) GetResponseByAccount(_ context.Context, tournamentID, accountID uuid.UUID, registrationID ...uuid.UUID) (*models.FormResponse, error) {
+func (m *mockFormRepo) GetResponseByAccount(_ context.Context, tournamentID, accountID uuid.UUID) (*models.FormResponse, error) {
 	key := tournamentID.String() + ":" + accountID.String()
 	r, ok := m.responses[key]
 	if !ok {

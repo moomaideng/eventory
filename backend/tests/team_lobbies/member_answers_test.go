@@ -38,15 +38,48 @@ func TestMemberRegistrationAnswers(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = mongoClient.Disconnect(context.Background()) })
 	collection := mongoClient.Database("member_answers_test").Collection("tournament_form_responses")
-	// Simulate upgrading an existing database with the old tournament-wide index.
+	// Simulate upgrading the former per-membership answer collection.
 	_, err = collection.Indexes().CreateOne(ctx, mongo.IndexModel{
-		Keys:    bson.D{{Key: "tournament_id", Value: 1}, {Key: "account_id", Value: 1}},
+		Keys:    bson.D{{Key: "tournament_id", Value: 1}, {Key: "account_id", Value: 1}, {Key: "registration_id", Value: 1}},
 		Options: options.Index().SetUnique(true),
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
+	legacyTournament, legacyAccount := uuid.New(), uuid.New()
+	for _, value := range []string{"Old", "Latest"} {
+		_, err := collection.InsertOne(ctx, bson.M{
+			"tournament_id": legacyTournament, "account_id": legacyAccount,
+			"registration_id": uuid.New(), "team_id": uuid.New(),
+			"answers": []models.FieldAnswer{{FieldID: "ign", Value: value}},
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
 	app = apptest.NewApp(t, pg.DSN, mongoClient.Database("member_answers_test"))
+	legacyFilter := bson.M{"tournament_id": legacyTournament, "account_id": legacyAccount}
+	legacyCount, err := collection.CountDocuments(ctx, legacyFilter)
+	if err != nil || legacyCount != 1 {
+		t.Fatalf("migration count=%d err=%v", legacyCount, err)
+	}
+	var migrated bson.M
+	if err := collection.FindOne(ctx, legacyFilter).Decode(&migrated); err != nil {
+		t.Fatal(err)
+	}
+	if _, exists := migrated["registration_id"]; exists {
+		t.Fatal("legacy registration ID remains")
+	}
+	if _, exists := migrated["team_id"]; exists {
+		t.Fatal("legacy team ID remains")
+	}
+	var latestLegacy models.FormResponse
+	if err := collection.FindOne(ctx, legacyFilter).Decode(&latestLegacy); err != nil || latestLegacy.Answers[0].Value != "Latest" {
+		t.Fatalf("migration did not preserve latest answers: %+v %v", latestLegacy, err)
+	}
+	if _, err := collection.InsertOne(ctx, legacyFilter); !mongo.IsDuplicateKeyError(err) {
+		t.Fatalf("composite key must be unique: %v", err)
+	}
 	client := apptest.NewClient(app.TournamentBaseURL())
 	s := &teamLobbyScenarioContext{client: client}
 	if err := s.createPublishedTournament(); err != nil {
@@ -152,7 +185,8 @@ func TestMemberRegistrationAnswers(t *testing.T) {
 	if persisted.Status != models.TournamentTeamStatusRejected || len(persisted.Members) != 2 {
 		t.Fatal("reject must apply to the whole team")
 	}
-	// Rejection ends the application. A new form starts blank, but history remains.
+	// Rejection is final for this team; a new application replaces account answers.
+	request(http.MethodPost, tourPath+"/entries/"+lobby.ID.String()+"/review", map[string]any{"decision": "ACCEPT"}, owner, 409)
 	request(http.MethodGet, tourPath+"/form/responses/me", nil, captain, 404)
 	request(http.MethodGet, tourPath+"/form/responses/me", nil, member, 404)
 	request(http.MethodPost, tourPath+"/lobbies", map[string]any{"name": "Missing new answers"}, captain, 400)
@@ -171,7 +205,7 @@ func TestMemberRegistrationAnswers(t *testing.T) {
 		if err := request(http.MethodGet, tourPath+"/form/responses/me", nil, user, 200).JSON(&current); err != nil {
 			t.Fatal(err)
 		}
-		if current.Answers[0].Value != expected || current.RegistrationID == uuid.Nil {
+		if current.Answers[0].Value != expected {
 			t.Fatalf("wrong current response: %+v", current)
 		}
 	}
@@ -187,16 +221,8 @@ func TestMemberRegistrationAnswers(t *testing.T) {
 	if err := cursor.All(ctx, &history); err != nil {
 		t.Fatal(err)
 	}
-	if len(history) != 2 {
-		t.Fatalf("expected two application responses, got %d", len(history))
-	}
-	old, fresh := false, false
-	for _, response := range history {
-		old = old || (response.TeamID == lobby.ID && response.Answers[0].Value == "Member")
-		fresh = fresh || (response.TeamID == newLobby.ID && response.Answers[0].Value == "New member")
-	}
-	if !old || !fresh {
-		t.Fatal("answers from different applications were mixed or overwritten")
+	if len(history) != 1 || history[0].Answers[0].Value != "New member" {
+		t.Fatalf("expected one overwritten answer set, got %+v", history)
 	}
 
 	// Removing and rejoining the SAME team is also a new membership/application.
@@ -213,7 +239,7 @@ func TestMemberRegistrationAnswers(t *testing.T) {
 	assertCurrent(member, "Rejoined member")
 	request(http.MethodPut, "/lobbies/"+newLobby.ID.String()+"/registration", answers("Edited again"), member, 409)
 
-	// Disbanding releases all members without deleting any form history.
+	// Disbanding releases all members; registering again overwrites their answers.
 	request(http.MethodDelete, "/lobbies/"+newLobby.ID.String(), nil, captain, 204)
 	request(http.MethodGet, tourPath+"/form/responses/me", nil, captain, 404)
 	request(http.MethodGet, tourPath+"/form/responses/me", nil, member, 404)
@@ -226,8 +252,8 @@ func TestMemberRegistrationAnswers(t *testing.T) {
 	assertCurrent(captain, "Third captain")
 	assertCurrent(member, "Other team member")
 	total, err := collection.CountDocuments(ctx, filter)
-	if err != nil || total != 4 {
-		t.Fatalf("expected four preserved responses, count=%d err=%v", total, err)
+	if err != nil || total != 1 {
+		t.Fatalf("expected one response per tournament/account, count=%d err=%v", total, err)
 	}
 	// A solo reapplication also gets fresh answers after rejection.
 	request(http.MethodDelete, "/lobbies/"+thirdLobby.ID.String(), nil, captain, 204)

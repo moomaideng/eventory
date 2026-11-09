@@ -329,7 +329,7 @@ func teamLobbyHTTPError(err error) error {
 		return mapped
 	}
 	switch {
-	case errors.Is(err, repositories.ErrResponseAlreadyExists):
+	case errors.Is(err, usecases.ErrResponseAlreadyExists):
 		return huma.Error409Conflict("Registration answers have already been submitted and cannot be edited", err)
 	case errors.Is(err, usecases.ErrNotTeamMember):
 		return huma.Error403Forbidden(err.Error(), err)

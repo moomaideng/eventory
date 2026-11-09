@@ -1389,10 +1389,6 @@ export interface components {
             accountId: string;
             answers: components["schemas"]["FieldAnswer"][] | null;
             id: string;
-            /** @description Membership ID for this application; zero for legacy responses */
-            registrationId: string;
-            /** @description Team for this application; zero for legacy responses */
-            teamId: string;
             tournamentId: string;
         };
         InviteStaffRequest: {

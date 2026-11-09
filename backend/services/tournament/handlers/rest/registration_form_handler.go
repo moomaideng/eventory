@@ -46,12 +46,10 @@ type SaveRegistrationFormOutput struct {
 }
 
 type FormResponseItem struct {
-	RegistrationID uuid.UUID            `json:"registrationId" doc:"Membership ID for this application; zero for legacy responses"`
-	TeamID         uuid.UUID            `json:"teamId" doc:"Team for this application; zero for legacy responses"`
-	ID             string               `json:"id"`
-	TournamentID   uuid.UUID            `json:"tournamentId"`
-	AccountID      uuid.UUID            `json:"accountId"`
-	Answers        []models.FieldAnswer `json:"answers"`
+	ID           string               `json:"id"`
+	TournamentID uuid.UUID            `json:"tournamentId"`
+	AccountID    uuid.UUID            `json:"accountId"`
+	Answers      []models.FieldAnswer `json:"answers"`
 }
 
 type SubmitFormResponseInput struct {
@@ -99,12 +97,10 @@ func toRegistrationFormResponse(form *models.RegistrationForm) RegistrationFormR
 
 func toFormResponseItem(resp *models.FormResponse) FormResponseItem {
 	return FormResponseItem{
-		ID:             resp.ID.Hex(),
-		RegistrationID: resp.RegistrationID,
-		TeamID:         resp.TeamID,
-		TournamentID:   resp.TournamentID,
-		AccountID:      resp.AccountID,
-		Answers:        resp.Answers,
+		ID:           resp.ID.Hex(),
+		TournamentID: resp.TournamentID,
+		AccountID:    resp.AccountID,
+		Answers:      resp.Answers,
 	}
 }
 

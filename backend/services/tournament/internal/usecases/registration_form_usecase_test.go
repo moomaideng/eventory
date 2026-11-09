@@ -67,22 +67,13 @@ func (s *formRepoStub) UpsertForm(_ context.Context, form *models.RegistrationFo
 	return form, nil
 }
 
-func (s *formRepoStub) CreateResponse(_ context.Context, resp *models.FormResponse) (*models.FormResponse, error) {
-	key := resp.TournamentID.String() + ":" + resp.AccountID.String()
-	if _, exists := s.responses[key]; exists {
-		return nil, repositories.ErrResponseAlreadyExists
-	}
-	s.responses[key] = resp
-	return resp, nil
-}
-
 func (s *formRepoStub) UpsertResponse(_ context.Context, resp *models.FormResponse) (*models.FormResponse, error) {
 	key := resp.TournamentID.String() + ":" + resp.AccountID.String()
 	s.responses[key] = resp
 	return resp, nil
 }
 
-func (s *formRepoStub) GetResponseByAccount(_ context.Context, tournamentID uuid.UUID, accountID uuid.UUID, registrationID ...uuid.UUID) (*models.FormResponse, error) {
+func (s *formRepoStub) GetResponseByAccount(_ context.Context, tournamentID uuid.UUID, accountID uuid.UUID) (*models.FormResponse, error) {
 	key := tournamentID.String() + ":" + accountID.String()
 	r, ok := s.responses[key]
 	if !ok {
