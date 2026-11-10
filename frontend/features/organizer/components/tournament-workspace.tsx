@@ -20,6 +20,7 @@ import { dashboardQueryOptions } from "@/features/organizer/utils";
 import {
   LeaveTournamentDialog,
   StaffRoleBadge,
+  TournamentStaffSection,
 } from "@/features/tournament-staff";
 import { SponsorshipTierSection } from "@/features/sponsorship";
 import { AnnouncementSection } from "@/features/announcements";
@@ -137,6 +138,7 @@ export function TournamentWorkspace({
                         Announcements
                       </TabsTrigger>
                     ) : null}
+                    <TabsTrigger value="staff">Staff</TabsTrigger>
                     {isOwner ? (
                       <TabsTrigger value="form">
                         Registration questions
@@ -195,14 +197,22 @@ export function TournamentWorkspace({
                     </TabsContent>
                   ) : null}
 
-                  {/* 4. Registration Form Builder Tab */}
+                  {/* 4. Staff Tab: Accessible to all tournament staff */}
+                  <TabsContent value="staff" keepMounted>
+                    <TournamentStaffSection
+                      tournamentId={tournamentId}
+                      isOwner={isOwner}
+                    />
+                  </TabsContent>
+
+                  {/* 5. Registration Form Builder Tab */}
                   {isOwner ? (
                     <TabsContent value="form" keepMounted>
                       <RegistrationFormBuilder tournamentId={tournamentId} />
                     </TabsContent>
                   ) : null}
 
-                  {/* 5. Sponsorship Tab */}
+                  {/* 6. Sponsorship Tab */}
                   {isOwner ? (
                     <TabsContent value="sponsorship">
                       <SponsorshipTierSection

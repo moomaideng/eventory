@@ -4,7 +4,6 @@ import React, { useState } from "react";
 import { Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { TournamentStatusBadge } from "@/features/tournaments/components/tournament-status-badge";
-import { TournamentStaffSection } from "@/features/tournament-staff";
 import { TournamentGeneralSection } from "./tournament-general-section";
 import { TournamentGateSection } from "./tournament-gate-section";
 import { TournamentTimelineSection } from "./tournament-timeline-section";
@@ -105,12 +104,6 @@ export function TournamentHomeTab({
           onEdit={() => setEditSection("crowdfunding")}
         />
       ) : null}
-
-      {/* 5. Tournament Staff List Section */}
-      <TournamentStaffSection
-        tournamentId={tournamentId}
-        isOwner={isOwner}
-      />
 
       {/* Modals */}
       <EditTournamentSectionDialog
