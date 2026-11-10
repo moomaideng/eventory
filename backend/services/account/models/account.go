@@ -43,6 +43,7 @@ type OrganizerProfile struct {
 	AccountID      uuid.UUID `gorm:"type:uuid;primaryKey"`
 	OrganizerName  string    `gorm:"type:varchar(150);not null"`
 	OrganizerEmail string    `gorm:"type:varchar(255)"`
+	Phone          *string   `gorm:"type:varchar(32)"`
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
 }
@@ -57,6 +58,7 @@ type SponsorProfile struct {
 	AccountID    uuid.UUID `gorm:"type:uuid;primaryKey"`
 	SponsorName  string    `gorm:"type:varchar(150);not null"`
 	SponsorEmail string    `gorm:"type:varchar(255)"`
+	Phone        *string   `gorm:"type:varchar(32)"`
 	Tags         []string  `gorm:"serializer:json;type:jsonb;not null;default:'[]'"`
 	CreatedAt    time.Time
 	UpdatedAt    time.Time
