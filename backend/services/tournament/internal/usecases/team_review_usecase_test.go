@@ -92,9 +92,8 @@ func TestTeamReviewUseCase_Review(t *testing.T) {
 		withAccount(reviewerID, "organizer", "Admin Host").
 		withAccountEmail(captainID, "captain", "Team Captain", "captain@example.com")
 
-	t.Run("accepts application and publishes registration.approved", func(t *testing.T) {
-		pub := &mockPublisher{}
-		repo := &mockReviewRepo{
+	newLockedRepo := func() *mockReviewRepo {
+		return &mockReviewRepo{
 			tournament: &models.Tournament{
 				ID:       tournamentID,
 				Name:     "Cyber Invitational 2026",
@@ -115,8 +114,11 @@ func TestTeamReviewUseCase_Review(t *testing.T) {
 			},
 			acceptedEntries: 5,
 		}
+	}
 
-		uc := usecases.NewTeamReviewUseCase(repo, accSvc, &mockRefundService{}, pub)
+	t.Run("accepts application and publishes registration.approved", func(t *testing.T) {
+		pub := &mockPublisher{}
+		uc := usecases.NewTeamReviewUseCase(newLockedRepo(), accSvc, &mockRefundService{}, pub)
 		res, err := uc.Review(context.Background(), reviewerID, tournamentID, teamID, "ACCEPT", "")
 		require.NoError(t, err)
 		assert.Equal(t, "ACCEPTED", res.ToStatus)
@@ -137,29 +139,7 @@ func TestTeamReviewUseCase_Review(t *testing.T) {
 
 	t.Run("rejects application and publishes registration.rejected", func(t *testing.T) {
 		pub := &mockPublisher{}
-		repo := &mockReviewRepo{
-			tournament: &models.Tournament{
-				ID:       tournamentID,
-				Name:     "Cyber Invitational 2026",
-				Status:   models.TournamentStatusRegistration,
-				Capacity: 16,
-				Staff: []models.TournamentStaff{
-					{AccountID: reviewerID, Role: models.TournamentStaffRoleOwner},
-				},
-			},
-			team: &models.TournamentTeam{
-				ID:           teamID,
-				TournamentID: tournamentID,
-				Name:         "Cyber Phantoms",
-				Status:       models.TournamentTeamStatusLocked,
-				Members: []models.TournamentTeamMember{
-					{AccountID: captainID, Role: models.TournamentTeamMemberRoleCaptain},
-				},
-			},
-			acceptedEntries: 5,
-		}
-
-		uc := usecases.NewTeamReviewUseCase(repo, accSvc, &mockRefundService{}, pub)
+		uc := usecases.NewTeamReviewUseCase(newLockedRepo(), accSvc, &mockRefundService{}, pub)
 		res, err := uc.Review(context.Background(), reviewerID, tournamentID, teamID, "REJECT", "Incomplete roster")
 		require.NoError(t, err)
 		assert.Equal(t, "REJECTED", res.ToStatus)
@@ -175,20 +155,8 @@ func TestTeamReviewUseCase_Review(t *testing.T) {
 
 	t.Run("returns error when application is not in locked status", func(t *testing.T) {
 		pub := &mockPublisher{}
-		repo := &mockReviewRepo{
-			tournament: &models.Tournament{
-				ID:       tournamentID,
-				Status:   models.TournamentStatusRegistration,
-				Capacity: 16,
-				Staff: []models.TournamentStaff{
-					{AccountID: reviewerID, Role: models.TournamentStaffRoleOwner},
-				},
-			},
-			team: &models.TournamentTeam{
-				ID:     teamID,
-				Status: models.TournamentTeamStatusForming,
-			},
-		}
+		repo := newLockedRepo()
+		repo.team.Status = models.TournamentTeamStatusForming
 
 		uc := usecases.NewTeamReviewUseCase(repo, accSvc, &mockRefundService{}, pub)
 		_, err := uc.Review(context.Background(), reviewerID, tournamentID, teamID, "ACCEPT", "")

@@ -65,7 +65,13 @@ func TestMemberRegistrationAnswers(t *testing.T) {
 	tourPath := "/tournaments/" + s.tournament.ID.String()
 	fields := []models.FormField{{ID: "ign", Type: models.FieldTypeShortText, Label: "In-game name", Required: true}}
 	saveForm := func() {
+		if err := app.DB.Model(s.tournament).Update("status", models.TournamentStatusDraft).Error; err != nil {
+			t.Fatal(err)
+		}
 		request(http.MethodPut, tourPath+"/form", map[string]any{"title": "Team questions", "fields": fields}, owner, 200)
+		if err := app.DB.Model(s.tournament).Update("status", models.TournamentStatusRegistration).Error; err != nil {
+			t.Fatal(err)
+		}
 	}
 	saveForm()
 	answers := func(value any) map[string]any {
