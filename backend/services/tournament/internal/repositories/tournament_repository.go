@@ -93,8 +93,8 @@ func (r *tournamentRepositoryImpl) Search(
 	}
 
 	orderBy := map[string]string{
-		"start_asc":  "start_at ASC, id ASC",
-		"start_desc": "start_at DESC, id ASC",
+		"start_asc":  "(start_at <= '0001-01-01') ASC, start_at ASC, id ASC",
+		"start_desc": "(start_at <= '0001-01-01') ASC, start_at DESC, id ASC",
 		"fee_asc":    "entry_fee ASC, start_at ASC, id ASC",
 		"fee_desc":   "entry_fee DESC, start_at ASC, id ASC",
 	}[filters.Sort]
