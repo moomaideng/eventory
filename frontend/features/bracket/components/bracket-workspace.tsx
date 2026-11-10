@@ -11,8 +11,10 @@ import {
   Shuffle,
   Trophy,
 } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
+import { formatTournamentDate } from "@/features/tournaments/utils";
 import { useBracket } from "../hooks/use-bracket";
 import { BracketTreeView } from "./bracket-tree-view";
 import { MatchDialog } from "./match-dialog";
@@ -46,6 +48,9 @@ export function BracketWorkspace({ tournamentId }: BracketWorkspaceProps) {
     isDefining,
     seedStage1,
     isSeeding,
+    tournament,
+    role,
+    isDashboardLoading,
     recordResults,
     isRecording,
     scheduleMatch,
@@ -97,6 +102,33 @@ export function BracketWorkspace({ tournamentId }: BracketWorkspaceProps) {
     () => matches.some((m) => m.isCompleted),
     [matches]
   );
+
+  const status = tournament?.status;
+  const registrationDeadline = tournament?.registrationDeadline;
+  const [now] = useState(() => Date.now());
+  const deadlinePassed = registrationDeadline
+    ? now >= new Date(registrationDeadline).getTime()
+    : false;
+  const isOwner = role === "OWNER";
+  const isRegistrationLocked = status === "REGISTRATION" && deadlinePassed;
+  const canEditStructure = isOwner && isRegistrationLocked && !hasCompletedMatches;
+  const canScheduleMatches = isRegistrationLocked || status === "ONGOING";
+  const canRecordResults = status === "ONGOING";
+
+  let lockNotice: string | null = null;
+  if (status === "DRAFT" || status === "CROWDFUNDING") {
+    lockNotice = "Bracket can be built once registration has closed.";
+  } else if (status === "REGISTRATION" && !deadlinePassed) {
+    lockNotice = registrationDeadline
+      ? `Bracket editing unlocks when registration closes on ${formatTournamentDate(registrationDeadline)}.`
+      : "Bracket editing unlocks when registration closes.";
+  } else if (status === "ONGOING") {
+    lockNotice = "Bracket structure is locked; you can schedule matches and record results.";
+  } else if (status === "COMPLETED") {
+    lockNotice = "Tournament completed; bracket is read-only.";
+  } else if (isRegistrationLocked && !isOwner) {
+    lockNotice = "Only the tournament owner can edit the bracket structure.";
+  }
 
   const stage1Matches = useMemo(
     () => displayMatches.filter((m) => m.stageLevel === 1),
@@ -193,6 +225,25 @@ export function BracketWorkspace({ tournamentId }: BracketWorkspaceProps) {
     }
   }
 
+  if (isDashboardLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-24 gap-3 text-muted-foreground text-sm">
+        <Spinner className="size-6 text-primary" />
+        <span>Loading bracket data...</span>
+      </div>
+    );
+  }
+
+  if (!role) {
+    return (
+      <Alert variant="destructive">
+        <AlertDescription>
+          You must be a member of this tournament&apos;s staff to manage its bracket.
+        </AlertDescription>
+      </Alert>
+    );
+  }
+
   return (
     <div className="flex flex-col gap-6 w-full">
       {/* Top Header & Actions Bar */}
@@ -218,7 +269,7 @@ export function BracketWorkspace({ tournamentId }: BracketWorkspaceProps) {
 
         <div className="flex flex-wrap items-center gap-2">
           {/* Save Layout button (when changed) */}
-          {isDirty && !hasCompletedMatches ? (
+          {isDirty && canEditStructure ? (
             <Button
               size="sm"
               variant="default"
@@ -232,7 +283,7 @@ export function BracketWorkspace({ tournamentId }: BracketWorkspaceProps) {
           ) : null}
 
           {/* Seed Stage 1 button */}
-          {!isDirty && stage1Matches.length > 0 && !hasCompletedMatches ? (
+          {!isDirty && stage1Matches.length > 0 && canEditStructure ? (
             <Button
               size="sm"
               variant="outline"
@@ -253,7 +304,7 @@ export function BracketWorkspace({ tournamentId }: BracketWorkspaceProps) {
           ) : null}
 
           {/* Reset button (opens Reset Dialog) */}
-          {draftNodes.length > 0 && !hasCompletedMatches ? (
+          {draftNodes.length > 0 && canEditStructure ? (
             <Button
               variant="outline"
               size="sm"
@@ -279,6 +330,12 @@ export function BracketWorkspace({ tournamentId }: BracketWorkspaceProps) {
           </Button>
         </div>
       </div>
+
+      {lockNotice ? (
+        <Alert>
+          <AlertDescription>{lockNotice}</AlertDescription>
+        </Alert>
+      ) : null}
 
       {/* Validation Issues Alert Banner (Expandable) */}
       {!validation.isValid && draftNodes.length > 0 ? (
@@ -330,7 +387,7 @@ export function BracketWorkspace({ tournamentId }: BracketWorkspaceProps) {
       ) : (
         <BracketTreeView
           matches={displayMatches}
-          canEdit={!hasCompletedMatches}
+          canEdit={canEditStructure}
           nodeSlotStatus={validation.nodeSlotStatus}
           onSelectMatch={handleSelectMatch}
           onAddMatchToStage={(stageLevel) => handleOpenNewMatch(stageLevel)}
@@ -351,14 +408,20 @@ export function BracketWorkspace({ tournamentId }: BracketWorkspaceProps) {
         onRecordScores={recordResults}
         isRecording={isRecording}
         onScheduleMatch={
-          matches.some((m) => m.id === selectedMatch?.id) ? scheduleMatch : undefined
+          canScheduleMatches && matches.some((m) => m.id === selectedMatch?.id)
+            ? scheduleMatch
+            : undefined
         }
         isScheduling={isScheduling}
         onSwapTeams={
-          matches.some((m) => m.id === selectedMatch?.id) ? swapTeams : undefined
+          canScheduleMatches && matches.some((m) => m.id === selectedMatch?.id)
+            ? swapTeams
+            : undefined
         }
         isSwapping={isSwapping}
         bracketMatches={matches}
+        canEditStructure={canEditStructure}
+        canRecordResults={canRecordResults}
       />
 
       {/* Reset Modal (Reset Stage 1 teams or Reset Entire Bracket) */}

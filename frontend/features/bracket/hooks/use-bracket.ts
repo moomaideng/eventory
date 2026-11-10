@@ -40,6 +40,8 @@ export function useBracket({ tournamentId }: { tournamentId: string }) {
   );
 
   const acceptedCount = dashboardQuery.data?.summary?.metrics?.acceptedEntries ?? 0;
+  const tournament = dashboardQuery.data?.summary?.tournament;
+  const role = dashboardQuery.data?.summary?.role;
 
   const defineMutation = $api.useMutation("post", "/api/v1/tournaments/{id}/bracket");
   const seedMutation = $api.useMutation("post", "/api/v1/tournaments/{id}/seed");
@@ -123,6 +125,9 @@ export function useBracket({ tournamentId }: { tournamentId: string }) {
   return {
     matches,
     acceptedCount,
+    tournament,
+    role,
+    isDashboardLoading: dashboardQuery.isPending,
     isLoading: bracketQuery.isLoading,
     isFetching: bracketQuery.isFetching,
     error: bracketQuery.error,
