@@ -247,6 +247,7 @@ services:
       ACCOUNT_GRPC_ADDR: account:9091
       PAYMENT_GRPC_ADDR: payment:9093
       PAYMENT_SERVICE_KEY: ${PAYMENT_SERVICE_KEY:?PAYMENT_SERVICE_KEY is required}
+      BROKER_URL: amqp://eventory:${RABBITMQ_PASSWORD:?RABBITMQ_PASSWORD is required}@rabbitmq:5672/
 
   tournament:
     image: ghcr.io/moomaideng/eventory-tournament:${TOURNAMENT_IMAGE_TAG:?TOURNAMENT_IMAGE_TAG is required}
@@ -312,6 +313,7 @@ services:
       GRPC_PORT: "9093"
       DB_DSN: postgresql://admin:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@postgres:5432/payment_db?sslmode=disable
       PAYMENT_SERVICE_KEY: ${PAYMENT_SERVICE_KEY:?PAYMENT_SERVICE_KEY is required}
+      BROKER_URL: amqp://eventory:${RABBITMQ_PASSWORD:?RABBITMQ_PASSWORD is required}@rabbitmq:5672/
 
   payment:
     image: ghcr.io/moomaideng/eventory-payment:${PAYMENT_IMAGE_TAG:?PAYMENT_IMAGE_TAG is required}
