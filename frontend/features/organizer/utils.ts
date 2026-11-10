@@ -35,3 +35,31 @@ export function statusTitle(status: string) {
 }
 
 export const REASON_MAX_LENGTH = 500;
+
+const relativeTimeFormatter = new Intl.RelativeTimeFormat("en", {
+  numeric: "auto",
+});
+
+const MINUTE_MS = 60_000;
+const HOUR_MS = 60 * MINUTE_MS;
+const DAY_MS = 24 * HOUR_MS;
+const MONTH_MS = 30 * DAY_MS;
+
+/** Human relative time such as "in 11 days" or "3 hours ago"; null when missing. */
+export function formatRelative(value?: string | null, now: number = Date.now()) {
+  if (!value) return null;
+  const time = new Date(value).getTime();
+  if (Number.isNaN(time)) return null;
+  const diff = time - now;
+  const abs = Math.abs(diff);
+  if (abs < HOUR_MS) {
+    return relativeTimeFormatter.format(Math.round(diff / MINUTE_MS), "minute");
+  }
+  if (abs < DAY_MS) {
+    return relativeTimeFormatter.format(Math.round(diff / HOUR_MS), "hour");
+  }
+  if (abs < MONTH_MS) {
+    return relativeTimeFormatter.format(Math.round(diff / DAY_MS), "day");
+  }
+  return relativeTimeFormatter.format(Math.round(diff / MONTH_MS), "month");
+}

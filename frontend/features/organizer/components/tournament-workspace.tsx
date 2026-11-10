@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, ArrowUpRight, Network, Trophy } from "lucide-react";
 import { useAuth } from "@/context/auth-context";
@@ -25,12 +26,26 @@ import {
 import { SponsorshipTierSection } from "@/features/sponsorship";
 import { AnnouncementSection } from "@/features/announcements";
 import { TournamentStatusBadge } from "@/features/tournaments/components/tournament-status-badge";
+import {
+  isWorkspaceTab,
+  type WorkspaceTab,
+} from "@/features/organizer/workspace-tabs";
 
 export function TournamentWorkspace({
   tournamentId,
+  initialTab = "home",
 }: {
   tournamentId: string;
+  initialTab?: WorkspaceTab;
 }) {
+  const [tab, setTab] = useState<WorkspaceTab>(initialTab);
+  function selectTab(next: WorkspaceTab) {
+    setTab(next);
+    const url = new URL(window.location.href);
+    if (next === "home") url.searchParams.delete("tab");
+    else url.searchParams.set("tab", next);
+    window.history.replaceState(null, "", url);
+  }
   const { authorizationHeader, isLoading: authLoading } = useAuth();
   const { data, error, isLoading, isFetching, refetch } = $api.useQuery(
     "get",
@@ -68,6 +83,15 @@ export function TournamentWorkspace({
             const isOwner = data.summary.role === "OWNER";
             const canReview = isOwner || data.summary.role === "ADMIN";
             const canAnnounce = canReview;
+            const allowedTabs: Record<WorkspaceTab, boolean> = {
+              home: true,
+              registration: canReview,
+              announcements: canAnnounce,
+              staff: true,
+              form: isOwner,
+              sponsorship: isOwner,
+            };
+            const activeTab = allowedTabs[tab] ? tab : "home";
 
             return (
               <>
@@ -141,8 +165,14 @@ export function TournamentWorkspace({
                   </div>
                 </header>
 
-                <Tabs defaultValue="home">
-                  <TabsList>
+                <Tabs
+                  value={activeTab}
+                  onValueChange={(value) => {
+                    if (isWorkspaceTab(value)) selectTab(value);
+                  }}
+                >
+                  <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
+                  <TabsList className="w-max">
                     <TabsTrigger value="home">Home</TabsTrigger>
                     {canReview ? (
                       <TabsTrigger value="registration">
@@ -166,6 +196,7 @@ export function TournamentWorkspace({
                       </TabsTrigger>
                     ) : null}
                   </TabsList>
+                  </div>
 
                   {/* 1. Home Tab: Default landing page for all staff */}
                   <TabsContent value="home" keepMounted>
@@ -174,6 +205,7 @@ export function TournamentWorkspace({
                       summary={data.summary}
                       isOwner={isOwner}
                       onRefresh={() => void refetch()}
+                      onSelectTab={selectTab}
                     />
                   </TabsContent>
 
