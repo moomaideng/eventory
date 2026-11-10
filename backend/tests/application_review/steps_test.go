@@ -440,7 +440,7 @@ func InitializeScenario(sc *godog.ScenarioContext) {
 		*s = reviewScenarioContext{client: apptest.NewClient(app.TournamentBaseURL())}
 		// CASCADE also clears the review audit table, which references the
 		// tournaments and teams truncated here.
-		cleanup := "TRUNCATE tournament_staff, tournament_team_members, tournament_fundings, tournament_status_changes, tournament_teams, tournaments, sponsor_profiles, organizer_profiles, accounts CASCADE"
+		cleanup := "TRUNCATE tournament_staff, tournament_team_members, tournament_fundings, tournament_teams, tournaments, sponsor_profiles, organizer_profiles, accounts CASCADE"
 		if err := app.DB.Exec(cleanup).Error; err != nil {
 			return ctx, fmt.Errorf("clean scenario database: %w", err)
 		}

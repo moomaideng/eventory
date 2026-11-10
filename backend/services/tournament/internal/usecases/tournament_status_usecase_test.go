@@ -72,6 +72,29 @@ func (r *statusRepositoryStub) GetBracketMatches(ctx context.Context, id uuid.UU
 	return r.mockTournamentRepository.GetBracketMatches(ctx, id)
 }
 
+func setupStatusRepo(from, to models.TournamentStatus, accountID, tournamentID uuid.UUID) *statusRepositoryStub {
+	repo := &statusRepositoryStub{current: from, gotAccountID: accountID}
+	if from == models.TournamentStatusDraft && to == models.TournamentStatusCrowdfunding {
+		repo.tournament = draftCrowdfundingReadyTournament(accountID)
+		repo.activeTiersCount = 1
+	}
+	if from == models.TournamentStatusDraft && to == models.TournamentStatusRegistration {
+		repo.tournament = draftRegistrationReadyTournament(accountID)
+	}
+	if from == models.TournamentStatusCrowdfunding {
+		repo.tournament = crowdfundingReadyTournament(accountID)
+	}
+	if from == models.TournamentStatusRegistration && to == models.TournamentStatusOngoing {
+		repo.tournament = &models.Tournament{
+			ID:                   tournamentID,
+			Status:               models.TournamentStatusRegistration,
+			RegistrationDeadline: time.Now().Add(-time.Hour),
+			Staff:                []models.TournamentStaff{{AccountID: accountID, Role: models.TournamentStaffRoleOwner}},
+		}
+	}
+	return repo
+}
+
 func TestOverrideAllowsPermittedTransitions(t *testing.T) {
 	tests := []struct {
 		name string
@@ -88,25 +111,7 @@ func TestOverrideAllowsPermittedTransitions(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			accountID, tournamentID := uuid.New(), uuid.New()
-			repo := &statusRepositoryStub{current: test.from, gotAccountID: accountID}
-			if test.from == models.TournamentStatusDraft && test.to == models.TournamentStatusCrowdfunding {
-				repo.tournament = draftCrowdfundingReadyTournament(accountID)
-				repo.activeTiersCount = 1
-			}
-			if test.from == models.TournamentStatusDraft && test.to == models.TournamentStatusRegistration {
-				repo.tournament = draftRegistrationReadyTournament(accountID)
-			}
-			if test.from == models.TournamentStatusCrowdfunding {
-				repo.tournament = crowdfundingReadyTournament(accountID)
-			}
-			if test.from == models.TournamentStatusRegistration && test.to == models.TournamentStatusOngoing {
-				repo.tournament = &models.Tournament{
-					ID:                   tournamentID,
-					Status:               models.TournamentStatusRegistration,
-					RegistrationDeadline: time.Now().Add(-time.Hour),
-					Staff:                []models.TournamentStaff{{AccountID: accountID, Role: models.TournamentStaffRoleOwner}},
-				}
-			}
+			repo := setupStatusRepo(test.from, test.to, accountID, tournamentID)
 
 			result, err := usecases.NewTournamentUseCase(repo, newStubAccountService()).
 				Override(context.Background(), accountID, tournamentID, string(test.to), "")
@@ -327,25 +332,7 @@ func TestOverrideRejectsForbiddenTransitions(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			accountID, tournamentID := uuid.New(), uuid.New()
-			repo := &statusRepositoryStub{current: test.from, gotAccountID: accountID}
-			if test.from == models.TournamentStatusDraft && test.to == models.TournamentStatusCrowdfunding {
-				repo.tournament = draftCrowdfundingReadyTournament(accountID)
-				repo.activeTiersCount = 1
-			}
-			if test.from == models.TournamentStatusDraft && test.to == models.TournamentStatusRegistration {
-				repo.tournament = draftRegistrationReadyTournament(accountID)
-			}
-			if test.from == models.TournamentStatusCrowdfunding {
-				repo.tournament = crowdfundingReadyTournament(accountID)
-			}
-			if test.from == models.TournamentStatusRegistration && test.to == models.TournamentStatusOngoing {
-				repo.tournament = &models.Tournament{
-					ID:                   tournamentID,
-					Status:               models.TournamentStatusRegistration,
-					RegistrationDeadline: time.Now().Add(-time.Hour),
-					Staff:                []models.TournamentStaff{{AccountID: accountID, Role: models.TournamentStaffRoleOwner}},
-				}
-			}
+			repo := setupStatusRepo(test.from, test.to, accountID, tournamentID)
 
 			_, err := usecases.NewTournamentUseCase(repo, newStubAccountService()).
 				Override(context.Background(), accountID, tournamentID, string(test.to), "")

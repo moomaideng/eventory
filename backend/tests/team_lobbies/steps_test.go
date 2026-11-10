@@ -313,7 +313,7 @@ func InitializeScenario(sc *godog.ScenarioContext) {
 
 	sc.Before(func(ctx context.Context, _ *godog.Scenario) (context.Context, error) {
 		*s = teamLobbyScenarioContext{client: apptest.NewClient(app.TournamentBaseURL())}
-		cleanup := "TRUNCATE tournament_staff, tournament_team_members, tournament_fundings, tournament_status_changes, tournament_teams, tournaments, sponsor_profiles, organizer_profiles, accounts CASCADE"
+		cleanup := "TRUNCATE tournament_staff, tournament_team_members, tournament_fundings, tournament_teams, tournaments, sponsor_profiles, organizer_profiles, accounts CASCADE"
 		if err := app.DB.Exec(cleanup).Error; err != nil {
 			return ctx, fmt.Errorf("clean scenario database: %w", err)
 		}
