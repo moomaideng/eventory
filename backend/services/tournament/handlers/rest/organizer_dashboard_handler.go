@@ -24,7 +24,6 @@ type OrganizerDashboardMetricsResponse struct {
 
 type OrganizerTournamentSummary struct {
 	Tournament TournamentResponse                `json:"tournament"`
-	Published  bool                              `json:"published"`
 	Role       string                            `json:"role,omitempty" doc:"Staff role of the current user in this tournament (OWNER, ADMIN, REFEREE)" enum:"OWNER,ADMIN,REFEREE"`
 	Metrics    OrganizerDashboardMetricsResponse `json:"metrics"`
 	Funding    TournamentFundingResponse         `json:"funding"`
@@ -156,7 +155,6 @@ func toOrganizerSummary(result usecases.OrganizerTournamentSummary, accountID uu
 	}
 	return OrganizerTournamentSummary{
 		Tournament: toTournamentResponse(result.Tournament, result.OrganizerName, m.AcceptedEntries),
-		Published:  result.Tournament.Published,
 		Role:       role,
 		Metrics: OrganizerDashboardMetricsResponse{
 			TotalEntries: m.TotalEntries, FormingEntries: m.FormingEntries, LockedEntries: m.LockedEntries,

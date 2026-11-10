@@ -17,7 +17,7 @@ type refundReviewRepo struct {
 }
 
 func (r *refundReviewRepo) ApplyReview(_ context.Context, _ uuid.UUID, _ string, tournamentID, teamID uuid.UUID, _ string, decide func(*models.Tournament, *models.TournamentTeam, int) (models.TournamentTeamStatus, error)) (*models.TournamentTeamReview, *uuid.UUID, error) {
-	to, err := decide(&models.Tournament{Status: models.TournamentStatusRegistrationOpen, Capacity: 1}, &r.team, 0)
+	to, err := decide(&models.Tournament{Status: models.TournamentStatusRegistration, Capacity: 1}, &r.team, 0)
 	if err != nil {
 		return nil, nil, err
 	}

@@ -340,36 +340,36 @@ Update database migrations to drop unused tables and replace `WHERE published = 
 
 ## 5. Implementation Roadmap Checklist
 
-- [ ] **Stage 0: Pruning & Schema Update**
-  - [ ] Delete `TournamentStatusChange` model and migration entries.
-  - [ ] Remove `Published` field from `models.Tournament` and replace DB indexes.
-  - [ ] Collapse enum to 5 statuses: `DRAFT`, `CROWDFUNDING`, `REGISTRATION`, `ONGOING`, `COMPLETED`.
-  - [ ] Update `Tournament` struct nullability for optional dates/gates.
-- [ ] **Stage 1: DRAFT Implementation**
-  - [ ] Update `CreateTournament` to initialize status to `DRAFT`.
-  - [ ] Relax initial mandatory date/gate checks on creation, moving them to transition guards.
-  - [ ] Restrict public search and unauthenticated reads to `status != 'DRAFT'`.
-- [ ] **Stage 2: DRAFT ➔ CROWDFUNDING Transition**
-  - [ ] Implement `LaunchCrowdfunding` use case & endpoint.
-  - [ ] Verify crowdfunding goal, deadline, and tier definitions.
-  - [ ] Freeze sponsorship tier modifications once in `CROWDFUNDING`.
-- [ ] **Stage 3 & 4: ➔ REGISTRATION Transitions**
-  - [ ] Implement `OpenRegistration` use case & endpoint (supporting `DRAFT` and `CROWDFUNDING` sources).
-  - [ ] Enforce gate parameters, timeline rules, and form existence.
-  - [ ] Freeze form schema and gate parameters (except deadline).
-- [ ] **Stage 5: REGISTRATION Closed Substate & Bracket Gate**
-  - [ ] Guard `DefineBracket` to only permit execution when `now >= RegistrationDeadline`.
-  - [ ] Update team lobby and registration submission to check `now < RegistrationDeadline`.
-- [ ] **Stage 6: REGISTRATION ➔ ONGOING Transition**
-  - [ ] Implement `StartTournament` use case & endpoint.
-  - [ ] Verify registration deadline passed and zero non-terminal teams.
-  - [ ] Verify Stage 1 bracket team slot capacity matches accepted teams.
-  - [ ] Lock bracket structure from further modifications.
-- [ ] **Stage 7: ONGOING ➔ COMPLETED Transition**
-  - [ ] Implement `CompleteTournament` use case & endpoint.
-  - [ ] Verify every match has `IsCompleted == true` and single champion winner.
-- [ ] **Stage 8: Cleanup & API Sync**
-  - [ ] Remove deprecated endpoints and status history DTOs.
-  - [ ] Run test suite: `go test -v ./services/tournament/...`.
-  - [ ] Run static analysis: `go vet ./...`.
-  - [ ] Synchronize OpenAPI specs: `npm --prefix frontend run openapi:generate`.
+- [x] **Stage 0: Pruning & Schema Update**
+  - [x] Delete `TournamentStatusChange` model and migration entries.
+  - [x] Remove `Published` field from `models.Tournament` and replace DB indexes.
+  - [x] Collapse enum to 5 statuses: `DRAFT`, `CROWDFUNDING`, `REGISTRATION`, `ONGOING`, `COMPLETED`.
+  - [x] Prune status history endpoints and status audit ledger.
+- [x] **Stage 1: DRAFT Implementation**
+  - [x] Update `CreateTournament` to initialize status to `DRAFT`.
+  - [x] Relax initial mandatory date/gate checks on creation, moving them to transition guards.
+  - [x] Restrict public search and unauthenticated reads to `status != 'DRAFT'`.
+- [x] **Stage 2: DRAFT ➔ CROWDFUNDING Transition**
+  - [x] Implement transition guards for CROWDFUNDING.
+  - [x] Verify crowdfunding goal, deadline, and tier definitions.
+  - [x] Freeze sponsorship tier modifications once in `CROWDFUNDING`.
+- [x] **Stage 3 & 4: ➔ REGISTRATION Transitions**
+  - [x] Implement transition guards for `REGISTRATION` (supporting both `DRAFT` and `CROWDFUNDING` sources).
+  - [x] Enforce gate parameters, timeline rules, and form existence.
+  - [x] Freeze form schema and gate parameters (except deadline).
+- [x] **Stage 5: REGISTRATION Closed Substate & Bracket Gate**
+  - [x] Guard `DefineBracket` and `SeedStage1` to only permit execution when `now >= RegistrationDeadline`.
+  - [x] Update team lobby and registration submission to check `now < RegistrationDeadline`.
+- [x] **Stage 6: REGISTRATION ➔ ONGOING Transition**
+  - [x] Enforce registration deadline passed (`now >= RegistrationDeadline`).
+  - [x] Enforce zero non-terminal teams (no pending/forming/locked applications).
+  - [x] Enforce bracket readiness: valid bracket graph, at least 2 teams, Stage 1 capacity equals accepted teams count, and all Stage 1 slots seeded.
+  - [x] Lock bracket structure and entries from further modifications.
+- [x] **Stage 7: ONGOING ➔ COMPLETED Transition**
+  - [x] Enforce all matches completed (`IsCompleted == true`).
+  - [x] Enforce single undisputed champion winner (championship match has single team with rank 1).
+  - [x] Lock tournament into read-only terminal state.
+- [x] **Stage 8: Cleanup & API Sync**
+  - [x] Remove deprecated endpoints and status history DTOs.
+  - [x] Run test suite: `go test ./services/tournament/...`.
+  - [x] Run static analysis: `go vet ./...`.

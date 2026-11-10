@@ -92,7 +92,7 @@ func TestTeamReviewUseCase_Review(t *testing.T) {
 				tourn := &models.Tournament{
 					ID:       tournID,
 					Name:     "Cyber Invitational 2026",
-					Status:   models.TournamentStatusRegistrationOpen,
+					Status:   models.TournamentStatusRegistration,
 					Capacity: 16,
 				}
 				team := &models.TournamentTeam{
@@ -157,7 +157,7 @@ func TestTeamReviewUseCase_Review(t *testing.T) {
 				tourn := &models.Tournament{
 					ID:       tournID,
 					Name:     "Cyber Invitational 2026",
-					Status:   models.TournamentStatusRegistrationOpen,
+					Status:   models.TournamentStatusRegistration,
 					Capacity: 16,
 				}
 				team := &models.TournamentTeam{
@@ -216,7 +216,7 @@ func TestTeamReviewUseCase_Review(t *testing.T) {
 			) (*models.TournamentTeamReview, *uuid.UUID, error) {
 				tourn := &models.Tournament{
 					ID:       tournID,
-					Status:   models.TournamentStatusRegistrationOpen,
+					Status:   models.TournamentStatusRegistration,
 					Capacity: 16,
 				}
 				team := &models.TournamentTeam{

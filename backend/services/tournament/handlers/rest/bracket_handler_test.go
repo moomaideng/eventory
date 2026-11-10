@@ -124,7 +124,8 @@ func TestBracketRoutes(t *testing.T) {
 
 	tourney := &models.Tournament{
 		ID:     tournamentID,
-		Status: models.TournamentStatusRegistrationClosed,
+		Status:               models.TournamentStatusRegistration,
+		RegistrationDeadline: time.Now().Add(-time.Hour),
 	}
 
 	repo := &mockBracketRepoForHandler{
@@ -220,6 +221,8 @@ func TestBracketRoutes(t *testing.T) {
 	})
 
 	t.Run("POST /tournaments/{id}/matches/{matchId}/results records results", func(t *testing.T) {
+		tourney.Status = models.TournamentStatusOngoing
+		defer func() { tourney.Status = models.TournamentStatusRegistration }()
 		matchID := uuid.New()
 		team1ID := uuid.New()
 		team2ID := uuid.New()

@@ -49,7 +49,7 @@ func (s *tierScenario) publishedTournament() error {
 		ID: uuid.New(), Name: "Sponsor Cup " + apptest.UniqueSuffix(), Description: "Sponsorship tier test", Game: "Chess", Location: "Online",
 		StartsAt: now.Add(72 * time.Hour), EndsAt: now.Add(80 * time.Hour), RegistrationDeadline: now.Add(48 * time.Hour),
 		Currency: "THB", RegistrationMode: models.TournamentRegistrationModeSolo, MinTeamSize: 1, MaxTeamSize: 1, Capacity: 8,
-		Status: models.TournamentStatusRegistrationOpen, Published: true,
+		Status: models.TournamentStatusRegistration,
 		Staff: []models.TournamentStaff{{AccountID: owner.ID, Role: models.TournamentStaffRoleOwner}},
 	}
 	return s.app.DB.Create(&s.tournament).Error

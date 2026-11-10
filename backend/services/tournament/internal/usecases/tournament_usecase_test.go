@@ -28,6 +28,10 @@ type mockTournamentRepository struct {
 	acceptedCount         int64
 	lockedOrAcceptedCount int64
 	teamCountErr          error
+	activeTiersCount       int64
+	tiersCountErr          error
+	bracketReadinessErr    error
+	completionReadinessErr error
 }
 
 func (m *mockTournamentRepository) GetPublishedByID(_ context.Context, _ uuid.UUID) (*models.Tournament, error) {
@@ -66,12 +70,23 @@ func (m *mockTournamentRepository) GetOwned(_ context.Context, _, _ uuid.UUID) (
 	return nil, nil
 }
 
-func (m *mockTournamentRepository) ApplyOverride(_ context.Context, _ uuid.UUID, _ string, _ uuid.UUID, _ string, _ func(*models.Tournament) (models.TournamentStatus, error)) (*models.TournamentStatusChange, error) {
-	return nil, nil
+func (m *mockTournamentRepository) UpdateStatus(_ context.Context, _ uuid.UUID, _ models.TournamentStatus) error {
+	return nil
 }
 
-func (m *mockTournamentRepository) ListHistory(_ context.Context, _, _ uuid.UUID) (*repositories.TournamentStatusHistory, error) {
-	return nil, nil
+func (m *mockTournamentRepository) CountActiveTiers(_ context.Context, _ uuid.UUID) (int64, error) {
+	if m.tiersCountErr != nil {
+		return 0, m.tiersCountErr
+	}
+	return m.activeTiersCount, nil
+}
+
+func (m *mockTournamentRepository) ValidateBracketReadiness(_ context.Context, _ uuid.UUID) error {
+	return m.bracketReadinessErr
+}
+
+func (m *mockTournamentRepository) ValidateCompletionReadiness(_ context.Context, _ uuid.UUID) error {
+	return m.completionReadinessErr
 }
 
 func ptr[T any](v T) *T { return &v }
@@ -90,7 +105,7 @@ func baseTournament(ownerID uuid.UUID) *models.Tournament {
 		Description:          "Original Description",
 		Game:                 "Original Game",
 		Location:             "Original Location",
-		Status:               models.TournamentStatusRegistrationOpen,
+		Status:               models.TournamentStatusDraft,
 		RegistrationMode:     models.TournamentRegistrationModeTeam,
 		MinTeamSize:          3,
 		MaxTeamSize:          5,
@@ -100,25 +115,32 @@ func baseTournament(ownerID uuid.UUID) *models.Tournament {
 		EndsAt:               now.Add(72 * time.Hour),
 		EntryFee:             100,
 		Currency:             "THB",
-		Published:            true,
 	}
 }
 
 func validCreateInput(now time.Time) usecases.CreateTournamentInput {
+	start := now.Add(48 * time.Hour)
+	end := now.Add(72 * time.Hour)
+	deadline := now.Add(24 * time.Hour)
+	mode := "TEAM"
+	minSize := 3
+	maxSize := 5
+	cap := 16
+	fee := int64(100)
 	return usecases.CreateTournamentInput{
 		Name:                 "Valid Cup",
 		Description:          "Tournament rules",
 		Detail:               "## Full Rules\n\n- Fair play only",
 		Game:                 "Chess",
 		Location:             "Online",
-		StartsAt:             now.Add(48 * time.Hour),
-		EndsAt:               now.Add(72 * time.Hour),
-		RegistrationDeadline: now.Add(24 * time.Hour),
-		RegistrationMode:     "TEAM",
-		MinTeamSize:          3,
-		MaxTeamSize:          5,
-		Capacity:             16,
-		EntryFee:             100,
+		StartsAt:             &start,
+		EndsAt:               &end,
+		RegistrationDeadline: &deadline,
+		RegistrationMode:     &mode,
+		MinTeamSize:          &minSize,
+		MaxTeamSize:          &maxSize,
+		Capacity:             &cap,
+		EntryFee:             &fee,
 	}
 }
 
@@ -133,12 +155,12 @@ func TestSearchTournaments_NormalizesFilters(t *testing.T) {
 
 	result, err := useCase.Search(context.Background(), usecases.SearchTournamentsInput{
 		Query: "  valorant  ", StartFrom: "2026-09-01", StartTo: "2026-09-30",
-		MaxEntryFee: ptr(int64(500)), Status: "registration_open",
+		MaxEntryFee: ptr(int64(500)), Status: "registration",
 	})
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
-	if repo.filters.Query != "valorant" || repo.filters.Status != models.TournamentStatusRegistrationOpen {
+	if repo.filters.Query != "valorant" || repo.filters.Status != models.TournamentStatusRegistration {
 		t.Fatalf("filters were not normalized: %+v", repo.filters)
 	}
 	if repo.filters.Page != 1 || repo.filters.PageSize != 12 || repo.filters.Sort != "start_asc" {
@@ -237,25 +259,25 @@ func TestCreateTournament_Success(t *testing.T) {
 	organizerID := uuid.New()
 	now := time.Now()
 
-	t.Run("solo tournament opens registration without fake funding", func(t *testing.T) {
+	t.Run("solo tournament creates in DRAFT status", func(t *testing.T) {
 		repo := &mockTournamentRepository{}
 		useCase := usecases.NewTournamentUseCase(repo, newStubAccountService())
 		in := validCreateInput(now)
-		in.RegistrationMode = "SOLO"
-		in.MinTeamSize, in.MaxTeamSize = 5, 5
+		in.RegistrationMode = ptr("SOLO")
+		in.MinTeamSize, in.MaxTeamSize = ptr(5), ptr(5)
 
 		got, err := useCase.CreateTournament(context.Background(), organizerID, in)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if len(got.Staff) != 1 || got.Staff[0].AccountID != organizerID || got.Staff[0].Role != models.TournamentStaffRoleOwner || got.Currency != "THB" || !got.Published ||
-			got.Status != models.TournamentStatusRegistrationOpen ||
+		if len(got.Staff) != 1 || got.Staff[0].AccountID != organizerID || got.Staff[0].Role != models.TournamentStaffRoleOwner || got.Currency != "THB" ||
+			got.Status != models.TournamentStatusDraft ||
 			got.MinTeamSize != 1 || got.MaxTeamSize != 1 || repo.createdFunding != nil {
 			t.Fatalf("unexpected tournament state: %+v", got)
 		}
 	})
 
-	t.Run("crowdfunding starts with configured goal and zero raised", func(t *testing.T) {
+	t.Run("crowdfunding in DRAFT with configured goal and zero raised", func(t *testing.T) {
 		repo := &mockTournamentRepository{}
 		input := validCreateInput(now)
 		goal := int64(25000)
@@ -265,7 +287,7 @@ func TestCreateTournament_Success(t *testing.T) {
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if got.Status != models.TournamentStatusCrowdfunding || !got.Published || repo.createdFunding == nil ||
+		if got.Status != models.TournamentStatusDraft || repo.createdFunding == nil ||
 			repo.createdFunding.GoalAmount != goal || repo.createdFunding.RaisedAmount != 0 ||
 			repo.createdFunding.SupporterCount != 0 || repo.createdFunding.Deadline == nil || !repo.createdFunding.Deadline.Equal(deadline) {
 			t.Fatalf("unexpected crowdfunding state: tournament=%+v funding=%+v", got, repo.createdFunding)
@@ -282,6 +304,24 @@ func TestCreateTournament_Success(t *testing.T) {
 			t.Fatalf("unexpected team tournament state: %+v", got)
 		}
 	})
+
+	t.Run("minimal tournament creation in DRAFT with optional fields omitted", func(t *testing.T) {
+		repo := &mockTournamentRepository{}
+		minimal := usecases.CreateTournamentInput{
+			Name:        "Minimal Cup",
+			Description: "Short description",
+			Detail:      "Detail here",
+			Game:        "Dota 2",
+			Location:    "Bangkok",
+		}
+		got, err := usecases.NewTournamentUseCase(repo, newStubAccountService()).CreateTournament(context.Background(), organizerID, minimal)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if got.Status != models.TournamentStatusDraft || !got.StartsAt.IsZero() || !got.EndsAt.IsZero() || !got.RegistrationDeadline.IsZero() || got.Capacity != 0 {
+			t.Fatalf("expected minimal draft tournament, got: %+v", got)
+		}
+	})
 }
 
 func TestCreateTournament_ValidationErrors(t *testing.T) {
@@ -296,15 +336,15 @@ func TestCreateTournament_ValidationErrors(t *testing.T) {
 		{name: "empty name", modify: func(in *usecases.CreateTournamentInput) { in.Name = "   " }, wantErr: usecases.ErrInvalidTournamentName},
 		{name: "empty game", modify: func(in *usecases.CreateTournamentInput) { in.Game = "" }, wantErr: usecases.ErrInvalidTournamentGame},
 		{name: "empty location", modify: func(in *usecases.CreateTournamentInput) { in.Location = "  " }, wantErr: usecases.ErrInvalidTournamentLocation},
-		{name: "deadline after start", modify: func(in *usecases.CreateTournamentInput) { in.RegistrationDeadline = in.StartsAt.Add(time.Hour) }, wantErr: usecases.ErrInvalidTournamentDates},
+		{name: "deadline after start", modify: func(in *usecases.CreateTournamentInput) { in.RegistrationDeadline = ptr(in.StartsAt.Add(time.Hour)) }, wantErr: usecases.ErrInvalidTournamentDates},
 		{name: "deadline equals start", modify: func(in *usecases.CreateTournamentInput) { in.RegistrationDeadline = in.StartsAt }, wantErr: usecases.ErrInvalidTournamentDates},
-		{name: "start after end", modify: func(in *usecases.CreateTournamentInput) { in.StartsAt = in.EndsAt.Add(time.Hour) }, wantErr: usecases.ErrInvalidTournamentDates},
+		{name: "start after end", modify: func(in *usecases.CreateTournamentInput) { in.StartsAt = ptr(in.EndsAt.Add(time.Hour)) }, wantErr: usecases.ErrInvalidTournamentDates},
 		{name: "start equals end", modify: func(in *usecases.CreateTournamentInput) { in.StartsAt = in.EndsAt }, wantErr: usecases.ErrInvalidTournamentDates},
-		{name: "negative fee", modify: func(in *usecases.CreateTournamentInput) { in.EntryFee = -10 }, wantErr: usecases.ErrInvalidTournamentFee},
-		{name: "zero capacity", modify: func(in *usecases.CreateTournamentInput) { in.Capacity = 0 }, wantErr: usecases.ErrInvalidTournamentCapacity},
-		{name: "invalid mode", modify: func(in *usecases.CreateTournamentInput) { in.RegistrationMode = "SQUAD" }, wantErr: usecases.ErrInvalidRegistrationMode},
-		{name: "team mode min > max", modify: func(in *usecases.CreateTournamentInput) { in.MinTeamSize, in.MaxTeamSize = 5, 3 }, wantErr: usecases.ErrInvalidTeamSize},
-		{name: "team mode min < 1", modify: func(in *usecases.CreateTournamentInput) { in.MinTeamSize = 0 }, wantErr: usecases.ErrInvalidTeamSize},
+		{name: "negative fee", modify: func(in *usecases.CreateTournamentInput) { in.EntryFee = ptr(int64(-10)) }, wantErr: usecases.ErrInvalidTournamentFee},
+		{name: "zero capacity", modify: func(in *usecases.CreateTournamentInput) { in.Capacity = ptr(0) }, wantErr: usecases.ErrInvalidTournamentCapacity},
+		{name: "invalid mode", modify: func(in *usecases.CreateTournamentInput) { in.RegistrationMode = ptr("SQUAD") }, wantErr: usecases.ErrInvalidRegistrationMode},
+		{name: "team mode min > max", modify: func(in *usecases.CreateTournamentInput) { in.MinTeamSize, in.MaxTeamSize = ptr(5), ptr(3) }, wantErr: usecases.ErrInvalidTeamSize},
+		{name: "team mode min < 1", modify: func(in *usecases.CreateTournamentInput) { in.MinTeamSize = ptr(0) }, wantErr: usecases.ErrInvalidTeamSize},
 		{name: "description exceeds max length", modify: func(in *usecases.CreateTournamentInput) { in.Description = strings.Repeat("a", 501) }, wantErr: usecases.ErrInvalidTournamentDescription},
 		{name: "detail exceeds max length", modify: func(in *usecases.CreateTournamentInput) { in.Detail = strings.Repeat("b", 10001) }, wantErr: usecases.ErrInvalidTournamentDetail},
 		{name: "funding goal without deadline", modify: func(in *usecases.CreateTournamentInput) { in.FundingGoal = ptr(int64(1000)) }, wantErr: usecases.ErrInvalidCrowdfunding},
@@ -319,7 +359,7 @@ func TestCreateTournament_ValidationErrors(t *testing.T) {
 		}, wantErr: usecases.ErrInvalidCrowdfunding},
 		{name: "funding after registration deadline", modify: func(in *usecases.CreateTournamentInput) {
 			in.FundingGoal = ptr(int64(1000))
-			in.FundingDeadline = ptr(in.RegistrationDeadline)
+			in.FundingDeadline = in.RegistrationDeadline
 		}, wantErr: usecases.ErrInvalidCrowdfunding},
 	}
 
@@ -353,11 +393,18 @@ func TestUpdateTournament_Guards(t *testing.T) {
 			wantErr:  usecases.ErrNotTournamentOwner,
 		},
 		{
-			name:     "ongoing status rejected",
+			name:     "ongoing status rejects non-metadata updates",
 			setup:    func(tm *models.Tournament, _ *mockTournamentRepository) { tm.Status = models.TournamentStatusOngoing },
 			callerID: ownerID,
-			input:    usecases.UpdateTournamentInput{Name: ptr("New Name")},
+			input:    usecases.UpdateTournamentInput{Capacity: ptr(32)},
 			wantErr:  usecases.ErrTournamentCannotBeModified,
+		},
+		{
+			name:     "ongoing status allows general info updates",
+			setup:    func(tm *models.Tournament, _ *mockTournamentRepository) { tm.Status = models.TournamentStatusOngoing },
+			callerID: ownerID,
+			input:    usecases.UpdateTournamentInput{Name: ptr("Ongoing Name")},
+			wantErr:  nil,
 		},
 		{
 			name:     "completed status rejected",
@@ -367,70 +414,60 @@ func TestUpdateTournament_Guards(t *testing.T) {
 			wantErr:  usecases.ErrTournamentCannotBeModified,
 		},
 		{
-			name:     "cancelled status rejected",
-			setup:    func(tm *models.Tournament, _ *mockTournamentRepository) { tm.Status = models.TournamentStatusCancelled },
-			callerID: ownerID,
-			input:    usecases.UpdateTournamentInput{Name: ptr("New Name")},
-			wantErr:  usecases.ErrTournamentCannotBeModified,
-		},
-		{
-			name: "capacity below accepted count rejected",
-			setup: func(_ *models.Tournament, repo *mockTournamentRepository) {
-				repo.acceptedCount = 8
-			},
-			callerID: ownerID,
-			input:    usecases.UpdateTournamentInput{Capacity: ptr(5)},
-			wantErr:  usecases.ErrCapacityBelowAcceptedTeams,
-		},
-		{
-			name: "mode change rejected when roster locked",
-			setup: func(_ *models.Tournament, repo *mockTournamentRepository) {
-				repo.lockedOrAcceptedCount = 2
+			name: "registration status rejects mode change",
+			setup: func(tm *models.Tournament, _ *mockTournamentRepository) {
+				tm.Status = models.TournamentStatusRegistration
 			},
 			callerID: ownerID,
 			input:    usecases.UpdateTournamentInput{RegistrationMode: ptr("SOLO")},
 			wantErr:  usecases.ErrRosterRulesLocked,
 		},
 		{
-			name: "min team size change rejected when roster locked",
-			setup: func(_ *models.Tournament, repo *mockTournamentRepository) {
-				repo.lockedOrAcceptedCount = 2
+			name: "registration status rejects min team size change",
+			setup: func(tm *models.Tournament, _ *mockTournamentRepository) {
+				tm.Status = models.TournamentStatusRegistration
 			},
 			callerID: ownerID,
 			input:    usecases.UpdateTournamentInput{MinTeamSize: ptr(2)},
 			wantErr:  usecases.ErrRosterRulesLocked,
 		},
 		{
-			name: "max team size change rejected when roster locked",
-			setup: func(_ *models.Tournament, repo *mockTournamentRepository) {
-				repo.lockedOrAcceptedCount = 2
+			name: "registration status rejects max team size change",
+			setup: func(tm *models.Tournament, _ *mockTournamentRepository) {
+				tm.Status = models.TournamentStatusRegistration
 			},
 			callerID: ownerID,
 			input:    usecases.UpdateTournamentInput{MaxTeamSize: ptr(6)},
 			wantErr:  usecases.ErrRosterRulesLocked,
 		},
 		{
-			name: "registration closed permitted",
+			name: "registration status rejects capacity change",
 			setup: func(tm *models.Tournament, _ *mockTournamentRepository) {
-				tm.Status = models.TournamentStatusRegistrationClosed
+				tm.Status = models.TournamentStatusRegistration
+			},
+			callerID: ownerID,
+			input:    usecases.UpdateTournamentInput{Capacity: ptr(32)},
+			wantErr:  usecases.ErrRosterRulesLocked,
+		},
+		{
+			name: "registration permitted",
+			setup: func(tm *models.Tournament, _ *mockTournamentRepository) {
+				tm.Status = models.TournamentStatusRegistration
 			},
 			callerID: ownerID,
 			input:    usecases.UpdateTournamentInput{Name: ptr("Closed Cup")},
 			wantErr:  nil,
 		},
 		{
-			name: "capacity equal to accepted count permitted",
-			setup: func(_ *models.Tournament, repo *mockTournamentRepository) {
-				repo.acceptedCount = 8
-			},
+			name: "capacity update in draft permitted",
 			callerID: ownerID,
 			input:    usecases.UpdateTournamentInput{Capacity: ptr(8)},
 			wantErr:  nil,
 		},
 		{
-			name: "idempotent roster update permitted when locked",
+			name: "idempotent roster update permitted in registration",
 			setup: func(tm *models.Tournament, repo *mockTournamentRepository) {
-				repo.lockedOrAcceptedCount = 2
+				tm.Status = models.TournamentStatusRegistration
 				tm.RegistrationMode = models.TournamentRegistrationModeTeam
 				tm.MinTeamSize, tm.MaxTeamSize = 3, 5
 			},
@@ -599,13 +636,13 @@ func TestUpdateCrowdfundingConfiguration(t *testing.T) {
 	makeCampaign := func() *models.Tournament {
 		tournament := baseTournament(ownerID)
 		tournament.ID = tournamentID
-		tournament.Status = models.TournamentStatusCrowdfunding
+		tournament.Status = models.TournamentStatusDraft
 		deadline := now.Add(8 * time.Hour)
 		tournament.Funding = &models.TournamentFunding{GoalAmount: 1000, Deadline: &deadline}
 		return tournament
 	}
 
-	t.Run("owner changes goal and deadline", func(t *testing.T) {
+	t.Run("owner changes goal and deadline in draft", func(t *testing.T) {
 		repo := &mockTournamentRepository{details: makeCampaign()}
 		goal := int64(3000)
 		deadline := now.Add(12 * time.Hour)
@@ -631,8 +668,8 @@ func TestUpdateCrowdfundingConfiguration(t *testing.T) {
 		{"zero goal", nil, ownerID, usecases.UpdateTournamentInput{FundingGoal: ptr(int64(0))}, usecases.ErrInvalidCrowdfunding},
 		{"deadline after registration", nil, ownerID, usecases.UpdateTournamentInput{FundingDeadline: ptr(now.Add(30 * time.Hour))}, usecases.ErrInvalidCrowdfunding},
 		{"registration deadline moved before funding deadline", nil, ownerID, usecases.UpdateTournamentInput{RegistrationDeadline: ptr(now.Add(4 * time.Hour))}, usecases.ErrInvalidCrowdfunding},
-		{"registration is open", func(tm *models.Tournament) { tm.Status = models.TournamentStatusRegistrationOpen }, ownerID, usecases.UpdateTournamentInput{FundingGoal: ptr(int64(3000))}, usecases.ErrCrowdfundingClosed},
-		{"campaign expired", func(tm *models.Tournament) { expired := now.Add(-time.Hour); tm.Funding.Deadline = &expired }, ownerID, usecases.UpdateTournamentInput{FundingGoal: ptr(int64(3000))}, usecases.ErrCrowdfundingClosed},
+		{"already crowdfunding", func(tm *models.Tournament) { tm.Status = models.TournamentStatusCrowdfunding }, ownerID, usecases.UpdateTournamentInput{FundingGoal: ptr(int64(3000))}, usecases.ErrCrowdfundingClosed},
+		{"registration is open", func(tm *models.Tournament) { tm.Status = models.TournamentStatusRegistration }, ownerID, usecases.UpdateTournamentInput{FundingGoal: ptr(int64(3000))}, usecases.ErrCrowdfundingClosed},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -675,14 +712,6 @@ func TestTournamentUseCase_RepositoryErrors(t *testing.T) {
 		{
 			name:    "GetByID arbitrary db error propagated",
 			repo:    &mockTournamentRepository{detailsErr: dbErr},
-			wantErr: dbErr,
-		},
-		{
-			name: "GetActiveTeamCount db error propagated",
-			repo: &mockTournamentRepository{
-				details:      baseTournament(ownerID),
-				teamCountErr: dbErr,
-			},
 			wantErr: dbErr,
 		},
 		{

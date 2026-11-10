@@ -75,7 +75,7 @@ func (s *announcementScenarioContext) createTournament(published bool) error {
 		return err
 	}
 
-	status := models.TournamentStatusRegistrationOpen
+	status := models.TournamentStatusRegistration
 	if !published {
 		status = models.TournamentStatusDraft
 	}
@@ -99,7 +99,6 @@ func (s *announcementScenarioContext) createTournament(published bool) error {
 		MaxTeamSize:          3,
 		Capacity:             8,
 		Status:               status,
-		Published:            published,
 	}
 	if err := app.DB.Create(s.tournament).Error; err != nil {
 		return fmt.Errorf("create tournament: %w", err)

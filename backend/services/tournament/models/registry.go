@@ -7,7 +7,6 @@ func All() []any {
 		&TournamentTeam{},
 		&TournamentTeamMember{},
 		&TournamentFunding{},
-		&TournamentStatusChange{},
 		&TournamentTeamReview{},
 		&TournamentAnnouncement{},
 		&SponsorshipTier{},

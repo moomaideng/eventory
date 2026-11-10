@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/moomaideng/eventory/services/tournament/internal/forms"
@@ -115,7 +116,8 @@ func TestRegistrationFormUseCase_SaveForm(t *testing.T) {
 			Staff: []models.TournamentStaff{
 				{AccountID: organizerID, Role: models.TournamentStaffRoleOwner},
 			},
-			Status: models.TournamentStatusRegistrationOpen,
+			Status:               models.TournamentStatusDraft,
+			RegistrationDeadline: time.Now().Add(time.Hour),
 		},
 	}
 	tRepo := &tournamentRepoStub{tournaments: tournaments}
@@ -134,6 +136,15 @@ func TestRegistrationFormUseCase_SaveForm(t *testing.T) {
 		_, err := uc.SaveForm(ctx, otherOrganizerID, tournamentID, "Title", "Desc", nil)
 		if !errors.Is(err, usecases.ErrNotTournamentOwner) {
 			t.Fatalf("expected ErrNotTournamentOwner, got %v", err)
+		}
+	})
+
+	t.Run("locked in registration status", func(t *testing.T) {
+		tournaments[tournamentID].Status = models.TournamentStatusRegistration
+		defer func() { tournaments[tournamentID].Status = models.TournamentStatusDraft }()
+		_, err := uc.SaveForm(ctx, organizerID, tournamentID, "Title", "Desc", nil)
+		if !errors.Is(err, usecases.ErrRegistrationFormLocked) {
+			t.Fatalf("expected ErrRegistrationFormLocked, got %v", err)
 		}
 	})
 
@@ -210,7 +221,8 @@ func TestRegistrationFormUseCase_SubmitResponse(t *testing.T) {
 			Staff: []models.TournamentStaff{
 				{AccountID: organizerID, Role: models.TournamentStaffRoleOwner},
 			},
-			Status: models.TournamentStatusRegistrationOpen,
+			Status:               models.TournamentStatusDraft,
+			RegistrationDeadline: time.Now().Add(time.Hour),
 		},
 	}
 	tRepo := &tournamentRepoStub{tournaments: tournaments}
@@ -226,6 +238,7 @@ func TestRegistrationFormUseCase_SubmitResponse(t *testing.T) {
 	if err != nil {
 		t.Fatalf("SaveForm() error = %v", err)
 	}
+	tournaments[tournamentID].Status = models.TournamentStatusRegistration
 
 	t.Run("unrecognized field", func(t *testing.T) {
 		answers := []models.FieldAnswer{

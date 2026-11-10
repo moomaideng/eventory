@@ -126,7 +126,7 @@ func TestSponsorshipTierUseCase_Create(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			uc, _, ownerID, tournamentID := newTierFixture(models.TournamentStatusRegistrationOpen)
+			uc, _, ownerID, tournamentID := newTierFixture(models.TournamentStatusDraft)
 			input := validTierInput()
 			tt.mutate(&input)
 
@@ -141,7 +141,7 @@ func TestSponsorshipTierUseCase_Create(t *testing.T) {
 	}
 
 	t.Run("trims name and drops blank perks", func(t *testing.T) {
-		uc, _, ownerID, tournamentID := newTierFixture(models.TournamentStatusRegistrationOpen)
+		uc, _, ownerID, tournamentID := newTierFixture(models.TournamentStatusDraft)
 		input := validTierInput()
 		input.Name = "  Gold  "
 		input.Perks = []string{"Logo", " ", " Banner "}
@@ -156,7 +156,7 @@ func TestSponsorshipTierUseCase_Create(t *testing.T) {
 	})
 
 	t.Run("duplicate name", func(t *testing.T) {
-		uc, _, ownerID, tournamentID := newTierFixture(models.TournamentStatusRegistrationOpen)
+		uc, _, ownerID, tournamentID := newTierFixture(models.TournamentStatusDraft)
 		if _, err := uc.Create(context.Background(), ownerID, tournamentID, validTierInput()); err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -167,14 +167,14 @@ func TestSponsorshipTierUseCase_Create(t *testing.T) {
 	})
 
 	t.Run("non-owner sees not found", func(t *testing.T) {
-		uc, _, _, tournamentID := newTierFixture(models.TournamentStatusRegistrationOpen)
+		uc, _, _, tournamentID := newTierFixture(models.TournamentStatusDraft)
 		_, err := uc.Create(context.Background(), uuid.New(), tournamentID, validTierInput())
 		if !errors.Is(err, usecases.ErrTournamentNotFound) {
 			t.Fatalf("expected ErrTournamentNotFound, got %v", err)
 		}
 	})
 
-	for _, status := range []models.TournamentStatus{models.TournamentStatusCompleted, models.TournamentStatusCancelled} {
+	for _, status := range []models.TournamentStatus{models.TournamentStatusCrowdfunding, models.TournamentStatusRegistration, models.TournamentStatusCompleted} {
 		t.Run("locked when "+string(status), func(t *testing.T) {
 			uc, _, ownerID, tournamentID := newTierFixture(status)
 			_, err := uc.Create(context.Background(), ownerID, tournamentID, validTierInput())
@@ -187,7 +187,7 @@ func TestSponsorshipTierUseCase_Create(t *testing.T) {
 
 func TestSponsorshipTierUseCase_UpdateAndDelete(t *testing.T) {
 	t.Run("owner renames then deletes", func(t *testing.T) {
-		uc, repo, ownerID, tournamentID := newTierFixture(models.TournamentStatusRegistrationOpen)
+		uc, repo, ownerID, tournamentID := newTierFixture(models.TournamentStatusDraft)
 		tier, err := uc.Create(context.Background(), ownerID, tournamentID, validTierInput())
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
@@ -222,7 +222,7 @@ func TestSponsorshipTierUseCase_UpdateAndDelete(t *testing.T) {
 	})
 
 	t.Run("unknown tier", func(t *testing.T) {
-		uc, _, ownerID, tournamentID := newTierFixture(models.TournamentStatusRegistrationOpen)
+		uc, _, ownerID, tournamentID := newTierFixture(models.TournamentStatusDraft)
 		err := uc.Delete(context.Background(), ownerID, tournamentID, uuid.New())
 		if !errors.Is(err, usecases.ErrSponsorshipTierNotFound) {
 			t.Fatalf("expected ErrSponsorshipTierNotFound, got %v", err)
@@ -231,7 +231,7 @@ func TestSponsorshipTierUseCase_UpdateAndDelete(t *testing.T) {
 }
 
 func TestSponsorshipTierUseCase_ListForOwner(t *testing.T) {
-	uc, _, ownerID, tournamentID := newTierFixture(models.TournamentStatusRegistrationOpen)
+	uc, _, ownerID, tournamentID := newTierFixture(models.TournamentStatusDraft)
 	if _, err := uc.Create(context.Background(), ownerID, tournamentID, validTierInput()); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -251,9 +251,9 @@ func TestSponsorshipTierUseCase_ListForOwner(t *testing.T) {
 
 func TestSponsorshipTierUseCase_ProtectedEdits(t *testing.T) {
 	for _, operation := range []string{"update", "delete"} {
-		for _, reason := range []string{"reserved", "non-owner", "completed", "cancelled"} {
+		for _, reason := range []string{"reserved", "non-owner", "completed"} {
 			t.Run(operation+"/"+reason, func(t *testing.T) {
-				uc, repo, ownerID, tournamentID := newTierFixture(models.TournamentStatusRegistrationOpen)
+				uc, repo, ownerID, tournamentID := newTierFixture(models.TournamentStatusDraft)
 				tier, err := uc.Create(context.Background(), ownerID, tournamentID, validTierInput())
 				if err != nil {
 					t.Fatal(err)
@@ -267,9 +267,6 @@ func TestSponsorshipTierUseCase_ProtectedEdits(t *testing.T) {
 					want = usecases.ErrTournamentNotFound
 				case "completed":
 					repo.tournament.Status = models.TournamentStatusCompleted
-					want = usecases.ErrSponsorshipClosed
-				case "cancelled":
-					repo.tournament.Status = models.TournamentStatusCancelled
 					want = usecases.ErrSponsorshipClosed
 				}
 				if operation == "update" {
@@ -292,7 +289,7 @@ func TestSponsorshipTierUseCase_ProtectedEdits(t *testing.T) {
 
 func TestSponsorshipTierUseCase_Availability(t *testing.T) {
 	for _, reserved := range []int64{0, 1, 2, 3} {
-		uc, repo, ownerID, tournamentID := newTierFixture(models.TournamentStatusRegistrationOpen)
+		uc, repo, ownerID, tournamentID := newTierFixture(models.TournamentStatusDraft)
 		tier, err := uc.Create(context.Background(), ownerID, tournamentID, validTierInput())
 		if err != nil {
 			t.Fatal(err)

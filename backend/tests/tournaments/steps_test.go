@@ -79,7 +79,7 @@ func (s *discoveryScenario) fixtures() error {
 			Description: "Rules: best of three; no cheating.", Game: "Valorant", Location: "Online",
 			StartsAt: starts, EndsAt: starts.Add(2 * time.Hour), RegistrationDeadline: starts.Add(-24 * time.Hour),
 			EntryFee: row.fee, Currency: "THB", Capacity: 16, RegistrationMode: models.TournamentRegistrationModeTeam,
-			MinTeamSize: 2, MaxTeamSize: 5, Status: models.TournamentStatusRegistrationOpen, Published: row.published,
+			MinTeamSize: 2, MaxTeamSize: 5, Status: models.TournamentStatusRegistration,
 		}
 		if !row.published {
 			tournament.Status = models.TournamentStatusDraft

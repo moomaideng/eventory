@@ -130,7 +130,7 @@ func (r *teamLobbyRepository) Join(ctx context.Context, teamID, accountID uuid.U
 		if team.Status != models.TournamentTeamStatusForming {
 			return ErrTeamLobbyNotForming
 		}
-		if team.Tournament.Status != models.TournamentStatusRegistrationOpen {
+		if team.Tournament.Status != models.TournamentStatusRegistration {
 			return ErrTournamentRegistrationClosed
 		}
 		if len(team.Members) >= team.Tournament.MaxTeamSize {
@@ -208,7 +208,7 @@ func (r *teamLobbyRepository) Lock(ctx context.Context, teamID uuid.UUID, expect
 			}
 		}
 		now := time.Now().UTC().Truncate(time.Microsecond)
-		if !tournament.Published || tournament.Status != models.TournamentStatusRegistrationOpen || !now.Before(tournament.RegistrationDeadline) {
+		if tournament.Status != models.TournamentStatusRegistration || !now.Before(tournament.RegistrationDeadline) {
 			return ErrTournamentRegistrationClosed
 		}
 		if len(team.Members) < team.Tournament.MinTeamSize {

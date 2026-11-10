@@ -118,6 +118,8 @@ func registrationFormHTTPError(err error) error {
 		return huma.Error409Conflict("Registration form response already submitted", err)
 	case errors.Is(err, usecases.ErrRegistrationClosed):
 		return huma.Error400BadRequest("Tournament registration is not open", err)
+	case errors.Is(err, usecases.ErrRegistrationFormLocked):
+		return huma.Error400BadRequest("Registration form cannot be modified after registration has started", err)
 	case errors.Is(err, usecases.ErrInvalidFormTitle),
 		errors.Is(err, usecases.ErrDuplicateFieldID),
 		errors.Is(err, usecases.ErrEmptyFieldID),

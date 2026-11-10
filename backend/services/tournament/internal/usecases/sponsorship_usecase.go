@@ -125,11 +125,11 @@ func (u *SponsorshipUseCase) Start(ctx context.Context, input StartSponsorship) 
 }
 
 func sponsorshipOpen(t *models.Tournament, now time.Time) bool {
-	if !t.Published || !now.Before(t.EndsAt) {
+	if t.Status == models.TournamentStatusDraft || !now.Before(t.EndsAt) {
 		return false
 	}
 	switch t.Status {
-	case models.TournamentStatusCrowdfunding, models.TournamentStatusRegistrationOpen, models.TournamentStatusRegistrationClosed, models.TournamentStatusOngoing:
+	case models.TournamentStatusCrowdfunding, models.TournamentStatusRegistration, models.TournamentStatusOngoing:
 		return true
 	}
 	return false

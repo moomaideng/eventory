@@ -45,19 +45,13 @@ func TestSponsorshipBrandValidation(t *testing.T) {
 }
 
 func TestSponsorshipOpenAfterCrowdfunding(t *testing.T) {
-	// Covered end-to-end for registration-open tournaments; this guards the other lifecycle stages.
-	for _, status := range []models.TournamentStatus{models.TournamentStatusCrowdfunding, models.TournamentStatusRegistrationOpen, models.TournamentStatusRegistrationClosed, models.TournamentStatusOngoing, models.TournamentStatusDraft, models.TournamentStatusCompleted, models.TournamentStatusCancelled} {
+	for _, status := range []models.TournamentStatus{models.TournamentStatusCrowdfunding, models.TournamentStatusRegistration, models.TournamentStatusOngoing, models.TournamentStatusDraft, models.TournamentStatusCompleted} {
 		now := time.Now()
-		tournament := models.Tournament{Published: true, Status: status, EndsAt: now.Add(time.Hour)}
-		want := status != models.TournamentStatusDraft && status != models.TournamentStatusCompleted && status != models.TournamentStatusCancelled
+		tournament := models.Tournament{Status: status, EndsAt: now.Add(time.Hour)}
+		want := status != models.TournamentStatusDraft && status != models.TournamentStatusCompleted
 		if sponsorshipOpen(&tournament, now) != want {
 			t.Errorf("unexpected eligibility for %s", status)
 		}
-		tournament.Published = false
-		if sponsorshipOpen(&tournament, now) {
-			t.Errorf("unpublished %s accepted", status)
-		}
-		tournament.Published = true
 		tournament.EndsAt = now
 		if sponsorshipOpen(&tournament, now) {
 			t.Errorf("ended %s accepted", status)
