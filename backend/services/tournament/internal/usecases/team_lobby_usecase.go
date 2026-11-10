@@ -5,12 +5,14 @@ import (
 	cryptorand "crypto/rand"
 	"errors"
 	"fmt"
+	"log/slog"
 	"math/big"
 	"regexp"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/moomaideng/eventory/internal/events"
 	"github.com/moomaideng/eventory/services/tournament/internal/forms"
 	"github.com/moomaideng/eventory/services/tournament/internal/ports"
 	"github.com/moomaideng/eventory/services/tournament/internal/repositories"
@@ -94,6 +96,7 @@ type TeamLobbyUseCase struct {
 	payments   ports.PaymentService
 	formRepo   repositories.RegistrationFormRepository
 	registry   *forms.FieldRegistry
+	publisher  events.Publisher
 }
 
 func NewTeamLobbyUseCase(
@@ -102,13 +105,19 @@ func NewTeamLobbyUseCase(
 	payments ports.PaymentService,
 	formRepo repositories.RegistrationFormRepository,
 	registry *forms.FieldRegistry,
+	publisher ...events.Publisher,
 ) *TeamLobbyUseCase {
+	var pub events.Publisher = events.NoopPublisher{}
+	if len(publisher) > 0 && publisher[0] != nil {
+		pub = publisher[0]
+	}
 	return &TeamLobbyUseCase{
 		repo:       repo,
 		accountSvc: accountSvc,
 		payments:   payments,
 		formRepo:   formRepo,
 		registry:   registry,
+		publisher:  pub,
 	}
 }
 
@@ -281,6 +290,8 @@ func (u *TeamLobbyUseCase) RegisterSolo(
 		if err != nil {
 			return nil, translateLobbyError(err)
 		}
+	} else if locked.Status == models.TournamentTeamStatusLocked {
+		u.publishRegistrationSubmitted(ctx, locked)
 	}
 
 	return u.toView(ctx, locked)
@@ -370,7 +381,8 @@ func (u *TeamLobbyUseCase) Lock(ctx context.Context, teamID, accountID uuid.UUID
 	if err != nil {
 		return nil, err
 	}
-	if team.Status == models.TournamentTeamStatusForming {
+	wasForming := team.Status == models.TournamentTeamStatusForming
+	if wasForming {
 		ready, err := u.memberReadiness(ctx, team)
 		if err != nil {
 			return nil, err
@@ -381,9 +393,12 @@ func (u *TeamLobbyUseCase) Lock(ctx context.Context, teamID, accountID uuid.UUID
 			}
 		}
 	}
-	_, err = u.repo.Lock(ctx, teamID, team.Members)
+	lockedTeam, err := u.repo.Lock(ctx, teamID, team.Members)
 	if err != nil {
 		return nil, translateLobbyError(err)
+	}
+	if wasForming && lockedTeam.Status == models.TournamentTeamStatusLocked {
+		u.publishRegistrationSubmitted(ctx, lockedTeam)
 	}
 	return u.RefreshSubmission(ctx, teamID, accountID)
 }
@@ -488,7 +503,14 @@ func (u *TeamLobbyUseCase) Reconcile(ctx context.Context, team *models.Tournamen
 	if payment.Source != request.Source || payment.Reference != request.Reference || !attemptMatches(team, outcomeOf(payment)) || !settleable(payment.Status) {
 		return ErrPaymentUnavailable
 	}
-	return u.repo.ApplyPayment(ctx, team, payment.ID, payment.Status)
+	if err := u.repo.ApplyPayment(ctx, team, payment.ID, payment.Status); err != nil {
+		return err
+	}
+	if payment.Status == models.PaymentPaid {
+		team.Status = models.TournamentTeamStatusLocked
+		u.publishRegistrationSubmitted(ctx, team)
+	}
+	return nil
 }
 
 // ApplyPaymentOutcome records the result of a payment event on the
@@ -516,7 +538,136 @@ func (u *TeamLobbyUseCase) ApplyPaymentOutcome(ctx context.Context, outcome Paym
 	if !attemptMatches(team, outcome) || !settleable(outcome.Status) {
 		return fmt.Errorf("%w: team %s", ErrPaymentMismatch, team.ID)
 	}
-	return u.repo.ApplyPayment(ctx, team, outcome.PaymentID, outcome.Status)
+	if err := u.repo.ApplyPayment(ctx, team, outcome.PaymentID, outcome.Status); err != nil {
+		return err
+	}
+	if outcome.Status == models.PaymentPaid {
+		team.Status = models.TournamentTeamStatusLocked
+		u.publishRegistrationSubmitted(ctx, team)
+	}
+	return nil
+}
+
+// publishRegistrationSubmitted emits an asynchronous domain event informing
+// downstream subscribers (e.g. Notification Service) that a registration
+// has been locked / submitted for review.
+func (u *TeamLobbyUseCase) publishRegistrationSubmitted(ctx context.Context, team *models.TournamentTeam) {
+	if u.publisher == nil || team == nil {
+		return
+	}
+
+	tourn := team.Tournament
+	if tourn.ID == uuid.Nil {
+		t, err := u.repo.FindTournamentByID(ctx, team.TournamentID)
+		if err == nil && t != nil {
+			tourn = *t
+		}
+	}
+
+	members := team.Members
+	if len(members) == 0 {
+		t, err := u.repo.FindByID(ctx, team.ID)
+		if err == nil && t != nil {
+			members = t.Members
+			if tourn.ID == uuid.Nil {
+				tourn = t.Tournament
+			}
+		}
+	}
+
+	isSolo := tourn.IsSolo()
+
+	var recipientID uuid.UUID
+	var recipientRole events.RecipientRole
+	var regMode events.RegistrationMode
+	var teamID *uuid.UUID
+	var teamName *string
+
+	if isSolo {
+		regMode = events.RegistrationModeSolo
+		recipientRole = events.RecipientRoleApplicant
+		if len(members) > 0 {
+			recipientID = members[0].AccountID
+		}
+	} else {
+		regMode = events.RegistrationModeTeam
+		recipientRole = events.RecipientRoleCaptain
+		tID := team.ID
+		teamID = &tID
+		tName := team.Name
+		if tName == "" {
+			tName = "Team"
+		}
+		teamName = &tName
+
+		for _, m := range members {
+			if m.Role == models.TournamentTeamMemberRoleCaptain {
+				recipientID = m.AccountID
+				break
+			}
+		}
+		if recipientID == uuid.Nil && len(members) > 0 {
+			recipientID = members[0].AccountID
+		}
+	}
+
+	var recipientDisplayName, recipientEmail string
+	if recipientID != uuid.Nil && u.accountSvc != nil {
+		if acc, err := u.accountSvc.GetAccount(ctx, recipientID); err == nil && acc != nil {
+			recipientDisplayName = acc.DisplayName
+			if recipientDisplayName == "" {
+				recipientDisplayName = acc.Handle
+			}
+			recipientEmail = acc.Email
+		}
+	}
+
+	if recipientDisplayName == "" {
+		recipientDisplayName = "Participant"
+	}
+
+	tournName := tourn.Name
+	if tournName == "" {
+		tournName = "Tournament"
+	}
+
+	occurredAt := time.Now().UTC()
+	if team.LockedAt != nil && !team.LockedAt.IsZero() {
+		occurredAt = *team.LockedAt
+	}
+
+	event := events.RegistrationSubmitted{
+		SpecVersion:   events.EventSpecVersion,
+		ID:            uuid.New(),
+		Type:          events.RegistrationSubmittedType,
+		Source:        "tournament-service",
+		OccurredAt:    occurredAt,
+		CorrelationID: uuid.New(),
+		Data: events.RegistrationSubmittedData{
+			RegistrationID:   team.ID,
+			TournamentID:     team.TournamentID,
+			TournamentName:   tournName,
+			RegistrationMode: regMode,
+			TeamID:           teamID,
+			TeamName:         teamName,
+			Recipient: events.EventRecipient{
+				AccountID:   recipientID,
+				Email:       recipientEmail,
+				DisplayName: recipientDisplayName,
+				Role:        recipientRole,
+			},
+		},
+	}
+
+	event.Normalize()
+	if err := event.Validate(); err != nil {
+		slog.WarnContext(ctx, "skipping registration.submitted publish due to invalid event payload", "error", err, "team_id", team.ID)
+		return
+	}
+
+	if err := u.publisher.Publish(ctx, events.RegistrationSubmittedType, event); err != nil {
+		slog.WarnContext(ctx, "failed to publish registration.submitted event", "error", err, "team_id", team.ID)
+	}
 }
 
 // attemptMatches reports whether the invoice was issued for the team's current

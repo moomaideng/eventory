@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/moomaideng/eventory/internal/events"
 	"github.com/moomaideng/eventory/services/tournament/internal/forms"
 	"github.com/moomaideng/eventory/services/tournament/internal/ports"
 	"github.com/moomaideng/eventory/services/tournament/internal/repositories"
@@ -604,4 +605,283 @@ func (s *registrationFormRepositoryStub) GetResponsesByAccounts(_ context.Contex
 		}
 	}
 	return responses, nil
+}
+
+func TestLock_PublishesRegistrationSubmitted_ForFreeTournament(t *testing.T) {
+	tournamentID := uuid.New()
+	captainID := uuid.New()
+	teamID := uuid.New()
+	tournament := &models.Tournament{
+		ID:                   tournamentID,
+		Name:                 "Championship 2026",
+		Status:               models.TournamentStatusRegistration,
+		RegistrationDeadline: time.Now().Add(time.Hour),
+		RegistrationMode:     models.TournamentRegistrationModeTeam,
+		MinTeamSize:          1,
+		MaxTeamSize:          5,
+		EntryFee:             0,
+	}
+	team := &models.TournamentTeam{
+		ID:           teamID,
+		TournamentID: tournamentID,
+		Tournament:   *tournament,
+		Name:         "Falcon Squad",
+		Status:       models.TournamentTeamStatusForming,
+		Members: []models.TournamentTeamMember{{
+			ID:               uuid.New(),
+			TournamentTeamID: teamID,
+			AccountID:        captainID,
+			Role:             models.TournamentTeamMemberRoleCaptain,
+		}},
+	}
+	repo := &teamLobbyRepositoryStub{
+		tournament: tournament,
+		team:       team,
+	}
+	accountSvc := newStubAccountService().withAccountEmail(captainID, "captain", "Falcon Captain", "captain@example.com")
+	pub := &mockPublisher{}
+
+	uc := usecases.NewTeamLobbyUseCase(repo, accountSvc, nil, nil, nil, pub)
+
+	view, err := uc.Lock(context.Background(), teamID, captainID)
+	if err != nil {
+		t.Fatalf("Lock() failed: %v", err)
+	}
+	if view == nil || view.Team.Status != models.TournamentTeamStatusLocked {
+		t.Fatalf("expected locked team view, got: %+v", view)
+	}
+
+	if len(pub.events) != 1 {
+		t.Fatalf("expected 1 published event, got %d", len(pub.events))
+	}
+	if pub.events[0].routingKey != events.RegistrationSubmittedType {
+		t.Fatalf("expected routing key %q, got %q", events.RegistrationSubmittedType, pub.events[0].routingKey)
+	}
+	evt, ok := pub.events[0].event.(events.RegistrationSubmitted)
+	if !ok {
+		t.Fatalf("expected events.RegistrationSubmitted, got %T", pub.events[0].event)
+	}
+	if evt.Data.RegistrationID != teamID {
+		t.Errorf("expected RegistrationID %s, got %s", teamID, evt.Data.RegistrationID)
+	}
+	if evt.Data.TournamentID != tournamentID {
+		t.Errorf("expected TournamentID %s, got %s", tournamentID, evt.Data.TournamentID)
+	}
+	if evt.Data.TournamentName != "Championship 2026" {
+		t.Errorf("expected TournamentName %q, got %q", "Championship 2026", evt.Data.TournamentName)
+	}
+	if evt.Data.RegistrationMode != events.RegistrationModeTeam {
+		t.Errorf("expected RegistrationMode %q, got %q", events.RegistrationModeTeam, evt.Data.RegistrationMode)
+	}
+	if evt.Data.TeamID == nil || *evt.Data.TeamID != teamID {
+		t.Errorf("expected TeamID %s, got %v", teamID, evt.Data.TeamID)
+	}
+	if evt.Data.TeamName == nil || *evt.Data.TeamName != "Falcon Squad" {
+		t.Errorf("expected TeamName %q, got %v", "Falcon Squad", evt.Data.TeamName)
+	}
+	if evt.Data.Recipient.AccountID != captainID {
+		t.Errorf("expected recipient AccountID %s, got %s", captainID, evt.Data.Recipient.AccountID)
+	}
+	if evt.Data.Recipient.Role != events.RecipientRoleCaptain {
+		t.Errorf("expected recipient role %q, got %q", events.RecipientRoleCaptain, evt.Data.Recipient.Role)
+	}
+	if evt.Data.Recipient.Email != "captain@example.com" {
+		t.Errorf("expected recipient email %q, got %q", "captain@example.com", evt.Data.Recipient.Email)
+	}
+	if evt.Data.Recipient.DisplayName != "Falcon Captain" {
+		t.Errorf("expected recipient DisplayName %q, got %q", "Falcon Captain", evt.Data.Recipient.DisplayName)
+	}
+}
+
+func TestRegisterSolo_PublishesRegistrationSubmitted(t *testing.T) {
+	tournamentID := uuid.New()
+	playerID := uuid.New()
+	tournament := &models.Tournament{
+		ID:                   tournamentID,
+		Name:                 "Solo Clash",
+		Status:               models.TournamentStatusRegistration,
+		RegistrationDeadline: time.Now().Add(time.Hour),
+		RegistrationMode:     models.TournamentRegistrationModeSolo,
+		MinTeamSize:          1,
+		MaxTeamSize:          1,
+		EntryFee:             0,
+	}
+	repo := &teamLobbyRepositoryStub{
+		tournament: tournament,
+	}
+	accountSvc := newStubAccountService().withAccountEmail(playerID, "soloplayer", "Solo Player", "solo@example.com")
+	pub := &mockPublisher{}
+
+	uc := usecases.NewTeamLobbyUseCase(repo, accountSvc, nil, nil, nil, pub)
+
+	view, err := uc.RegisterSolo(context.Background(), tournamentID, playerID, nil)
+	if err != nil {
+		t.Fatalf("RegisterSolo() failed: %v", err)
+	}
+	if view == nil || view.Team.Status != models.TournamentTeamStatusLocked {
+		t.Fatalf("expected locked solo team view, got: %+v", view)
+	}
+
+	if len(pub.events) != 1 {
+		t.Fatalf("expected 1 published event, got %d", len(pub.events))
+	}
+	if pub.events[0].routingKey != events.RegistrationSubmittedType {
+		t.Fatalf("expected routing key %q, got %q", events.RegistrationSubmittedType, pub.events[0].routingKey)
+	}
+	evt, ok := pub.events[0].event.(events.RegistrationSubmitted)
+	if !ok {
+		t.Fatalf("expected events.RegistrationSubmitted, got %T", pub.events[0].event)
+	}
+	if evt.Data.RegistrationMode != events.RegistrationModeSolo {
+		t.Errorf("expected RegistrationMode %q, got %q", events.RegistrationModeSolo, evt.Data.RegistrationMode)
+	}
+	if evt.Data.Recipient.Role != events.RecipientRoleApplicant {
+		t.Errorf("expected recipient role %q, got %q", events.RecipientRoleApplicant, evt.Data.Recipient.Role)
+	}
+	if evt.Data.Recipient.Email != "solo@example.com" {
+		t.Errorf("expected email %q, got %q", "solo@example.com", evt.Data.Recipient.Email)
+	}
+	if evt.Data.TeamID != nil {
+		t.Errorf("expected nil TeamID for solo, got %v", evt.Data.TeamID)
+	}
+	if evt.Data.TeamName != nil {
+		t.Errorf("expected nil TeamName for solo, got %v", evt.Data.TeamName)
+	}
+}
+
+func TestReconcile_PublishesRegistrationSubmitted_WhenPaid(t *testing.T) {
+	tournamentID := uuid.New()
+	teamID := uuid.New()
+	payerID := uuid.New()
+	attemptID := uuid.New()
+	expires := time.Now().Add(time.Minute)
+
+	tournament := models.Tournament{
+		ID:                   tournamentID,
+		Name:                 "Pro League",
+		Status:               models.TournamentStatusRegistration,
+		RegistrationDeadline: time.Now().Add(time.Hour),
+		RegistrationMode:     models.TournamentRegistrationModeTeam,
+		MinTeamSize:          2,
+		MaxTeamSize:          5,
+	}
+	team := &models.TournamentTeam{
+		ID:                  teamID,
+		TournamentID:        tournamentID,
+		Tournament:          tournament,
+		Name:                "Shadow Hunters",
+		Status:              models.TournamentTeamStatusPaymentPending,
+		PaymentAttemptID:    &attemptID,
+		PaymentPayerID:      &payerID,
+		PaymentExpiresAt:    &expires,
+		PaymentAmountMinor:  50000,
+		Members: []models.TournamentTeamMember{{
+			ID:               uuid.New(),
+			TournamentTeamID: teamID,
+			AccountID:        payerID,
+			Role:             models.TournamentTeamMemberRoleCaptain,
+		}},
+	}
+	repo := &teamLobbyRepositoryStub{
+		tournament: &tournament,
+		team:       team,
+	}
+	accountSvc := newStubAccountService().withAccountEmail(payerID, "shadow_lead", "Shadow Lead", "lead@shadow.org")
+	pub := &mockPublisher{}
+
+	uc := usecases.NewTeamLobbyUseCase(repo, accountSvc, registrationPaymentStub{}, nil, nil, pub)
+
+	if err := uc.Reconcile(context.Background(), team); err != nil {
+		t.Fatalf("Reconcile() failed: %v", err)
+	}
+
+	if len(pub.events) != 1 {
+		t.Fatalf("expected 1 published event, got %d", len(pub.events))
+	}
+	evt, ok := pub.events[0].event.(events.RegistrationSubmitted)
+	if !ok {
+		t.Fatalf("expected events.RegistrationSubmitted, got %T", pub.events[0].event)
+	}
+	if evt.Data.TournamentName != "Pro League" {
+		t.Errorf("expected TournamentName %q, got %q", "Pro League", evt.Data.TournamentName)
+	}
+	if evt.Data.Recipient.Email != "lead@shadow.org" {
+		t.Errorf("expected email %q, got %q", "lead@shadow.org", evt.Data.Recipient.Email)
+	}
+}
+
+func TestApplyPaymentOutcome_PublishesRegistrationSubmitted_WhenPaid(t *testing.T) {
+	tournamentID := uuid.New()
+	teamID := uuid.New()
+	payerID := uuid.New()
+	attemptID := uuid.New()
+	expires := time.Now().Add(time.Minute).UTC().Truncate(time.Microsecond)
+
+	tournament := models.Tournament{
+		ID:                   tournamentID,
+		Name:                 "Masters Cup",
+		Status:               models.TournamentStatusRegistration,
+		RegistrationDeadline: time.Now().Add(time.Hour),
+		RegistrationMode:     models.TournamentRegistrationModeTeam,
+		MinTeamSize:          2,
+		MaxTeamSize:          5,
+	}
+	pendingTeam := func() *models.TournamentTeam {
+		return &models.TournamentTeam{
+			ID:                  teamID,
+			TournamentID:        tournamentID,
+			Tournament:          tournament,
+			Name:                "Titans",
+			Status:              models.TournamentTeamStatusPaymentPending,
+			PaymentAttemptID:    &attemptID,
+			PaymentPayerID:      &payerID,
+			PaymentExpiresAt:    &expires,
+			PaymentAmountMinor:  10000,
+			Members: []models.TournamentTeamMember{{
+				ID:               uuid.New(),
+				TournamentTeamID: teamID,
+				AccountID:        payerID,
+				Role:             models.TournamentTeamMemberRoleCaptain,
+			}},
+		}
+	}
+
+	repo := &teamLobbyRepositoryStub{
+		tournament: &tournament,
+		team:       pendingTeam(),
+	}
+	accountSvc := newStubAccountService().withAccountEmail(payerID, "titan_cap", "Titan Captain", "cap@titans.com")
+	pub := &mockPublisher{}
+
+	uc := usecases.NewTeamLobbyUseCase(repo, accountSvc, nil, nil, nil, pub)
+
+	paidOutcome := usecases.PaymentOutcome{
+		Status:         models.PaymentPaid,
+		PaymentID:      uuid.New(),
+		PayerAccountID: payerID,
+		Reference:      teamID.String() + ":" + attemptID.String(),
+		AmountMinor:    10000,
+		Currency:       "THB",
+		ExpiresAt:      expires,
+	}
+
+	if err := uc.ApplyPaymentOutcome(context.Background(), paidOutcome); err != nil {
+		t.Fatalf("ApplyPaymentOutcome() failed: %v", err)
+	}
+
+	if len(pub.events) != 1 {
+		t.Fatalf("expected 1 published event, got %d", len(pub.events))
+	}
+	evt := pub.events[0].event.(events.RegistrationSubmitted)
+	if evt.Data.RegistrationID != teamID {
+		t.Errorf("expected RegistrationID %s, got %s", teamID, evt.Data.RegistrationID)
+	}
+
+	// Calling again when already locked/processed should be a no-op and not republish
+	if err := uc.ApplyPaymentOutcome(context.Background(), paidOutcome); err != nil {
+		t.Fatalf("second ApplyPaymentOutcome() failed: %v", err)
+	}
+	if len(pub.events) != 1 {
+		t.Fatalf("expected still 1 published event after idempotent call, got %d", len(pub.events))
+	}
 }

@@ -7,7 +7,7 @@ LAYOUT_WITH_LEGEND()
 title Level 1: System Context Diagram - Eventory
 
 Person(organizer, "Organizer", "Hosts tournaments, sets rules, and configures registration forms")
-Person(competitor, "Competitor / Captain", "Discovers events, forms team lobbies, registers, and pays entry fees")
+Person(competitor, "Competitor", "Discovers events, forms team lobbies, registers, and pays entry fees")
 Person(sponsor, "Sponsor", "Funds tournaments and pledges packages")
 Person(staff, "Tournament Staff", "Records match results and updates standings")
 

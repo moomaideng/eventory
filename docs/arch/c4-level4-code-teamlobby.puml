@@ -23,6 +23,7 @@ package "Domain Layer" {
         -accountSvc: AccountService
         -payments: PaymentService
         -formRepo: RegistrationFormRepository
+        -publisher: Publisher
         +Create(ctx, tournamentID, captainID, name): TeamLobbyView
         +RegisterSolo(ctx, tournamentID, accountID): TeamLobbyView
         +Join(ctx, inviteCode, memberAccountID): TeamLobbyView
@@ -90,6 +91,10 @@ package "Ports (Interfaces)" {
         +GetForm(ctx, tournamentID): FormDocument
         +SaveAnswers(ctx, answers): error
     }
+
+    interface Publisher <<interface>> {
+        +Publish(ctx, routingKey, event): error
+    }
 }
 
 package "Adapters (Infrastructure)" {
@@ -120,6 +125,11 @@ package "Adapters (Infrastructure)" {
         +GetForm(ctx, tournamentID): FormDocument
         +SaveAnswers(ctx, answers): error
     }
+
+    class RabbitMQPublisher {
+        -conn: *amqp.Connection
+        +Publish(ctx, routingKey, event): error
+    }
 }
 
 TeamLobbyHandler --> TeamLobbyUseCase : invokes
@@ -128,6 +138,7 @@ TeamLobbyUseCase --> TeamLobbyRepository : uses
 TeamLobbyUseCase --> AccountService : uses
 TeamLobbyUseCase --> PaymentService : uses
 TeamLobbyUseCase --> RegistrationFormRepository : uses
+TeamLobbyUseCase --> Publisher : uses
 
 TeamLobbyUseCase ..> TournamentTeam : creates / mutates
 TournamentTeam "1" *-- "1..*" TournamentTeamMember : contains
@@ -138,5 +149,6 @@ AccountGrpcClient ..|> AccountService : implements
 PaymentGrpcClient ..|> PaymentService : implements
 PaymentGrpcClient ..|> RegistrationRefundService : implements
 MongoFormRepository ..|> RegistrationFormRepository : implements
+RabbitMQPublisher ..|> Publisher : implements
 
 @enduml

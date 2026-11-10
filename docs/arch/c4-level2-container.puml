@@ -2,13 +2,16 @@
 skinparam dpi 200
 !include <C4/C4_Container>
 
+!define LAYOUT_TOP_DOWN() top to bottom direction
+!define BiRel_R(e_from, e_to, e_label, e_techn) e_from <-RIGHT-> e_to : "===e_label\n//<size:12>[e_techn]</size>//"
+
 LAYOUT_TOP_DOWN()
 LAYOUT_WITH_LEGEND()
 
 title Level 2: Container Diagram - Eventory
 
 Person(organizer, "Organizer", "Hosts and runs tournaments")
-Person(competitor, "Competitor / Captain", "Registers solo or with team")
+Person(competitor, "Competitor", "Registers solo or with team")
 Person(sponsor, "Sponsor", "Funds tournaments via packages")
 Person(staff, "Tournament Staff", "Enters match results")
 
