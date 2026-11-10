@@ -29,5 +29,6 @@ func StartRabbitMQ(ctx context.Context, tb testing.TB) string {
 	if err != nil {
 		tb.Fatalf("apptest: read rabbitmq endpoint: %v", err)
 	}
-	return fmt.Sprintf("amqp://guest:guest@%s/", endpoint)
+	// Disposable loopback container without TLS; AMQPS adds nothing here.
+	return fmt.Sprintf("amqp://guest:guest@%s/", endpoint) // NOSONAR go:S5332
 }
