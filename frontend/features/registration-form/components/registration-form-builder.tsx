@@ -11,7 +11,10 @@ import { Spinner } from "@/components/ui/spinner";
 import { FormBuilderSidebar } from "@/features/registration-form/components/form-builder-sidebar";
 import { FormFieldCard } from "@/features/registration-form/components/form-field-card";
 import { FormHeaderCard } from "@/features/registration-form/components/form-header-card";
-import { formFieldSchema, type FormField } from "@/features/registration-form/schemas";
+import { RegistrationFormPreview } from "@/features/registration-form/components/registration-form-preview";
+import { isFormEditable } from "@/features/registration-form/lock";
+import type { FormField } from "@/features/registration-form/schemas";
+import { parseFormFields } from "@/features/registration-form/utils";
 import type { components } from "@/lib/api/schema";
 
 type RegistrationFormResponse = components["schemas"]["RegistrationFormResponse"];
@@ -19,46 +22,19 @@ type RegistrationFormResponse = components["schemas"]["RegistrationFormResponse"
 interface RegistrationFormEditorProps {
   tournamentId: string;
   initialData?: RegistrationFormResponse;
-  editable: boolean;
 }
 
 function RegistrationFormEditor({
   tournamentId,
   initialData,
-  editable,
 }: RegistrationFormEditorProps) {
   const { authorizationHeader } = useAuth();
   const queryClient = useQueryClient();
   const [title, setTitle] = useState(initialData?.title ?? "Tournament Registration Form");
   const [description, setDescription] = useState(initialData?.description ?? "");
-  const [fields, setFields] = useState<FormField[]>(() => {
-    if (initialData?.fields && initialData.fields.length > 0) {
-      return initialData.fields.map((f, i) => {
-        const parsed = formFieldSchema.safeParse({
-          id: f.id,
-          type: f.type,
-          label: f.label,
-          description: f.description ?? "",
-          required: f.required ?? false,
-          order: f.order ?? i + 1,
-          config: typeof f.config === "object" && f.config !== null ? f.config : {},
-        });
-        if (parsed.success) {
-          return parsed.data;
-        }
-        return {
-          id: f.id,
-          type: "SHORT_TEXT",
-          label: f.label,
-          description: f.description ?? "",
-          required: f.required ?? false,
-          order: f.order ?? i + 1,
-          config: {},
-        } satisfies FormField;
-      });
-    }
-    return [];
-  });
+  const [fields, setFields] = useState<FormField[]>(() =>
+    parseFormFields(initialData?.fields)
+  );
 
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -225,9 +201,7 @@ function RegistrationFormEditor({
             ) : null}
           </div>
           <p className="text-muted-foreground text-sm">
-            {editable
-              ? "Customize the questionnaire players must fill out when registering for this tournament."
-              : "Registration questions are locked once registration opens. This is the form players see."}
+            Customize the questionnaire players must fill out when registering for this tournament.
           </p>
         </div>
 
@@ -238,43 +212,36 @@ function RegistrationFormEditor({
             </span>
           )}
 
-          {editable ? (
-            <>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={handleAddField}
-              >
-                <Plus data-icon="inline-start" />
-                Add Question
-              </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={handleAddField}
+          >
+            <Plus data-icon="inline-start" />
+            Add Question
+          </Button>
 
-              <Button
-                type="button"
-                size="sm"
-                onClick={handleSave}
-                disabled={saveMutation.isPending}
-              >
-                {saveMutation.isPending ? (
-                  <Spinner data-icon="inline-start" className="size-4" />
-                ) : (
-                  <Save data-icon="inline-start" />
-                )}
-                Save Form
-              </Button>
-            </>
-          ) : null}
+          <Button
+            type="button"
+            size="sm"
+            onClick={handleSave}
+            disabled={saveMutation.isPending}
+          >
+            {saveMutation.isPending ? (
+              <Spinner data-icon="inline-start" className="size-4" />
+            ) : (
+              <Save data-icon="inline-start" />
+            )}
+            Save Form
+          </Button>
         </div>
       </div>
 
       {/* 2-Column Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_20rem] xl:grid-cols-[minmax(0,1fr)_22rem] gap-8 items-start w-full">
         {/* Main Form Canvas */}
-        <div
-          className="flex flex-col gap-6 min-w-0"
-          inert={!editable}
-        >
+        <div className="flex flex-col gap-6 min-w-0">
           <FormHeaderCard
             title={title}
             description={description}
@@ -299,12 +266,10 @@ function RegistrationFormEditor({
                   Basic competitor details are already collected by default. Add custom fields if your tournament requires rank proof, Discord handles, or jerseys.
                 </p>
               </div>
-              {editable ? (
-                <Button type="button" variant="outline" size="sm" onClick={handleAddField}>
-                  <Plus data-icon="inline-start" />
-                  Add Question
-                </Button>
-              ) : null}
+              <Button type="button" variant="outline" size="sm" onClick={handleAddField}>
+                <Plus data-icon="inline-start" />
+                Add Question
+              </Button>
             </div>
           ) : (
             <div className="flex flex-col gap-6">
@@ -324,7 +289,7 @@ function RegistrationFormEditor({
             </div>
           )}
 
-          {editable && fields.length > 0 && (
+          {fields.length > 0 && (
             <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
               <Button
                 type="button"
@@ -371,11 +336,13 @@ function RegistrationFormEditor({
 
 export function RegistrationFormBuilder({
   tournamentId,
-  editable = true,
+  status,
+  onViewRegistrations,
 }: {
   tournamentId: string;
-  /** The form schema can only be changed while the tournament is DRAFT or CROWDFUNDING. */
-  editable?: boolean;
+  /** Tournament status; the form can only be edited while DRAFT or CROWDFUNDING. */
+  status: string;
+  onViewRegistrations?: () => void;
 }) {
   const { authorizationHeader, isLoading: authLoading } = useAuth();
 
@@ -400,12 +367,21 @@ export function RegistrationFormBuilder({
     );
   }
 
+  if (!isFormEditable(status)) {
+    return (
+      <RegistrationFormPreview
+        data={data}
+        status={status}
+        onViewRegistrations={onViewRegistrations}
+      />
+    );
+  }
+
   return (
     <RegistrationFormEditor
       key={data?.id ?? "new"}
       tournamentId={tournamentId}
       initialData={data}
-      editable={editable}
     />
   );
 }

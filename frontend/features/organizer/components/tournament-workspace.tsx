@@ -261,9 +261,9 @@ export function TournamentWorkspace({
                     <TabsContent value="form" keepMounted>
                       <RegistrationFormBuilder
                         tournamentId={tournamentId}
-                        editable={
-                          data.summary.tournament.status === "DRAFT" ||
-                          data.summary.tournament.status === "CROWDFUNDING"
+                        status={data.summary.tournament.status}
+                        onViewRegistrations={
+                          canReview ? () => selectTab("registration") : undefined
                         }
                       />
                     </TabsContent>

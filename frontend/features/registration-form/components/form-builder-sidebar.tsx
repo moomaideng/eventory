@@ -9,11 +9,13 @@ import type { FormField } from "@/features/registration-form/schemas";
 export interface FormBuilderSidebarProps {
   fields: FormField[];
   onScrollToField?: (id: string) => void;
+  readOnly?: boolean;
 }
 
 export function FormBuilderSidebar({
   fields,
   onScrollToField,
+  readOnly = false,
 }: FormBuilderSidebarProps) {
   return (
     <aside className="flex flex-col gap-6 w-full lg:sticky lg:top-6">
@@ -33,7 +35,9 @@ export function FormBuilderSidebar({
         <CardContent className="text-sm">
           {fields.length === 0 ? (
             <p className="text-xs text-muted-foreground italic">
-              No questions added yet. Click &quot;Add Question&quot; to begin.
+              {readOnly
+                ? "No questions were added."
+                : 'No questions added yet. Click "Add Question" to begin.'}
             </p>
           ) : (
             <ol className="flex flex-col gap-2 max-h-[32rem] overflow-y-auto pr-1">

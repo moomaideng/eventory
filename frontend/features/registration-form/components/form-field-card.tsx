@@ -28,7 +28,7 @@ import {
 import { FormFieldOptions } from "@/features/registration-form/components/form-field-options";
 import type { FieldType, FormField, FormFieldOption } from "@/features/registration-form/schemas";
 
-const FIELD_TYPE_OPTIONS = [
+export const FIELD_TYPE_OPTIONS = [
   { value: "SHORT_TEXT", label: "Short text" },
   { value: "LONG_TEXT", label: "Long text" },
   { value: "NUMBER", label: "Number" },
