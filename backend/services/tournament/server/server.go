@@ -14,6 +14,7 @@ import (
 	"github.com/moomaideng/eventory/internal/middlewares"
 	"github.com/moomaideng/eventory/internal/telemetry"
 	"github.com/moomaideng/eventory/services/tournament/config"
+	"github.com/moomaideng/eventory/services/tournament/handlers/messaging"
 	resthandlers "github.com/moomaideng/eventory/services/tournament/handlers/rest"
 	"github.com/moomaideng/eventory/services/tournament/internal/adapters/accountgrpc"
 	"github.com/moomaideng/eventory/services/tournament/internal/adapters/paymentgrpc"
@@ -30,9 +31,9 @@ import (
 )
 
 type App struct {
-	Close          func() error
-	HTTP           http.Handler
-	RunSubmissions func(context.Context)
+	Close         func() error
+	HTTP          http.Handler
+	RunBackground func(context.Context)
 }
 
 func NewApp(db *gorm.DB, mongoDB *mongo.Database, cfg config.Config) *App {
@@ -41,15 +42,19 @@ func NewApp(db *gorm.DB, mongoDB *mongo.Database, cfg config.Config) *App {
 		slog.Error("failed to create account gRPC client", "error", err)
 		panic(err)
 	}
-	return newApp(db, mongoDB, cfg, accountSvc)
+	publisher, err := events.NewRabbitMQPublisher(cfg.BrokerURL)
+	if err != nil {
+		slog.Error("failed to create event publisher", "error", err)
+		panic(err)
+	}
+	return newApp(db, mongoDB, cfg, accountSvc, publisher)
 }
 
-// NewAppWithAccountConn wires the HTTP API using an existing Account gRPC connection (tests).
-func NewAppWithAccountConn(db *gorm.DB, mongoDB *mongo.Database, cfg config.Config, conn grpc.ClientConnInterface) *App {
-	return newApp(db, mongoDB, cfg, accountgrpc.NewAccountClientFromConn(conn))
+func NewAppForTest(db *gorm.DB, mongoDB *mongo.Database, cfg config.Config, conn grpc.ClientConnInterface, publisher events.Publisher) *App {
+	return newApp(db, mongoDB, cfg, accountgrpc.NewAccountClientFromConn(conn), publisher)
 }
 
-func newApp(db *gorm.DB, mongoDB *mongo.Database, cfg config.Config, accountSvc ports.AccountService) *App {
+func newApp(db *gorm.DB, mongoDB *mongo.Database, cfg config.Config, accountSvc ports.AccountService, eventPublisher events.Publisher) *App {
 	payments, err := paymentgrpc.New(cfg.PaymentGRPCAddr, cfg.PaymentServiceKey, cfg.Logging.SlowRequestMS)
 	if err != nil {
 		panic(err)
@@ -68,62 +73,25 @@ func newApp(db *gorm.DB, mongoDB *mongo.Database, cfg config.Config, accountSvc 
 	teamLobbyUseCase := usecases.NewTeamLobbyUseCase(teamLobbyRepo, accountSvc, payments, formRepo, fieldRegistry)
 	sponsorships := usecases.NewSponsorshipUseCase(repositories.NewSponsorshipRepository(db), tournamentRepo, accountSvc, payments)
 
-	var eventPublisher events.Publisher = events.NoopPublisher{}
-	if cfg.BrokerURL != "" {
-		if pub, err := events.NewRabbitMQPublisher(cfg.BrokerURL); err == nil {
-			eventPublisher = pub
-		} else {
-			slog.Warn("failed to initialize rabbitmq publisher, using noop", "error", err)
-		}
-	}
 	teamReviews := usecases.NewTeamReviewUseCase(repositories.NewTeamReviewRepository(db), accountSvc, payments, eventPublisher)
 	announcements := usecases.NewAnnouncementUseCase(repositories.NewAnnouncementRepository(db), accountSvc, eventPublisher)
 	return &App{
 		Close: payments.Close,
 		HTTP:  newHTTPRouter(db, mongoDB, cfg, accountSvc, tournamentRepo, formRepo, fieldRegistry, teamLobbyUseCase, sponsorships, teamReviews, announcements),
-		RunSubmissions: func(ctx context.Context) {
-			go sponsorshipPoller(sponsorships).run(ctx)
-			go refundPoller(teamReviews).run(ctx)
-			teamSubmissionPoller(teamLobbyUseCase).run(ctx)
+		RunBackground: func(ctx context.Context) {
+			go messaging.PaymentEventConsumer(cfg.BrokerURL).Run(ctx, messaging.PaymentEventHandler(teamLobbyUseCase, sponsorships))
+			refundPoller(teamReviews).run(ctx)
 		},
 	}
 }
 
-const reconcileInterval = 10 * time.Second
-
-func teamSubmissionPoller(u *usecases.TeamLobbyUseCase) poller[models.TournamentTeam] {
-	return poller[models.TournamentTeam]{
-		interval:    reconcileInterval,
-		spanName:    "reconcile pending team submissions",
-		listPending: u.Pending,
-		reconcile:   u.Reconcile,
-		onListError: func(ctx context.Context, err error) {
-			slog.ErrorContext(ctx, "list pending team submissions", "error", err)
-		},
-		onReconcileError: func(ctx context.Context, team *models.TournamentTeam, err error) {
-			slog.ErrorContext(ctx, "reconcile team submission", "team_id", team.ID, "error", err)
-		},
-	}
-}
-
-func sponsorshipPoller(u *usecases.SponsorshipUseCase) poller[models.SponsorshipPledge] {
-	return poller[models.SponsorshipPledge]{
-		interval:    reconcileInterval,
-		spanName:    "reconcile pending sponsorships",
-		listPending: u.Pending,
-		reconcile:   u.Reconcile,
-		onListError: func(ctx context.Context, err error) {
-			slog.ErrorContext(ctx, "list pending sponsorships", "error", err)
-		},
-		onReconcileError: func(ctx context.Context, pledge *models.SponsorshipPledge, err error) {
-			slog.WarnContext(ctx, "reconcile sponsorship", "pledge", pledge.ID, "error", err)
-		},
-	}
-}
+// Rejected-registration refunds are retried by their own loop: a failed refund
+// call to Payment is Tournament's to repeat, and no payment event announces it.
+const refundRetryInterval = 10 * time.Second
 
 func refundPoller(u *usecases.TeamReviewUseCase) poller[models.TournamentTeam] {
 	return poller[models.TournamentTeam]{
-		interval:    reconcileInterval,
+		interval:    refundRetryInterval,
 		spanName:    "retry rejected registration refunds",
 		listPending: u.PendingRefunds,
 		reconcile:   u.RetryRefund,

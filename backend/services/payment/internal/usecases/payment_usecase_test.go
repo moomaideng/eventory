@@ -2,6 +2,7 @@ package usecases
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
 	"time"
 
@@ -34,66 +35,74 @@ func TestHistoryFilter(t *testing.T) {
 	}
 }
 
+// mockPaymentRepo runs the use case's mutation on one invoice and records the
+// outbox events it asks to store with the change.
 type mockPaymentRepo struct {
 	repositories.PaymentRepository
 	invoice *models.Invoice
+	queued  []models.OutboxEvent
 }
 
-func (m *mockPaymentRepo) Complete(ctx context.Context, payer, id uuid.UUID, fn func(*models.Invoice) error) (*models.Invoice, error) {
-	if err := fn(m.invoice); err != nil {
+func (m *mockPaymentRepo) Complete(_ context.Context, _, _ uuid.UUID, fn func(*models.Invoice) ([]models.OutboxEvent, error)) (*models.Invoice, error) {
+	queued, err := fn(m.invoice)
+	if err != nil {
 		return nil, err
 	}
+	m.queued = append(m.queued, queued...)
 	return m.invoice, nil
 }
 
-type recordedEvent struct {
-	routingKey string
-	event      any
-}
+func TestCompleteMockQueuesTheOutcomeEvent(t *testing.T) {
+	for _, tc := range []struct {
+		name     string
+		source   string
+		result   models.MockResult
+		wantKey  string // empty: no event
+		wantDone func(*models.Invoice) bool
+	}{
+		{"success", "TEAM_REGISTRATION", models.Succeeded, events.PaymentConfirmedType, func(i *models.Invoice) bool { return i.PaidAt != nil }},
+		{"failed registration payment closes the attempt", "TEAM_REGISTRATION", models.Failed, events.PaymentCancelledType, func(i *models.Invoice) bool { return i.CancelledAt != nil }},
+		{"cancelled sponsorship closes the attempt", "SPONSORSHIP", models.Cancelled, events.PaymentCancelledType, func(i *models.Invoice) bool { return i.CancelledAt != nil }},
+		{"failed payment for another source stays retryable", "OTHER", models.Failed, "", func(i *models.Invoice) bool { return i.CancelledAt == nil && i.PaidAt == nil }},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			invoice := &models.Invoice{
+				ID: uuid.New(), PayerAccountID: uuid.New(), Provider: "MOCK", Source: tc.source, Reference: "team:attempt",
+				AmountMinor: 50000, Currency: "THB", ExpiresAt: time.Now().Add(time.Hour),
+			}
+			repo := &mockPaymentRepo{invoice: invoice}
 
-type mockPublisher struct {
-	events []recordedEvent
-}
+			_, err := NewPaymentUseCase(repo).CompleteMock(context.Background(), invoice.PayerAccountID, invoice.ID, tc.result)
+			require.NoError(t, err)
 
-func (m *mockPublisher) Publish(ctx context.Context, routingKey string, event any) error {
-	m.events = append(m.events, recordedEvent{routingKey: routingKey, event: event})
-	return nil
-}
-
-func (m *mockPublisher) Close() error {
-	return nil
-}
-
-func TestPaymentUseCase_CompleteMockPublishesEvent(t *testing.T) {
-	payerID := uuid.New()
-	invoiceID := uuid.New()
-
-	invoice := &models.Invoice{
-		ID:             invoiceID,
-		PayerAccountID: payerID,
-		Provider:       "MOCK",
-		AmountMinor:    50000,
-		Currency:       "THB",
-		Description:    "Tournament Entry Fee",
-		ExpiresAt:      time.Now().Add(1 * time.Hour),
+			assert.True(t, tc.wantDone(invoice))
+			if tc.wantKey == "" {
+				require.Empty(t, repo.queued)
+				return
+			}
+			require.Len(t, repo.queued, 1)
+			queued := repo.queued[0]
+			assert.Equal(t, tc.wantKey, queued.RoutingKey)
+			assert.Equal(t, invoice.ID.String()+":"+tc.wantKey, queued.DedupKey)
+			var body struct {
+				Data events.PaymentInvoice `json:"data"`
+			}
+			require.NoError(t, json.Unmarshal(queued.Payload, &body))
+			assert.Equal(t, invoice.ID, body.Data.PaymentID)
+			assert.Equal(t, tc.source, body.Data.InvoiceSource)
+			assert.Equal(t, "team:attempt", body.Data.Reference)
+			assert.Equal(t, int64(50000), body.Data.AmountMinor)
+			assert.True(t, invoice.ExpiresAt.Equal(body.Data.ExpiresAt))
+		})
 	}
+}
 
-	pub := &mockPublisher{}
+func TestCompleteMockReplayQueuesNothing(t *testing.T) {
+	paidAt := time.Now().UTC()
+	invoice := &models.Invoice{ID: uuid.New(), PayerAccountID: uuid.New(), Provider: "MOCK", Source: "TEAM_REGISTRATION", PaidAt: &paidAt, ExpiresAt: time.Now().Add(time.Hour)}
 	repo := &mockPaymentRepo{invoice: invoice}
-	uc := NewPaymentUseCase(repo, pub)
 
-	res, err := uc.CompleteMock(context.Background(), payerID, invoiceID, models.Succeeded)
+	_, err := NewPaymentUseCase(repo).CompleteMock(context.Background(), invoice.PayerAccountID, invoice.ID, models.Succeeded)
 	require.NoError(t, err)
-	assert.NotNil(t, res.PaidAt)
-
-	require.Len(t, pub.events, 1)
-	assert.Equal(t, events.PaymentConfirmedType, pub.events[0].routingKey)
-	evt, ok := pub.events[0].event.(events.PaymentConfirmed)
-	require.True(t, ok)
-	assert.Equal(t, events.PaymentConfirmedType, evt.Type)
-	assert.Equal(t, invoiceID, evt.Data.PaymentID)
-	assert.Equal(t, payerID, evt.Data.PayerAccountID)
-	assert.Equal(t, int64(50000), evt.Data.AmountMinor)
-	assert.Equal(t, "THB", evt.Data.Currency)
-	assert.Equal(t, "Tournament Entry Fee", evt.Data.Description)
+	require.Empty(t, repo.queued)
 }

@@ -41,6 +41,7 @@ func Load() (Config, error) {
 		"HTTP_PORT":         cfg.HTTPPort,
 		"DB_DSN":            cfg.DBDSN,
 		"ACCOUNT_GRPC_ADDR": cfg.AccountGRPCAddr,
+		"BROKER_URL":        cfg.BrokerURL,
 	}); err != nil {
 		return Config{}, err
 	}

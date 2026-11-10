@@ -26,7 +26,7 @@ func Load() (Config, error) {
 	if err != nil {
 		return Config{}, err
 	}
-	if err := sharedconfig.RequireNonEmpty(map[string]string{"HTTP_PORT": cfg.HTTPPort, "GRPC_PORT": cfg.GRPCPort, "DB_DSN": cfg.DBDSN}); err != nil {
+	if err := sharedconfig.RequireNonEmpty(map[string]string{"HTTP_PORT": cfg.HTTPPort, "GRPC_PORT": cfg.GRPCPort, "DB_DSN": cfg.DBDSN, "BROKER_URL": cfg.BrokerURL}); err != nil {
 		return Config{}, err
 	}
 	if len(cfg.ServiceKey) < 32 {

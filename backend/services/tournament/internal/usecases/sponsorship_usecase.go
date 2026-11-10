@@ -3,6 +3,7 @@ package usecases
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -18,8 +19,6 @@ var (
 	ErrInvalidSponsorship  = errors.New("invalid sponsorship request")
 	ErrSponsorshipNotFound = errors.New("sponsorship not found")
 )
-
-const SponsorshipPaymentSource = "SPONSORSHIP"
 
 type StartSponsorship struct {
 	RequestID    uuid.UUID
@@ -173,7 +172,7 @@ func (u *SponsorshipUseCase) Reconcile(ctx context.Context, pledge *models.Spons
 		return nil
 	}
 	request := ports.RegistrationPaymentRequest{
-		PayerAccountID: pledge.PayerAccountID, Source: SponsorshipPaymentSource,
+		PayerAccountID: pledge.PayerAccountID, Source: models.PaymentSourceSponsorship,
 		Reference: pledge.ID.String(), IdempotencyKey: pledge.ID.String(),
 		Description: "Sponsorship: " + pledge.TierName, AmountMinor: pledge.AmountMinor, Currency: pledge.Currency, ExpiresAt: pledge.ExpiresAt,
 	}
@@ -181,29 +180,60 @@ func (u *SponsorshipUseCase) Reconcile(ctx context.Context, pledge *models.Spons
 	if err != nil || payment == nil {
 		return ErrPaymentUnavailable
 	}
-	if payment.ID == uuid.Nil ||
-		payment.PayerAccountID != request.PayerAccountID ||
-		payment.Source != request.Source ||
-		payment.Reference != request.Reference ||
-		payment.AmountMinor != request.AmountMinor ||
-		payment.Currency != request.Currency ||
-		!payment.ExpiresAt.Equal(request.ExpiresAt) ||
-		(pledge.PaymentID != nil && *pledge.PaymentID != payment.ID) {
+	if payment.Source != request.Source || payment.Reference != request.Reference || !pledgeMatches(pledge, outcomeOf(payment)) || !settleable(payment.Status) {
 		return ErrPaymentUnavailable
 	}
-	pledge.PaymentID = &payment.ID
-	switch payment.Status {
-	case "PAID":
+	return u.settle(ctx, pledge, payment.ID, payment.Status)
+}
+
+// ApplyPaymentOutcome records the result of a payment event on the pledge it
+// refers to. A pledge that is gone or already settled is left alone, so
+// redelivered events are harmless. An event whose terms differ from the
+// pledge returns ErrPaymentMismatch.
+func (u *SponsorshipUseCase) ApplyPaymentOutcome(ctx context.Context, outcome PaymentOutcome) error {
+	id, err := uuid.Parse(outcome.Reference)
+	if err != nil {
+		return fmt.Errorf("%w: sponsorship reference %q", ErrPaymentMismatch, outcome.Reference)
+	}
+	pledge, err := u.repo.Get(ctx, id)
+	if errors.Is(err, repositories.ErrPledgeNotFound) {
+		return nil
+	}
+	if err != nil {
+		return mapSponsorshipError(err)
+	}
+	if pledge.Status != models.PledgePending {
+		return nil
+	}
+	if !pledgeMatches(pledge, outcome) || !settleable(outcome.Status) {
+		return fmt.Errorf("%w: pledge %s", ErrPaymentMismatch, pledge.ID)
+	}
+	return u.settle(ctx, pledge, outcome.PaymentID, outcome.Status)
+}
+
+// pledgeMatches reports whether the invoice was issued for the pledge.
+func pledgeMatches(pledge *models.SponsorshipPledge, p PaymentOutcome) bool {
+	return p.PaymentID != uuid.Nil &&
+		p.PayerAccountID == pledge.PayerAccountID &&
+		p.AmountMinor == pledge.AmountMinor &&
+		p.Currency == pledge.Currency &&
+		p.ExpiresAt.Equal(pledge.ExpiresAt) &&
+		(pledge.PaymentID == nil || *pledge.PaymentID == p.PaymentID)
+}
+
+// settle records an invoice status on a pending pledge. An unpaid invoice
+// only links the payment.
+func (u *SponsorshipUseCase) settle(ctx context.Context, pledge *models.SponsorshipPledge, paymentID uuid.UUID, status models.PaymentStatus) error {
+	pledge.PaymentID = &paymentID
+	switch status {
+	case models.PaymentPaid:
 		pledge.Status = models.PledgeConfirmed
 		now := time.Now().UTC()
 		pledge.ConfirmedAt = &now
-	case "EXPIRED":
+	case models.PaymentExpired:
 		pledge.Status = models.PledgeExpired
-	case "CANCELLED":
+	case models.PaymentCancelled:
 		pledge.Status = models.PledgeCancelled
-	case "UNPAID":
-	default:
-		return ErrPaymentUnavailable
 	}
 	tx, err := u.repo.Begin(ctx)
 	if err != nil {
@@ -230,10 +260,4 @@ func mapSponsorshipError(err error) error {
 		return ErrSponsorshipNotFound
 	}
 	return mapTierError(err)
-}
-
-// Pending lists pledges awaiting a payment outcome, for a background poller to
-// feed to Reconcile.
-func (u *SponsorshipUseCase) Pending(ctx context.Context) ([]models.SponsorshipPledge, error) {
-	return u.repo.Pending(ctx)
 }

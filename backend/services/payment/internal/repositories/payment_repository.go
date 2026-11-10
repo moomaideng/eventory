@@ -24,8 +24,17 @@ type PaymentRepository interface {
 	Get(ctx context.Context, invoiceID uuid.UUID) (*models.Invoice, error)
 	GetOwned(ctx context.Context, payerID uuid.UUID, invoiceID uuid.UUID) (*models.Invoice, error)
 	ListOwned(ctx context.Context, payerID uuid.UUID, filter Filter) ([]models.Invoice, int64, error)
-	Complete(ctx context.Context, payerID uuid.UUID, invoiceID uuid.UUID, mutate func(invoice *models.Invoice) error) (*models.Invoice, error)
+	// Complete runs mutate on the locked invoice. The outbox events it returns are
+	// stored in the same transaction, so they exist exactly when the change does.
+	Complete(ctx context.Context, payerID uuid.UUID, invoiceID uuid.UUID, mutate func(invoice *models.Invoice) ([]models.OutboxEvent, error)) (*models.Invoice, error)
 	Refund(ctx context.Context, invoiceID uuid.UUID, mutate func(invoice *models.Invoice) error) (*models.Invoice, error)
+	// AnnounceExpired writes one event (from build) for each unpaid invoice that
+	// passed its deadline and was not announced yet, and returns how many it did.
+	AnnounceExpired(ctx context.Context, now time.Time, limit int, build func(invoice *models.Invoice) (models.OutboxEvent, error)) (int, error)
+	// PublishOutbox hands unpublished events to publish, oldest first, and marks
+	// each one it accepted. It stops at the first failure, which it returns; that
+	// event and the ones after it stay queued for the next call.
+	PublishOutbox(ctx context.Context, limit int, publish func(event *models.OutboxEvent) error) (int, error)
 }
 
 type paymentRepository struct{ db *gorm.DB }
@@ -96,14 +105,18 @@ func (r *paymentRepository) ListOwned(ctx context.Context, payer uuid.UUID, filt
 	return payments, total, err
 }
 
-func (r *paymentRepository) Complete(ctx context.Context, payer, id uuid.UUID, mutate func(*models.Invoice) error) (*models.Invoice, error) {
+func (r *paymentRepository) Complete(ctx context.Context, payer, id uuid.UUID, mutate func(*models.Invoice) ([]models.OutboxEvent, error)) (*models.Invoice, error) {
 	var payment models.Invoice
 	err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		if err := tx.Preload("Receipt").Clauses(clause.Locking{Strength: "UPDATE"}).Where("id = ? AND payer_account_id = ?", id, payer).First(&payment).Error; err != nil {
 			return err
 		}
 		previouslyPaid := payment.PaidAt != nil
-		if err := mutate(&payment); err != nil {
+		events, err := mutate(&payment)
+		if err != nil {
+			return err
+		}
+		if err := insertOutbox(tx, events); err != nil {
 			return err
 		}
 		if previouslyPaid || payment.PaidAt == nil {
@@ -116,6 +129,76 @@ func (r *paymentRepository) Complete(ctx context.Context, payer, id uuid.UUID, m
 		return tx.Model(&payment).Omit("Receipt").Update("paid_at", payment.PaidAt).Error
 	})
 	return &payment, err
+}
+
+func (r *paymentRepository) AnnounceExpired(ctx context.Context, now time.Time, limit int, build func(*models.Invoice) (models.OutboxEvent, error)) (int, error) {
+	var announced int
+	err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		var invoices []models.Invoice
+		// Locking the rows keeps this away from a payer completing the same invoice.
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE", Options: "SKIP LOCKED"}).
+			Where("expires_at <= ? AND paid_at IS NULL AND cancelled_at IS NULL AND expiry_announced_at IS NULL", now).
+			Order("expires_at").Limit(limit).Find(&invoices).Error; err != nil {
+			return err
+		}
+		for i := range invoices {
+			event, err := build(&invoices[i])
+			if err != nil {
+				return err
+			}
+			if err := insertOutbox(tx, []models.OutboxEvent{event}); err != nil {
+				return err
+			}
+			if err := tx.Model(&models.Invoice{}).Where("id = ?", invoices[i].ID).Update("expiry_announced_at", now).Error; err != nil {
+				return err
+			}
+		}
+		announced = len(invoices)
+		return nil
+	})
+	return announced, err
+}
+
+// insertOutbox stores events, skipping any whose DedupKey is already stored.
+func insertOutbox(tx *gorm.DB, events []models.OutboxEvent) error {
+	if len(events) == 0 {
+		return nil
+	}
+	now := time.Now().UTC()
+	for i := range events {
+		events[i].ID = uuid.New()
+		events[i].CreatedAt = now
+	}
+	return tx.Clauses(clause.OnConflict{DoNothing: true}).Create(&events).Error
+}
+
+func (r *paymentRepository) PublishOutbox(ctx context.Context, limit int, publish func(*models.OutboxEvent) error) (int, error) {
+	var published int
+	var publishErr error
+	err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		var pending []models.OutboxEvent
+		// SKIP LOCKED lets several Payment instances relay without sending an event twice.
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE", Options: "SKIP LOCKED"}).
+			Where("published_at IS NULL").Order("created_at, id").Limit(limit).Find(&pending).Error; err != nil {
+			return err
+		}
+		for i := range pending {
+			// Stop at the first failure: the broker is likely down, and later
+			// events must not overtake this one.
+			if publishErr = publish(&pending[i]); publishErr != nil {
+				break
+			}
+			if err := tx.Model(&pending[i]).Update("published_at", time.Now().UTC()).Error; err != nil {
+				return err
+			}
+			published++
+		}
+		return nil
+	})
+	if err != nil {
+		return 0, err
+	}
+	return published, publishErr
 }
 
 func (r *paymentRepository) Refund(ctx context.Context, id uuid.UUID, mutate func(*models.Invoice) error) (*models.Invoice, error) {

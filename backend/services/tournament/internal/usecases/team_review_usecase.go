@@ -248,7 +248,7 @@ func (u *TeamReviewUseCase) refund(ctx context.Context, entryID, paymentID uuid.
 	if err != nil {
 		return err
 	}
-	if payment == nil || payment.ID != paymentID || payment.Status != "REFUNDED" {
+	if payment == nil || payment.ID != paymentID || payment.Status != models.PaymentRefunded {
 		return ErrPaymentUnavailable
 	}
 	return u.repo.MarkRefunded(ctx, entryID, paymentID)

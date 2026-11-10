@@ -1,12 +1,14 @@
 package apptest
 
 import (
+	"context"
 	"net"
 	"net/http/httptest"
 	"testing"
 
 	"go.mongodb.org/mongo-driver/v2/mongo"
 
+	"github.com/moomaideng/eventory/internal/events"
 	accountconfig "github.com/moomaideng/eventory/services/account/config"
 	accountserver "github.com/moomaideng/eventory/services/account/server"
 	paymentconfig "github.com/moomaideng/eventory/services/payment/config"
@@ -32,8 +34,34 @@ type App struct {
 }
 
 // NewApp wires both microservices with tournament calling account over in-process gRPC.
+// Payment events are discarded, so no broker is needed.
 func NewApp(tb testing.TB, dsn string, formDB ...*mongo.Database) *App {
 	tb.Helper()
+	return newApp(tb, dsn, "", formDB...)
+}
+
+// NewAppWithBroker is NewApp with Payment and Tournament connected to the
+// broker at brokerURL, and their background work running: payment events reach
+// Tournament as they would in production.
+func NewAppWithBroker(tb testing.TB, dsn, brokerURL string, formDB ...*mongo.Database) *App {
+	tb.Helper()
+	return newApp(tb, dsn, brokerURL, formDB...)
+}
+
+func newApp(tb testing.TB, dsn, brokerURL string, formDB ...*mongo.Database) *App {
+	tb.Helper()
+
+	var paymentEvents, tournamentEvents events.Publisher = events.NoopPublisher{}, events.NoopPublisher{}
+	if brokerURL != "" {
+		for _, target := range []*events.Publisher{&paymentEvents, &tournamentEvents} {
+			publisher, err := events.NewRabbitMQPublisher(brokerURL)
+			if err != nil {
+				tb.Fatalf("apptest: connect event publisher: %v", err)
+			}
+			tb.Cleanup(func() { _ = publisher.Close() })
+			*target = publisher
+		}
+	}
 
 	db, err := gorm.Open(gormpostgres.Open(dsn), &gorm.Config{
 		Logger: logger.Discard,
@@ -73,7 +101,7 @@ func NewApp(tb testing.TB, dsn string, formDB ...*mongo.Database) *App {
 	if err := paymentdb.AutoMigrate(db); err != nil {
 		tb.Fatal(err)
 	}
-	paymentApp := paymentserver.NewApp(db, paymentconfig.Config{Environment: "development", SupabaseURL: jwksServer.URL(), ServiceKey: "test-team-payment-service-key-12345678"})
+	paymentApp := paymentserver.NewApp(db, paymentconfig.Config{Environment: "development", SupabaseURL: jwksServer.URL(), ServiceKey: "test-team-payment-service-key-12345678"}, paymentEvents)
 	paymentLis, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		tb.Fatal(err)
@@ -86,11 +114,18 @@ func NewApp(tb testing.TB, dsn string, formDB ...*mongo.Database) *App {
 	if len(formDB) > 0 {
 		mongoDB = formDB[0]
 	}
-	tournamentApp := tournamentserver.NewAppWithAccountConn(db, mongoDB, tournamentconfig.Config{
+	tournamentApp := tournamentserver.NewAppForTest(db, mongoDB, tournamentconfig.Config{
 		Environment:     "development",
 		SupabaseURL:     jwksServer.URL(),
 		PaymentGRPCAddr: paymentLis.Addr().String(), PaymentServiceKey: "test-team-payment-service-key-12345678",
-	}, conn)
+		BrokerURL: brokerURL,
+	}, conn, tournamentEvents)
+	if brokerURL != "" {
+		background, stop := context.WithCancel(context.Background())
+		tb.Cleanup(stop)
+		go paymentApp.RunBackground(background)
+		go tournamentApp.RunBackground(background)
+	}
 	tb.Cleanup(func() { _ = tournamentApp.Close() })
 	tournamentTS := httptest.NewServer(tournamentApp.HTTP)
 	tb.Cleanup(tournamentTS.Close)

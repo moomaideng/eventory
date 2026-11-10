@@ -2,7 +2,6 @@ package server
 
 import (
 	"context"
-	"log/slog"
 	"net/http"
 
 	"github.com/danielgtaylor/huma/v2"
@@ -27,9 +26,12 @@ import (
 type App struct {
 	HTTP http.Handler
 	GRPC *grpc.Server
+	// RunBackground publishes payment events and announces expired invoices
+	// until ctx ends.
+	RunBackground func(context.Context)
 }
 
-func NewApp(db *gorm.DB, cfg config.Config) *App {
+func NewApp(db *gorm.DB, cfg config.Config, eventPublisher events.Publisher) *App {
 	router := chi.NewMux()
 	router.Use(telemetry.HTTPMiddleware(config.ServiceName))
 	router.Use(middlewares.RequestID)
@@ -60,19 +62,11 @@ func NewApp(db *gorm.DB, cfg config.Config) *App {
 		}
 		return nil, nil
 	})
-	var eventPublisher events.Publisher = events.NoopPublisher{}
-	if cfg.BrokerURL != "" {
-		if pub, err := events.NewRabbitMQPublisher(cfg.BrokerURL); err == nil {
-			eventPublisher = pub
-		} else {
-			slog.Warn("failed to initialize rabbitmq publisher, using noop", "error", err)
-		}
-	}
-	uc := usecases.NewPaymentUseCase(repositories.NewPaymentRepository(db), eventPublisher)
+	uc := usecases.NewPaymentUseCase(repositories.NewPaymentRepository(db))
 	grpcServer := grpc.NewServer(grpc.StatsHandler(otelgrpc.NewServerHandler()), grpc.ChainUnaryInterceptor(grpcx.UnaryServerLogging(cfg.Logging.SlowRequestMS), protohandlers.ServiceAuth(cfg.ServiceKey)))
 	paymentv1.RegisterPaymentServiceServer(grpcServer, protohandlers.NewPaymentServer(uc))
 	group := huma.NewGroup(api, "/api/v1/payments")
 	group.UseMiddleware(middlewares.NewAuthMiddleware(api, cfg.SupabaseURL, cfg.Environment).HumaMiddleware())
 	rest.RegisterPaymentRoutes(group, uc)
-	return &App{HTTP: router, GRPC: grpcServer}
+	return &App{HTTP: router, GRPC: grpcServer, RunBackground: func(ctx context.Context) { runBackground(ctx, uc, eventPublisher) }}
 }

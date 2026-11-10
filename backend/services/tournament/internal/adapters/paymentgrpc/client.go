@@ -10,6 +10,7 @@ import (
 	"github.com/moomaideng/eventory/internal/grpcx"
 	paymentv1 "github.com/moomaideng/eventory/services/payment/pkg/proto/payment/v1"
 	"github.com/moomaideng/eventory/services/tournament/internal/ports"
+	"github.com/moomaideng/eventory/services/tournament/models"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
@@ -67,7 +68,7 @@ func (c *Client) RefundRegistration(ctx context.Context, paymentID, entryID uuid
 	if err != nil {
 		return nil, err
 	}
-	if p.ID != paymentID || p.Status != "REFUNDED" || p.Source != "TEAM_REGISTRATION" || !strings.HasPrefix(p.Reference, entryID.String()+":") {
+	if p.ID != paymentID || p.Status != models.PaymentRefunded || p.Source != models.PaymentSourceTeamRegistration || !strings.HasPrefix(p.Reference, entryID.String()+":") {
 		return nil, fmt.Errorf("payment service returned a mismatched refund")
 	}
 	return p, nil
@@ -88,5 +89,5 @@ func fromPayment(p *paymentv1.Payment) (*ports.RegistrationPayment, error) {
 	if p.GetExpiresAt() == nil || p.GetExpiresAt().CheckValid() != nil {
 		return nil, fmt.Errorf("invalid expiry in response")
 	}
-	return &ports.RegistrationPayment{ID: id, PayerAccountID: payer, Source: p.GetSource(), Reference: p.GetReference(), AmountMinor: p.GetAmountMinor(), Currency: p.GetCurrency(), ExpiresAt: p.GetExpiresAt().AsTime(), Status: p.GetStatus()}, nil
+	return &ports.RegistrationPayment{ID: id, PayerAccountID: payer, Source: p.GetSource(), Reference: p.GetReference(), AmountMinor: p.GetAmountMinor(), Currency: p.GetCurrency(), ExpiresAt: p.GetExpiresAt().AsTime(), Status: models.PaymentStatus(p.GetStatus())}, nil
 }

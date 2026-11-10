@@ -27,12 +27,9 @@ type PaymentConfirmed struct {
 }
 
 type PaymentConfirmedData struct {
-	PaymentID      uuid.UUID      `json:"payment_id"`
-	PayerAccountID uuid.UUID      `json:"payer_account_id"`
-	AmountMinor    int64          `json:"amount_minor"`
-	Currency       string         `json:"currency"`
-	Description    string         `json:"description"`
-	Recipient      EventRecipient `json:"recipient"`
+	PaymentInvoice
+	Description string         `json:"description"`
+	Recipient   EventRecipient `json:"recipient"`
 }
 
 func (event *PaymentConfirmed) Normalize() {

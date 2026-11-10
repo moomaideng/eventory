@@ -42,16 +42,16 @@ Traefik, Account, Tournament, Payment and Notification send traces. A request th
 ```text
 traefik GET → tournament GET → select … (GORM)
                              → account gRPC → select … (GORM)
-                             → payment HTTP → …
+                             → payment gRPC → …
 ```
 
 - **Gateway:** Traefik starts the root span and forwards `traceparent` to the services. Calls straight to a service port (for example `:8082`) start at that service instead.
 - **Cross-service calls:** Tournament → Account gRPC and Tournament → Payment gRPC carry the trace context.
-- **Messaging:** publishing to RabbitMQ writes `traceparent` into the message headers, and the Notification worker continues the trace, so its GORM queries and logs join the producer's trace. No service publishes yet; `cmd/publish-registration-submitted` shows how a producer should do it.
+- **Messaging:** publishing to RabbitMQ writes `traceparent` into the message headers, and consumers continue the trace: Notification for registration, announcement and payment emails, Tournament for payment results (`payment.confirmed`, `payment.cancelled`, `payment.expired`).
+- **Background work:** Payment's outbox relay and expiry pass, and Tournament's refund retry, run on timers. An idle pass leaves no trace. Each event Payment publishes starts its own trace, which the consumer continues.
 - **Postgres:** every GORM query is a span under the calling request.
 - **MongoDB:** every Tournament Mongo command is a client span such as `find tournament_forms`.
 - **Not traced:** `/health` and `/ready`, the browser, and Next.js. Traces start at Traefik.
-- **Background pollers:** Tournament's lobby and sponsorship reconcilers poll every 10 s with no parent request. An idle poll leaves no trace. A poll that finds pending payments is one root trace, including the call to Payment.
 
 To see a full HTTP → gRPC → SQL trace locally, call a route that needs an organizer profile through the gateway:
 

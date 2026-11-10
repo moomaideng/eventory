@@ -38,8 +38,7 @@ type TeamLobbyRepository interface {
 	Lock(ctx context.Context, teamID uuid.UUID, expected ...[]models.TournamentTeamMember) (*models.TournamentTeam, error)
 	RemoveMember(ctx context.Context, teamID, memberID uuid.UUID) (*models.TournamentTeam, error)
 	Disband(ctx context.Context, teamID uuid.UUID) error
-	Pending(ctx context.Context) ([]models.TournamentTeam, error)
-	ApplyPayment(ctx context.Context, team *models.TournamentTeam, paymentID uuid.UUID, status string) error
+	ApplyPayment(ctx context.Context, team *models.TournamentTeam, paymentID uuid.UUID, status models.PaymentStatus) error
 }
 
 type teamLobbyRepository struct {
@@ -330,19 +329,13 @@ func accountHasActiveTournamentTeam(tx *gorm.DB, tournamentID, accountID uuid.UU
 	return nil
 }
 
-func (r *teamLobbyRepository) Pending(ctx context.Context) ([]models.TournamentTeam, error) {
-	var teams []models.TournamentTeam
-	err := r.db.WithContext(ctx).Where("status = ?", models.TournamentTeamStatusPaymentPending).Find(&teams).Error
-	return teams, err
-}
-
-func (r *teamLobbyRepository) ApplyPayment(ctx context.Context, team *models.TournamentTeam, paymentID uuid.UUID, status string) error {
+func (r *teamLobbyRepository) ApplyPayment(ctx context.Context, team *models.TournamentTeam, paymentID uuid.UUID, status models.PaymentStatus) error {
 	updates := map[string]any{"payment_id": paymentID}
 	switch status {
-	case "PAID":
+	case models.PaymentPaid:
 		updates["status"] = models.TournamentTeamStatusLocked
 		updates["locked_at"] = time.Now().UTC()
-	case "EXPIRED", "CANCELLED":
+	case models.PaymentExpired, models.PaymentCancelled:
 		updates["status"] = models.TournamentTeamStatusForming
 		updates["payment_attempt_id"] = nil
 		updates["payment_id"] = nil

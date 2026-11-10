@@ -19,6 +19,8 @@ flowchart LR
     TOUR --> MONGO[("MongoDB<br/>tournament_db")]
     TOUR -->|gRPC| ACC
     TOUR -.->|registration.submitted| MQ["RabbitMQ"]
+    PAY["Payment Service"] -.->|payment.confirmed / payment.cancelled| MQ
+    MQ --> TOUR
     MQ --> NOTIFY["Notification Service"]
     NOTIFY --> NPG[("Postgres<br/>notification_db")]
     NOTIFY --> SMTP["SMTP / Mailpit"]

@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/moomaideng/eventory/internal/events"
 	"github.com/moomaideng/eventory/services/payment/config"
 	paymentdb "github.com/moomaideng/eventory/services/payment/database"
 	"github.com/moomaideng/eventory/services/payment/handlers/rest"
@@ -39,7 +40,7 @@ func TestPaymentAPI(t *testing.T) {
 	}
 	jwt := apptest.StartMockJWKSServer()
 	key := "test-private-payment-service-key-123456"
-	app := server.NewApp(db, config.Config{Environment: "production", SupabaseURL: jwt.URL(), ServiceKey: key})
+	app := server.NewApp(db, config.Config{Environment: "production", SupabaseURL: jwt.URL(), ServiceKey: key}, events.NoopPublisher{})
 	client := paymentClient(t, app.GRPC)
 	owner, other := uuid.New(), uuid.New()
 	ownerToken := "Bearer " + jwt.SignJWT(owner, "payer@example.test")
