@@ -34,7 +34,7 @@ func TestSponsorshipArchive(t *testing.T) {
 
 	for _, result := range []string{"UNUSED", "CANCELLED", "FAILED", "EXPIRED"} {
 		t.Run(result, func(t *testing.T) {
-			if err := s.given(result, 0); err != nil {
+			if err := s.given(result, 10000); err != nil {
 				t.Fatal(err)
 			}
 			tierID := s.tierIDs[result]
@@ -107,7 +107,7 @@ func TestSponsorshipArchive(t *testing.T) {
 				mustAPI(t, payments, "GET", "/payments/"+pledge.PaymentID.String()+"/receipt", nil, payer, 404)
 			}
 			// A new package can reuse an archived name without changing old purchase snapshots.
-			if err := s.given(result, 0); err != nil {
+			if err := s.given(result, 10000); err != nil {
 				t.Fatal(err)
 			}
 			if s.tierIDs[result] == tierID {
@@ -117,7 +117,7 @@ func TestSponsorshipArchive(t *testing.T) {
 	}
 
 	t.Run("archive and checkout use the same lock", func(t *testing.T) {
-		if err := s.given("Race", 0); err != nil {
+		if err := s.given("Race", 10000); err != nil {
 			t.Fatal(err)
 		}
 		path := s.tiersPath() + "/" + s.tierIDs["Race"].String()

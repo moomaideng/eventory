@@ -45,7 +45,7 @@ func (r *sponsorshipTierRepository) List(ctx context.Context, tournamentID uuid.
 	var tiers []models.SponsorshipTier
 	err := r.db.WithContext(ctx).
 		Where("tournament_id = ? AND archived = false", tournamentID).
-		Order("sort_order ASC, price DESC, created_at ASC").
+		Order("price DESC, created_at ASC").
 		Find(&tiers).Error
 	if err != nil {
 		return nil, err

@@ -50,7 +50,7 @@ func (s *tierScenario) publishedTournament() error {
 		StartsAt: now.Add(72 * time.Hour), EndsAt: now.Add(80 * time.Hour), RegistrationDeadline: now.Add(48 * time.Hour),
 		Currency: "THB", RegistrationMode: models.TournamentRegistrationModeSolo, MinTeamSize: 1, MaxTeamSize: 1, Capacity: 8,
 		Status: models.TournamentStatusRegistration,
-		Staff: []models.TournamentStaff{{AccountID: owner.ID, Role: models.TournamentStaffRoleOwner}},
+		Staff:  []models.TournamentStaff{{AccountID: owner.ID, Role: models.TournamentStaffRoleOwner}},
 	}
 	return s.app.DB.Create(&s.tournament).Error
 }
@@ -79,8 +79,8 @@ func splitList(raw string) []string {
 	return items
 }
 
-func (s *tierScenario) create(user *apptest.TestUser, name string, price, slots, order int, perks string) error {
-	body := map[string]any{"name": name, "price": price, "slots": slots, "perks": splitList(perks), "sortOrder": order}
+func (s *tierScenario) create(user *apptest.TestUser, name string, price, slots int, perks string) error {
+	body := map[string]any{"name": name, "price": price, "slots": slots, "perks": splitList(perks)}
 	if err := s.do(http.MethodPost, s.tiersPath(), body, user); err != nil {
 		return err
 	}
@@ -99,7 +99,7 @@ func (s *tierScenario) draftTournament() error {
 	return s.app.DB.Model(&s.tournament).Update("status", models.TournamentStatusDraft).Error
 }
 
-func (s *tierScenario) given(name string, order int) error {
+func (s *tierScenario) given(name string, price int) error {
 	prevStatus := s.tournament.Status
 	if prevStatus != models.TournamentStatusDraft {
 		if err := s.app.DB.Model(&s.tournament).Update("status", models.TournamentStatusDraft).Error; err != nil {
@@ -109,7 +109,7 @@ func (s *tierScenario) given(name string, order int) error {
 			_ = s.app.DB.Model(&s.tournament).Update("status", prevStatus).Error
 		}()
 	}
-	if err := s.create(s.owner, name, 10000, 2, order, "Logo on stream"); err != nil {
+	if err := s.create(s.owner, name, price, 2, "Logo on stream"); err != nil {
 		return err
 	}
 	if s.resp.StatusCode != http.StatusCreated {
@@ -197,12 +197,12 @@ func initializeScenario(sc *godog.ScenarioContext, app *apptest.App) {
 		s.other = other
 		return err
 	})
-	sc.Step(`^the organizer has a tier named "([^"]*)"$`, func(name string) error { return s.given(name, 0) })
-	sc.Step(`^the organizer has tiers "([^"]*)" with order (\d+) and "([^"]*)" with order (\d+)$`, func(a string, orderA int, b string, orderB int) error {
-		if err := s.given(a, orderA); err != nil {
+	sc.Step(`^the organizer has a tier named "([^"]*)"$`, func(name string) error { return s.given(name, 10000) })
+	sc.Step(`^the organizer has tiers "([^"]*)" costing (\d+) and "([^"]*)" costing (\d+)$`, func(a string, priceA int, b string, priceB int) error {
+		if err := s.given(a, priceA); err != nil {
 			return err
 		}
-		return s.given(b, orderB)
+		return s.given(b, priceB)
 	})
 	sc.Step(`^the tournament status is "([^"]*)"$`, func(status string) error {
 		s.tournament.Status = models.TournamentStatus(status)
@@ -217,7 +217,7 @@ func initializeScenario(sc *godog.ScenarioContext, app *apptest.App) {
 		if who == "other organizer" {
 			user = s.other
 		}
-		return s.create(user, name, price, slots, 0, perks)
+		return s.create(user, name, price, slots, perks)
 	})
 	sc.Step(`^the organizer renames tier "([^"]*)" to "([^"]*)"$`, s.rename)
 	sc.Step(`^the organizer deletes tier "([^"]*)"$`, func(name string) error { return s.remove(s.owner, name) })

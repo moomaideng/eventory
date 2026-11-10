@@ -38,7 +38,6 @@ const EMPTY_FORM: SponsorshipTierFormInput = {
   price: "",
   slots: "",
   perks: "",
-  sortOrder: 0,
 };
 
 function toFormValues(tier: SponsorshipTier | null): SponsorshipTierFormInput {
@@ -48,7 +47,6 @@ function toFormValues(tier: SponsorshipTier | null): SponsorshipTierFormInput {
     price: String(tier.price),
     slots: String(tier.slots),
     perks: (tier.perks ?? []).join("\n"),
-    sortOrder: tier.sortOrder,
   };
 }
 
@@ -127,7 +125,8 @@ export function TierFormDialog({
               {tier ? "Edit sponsorship tier" : "New sponsorship tier"}
             </DialogTitle>
             <DialogDescription>
-              Sponsors buy tiers from your public tournament page.
+              Sponsors buy tiers from your public tournament page, listed from
+              highest to lowest price.
             </DialogDescription>
           </DialogHeader>
 
@@ -196,18 +195,6 @@ export function TierFormDialog({
               ) : (
                 <FieldDescription>One perk per line, up to 10.</FieldDescription>
               )}
-            </Field>
-
-            <Field>
-              <FieldLabel htmlFor="tier-order">Display order</FieldLabel>
-              <Input
-                id="tier-order"
-                type="number"
-                inputMode="numeric"
-                value={String(values.sortOrder)}
-                onChange={(e) => setField("sortOrder", e.target.value)}
-              />
-              <FieldDescription>Lower numbers show first.</FieldDescription>
             </Field>
           </FieldGroup>
 

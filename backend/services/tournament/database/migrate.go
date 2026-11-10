@@ -7,6 +7,7 @@ import (
 
 func AutoMigrate(db *gorm.DB) error {
 	_ = db.Exec("DROP TABLE IF EXISTS tournament_status_changes CASCADE").Error
+	_ = db.Exec("ALTER TABLE IF EXISTS sponsorship_tiers DROP COLUMN IF EXISTS sort_order").Error
 
 	if err := db.AutoMigrate(models.All()...); err != nil {
 		return err

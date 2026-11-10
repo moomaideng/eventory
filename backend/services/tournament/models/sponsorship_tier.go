@@ -20,7 +20,6 @@ type SponsorshipTier struct {
 	Price          int64    `gorm:"not null;check:chk_sponsorship_tiers_price,price > 0"`
 	Slots          int      `gorm:"not null;check:chk_sponsorship_tiers_slots,slots > 0"`
 	Perks          []string `gorm:"type:jsonb;serializer:json;not null"`
-	SortOrder      int      `gorm:"not null;default:0"`
 	Archived       bool     `gorm:"not null;default:false"`
 	CreatedAt      time.Time
 	UpdatedAt      time.Time

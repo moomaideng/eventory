@@ -29,8 +29,8 @@ Feature: Sponsorship tier packages
     And sponsors should see exactly "Gold" on the tournament
 
   @us5_4
-  Scenario: Tiers are listed in display order
-    Given the organizer has tiers "Silver" with order 2 and "Gold" with order 1
+  Scenario: Tiers are listed highest price first
+    Given the organizer has tiers "Silver" costing 5000 and "Gold" costing 10000
     Then sponsors should see exactly "Gold, Silver" on the tournament
 
   @us5_4

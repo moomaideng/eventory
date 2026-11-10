@@ -34,7 +34,6 @@ export const sponsorshipTierSchema = z.object({
         .min(1, "Add at least one perk.")
         .max(10, "A tier can have at most 10 perks.")
     ),
-  sortOrder: z.coerce.number().int().default(0),
 });
 
 export type SponsorshipTierFormInput = z.input<typeof sponsorshipTierSchema>;

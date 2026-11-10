@@ -10,6 +10,6 @@ export function checkoutErrorFallback(status: number): string {
 
 export function sortTiers(tiers: SponsorshipTier[]): SponsorshipTier[] {
   return [...tiers].sort(
-    (a, b) => a.sortOrder - b.sortOrder || b.price - a.price
+    (a, b) => b.price - a.price || a.createdAt.localeCompare(b.createdAt)
   );
 }
