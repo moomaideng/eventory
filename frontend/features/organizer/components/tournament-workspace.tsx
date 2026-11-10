@@ -167,20 +167,17 @@ export function TournamentWorkspace({
                   <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
                   <TabsList className="w-max">
                     <TabsTrigger value="home">Home</TabsTrigger>
-                    {canReview ? (
-                      <TabsTrigger value="registration">
-                        Registration
-                      </TabsTrigger>
-                    ) : null}
-                    {bracketVisible ? (
-                      <TabsTrigger value="bracket">Bracket</TabsTrigger>
-                    ) : null}
                     {canAnnounce ? (
                       <TabsTrigger value="announcements">
                         Announcements
                       </TabsTrigger>
                     ) : null}
                     <TabsTrigger value="staff">Staff</TabsTrigger>
+                    {canReview ? (
+                      <TabsTrigger value="registration">
+                        Registration
+                      </TabsTrigger>
+                    ) : null}
                     {isOwner ? (
                       <TabsTrigger value="form">
                         Registration questions
@@ -190,6 +187,9 @@ export function TournamentWorkspace({
                       <TabsTrigger value="sponsorship">
                         Sponsorship
                       </TabsTrigger>
+                    ) : null}
+                    {bracketVisible ? (
+                      <TabsTrigger value="bracket">Bracket</TabsTrigger>
                     ) : null}
                   </TabsList>
                   </div>
