@@ -14,7 +14,6 @@ import {
 } from "@/features/organizer/lifecycle";
 
 export function LifecycleTransitionPanel({
-  tournamentId,
   title,
   description,
   items,
@@ -29,7 +28,6 @@ export function LifecycleTransitionPanel({
   onRequest,
   children,
 }: {
-  tournamentId: string;
   title: string;
   description: string;
   items: Requirement[];
@@ -42,7 +40,7 @@ export function LifecycleTransitionPanel({
   isOwner: boolean;
   /** Target currently being submitted, if any; disables every action. */
   submittingTarget: TransitionTarget | null;
-  onFix: (fix: Exclude<RequirementFix, { kind: "bracket" }>) => void;
+  onFix: (fix: RequirementFix) => void;
   onRequest: (target: TransitionTarget) => void;
   children?: ReactNode;
 }) {
@@ -68,7 +66,6 @@ export function LifecycleTransitionPanel({
           <p className="text-muted-foreground text-sm">{description}</p>
         </div>
         <LifecycleChecklist
-          tournamentId={tournamentId}
           items={items}
           onFix={isOwner ? onFix : undefined}
         />

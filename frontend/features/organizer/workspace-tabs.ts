@@ -4,7 +4,8 @@ export type WorkspaceTab =
   | "announcements"
   | "staff"
   | "form"
-  | "sponsorship";
+  | "sponsorship"
+  | "bracket";
 
 const WORKSPACE_TABS: readonly WorkspaceTab[] = [
   "home",
@@ -13,6 +14,7 @@ const WORKSPACE_TABS: readonly WorkspaceTab[] = [
   "staff",
   "form",
   "sponsorship",
+  "bracket",
 ];
 
 export function isWorkspaceTab(value: unknown): value is WorkspaceTab {

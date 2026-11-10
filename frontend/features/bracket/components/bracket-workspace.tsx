@@ -5,7 +5,6 @@ import {
   AlertTriangle,
   ChevronDown,
   ChevronUp,
-  RefreshCw,
   RotateCcw,
   Save,
   Shuffle,
@@ -42,7 +41,6 @@ export function BracketWorkspace({ tournamentId }: BracketWorkspaceProps) {
     matches,
     acceptedCount,
     isLoading,
-    isFetching,
     refetch,
     defineBracket,
     isDefining,
@@ -316,18 +314,6 @@ export function BracketWorkspace({ tournamentId }: BracketWorkspaceProps) {
               Reset
             </Button>
           ) : null}
-
-          {/* Refresh button */}
-          <Button
-            variant="outline"
-            size="icon"
-            className="size-8"
-            onClick={() => void refetch()}
-            disabled={isFetching}
-            title="Refresh bracket from server"
-          >
-            <RefreshCw className={isFetching ? "size-3.5 animate-spin" : "size-3.5"} />
-          </Button>
         </div>
       </div>
 

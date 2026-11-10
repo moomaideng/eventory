@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, ArrowUpRight, Network, Trophy } from "lucide-react";
+import { ArrowLeft, ArrowUpRight, Trophy } from "lucide-react";
+import { useIsFetching, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/context/auth-context";
 import { $api } from "@/lib/api/client";
 import { RegistrationFormBuilder } from "@/features/registration-form/components/registration-form-builder";
@@ -25,6 +26,7 @@ import {
 } from "@/features/tournament-staff";
 import { SponsorshipTierSection } from "@/features/sponsorship";
 import { AnnouncementSection } from "@/features/announcements";
+import { BracketWorkspace } from "@/features/bracket/components/bracket-workspace";
 import { TournamentStatusBadge } from "@/features/tournaments/components/tournament-status-badge";
 import {
   isWorkspaceTab,
@@ -56,6 +58,8 @@ export function TournamentWorkspace({
     },
     { ...dashboardQueryOptions, enabled: Boolean(authorizationHeader) }
   );
+  const queryClient = useQueryClient();
+  const activeFetches = useIsFetching();
 
   const loading = authLoading || !authorizationHeader || isLoading;
 
@@ -83,6 +87,9 @@ export function TournamentWorkspace({
             const isOwner = data.summary.role === "OWNER";
             const canReview = isOwner || data.summary.role === "ADMIN";
             const canAnnounce = canReview;
+            const bracketVisible = ["REGISTRATION", "ONGOING", "COMPLETED"].includes(
+              data.summary.tournament.status
+            );
             const allowedTabs: Record<WorkspaceTab, boolean> = {
               home: true,
               registration: canReview,
@@ -90,6 +97,7 @@ export function TournamentWorkspace({
               staff: true,
               form: isOwner,
               sponsorship: isOwner,
+              bracket: bracketVisible,
             };
             const activeTab = allowedTabs[tab] ? tab : "home";
 
@@ -128,30 +136,15 @@ export function TournamentWorkspace({
 
                   <div className="flex flex-wrap items-center gap-2">
                     <RefreshDashboard
-                      fetching={isFetching}
-                      onRefresh={() => void refetch()}
+                      fetching={isFetching || activeFetches > 0}
+                      // One refresh for the whole workspace: dashboard, bracket, lifecycle data.
+                      onRefresh={() => void queryClient.invalidateQueries()}
                     />
                     {!isOwner ? (
                       <LeaveTournamentDialog
                         tournamentId={tournamentId}
                         tournamentName={data.summary.tournament.name}
                       />
-                    ) : null}
-                    {["REGISTRATION", "ONGOING", "COMPLETED"].includes(
-                      data.summary.tournament.status
-                    ) ? (
-                      <Button
-                        variant="outline"
-                        render={
-                          <Link
-                            href={`/organizer/tournaments/${tournamentId}/bracket`}
-                          />
-                        }
-                        nativeButton={false}
-                      >
-                        <Network data-icon="inline-start" />
-                        Bracket
-                      </Button>
                     ) : null}
                     {data.summary.tournament.status !== "DRAFT" ? (
                       <Button
@@ -178,6 +171,9 @@ export function TournamentWorkspace({
                       <TabsTrigger value="registration">
                         Registration
                       </TabsTrigger>
+                    ) : null}
+                    {bracketVisible ? (
+                      <TabsTrigger value="bracket">Bracket</TabsTrigger>
                     ) : null}
                     {canAnnounce ? (
                       <TabsTrigger value="announcements">
@@ -235,6 +231,13 @@ export function TournamentWorkspace({
                           }
                         />
                       </div>
+                    </TabsContent>
+                  ) : null}
+
+                  {/* Bracket Tab: Visible once registration has opened */}
+                  {bracketVisible ? (
+                    <TabsContent value="bracket">
+                      <BracketWorkspace tournamentId={tournamentId} />
                     </TabsContent>
                   ) : null}
 

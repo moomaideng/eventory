@@ -13,12 +13,11 @@ export type LifecycleStatus =
   | "ONGOING"
   | "COMPLETED";
 
-export type WorkspaceTab = "registration" | "form" | "sponsorship";
+export type WorkspaceTab = "registration" | "form" | "sponsorship" | "bracket";
 
 export type RequirementFix =
   | { kind: "field"; field: DetailsField }
-  | { kind: "tab"; tab: WorkspaceTab }
-  | { kind: "bracket" };
+  | { kind: "tab"; tab: WorkspaceTab };
 
 /** met/unmet are verified; pending is loading; unknown could not be verified; info never blocks. */
 export type RequirementState = "met" | "unmet" | "pending" | "unknown" | "info";
@@ -284,7 +283,7 @@ function bracketUnavailable(id: string, label: string, matches: undefined | null
         ? "Checking bracket…"
         : "Couldn't load the bracket; checked when you continue",
     state: matches === undefined ? "pending" : "unknown",
-    fix: { kind: "bracket" },
+    fix: { kind: "tab", tab: "bracket" },
   };
 }
 
@@ -352,14 +351,14 @@ export function startRequirements(
         ? "No complete bracket yet"
         : `Stage 1 holds ${plural(stage1Capacity, "team")}, ${accepted} accepted`,
       state: check(defined && stage1.length > 0 && stage1Capacity === accepted),
-      fix: { kind: "bracket" },
+      fix: { kind: "tab", tab: "bracket" },
     },
     {
       id: "bracket-seeded",
       label: "Stage 1 seeded",
       detail: `${seeded} of ${accepted} accepted teams placed`,
       state: check(defined && seeded === accepted),
-      fix: { kind: "bracket" },
+      fix: { kind: "tab", tab: "bracket" },
     }
   );
   return items;
@@ -385,7 +384,7 @@ export function completionRequirements(matches: Remote<Match>): Requirement[] {
         ? `${completed} of ${plural(matches.length, "match")} completed`
         : "No bracket defined",
       state: check(matches.length > 0 && completed === matches.length),
-      fix: { kind: "bracket" },
+      fix: { kind: "tab", tab: "bracket" },
     },
     {
       id: "champion",
@@ -397,7 +396,7 @@ export function completionRequirements(matches: Remote<Match>): Requirement[] {
             ? `${champions.length} teams ranked 1st in the final`
             : "The final has no 1st place yet",
       state: check(champions.length === 1),
-      fix: { kind: "bracket" },
+      fix: { kind: "tab", tab: "bracket" },
     },
   ];
 }

@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { CheckCircle2, CircleHelp, Info, XCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -26,14 +25,12 @@ const ICONS: Record<
 };
 
 export function LifecycleChecklist({
-  tournamentId,
   items,
   onFix,
 }: {
-  tournamentId: string;
   items: Requirement[];
   /** Omit to render read-only (no fix actions). */
-  onFix?: (fix: Exclude<RequirementFix, { kind: "bracket" }>) => void;
+  onFix?: (fix: RequirementFix) => void;
 }) {
   return (
     <ul className="flex flex-col gap-2.5">
@@ -71,28 +68,20 @@ export function LifecycleChecklist({
               ) : null}
             </div>
             {showFix && item.fix ? (
-              item.fix.kind === "bracket" ? (
-                <Button
-                  variant="link"
-                  size="sm"
-                  className="h-auto shrink-0 px-0"
-                  nativeButton={false}
-                  render={<Link href={`/organizer/tournaments/${tournamentId}/bracket`} />}
-                >
-                  Open bracket
-                </Button>
-              ) : (
-                <Button
-                  variant="link"
-                  size="sm"
-                  className="h-auto shrink-0 px-0"
-                  onClick={() => {
-                    if (item.fix && item.fix.kind !== "bracket") onFix?.(item.fix);
-                  }}
-                >
-                  {item.state === "info" ? "Set up" : "Fix"}
-                </Button>
-              )
+              <Button
+                variant="link"
+                size="sm"
+                className="h-auto shrink-0 px-0"
+                onClick={() => {
+                  if (item.fix) onFix?.(item.fix);
+                }}
+              >
+                {item.fix.kind === "tab" && item.fix.tab === "bracket"
+                  ? "Open bracket"
+                  : item.state === "info"
+                    ? "Set up"
+                    : "Fix"}
+              </Button>
             ) : null}
           </li>
         );

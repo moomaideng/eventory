@@ -54,7 +54,7 @@ export function TournamentStatusTimeline({
   const underGoal = status === "CROWDFUNDING" && funding.raisedAmount < funding.goalAmount;
   const forceOpen = underGoal && force;
 
-  function handleFix(fix: Exclude<RequirementFix, { kind: "bracket" }>) {
+  function handleFix(fix: RequirementFix) {
     if (fix.kind === "field") onEditField(fix.field);
     else onSelectTab(fix.tab);
   }
@@ -86,7 +86,6 @@ export function TournamentStatusTimeline({
   }
 
   const panelProps = {
-    tournamentId,
     isOwner,
     submittingTarget: isSubmitting ? confirmTarget : null,
     onFix: handleFix,
