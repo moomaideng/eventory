@@ -39,7 +39,6 @@ var (
 	ErrCrowdfundingGoalNotReached = errors.New("funding goal has not been reached")
 	ErrRegistrationGateIncomplete = errors.New("event details or registration rules are incomplete")
 	ErrCrowdfundingPlanIncomplete = ErrRegistrationGateIncomplete
-	ErrRegistrationFormRequired   = errors.New("registration form must be configured before opening registration")
 	ErrCrowdfundingSetupIncomplete = errors.New("crowdfunding requires a positive goal, a future deadline, and at least one active sponsorship tier")
 	ErrUnresolvedApplicationsExist = repositories.ErrUnresolvedApplicationsExist
 	ErrInsufficientAcceptedTeams  = repositories.ErrInsufficientAcceptedTeams
@@ -228,15 +227,10 @@ type TournamentStatusOverride struct {
 type TournamentUseCase struct {
 	tournamentRepo repositories.TournamentRepository
 	accountSvc     ports.AccountService
-	formRepo       repositories.RegistrationFormRepository
 }
 
 func NewTournamentUseCase(tournamentRepo repositories.TournamentRepository, accountSvc ports.AccountService) *TournamentUseCase {
 	return &TournamentUseCase{tournamentRepo: tournamentRepo, accountSvc: accountSvc}
-}
-
-func (u *TournamentUseCase) SetFormRepository(repo repositories.RegistrationFormRepository) {
-	u.formRepo = repo
 }
 
 // validate query
@@ -892,15 +886,6 @@ func (u *TournamentUseCase) OverrideWithForce(
 		if problem := registrationPlanProblem(current, time.Now()); problem != "" {
 			return nil, fmt.Errorf("%w: %s", ErrRegistrationGateIncomplete, problem)
 		}
-		if u.formRepo != nil {
-			_, err := u.formRepo.GetFormByTournamentID(ctx, tournamentID)
-			if errors.Is(err, repositories.ErrFormNotFound) {
-				return nil, ErrRegistrationFormRequired
-			}
-			if err != nil {
-				return nil, err
-			}
-		}
 	}
 	if current.Status == models.TournamentStatusCrowdfunding && to == models.TournamentStatusRegistration {
 		if problem := registrationPlanProblem(current, time.Now()); problem != "" {
@@ -911,15 +896,6 @@ func (u *TournamentUseCase) OverrideWithForce(
 		}
 		if !force && current.Funding != nil && current.Funding.RaisedAmount < current.Funding.GoalAmount {
 			return nil, ErrCrowdfundingGoalNotReached
-		}
-		if u.formRepo != nil {
-			_, err := u.formRepo.GetFormByTournamentID(ctx, tournamentID)
-			if errors.Is(err, repositories.ErrFormNotFound) {
-				return nil, ErrRegistrationFormRequired
-			}
-			if err != nil {
-				return nil, err
-			}
 		}
 	}
 

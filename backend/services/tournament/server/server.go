@@ -225,7 +225,6 @@ func newHTTPRouter(db *gorm.DB, mongoDB *mongo.Database, cfg config.Config, acco
 		}
 		fieldRegistry := forms.NewDefaultRegistry()
 		formUseCase := usecases.NewRegistrationFormUseCase(tournamentRepo, formRepo, fieldRegistry)
-		tournamentUseCase.SetFormRepository(formRepo)
 		resthandlers.RegisterRegistrationFormRoutes(api, auth, organizer, formUseCase)
 	}
 

@@ -79,7 +79,6 @@ func tournamentStatusHTTPError(err error) error {
 		return huma.Error422UnprocessableEntity(err.Error())
 	case errors.Is(err, usecases.ErrCrowdfundingPlanIncomplete),
 		errors.Is(err, usecases.ErrRegistrationGateIncomplete),
-		errors.Is(err, usecases.ErrRegistrationFormRequired),
 		errors.Is(err, usecases.ErrRegistrationStillOpen),
 		errors.Is(err, usecases.ErrUnresolvedApplicationsExist),
 		errors.Is(err, usecases.ErrInsufficientAcceptedTeams),
