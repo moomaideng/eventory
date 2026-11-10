@@ -29,11 +29,10 @@ const (
 )
 
 type SponsorshipTierInput struct {
-	Name      string
-	Price     int64
-	Slots     int
-	Perks     []string
-	SortOrder int
+	Name  string
+	Price int64
+	Slots int
+	Perks []string
 }
 
 type SponsorshipTierUseCase struct {
@@ -216,7 +215,6 @@ func applyTierInput(tier *models.SponsorshipTier, input SponsorshipTierInput) er
 	tier.Price = input.Price
 	tier.Slots = input.Slots
 	tier.Perks = perks
-	tier.SortOrder = input.SortOrder
 	return nil
 }
 

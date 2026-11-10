@@ -5,7 +5,7 @@ import { OrganizerOnboardingModal } from "@/features/organizer/components/organi
 export const metadata: Metadata = {
   title: "Host a Tournament - Eventory",
   description:
-    "Create and publish a new esports tournament with custom team limits, rules, and entry fees.",
+    "Create a draft esports tournament with its general information. Registration rules are configured afterward.",
 };
 
 export default function HostTournamentPage() {

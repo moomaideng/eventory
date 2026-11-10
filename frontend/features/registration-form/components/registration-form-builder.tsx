@@ -11,7 +11,10 @@ import { Spinner } from "@/components/ui/spinner";
 import { FormBuilderSidebar } from "@/features/registration-form/components/form-builder-sidebar";
 import { FormFieldCard } from "@/features/registration-form/components/form-field-card";
 import { FormHeaderCard } from "@/features/registration-form/components/form-header-card";
-import { formFieldSchema, type FormField } from "@/features/registration-form/schemas";
+import { RegistrationFormPreview } from "@/features/registration-form/components/registration-form-preview";
+import { isFormEditable } from "@/features/registration-form/lock";
+import type { FormField } from "@/features/registration-form/schemas";
+import { parseFormFields } from "@/features/registration-form/utils";
 import type { components } from "@/lib/api/schema";
 
 type RegistrationFormResponse = components["schemas"]["RegistrationFormResponse"];
@@ -29,34 +32,9 @@ function RegistrationFormEditor({
   const queryClient = useQueryClient();
   const [title, setTitle] = useState(initialData?.title ?? "Tournament Registration Form");
   const [description, setDescription] = useState(initialData?.description ?? "");
-  const [fields, setFields] = useState<FormField[]>(() => {
-    if (initialData?.fields && initialData.fields.length > 0) {
-      return initialData.fields.map((f, i) => {
-        const parsed = formFieldSchema.safeParse({
-          id: f.id,
-          type: f.type,
-          label: f.label,
-          description: f.description ?? "",
-          required: f.required ?? false,
-          order: f.order ?? i + 1,
-          config: typeof f.config === "object" && f.config !== null ? f.config : {},
-        });
-        if (parsed.success) {
-          return parsed.data;
-        }
-        return {
-          id: f.id,
-          type: "SHORT_TEXT",
-          label: f.label,
-          description: f.description ?? "",
-          required: f.required ?? false,
-          order: f.order ?? i + 1,
-          config: {},
-        } satisfies FormField;
-      });
-    }
-    return [];
-  });
+  const [fields, setFields] = useState<FormField[]>(() =>
+    parseFormFields(initialData?.fields)
+  );
 
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -311,7 +289,6 @@ function RegistrationFormEditor({
             </div>
           )}
 
-          {/* Bottom Actions */}
           {fields.length > 0 && (
             <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
               <Button
@@ -359,8 +336,13 @@ function RegistrationFormEditor({
 
 export function RegistrationFormBuilder({
   tournamentId,
+  status,
+  onViewRegistrations,
 }: {
   tournamentId: string;
+  /** Tournament status; the form can only be edited while DRAFT or CROWDFUNDING. */
+  status: string;
+  onViewRegistrations?: () => void;
 }) {
   const { authorizationHeader, isLoading: authLoading } = useAuth();
 
@@ -382,6 +364,16 @@ export function RegistrationFormBuilder({
       <div className="flex flex-1 items-center justify-center p-12">
         <Spinner className="size-6 text-muted-foreground" />
       </div>
+    );
+  }
+
+  if (!isFormEditable(status)) {
+    return (
+      <RegistrationFormPreview
+        data={data}
+        status={status}
+        onViewRegistrations={onViewRegistrations}
+      />
     );
   }
 

@@ -311,43 +311,50 @@ func TestTournamentStaffUseCase_UpdateStaffRole(t *testing.T) {
 func TestTournamentStaffUseCase_ListStaff(t *testing.T) {
 	ctx := context.Background()
 
-	t.Run("success lists all staff in order", func(t *testing.T) {
+	t.Run("success lists all staff in order for owner, admin, and referee", func(t *testing.T) {
 		_, _, uc, tID, ownerID, adminID, refereeID := setupStaffFixture()
-		list, err := uc.ListStaff(ctx, ownerID, tID)
-		if err != nil {
-			t.Fatalf("unexpected error: %v", err)
-		}
-		if len(list) != 3 {
-			t.Fatalf("expected 3 staff members, got %d", len(list))
-		}
-		// Expect order: owner (-3h), admin (-2h), referee (-1h)
-		if list[0].AccountID != ownerID || list[0].Role != models.TournamentStaffRoleOwner {
-			t.Errorf("expected 1st to be owner, got %+v", list[0])
-		}
-		if list[1].AccountID != adminID || list[1].Role != models.TournamentStaffRoleAdmin {
-			t.Errorf("expected 2nd to be admin, got %+v", list[1])
-		}
-		if list[2].AccountID != refereeID || list[2].Role != models.TournamentStaffRoleReferee {
-			t.Errorf("expected 3rd to be referee, got %+v", list[2])
-		}
-		if list[0].Handle != "alice_owner" {
-			t.Errorf("expected handle alice_owner, got %v", list[0].Handle)
+
+		for _, caller := range []struct {
+			name string
+			id   uuid.UUID
+		}{
+			{"owner", ownerID},
+			{"admin", adminID},
+			{"referee", refereeID},
+		} {
+			t.Run(caller.name, func(t *testing.T) {
+				list, err := uc.ListStaff(ctx, caller.id, tID)
+				if err != nil {
+					t.Fatalf("unexpected error for %s: %v", caller.name, err)
+				}
+				if len(list) != 3 {
+					t.Fatalf("expected 3 staff members, got %d", len(list))
+				}
+				// Expect order: owner (-3h), admin (-2h), referee (-1h)
+				if list[0].AccountID != ownerID || list[0].Role != models.TournamentStaffRoleOwner {
+					t.Errorf("expected 1st to be owner, got %+v", list[0])
+				}
+				if list[1].AccountID != adminID || list[1].Role != models.TournamentStaffRoleAdmin {
+					t.Errorf("expected 2nd to be admin, got %+v", list[1])
+				}
+				if list[2].AccountID != refereeID || list[2].Role != models.TournamentStaffRoleReferee {
+					t.Errorf("expected 3rd to be referee, got %+v", list[2])
+				}
+				if list[0].Handle != "alice_owner" {
+					t.Errorf("expected handle alice_owner, got %v", list[0].Handle)
+				}
+			})
 		}
 	})
 
-	t.Run("unauthorized caller", func(t *testing.T) {
-		_, accountSvc, uc, tID, _, _, refereeID := setupStaffFixture()
+	t.Run("unauthorized caller - non-staff", func(t *testing.T) {
+		_, accountSvc, uc, tID, _, _, _ := setupStaffFixture()
 		strangerID := uuid.New()
 		accountSvc.withAccount(strangerID, "stranger", "Stranger")
 
 		_, err := uc.ListStaff(ctx, strangerID, tID)
 		if !errors.Is(err, usecases.ErrCallerNotAuthorized) {
 			t.Fatalf("expected ErrCallerNotAuthorized for stranger, got %v", err)
-		}
-
-		_, err = uc.ListStaff(ctx, refereeID, tID)
-		if !errors.Is(err, usecases.ErrCallerNotAuthorized) {
-			t.Fatalf("expected ErrCallerNotAuthorized for referee, got %v", err)
 		}
 	})
 

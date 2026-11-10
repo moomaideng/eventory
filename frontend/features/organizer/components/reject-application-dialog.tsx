@@ -75,8 +75,7 @@ export function RejectApplicationDialog({
           <DialogTitle>Reject this application?</DialogTitle>
           <DialogDescription>
             <span className="font-medium">{teamName}</span> will be rejected.
-            The decision is recorded with your name and the time, and you can
-            accept it again later.
+            The decision is recorded with your name and the time.
           </DialogDescription>
         </DialogHeader>
 
@@ -101,13 +100,12 @@ export function RejectApplicationDialog({
             </Field>
           </FieldGroup>
 
-          {/* TODO(US7-2): remove once rejecting refunds the entry fee. */}
           <Alert>
             <Info />
-            <AlertTitle>No automatic refund</AlertTitle>
+            <AlertTitle>This decision is final</AlertTitle>
             <AlertDescription>
-              Rejecting does not automatically refund any entry fee that was
-              paid.
+              A rejected application cannot be reviewed again. If the entrant
+              already paid the entry fee, it is refunded automatically.
             </AlertDescription>
           </Alert>
 

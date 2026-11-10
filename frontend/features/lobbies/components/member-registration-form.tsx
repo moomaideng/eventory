@@ -18,6 +18,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { RegistrationAnswerFields } from "@/features/registration-form/components/registration-answer-fields";
 import { useRegistrationAnswers } from "@/features/registration-form/hooks/use-registration-answers";
 import { problemMessage, type Lobby } from "@/features/lobbies/utils";
+import { isRegistrationOpen } from "@/features/tournaments/utils";
 
 export function MemberRegistrationForm({
   lobby,
@@ -38,7 +39,7 @@ export function MemberRegistrationForm({
   const joining = lobby.viewerRole === "INVITEE";
   const available =
     lobby.status === "FORMING" &&
-    lobby.tournament.status === "REGISTRATION_OPEN" &&
+    isRegistrationOpen(lobby.tournament) &&
     (!joining || (lobby.members?.length ?? 0) < lobby.tournament.maxTeamSize);
 
   async function submit(event: React.FormEvent) {

@@ -24,6 +24,7 @@ import {
   formatEntryFee,
   type Lobby,
 } from "@/features/lobbies/utils";
+import { isRegistrationOpen } from "@/features/tournaments/utils";
 
 interface LobbyDetailsCardProps {
   lobby: Lobby;
@@ -54,9 +55,7 @@ export function LobbyDetailsCard({
     members.length >= lobby.tournament.minTeamSize &&
     members.length <= lobby.tournament.maxTeamSize &&
     members.every((member) => member.registrationComplete);
-  const registrationOpen =
-    lobby.tournament.status === "REGISTRATION_OPEN" &&
-    new Date(lobby.tournament.registrationDeadline).getTime() > now;
+  const registrationOpen = isRegistrationOpen(lobby.tournament, now);
 
   return (
     <div className="flex flex-col gap-6">
@@ -72,11 +71,13 @@ export function LobbyDetailsCard({
           </CardDescription>
         </CardHeader>
         <CardContent className="text-muted-foreground flex flex-col gap-2 text-sm">
-          <span className="flex items-center gap-2">
-            <CalendarDays className="size-4 shrink-0" />
-            Registration closes{" "}
-            {formatDate(lobby.tournament.registrationDeadline)}
-          </span>
+          {lobby.tournament.registrationDeadline ? (
+            <span className="flex items-center gap-2">
+              <CalendarDays className="size-4 shrink-0" />
+              Registration closes{" "}
+              {formatDate(lobby.tournament.registrationDeadline)}
+            </span>
+          ) : null}
           <span className="flex items-center gap-2">
             <MapPin className="size-4 shrink-0" />
             {lobby.tournament.location}

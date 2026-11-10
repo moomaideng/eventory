@@ -249,15 +249,15 @@ Scenario Outline: Tournament dashboard access permissions
 
 * **[VALID] Business Conditions (Success):**
   * **Given** an organizer owns a tournament that can move to the chosen status
-  * **When** the organizer picks the new status and explains why
-  * **Then** the tournament shows the new status, and the change is logged with who made it, why, and when.
+  * **When** the organizer picks the new status (a reason is optional)
+  * **Then** the tournament shows the new status.
 
 * **[INVALID] Business Conditions (Rejection):**
-  * **Given** the tournament is already completed or cancelled, the organizer gives no reason, or the person does not own the tournament
+  * **Given** the tournament is already completed, the transition's preconditions are not met, or the person does not own the tournament
   * **When** they try to change the status
   * **Then** the change is refused and the tournament stays as it was.
 
-* **Notes:** Completed and cancelled are final. Notifying participants is not included yet.
+* **Notes:** Completed is final. Notifying participants is not included yet.
 
 ---
 
@@ -424,11 +424,11 @@ Scenario Outline: Team lobby creation rules by tournament mode and captain statu
 
   Examples:
     | regMode | tourneyStatus      | existingTeamsCount | teamName      | systemAction                                    | inviteCodeDisplay |
-    | TEAM    | REGISTRATION_OPEN  | 0                  | Phoenix Squad | create lobby in Forming status and issue code   | Visible           |
-    | BOTH    | REGISTRATION_OPEN  | 0                  | Duo Champions | create lobby in Forming status and issue code   | Visible           |
-    | SOLO    | REGISTRATION_OPEN  | 0                  | Solo Squad    | reject creation with error "Solo-only event"    | Hidden            |
-    | TEAM    | REGISTRATION_OPEN  | 1                  | Second Squad  | reject creation with error "Already a captain"  | Hidden            |
-    | TEAM    | REGISTRATION_CLOSED| 0                  | Late Squad    | reject creation with error "Registration closed"| Hidden            |
+    | TEAM    | REGISTRATION       | 0                  | Phoenix Squad | create lobby in Forming status and issue code   | Visible           |
+    | BOTH    | REGISTRATION       | 0                  | Duo Champions | create lobby in Forming status and issue code   | Visible           |
+    | SOLO    | REGISTRATION       | 0                  | Solo Squad    | reject creation with error "Solo-only event"    | Hidden            |
+    | TEAM    | REGISTRATION       | 1                  | Second Squad  | reject creation with error "Already a captain"  | Hidden            |
+    | TEAM    | REGISTRATION (past deadline) | 0          | Late Squad    | reject creation with error "Registration closed"| Hidden            |
 ```
 
 ---
@@ -665,17 +665,17 @@ Scenario Outline: Launching tournament in crowdfunding-only stage
 ### US5-2: Crowdfunded Event Finalization or Early Transition
 > **User Story:**
 > As an organizer of a crowdfunded event,
-> I want to finalize event details and open participant registrations once the funding goal is met--or manually force-start/cancel the event.
+> I want to finalize event details and open participant registrations once the funding goal is met--or manually force the transition.
 
 #### Acceptance Criteria
 - **AC1 (Goal Met / Force Start):**
   - **Given** a crowdfunded tournament has met its funding goal (or organizer force-starts with valid reason),
   - **When** the organizer transitions the event,
   - **Then** the system should finalize operational details and open participant registration.
-- **AC2 (Cancellation & Refund):**
-  - **Given** the funding goal is unmet and the campaign is cancelled with a reason,
-  - **When** the organizer confirms cancellation,
-  - **Then** the system should initiate sponsor refunds and mark the tournament cancelled.
+- **AC2 (Goal Unmet):**
+  - **Given** the funding goal is unmet and the organizer does not force the transition,
+  - **When** the organizer tries to open registration,
+  - **Then** the system should refuse the transition and keep the tournament in crowdfunding.
 
 ```gherkin
 Scenario Outline: Transitioning crowdfunded tournament to operational state
@@ -686,10 +686,9 @@ Scenario Outline: Transitioning crowdfunded tournament to operational state
 
   Examples:
     | fundingRatio | action       | reason              | systemAction                                          | finalState         |
-    | 100%         | OPEN_REG     | Goal met on time    | publish event schedule and open player registration   | REGISTRATION_OPEN  |
-    | 60%          | FORCE_START  | Private funding add | publish event schedule and open player registration   | REGISTRATION_OPEN  |
-    | 30%          | CANCEL       | Goal unmet          | initiate sponsor refunds and mark campaign cancelled  | CANCELLED          |
-    | 30%          | CANCEL       |                     | block action with error "Reason is required to cancel"| CROWDFUNDING       |
+    | 100%         | OPEN_REG     |                     | publish event schedule and open player registration   | REGISTRATION       |
+    | 60%          | FORCE_START  | Private funding add | publish event schedule and open player registration   | REGISTRATION       |
+    | 30%          | OPEN_REG     |                     | block action as the funding goal is not met           | CROWDFUNDING       |
 ```
 
 ---
@@ -819,7 +818,7 @@ Scenario Outline: Automated campaign expiry refund execution
 #### Acceptance Criteria
 - **AC1 (Bracket Generation):**
   - **Given** an organizer has configured a tournament format graph with confirmed participants,
-  - **When** registration closes and the organizer generates the bracket,
+  - **When** the organizer generates the bracket while the tournament is in registration (before or after the deadline),
   - **Then** the system should automatically create match pairings according to the format.
 - **AC2 (Validation):**
   - **Given** confirmed participant count is below minimum or format graph is invalid,
@@ -827,7 +826,7 @@ Scenario Outline: Automated campaign expiry refund execution
   - **Then** the system should display an appropriate error message.
 
 ```gherkin
-Scenario Outline: Generating tournament match bracket upon registration close
+Scenario Outline: Generating tournament match bracket during registration
   Given an organizer is on the bracket generator page for format "<formatType>" with "<participantCount>" approved teams
   When the organizer attempts to generate the bracket
   Then the system should <systemAction>

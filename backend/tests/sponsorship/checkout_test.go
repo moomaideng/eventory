@@ -31,7 +31,7 @@ func TestSponsorshipCheckout(t *testing.T) {
 	if err := s.publishedTournament(); err != nil {
 		t.Fatal(err)
 	}
-	if err := s.given("Gold", 0); err != nil {
+	if err := s.given("Gold", 10000); err != nil {
 		t.Fatal(err)
 	}
 	if err := app.DB.Model(&models.SponsorshipTier{}).Where("id = ?", s.tierIDs["Gold"]).Update("slots", 1).Error; err != nil {
@@ -155,7 +155,7 @@ func TestSponsorshipCheckout(t *testing.T) {
 	mustAPI(t, s.client, "DELETE", s.tiersPath()+"/"+s.tierIDs["Gold"].String(), nil, s.owner, 409)
 
 	for _, result := range []string{"FAILED", "CANCELLED"} {
-		if err := s.given(result, 1); err != nil {
+		if err := s.given(result, 10000); err != nil {
 			t.Fatal(err)
 		}
 		path := app.TournamentBaseURL() + s.tiersPath() + "/" + s.tierIDs[result].String() + "/checkout"
@@ -208,7 +208,7 @@ func TestSponsorshipCrowdfundingLaunch(t *testing.T) {
 	if err := created.JSON(&s.tournament); err != nil || s.tournament.Status != models.TournamentStatusDraft {
 		t.Fatalf("create draft tournament: %s, %v", created.Body, err)
 	}
-	if err := s.given("Gold", 0); err != nil {
+	if err := s.given("Gold", 10000); err != nil {
 		t.Fatal(err)
 	}
 	path := "/tournaments/" + s.tournament.ID.String()

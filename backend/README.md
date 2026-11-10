@@ -71,6 +71,62 @@ flowchart LR
 
 ---
 
+## Tournament Lifecycle & Mutation Rules
+
+Tournaments progress through five canonical statuses (`DRAFT`, `CROWDFUNDING`, `REGISTRATION`, `ONGOING`, `COMPLETED`). Visibility is derived directly from status: a tournament is public if and only if `status != 'DRAFT'`.
+
+```mermaid
+flowchart LR
+    DRAFT --> CROWDFUNDING
+    CROWDFUNDING --> REGISTRATION
+    DRAFT --> REGISTRATION
+    REGISTRATION --> ONGOING
+    ONGOING --> COMPLETED
+```
+
+### Valid State Transitions (`PATCH /api/v1/tournaments/{id}/status`)
+
+All manual status transitions require the caller to be the tournament **Owner** and use optimistic concurrency control (`WHERE id = ? AND status = ?`).
+
+| Transition | Preconditions & Validation Rules |
+| --- | --- |
+| `DRAFT` ➔ `CROWDFUNDING` | • `Funding` is configured with `GoalAmount > 0` and a future `Deadline` (`Deadline > now`).<br/>• If `RegistrationDeadline` is set, `Funding.Deadline < RegistrationDeadline`.<br/>• At least one active sponsorship tier exists (`archived = false`, `price > 0`, `slots >= 1`). |
+| `DRAFT` ➔ `REGISTRATION` | • General info (`Name`, `Game`, `Location`) is non-empty.<br/>• Registration Gate is complete: `Capacity >= 1`, `EntryFee >= 0`, valid `RegistrationMode` (`SOLO` with `1/1` team size, or `TEAM` with `1 <= MinTeamSize <= MaxTeamSize`).<br/>• Timeline is complete and ordered: `now < RegistrationDeadline < StartsAt < EndsAt`. |
+| `CROWDFUNDING` ➔ `REGISTRATION` | • All `DRAFT` ➔ `REGISTRATION` gate and timeline rules are met.<br/>• `Funding.Deadline < RegistrationDeadline`.<br/>• `Funding.RaisedAmount >= Funding.GoalAmount`, unless `force: true` is explicitly passed by the owner. |
+| `REGISTRATION` ➔ `ONGOING` | • Registration deadline has passed (`now >= RegistrationDeadline`).<br/>• No unresolved team applications remain (`FORMING`, `PAYMENT_PENDING`, or `LOCKED` count is `0`).<br/>• At least 2 `ACCEPTED` teams exist.<br/>• A valid match bracket exists with a championship match (`TargetMatchID == nil`), Stage 1 slot capacity equals the `ACCEPTED` team count, and all Stage 1 slots are seeded. |
+| `ONGOING` ➔ `COMPLETED` | • Every match in the bracket has `IsCompleted == true`.<br/>• The championship match (`TargetMatchID == nil`) has a single undisputed winner (`FinalRank == 1`). |
+
+### `REGISTRATION` Open vs. Closed Substates
+
+Within `REGISTRATION`, player-facing rules split dynamically based on `IsRegistrationClosed(now)` (`!now.Before(RegistrationDeadline)`):
+
+- **Open (`now < RegistrationDeadline`):**
+  - Competitors can create team lobbies, join via invite code, submit/update registration form answers, pay entry fees (a cancelled or expired solo payment returns the registration to `FORMING` so the player can retry), and lock rosters.
+  - Organizers can review (`ACCEPT` / `REJECT`) locked applications.
+- **Closed (`now >= RegistrationDeadline`):**
+  - Competitors can no longer create lobbies, join teams, edit form answers, or lock rosters.
+  - Organizers can finish reviewing remaining `LOCKED` applications.
+
+Bracket definition/seeding (`POST /bracket`, `/seed`), team swap, and match scheduling are allowed throughout `REGISTRATION`, open or closed; schedule and swap also stay available in `ONGOING`. Match results are `ONGOING` only. The deadline is enforced solely at the `REGISTRATION` ➔ `ONGOING` transition (`ErrRegistrationStillOpen`).
+
+### Data Mutation Matrix by Status
+
+| Data / Field Group | Fields / Resources | `DRAFT` | `CROWDFUNDING` | `REGISTRATION` | `ONGOING` | `COMPLETED` |
+| --- | --- | :---: | :---: | :---: | :---: | :---: |
+| **General Info** | `Name`, `Description`, `Detail`, `Game`, `Location` | Editable | Editable | Editable | Editable | Locked |
+| **Registration Gate** | `RegistrationMode`, `EntryFee`, `MinTeamSize`, `MaxTeamSize`, `Capacity` | Editable (optional) | Editable | **Locked** | **Locked** | Locked |
+| **Registration Form** | Dynamic MongoDB form schema (`PUT /form`) | Editable | Editable | **Locked** | **Locked** | Locked |
+| **Registration Deadline** | `RegistrationDeadline` (`< StartsAt`) | Editable (optional) | Editable | Editable | **Locked** | Locked |
+| **Event Timeline** | `StartsAt`, `EndsAt` (`RegistrationDeadline < StartsAt < EndsAt`) | Editable (optional) | Editable | Editable | **Locked** | Locked |
+| **Crowdfunding & Tiers** | `FundingGoal`, `FundingDeadline`, `SponsorshipTier` CRUD (tiers editable in `DRAFT` only; ordered automatically by price, highest first, ties by creation time) | Editable | **Locked** | **Locked** | **Locked** | Locked |
+| **Sponsorship Pledges** | Sponsor self-serve checkout (`POST .../checkout`) | Blocked | **Open** (until `EndsAt`, if set) | **Open** (until `EndsAt`, if set) | **Open** (until `EndsAt`, if set) | Locked |
+| **Team Applications** | Organizer review (`ACCEPT` / `REJECT` `LOCKED` teams) | Blocked | Blocked | **Open** | Blocked | Locked |
+| **Bracket Structure** | Define bracket layout & seed Stage 1 (`POST /bracket`, `/seed`) | Blocked | Blocked | **Editable** | **Locked** | Locked |
+| **Match Runtime** | Record match results (`POST /matches/{matchId}/results`) | Blocked | Blocked | Blocked | **Editable** | Locked |
+| **Staff & Announcements** | Manage `TournamentStaff`, post `TournamentAnnouncement` | Editable | Editable | Editable | Editable | Editable |
+
+---
+
 ## Adding an endpoint
 
 1. Add or update a table shape in `services/<name>/models/`.

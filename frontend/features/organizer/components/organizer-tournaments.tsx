@@ -39,7 +39,8 @@ import {
   formatTournamentDate,
   formatMoney,
 } from "@/features/tournaments/utils";
-import { dashboardQueryOptions, statusLabel } from "@/features/organizer/utils";
+import { TournamentStatusBadge } from "@/features/tournaments/components/tournament-status-badge";
+import { dashboardQueryOptions } from "@/features/organizer/utils";
 import {
   DashboardError,
   DashboardLoading,
@@ -213,7 +214,7 @@ export function OrganizerTournaments() {
           ) : (
             <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
               {filteredItems.map(
-                ({ tournament, metrics, funding, published, role }) => (
+                ({ tournament, metrics, funding, role }) => (
                   <Card
                     key={tournament.id}
                     className="group motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-2 min-w-0 rounded-lg transition-shadow duration-200 hover:shadow-md"
@@ -222,12 +223,10 @@ export function OrganizerTournaments() {
                       <div className="mb-3 flex flex-wrap items-center gap-2">
                         {role ? <StaffRoleBadge role={role} /> : null}
                         <Badge variant="secondary">{tournament.game}</Badge>
-                        <Badge variant="outline" className="capitalize">
-                          {statusLabel(tournament.status)}
-                        </Badge>
-                        {!published ? (
-                          <Badge variant="outline">Unpublished</Badge>
-                        ) : null}
+                        <TournamentStatusBadge
+                          status={tournament.status}
+                          registrationDeadline={tournament.registrationDeadline}
+                        />
                       </div>
                       <CardTitle>
                         <h2 className="text-lg font-semibold wrap-anywhere">
@@ -255,7 +254,9 @@ export function OrganizerTournaments() {
                         <ProgressLabel>Accepted entries</ProgressLabel>
                         <ProgressValue>
                           {() =>
-                            `${metrics.acceptedEntries} / ${tournament.capacity}`
+                            tournament.capacity > 0
+                              ? `${metrics.acceptedEntries} / ${tournament.capacity}`
+                              : `${metrics.acceptedEntries} entries`
                           }
                         </ProgressValue>
                       </Progress>

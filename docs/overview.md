@@ -38,7 +38,7 @@ This document specifies the core end-to-end user journeys, role interactions, an
 2. **Crowdfunding Stage (Optional Gate):**
 * If funding is required before venue/logistics commitments, the tournament publishes in a `CROWDFUNDING` status with a funding target, deadline, and tier packages.
 * Competitor registrations remain locked while sponsors pledge funds.
-* If the target is met (or manually overridden by the organizer), the campaign locks in funds, sponsor assets are placed on the event banner, and the tournament transitions to `REGISTRATION_OPEN`. If expired without meeting the target, all pledges are automatically refunded/released.
+* If the target is met (or manually overridden by the organizer), the campaign locks in funds, sponsor assets are placed on the event banner, and the tournament transitions to `REGISTRATION`. If expired without meeting the target, all pledges are automatically refunded/released.
 
 
 3. **Registration & Review Management:**
@@ -46,7 +46,7 @@ This document specifies the core end-to-end user journeys, role interactions, an
 
 
 4. **Match Operations & Scoring:**
-* Once registration closes, brackets/lobbies generate automatically.
+* The organizer defines and seeds the bracket during registration; it must be complete before the event starts.
 * The organizer/staff can manually reseed or swap matchups before assigning court/table locations and match start times.
 * Assigned staff or referees submit official scores/rankings, which automatically advance winners to subsequent rounds.
 
@@ -124,14 +124,14 @@ This document specifies the core end-to-end user journeys, role interactions, an
 <!--May want organizers to have the ability to change the bracket graph after registration closes, and have them confirm the brackets later before the final brackets are published.-->
 
 ```
-[Registration Closes] ──► [Bracket Generated] ──► [Seeding / Adjustments] ──► [Schedule & Venue Assigned]
+[Bracket Defined] ──► [Seeding / Adjustments] ──► [Registration Closes] ──► [Schedule & Venue Assigned]
                                                                                          │
                                                                                          ▼
 [Archive & Podium Standings] ◄── [Final Match Scored] ◄── [Auto-Advancement] ◄── [Referees Input Scores]
 
 ```
 
-1. **Bracket Initialization:** When registration closes, the system populates the match nodes (Single Elimination tree or FFA scorecard) using confirmed participants.
+1. **Bracket Initialization:** During `REGISTRATION` the organizer defines the match nodes (Single Elimination tree or FFA scorecard) and seeds Stage 1 with confirmed participants. The bracket must match the accepted team count before the event can start.
 2. **Operational Adjustments:** Organizers/staff adjust seedings or swap slots to resolve scheduling conflicts, then publish match start times and physical stations (e.g., "Court 3", "Station B").
 3. **Live Match Reporting:** Referees access the restricted scorekeeper view to record scores or multi-team rankings. The progression engine calculates winners and moves them to the next round in real time.
 4. **Permanent Archive:** Upon tournament completion, the bracket switches to an immutable, read-only state displaying the final 1st, 2nd, and 3rd place standings.
@@ -163,12 +163,10 @@ This document specifies the core end-to-end user journeys, role interactions, an
 
 ## 3. High-Level Tournament State Machine
 
-$$\text{Draft} \longrightarrow \left[ \text{Crowdfunding} \right] \longrightarrow \text{Registration Open} \longrightarrow \text{Registration Closed} \longrightarrow \text{Live / Ongoing} \longrightarrow \text{Completed}$$
+$$\text{Draft} \longrightarrow \left[ \text{Crowdfunding} \right] \longrightarrow \text{Registration} \longrightarrow \text{Ongoing} \longrightarrow \text{Completed}$$
 
-* **Draft:** Setup phase; rules, formats, forms, and staff are configured.
+* **Draft:** Setup phase; rules, formats, forms, and staff are configured. Not publicly visible; every other status is public.
 * **Crowdfunding (Optional):** Sponsorship packages active; competitor sign-ups locked until financial goal is achieved.
-* **Registration Open:** Solo registration and Team Lobbies active; forms submitted and reviewed.
-* **Registration Closed:** Rosters locked; automated bracket/lobby generated; seeding and scheduling underway.
-* **Live / Ongoing:** Matches played; scores submitted; brackets progress dynamically.
+* **Registration:** Open until the registration deadline, then closed (a derived state, not a separate status). While open, solo registration and Team Lobbies are active and forms are submitted and reviewed. Organizers can define the bracket, seed, swap, and schedule at any time during this status. Rosters must be fully reviewed before the event can start.
+* **Ongoing:** Requires the deadline to have passed, all applications resolved, at least 2 accepted teams, and a fully seeded bracket. Matches played; scores submitted; brackets progress dynamically.
 * **Completed:** Read-only archive; placements finalized; financial settlement and payouts unlocked.
-* **Cancelled (Any Stage):** Triggers automated batch refunds to all participating sponsors and competitors.

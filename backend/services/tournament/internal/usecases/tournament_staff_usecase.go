@@ -54,7 +54,26 @@ func (u *TournamentStaffUseCase) checkCallerAuth(ctx context.Context, tournament
 	if err != nil {
 		return err
 	}
-	if !callerStaff.IsOwner() {
+	if callerStaff == nil || !callerStaff.IsOwner() {
+		return ErrCallerNotAuthorized
+	}
+	return nil
+}
+
+func (u *TournamentStaffUseCase) checkCallerIsStaff(ctx context.Context, tournamentID, callerID uuid.UUID) error {
+	exists, err := u.repo.TournamentExists(ctx, tournamentID)
+	if err != nil {
+		return err
+	}
+	if !exists {
+		return ErrTournamentNotFound
+	}
+
+	callerStaff, err := u.repo.GetStaff(ctx, tournamentID, callerID)
+	if err != nil {
+		return err
+	}
+	if callerStaff == nil {
 		return ErrCallerNotAuthorized
 	}
 	return nil
@@ -164,7 +183,7 @@ func (u *TournamentStaffUseCase) ListStaff(
 	ctx context.Context,
 	callerID, tournamentID uuid.UUID,
 ) ([]TournamentStaffView, error) {
-	if err := u.checkCallerAuth(ctx, tournamentID, callerID); err != nil {
+	if err := u.checkCallerIsStaff(ctx, tournamentID, callerID); err != nil {
 		return nil, err
 	}
 

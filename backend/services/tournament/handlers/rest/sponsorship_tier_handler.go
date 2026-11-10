@@ -22,17 +22,15 @@ type SponsorshipTierResponse struct {
 	AvailableSlots int       `json:"availableSlots" doc:"Slots remaining after pending and confirmed checkouts"`
 	Locked         bool      `json:"locked" doc:"A pending or confirmed checkout prevents editing or deletion"`
 	Perks          []string  `json:"perks"`
-	SortOrder      int       `json:"sortOrder"`
 	CreatedAt      time.Time `json:"createdAt"`
 	UpdatedAt      time.Time `json:"updatedAt"`
 }
 
 type SponsorshipTierBody struct {
-	Name      string   `json:"name" minLength:"1" maxLength:"80" doc:"Tier name, e.g. Gold"`
-	Price     int64    `json:"price" minimum:"1" doc:"Price in whole currency units"`
-	Slots     int      `json:"slots" minimum:"1" doc:"How many sponsors can buy this tier"`
-	Perks     []string `json:"perks" minItems:"1" maxItems:"10" doc:"What the sponsor receives"`
-	SortOrder int      `json:"sortOrder,omitempty" default:"0" doc:"Display order, lowest first"`
+	Name  string   `json:"name" minLength:"1" maxLength:"80" doc:"Tier name, e.g. Gold"`
+	Price int64    `json:"price" minimum:"1" doc:"Price in whole currency units"`
+	Slots int      `json:"slots" minimum:"1" doc:"How many sponsors can buy this tier"`
+	Perks []string `json:"perks" minItems:"1" maxItems:"10" doc:"What the sponsor receives"`
 }
 
 type ListSponsorshipTiersInput struct {
@@ -85,7 +83,7 @@ func RegisterSponsorshipTierRoutes(
 		Method:      http.MethodGet,
 		Path:        "/api/v1/tournaments/{tournamentId}/sponsorship-tiers",
 		Summary:     "List a tournament's sponsorship tiers",
-		Description: "Returns the sponsorship packages of a published tournament in display order.",
+		Description: "Returns the sponsorship packages of a published tournament, highest price first.",
 		Tags:        []string{"Sponsorship"},
 	}, func(ctx context.Context, input *ListSponsorshipTiersInput) (*ListSponsorshipTiersOutput, error) {
 		items, err := tiers.ListPublic(ctx, input.TournamentID)
@@ -193,11 +191,10 @@ func toListSponsorshipTiersOutput(items []models.SponsorshipTier) *ListSponsorsh
 
 func toSponsorshipTierInput(body SponsorshipTierBody) usecases.SponsorshipTierInput {
 	return usecases.SponsorshipTierInput{
-		Name:      body.Name,
-		Price:     body.Price,
-		Slots:     body.Slots,
-		Perks:     body.Perks,
-		SortOrder: body.SortOrder,
+		Name:  body.Name,
+		Price: body.Price,
+		Slots: body.Slots,
+		Perks: body.Perks,
 	}
 }
 
@@ -211,7 +208,6 @@ func toSponsorshipTierResponse(tier models.SponsorshipTier) SponsorshipTierRespo
 		AvailableSlots: tier.AvailableSlots,
 		Locked:         tier.Locked,
 		Perks:          tier.Perks,
-		SortOrder:      tier.SortOrder,
 		CreatedAt:      tier.CreatedAt,
 		UpdatedAt:      tier.UpdatedAt,
 	}

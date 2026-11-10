@@ -45,6 +45,8 @@ interface MatchDialogProps {
   isSwapping?: boolean;
   bracketMatches?: MatchResponse[];
   isScheduling?: boolean;
+  canEditStructure: boolean;
+  canRecordResults: boolean;
 }
 
 export function MatchDialog({
@@ -62,6 +64,8 @@ export function MatchDialog({
   onSwapTeams,
   isSwapping = false,
   bracketMatches = [],
+  canEditStructure,
+  canRecordResults,
 }: MatchDialogProps) {
   if (!open) return null;
 
@@ -83,6 +87,8 @@ export function MatchDialog({
           onSwapTeams={onSwapTeams}
           isSwapping={isSwapping}
           bracketMatches={bracketMatches}
+          canEditStructure={canEditStructure}
+          canRecordResults={canRecordResults}
         />
       </DialogContent>
     </Dialog>
@@ -103,6 +109,8 @@ interface MatchDialogContentProps {
   isSwapping?: boolean;
   bracketMatches?: MatchResponse[];
   isScheduling: boolean;
+  canEditStructure: boolean;
+  canRecordResults: boolean;
 }
 
 function MatchDialogContent({
@@ -119,6 +127,8 @@ function MatchDialogContent({
   onSwapTeams,
   isSwapping = false,
   bracketMatches = [],
+  canEditStructure,
+  canRecordResults,
 }: MatchDialogContentProps) {
   // Other matches in bracket (excluding current one being edited)
   const otherMatches = allMatches.filter((m) => m.tempId !== (match?.id ?? ""));
@@ -160,9 +170,10 @@ function MatchDialogContent({
   const entries = match?.entries ?? [];
   const hasEntries = entries.length > 0;
   const isCompleted = match?.isCompleted ?? false;
+  const isStructureLocked = isCompleted || !canEditStructure;
   const canSchedule = Boolean(onScheduleMatch) && !isCompleted;
   const canSwap = Boolean(onSwapTeams) && !isCompleted && hasEntries;
-  const tabCount = 2 + Number(canSchedule) + Number(canSwap);
+  const tabCount = 1 + Number(canRecordResults) + Number(canSchedule) + Number(canSwap);
 
   const [placements, setPlacements] = useState<Record<string, { rank: number; score: string }>>(() => {
     const initial: Record<string, { rank: number; score: string }> = {};
@@ -175,7 +186,9 @@ function MatchDialogContent({
     return initial;
   });
 
-  const [activeTab, setActiveTab] = useState<string>(hasEntries ? "scores" : "settings");
+  const [activeTab, setActiveTab] = useState<string>(
+    hasEntries && canRecordResults ? "scores" : "settings"
+  );
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   // Available target matches at higher stages (sorted by stage level, then name)
@@ -445,11 +458,13 @@ function MatchDialogContent({
       ) : null}
 
       <Tabs value={activeTab} onValueChange={(val) => setActiveTab(val as string)} className="gap-3">
-        <TabsList className={cn("grid w-full", { 2: "grid-cols-2", 3: "grid-cols-3", 4: "grid-cols-4" }[tabCount])}>
-          <TabsTrigger value="scores" className="gap-1.5 text-xs">
-            <Trophy className="size-3.5" />
-            Scores & Results
-          </TabsTrigger>
+        <TabsList className={cn("grid w-full", { 1: "grid-cols-1", 2: "grid-cols-2", 3: "grid-cols-3", 4: "grid-cols-4" }[tabCount])}>
+          {canRecordResults ? (
+            <TabsTrigger value="scores" className="gap-1.5 text-xs">
+              <Trophy className="size-3.5" />
+              Scores & Results
+            </TabsTrigger>
+          ) : null}
           <TabsTrigger value="settings" className="gap-1.5 text-xs">
             <Settings2 className="size-3.5" />
             Format Settings
@@ -469,6 +484,7 @@ function MatchDialogContent({
         </TabsList>
 
         {/* Tab 1: Scores & Results */}
+        {canRecordResults ? (
         <TabsContent value="scores" className="flex flex-col gap-3 pt-1">
           {hasEntries ? (
             <>
@@ -575,6 +591,7 @@ function MatchDialogContent({
             </div>
           )}
         </TabsContent>
+        ) : null}
 
         {/* Tab 2: Format Settings */}
         <TabsContent value="settings" className="pt-1">
@@ -590,7 +607,7 @@ function MatchDialogContent({
                   onChange={(e) => setName(e.target.value)}
                   placeholder="e.g. Match 1, Final"
                   className="h-8 text-sm mt-1"
-                  disabled={isCompleted}
+                  disabled={isStructureLocked}
                 />
               </div>
 
@@ -604,7 +621,7 @@ function MatchDialogContent({
                   onChange={(e) => setVenue(e.target.value)}
                   placeholder="e.g. Arena A, Court 1"
                   className="h-8 text-sm mt-1"
-                  disabled={isCompleted}
+                  disabled={isStructureLocked}
                 />
               </div>
 
@@ -620,7 +637,7 @@ function MatchDialogContent({
                     setStageLevel(Number(val));
                     setTargetTempId("");
                   }}
-                  disabled={isCompleted}
+                  disabled={isStructureLocked}
                 >
                   <SelectTrigger id="match-stage" size="sm" className="w-full mt-1">
                     <SelectValue />
@@ -648,7 +665,7 @@ function MatchDialogContent({
                   value={teamCount}
                   onChange={(e) => setTeamCount(Number(e.target.value))}
                   className="h-8 text-sm mt-1"
-                  disabled={isCompleted}
+                  disabled={isStructureLocked}
                 />
               </div>
 
@@ -664,7 +681,7 @@ function MatchDialogContent({
                   value={advancingCount}
                   onChange={(e) => setAdvancingCount(Number(e.target.value))}
                   className="h-8 text-sm mt-1"
-                  disabled={isCompleted}
+                  disabled={isStructureLocked}
                 />
               </div>
 
@@ -678,7 +695,7 @@ function MatchDialogContent({
                   onValueChange={(val) =>
                     setTargetTempId(val === "none" || !val ? "" : (val as string))
                   }
-                  disabled={isCompleted}
+                  disabled={isStructureLocked}
                 >
                   <SelectTrigger id="match-target" size="sm" className="w-full mt-1">
                     <SelectValue />
@@ -697,7 +714,7 @@ function MatchDialogContent({
             </div>
 
             <DialogFooter className="mt-4 flex sm:justify-between items-center gap-2">
-              {match && !hasEntries && onDeleteNode ? (
+              {match && !hasEntries && onDeleteNode && !isStructureLocked ? (
                 <Button
                   type="button"
                   variant="ghost"
@@ -718,7 +735,7 @@ function MatchDialogContent({
                 <Button type="button" variant="outline" size="sm" onClick={onClose}>
                   Close
                 </Button>
-                {!isCompleted ? (
+                {!isStructureLocked ? (
                   <Button type="submit" size="sm">
                     Save Settings
                   </Button>

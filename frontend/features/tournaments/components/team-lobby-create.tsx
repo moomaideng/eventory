@@ -33,7 +33,7 @@ import {
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
-import { problemMessage } from "../utils";
+import { isRegistrationOpen, problemMessage } from "../utils";
 import { createTeamLobbySchema } from "../schemas";
 import { TeamCreateSkeleton } from "./team-create-skeleton";
 import { TournamentSummaryCard } from "./tournament-summary-card";
@@ -125,7 +125,7 @@ export function TeamLobbyCreate({ tournamentId }: { tournamentId: string }) {
 
   const { tournament } = details;
   const supportsTeams = tournament.registrationMode === "TEAM";
-  const registrationOpen = tournament.status === "REGISTRATION_OPEN";
+  const registrationOpen = isRegistrationOpen(tournament);
 
   return (
     <div className="container mx-auto flex w-full max-w-4xl flex-1 flex-col gap-6 px-4 py-12 sm:px-8">

@@ -58,3 +58,15 @@ func TestSponsorshipOpenAfterCrowdfunding(t *testing.T) {
 		}
 	}
 }
+
+func TestSponsorshipOpenWithoutEndDate(t *testing.T) {
+	now := time.Now()
+	open := models.Tournament{Status: models.TournamentStatusCrowdfunding}
+	if !sponsorshipOpen(&open, now) {
+		t.Error("crowdfunding tournament without an end date rejected sponsorship")
+	}
+	draft := models.Tournament{Status: models.TournamentStatusDraft}
+	if sponsorshipOpen(&draft, now) {
+		t.Error("draft tournament accepted sponsorship")
+	}
+}

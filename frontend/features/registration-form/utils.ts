@@ -1,4 +1,32 @@
-import type { FormField } from "@/features/registration-form/schemas";
+import { formFieldSchema, type FormField } from "@/features/registration-form/schemas";
+import type { components } from "@/lib/api/schema";
+
+type RegistrationFormResponse = components["schemas"]["RegistrationFormResponse"];
+
+/** Maps saved form fields to validated builder fields; unparseable fields degrade to short text. */
+export function parseFormFields(fields: RegistrationFormResponse["fields"] | undefined): FormField[] {
+  return (fields ?? []).map((f, i) => {
+    const parsed = formFieldSchema.safeParse({
+      id: f.id,
+      type: f.type,
+      label: f.label,
+      description: f.description ?? "",
+      required: f.required ?? false,
+      order: f.order ?? i + 1,
+      config: typeof f.config === "object" && f.config !== null ? f.config : {},
+    });
+    if (parsed.success) return parsed.data;
+    return {
+      id: f.id,
+      type: "SHORT_TEXT",
+      label: f.label,
+      description: f.description ?? "",
+      required: f.required ?? false,
+      order: f.order ?? i + 1,
+      config: {},
+    } satisfies FormField;
+  });
+}
 
 /** Text, number and single-choice answers are strings; multi-choice answers are arrays. */
 export type AnswerValue = string | string[];

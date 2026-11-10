@@ -2,7 +2,7 @@
 
 import React, { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { AlertCircle, PlusCircle } from "lucide-react";
+import { AlertCircle, FileEdit, PlusCircle } from "lucide-react";
 import { apiClient } from "@/lib/api/client";
 import { useAuth } from "@/context/auth-context";
 import { extractProblemMessage } from "@/lib/schemas";
@@ -13,9 +13,6 @@ import {
   type CreateTournamentFormInput,
 } from "../schemas";
 import { HostTournamentGeneralCard } from "./host-tournament-general-card";
-import { HostTournamentFormatCard } from "./host-tournament-format-card";
-import { HostTournamentScheduleCard } from "./host-tournament-schedule-card";
-import { HostTournamentFundingCard } from "./host-tournament-funding-card";
 
 export interface HostTournamentFormProps {
   organizerName?: string;
@@ -36,25 +33,11 @@ export function HostTournamentForm({
   const [location, setLocation] = useState("Online");
   const [description, setDescription] = useState("");
   const [detail, setDetail] = useState("");
-  const [registrationMode, setRegistrationMode] = useState<"SOLO" | "TEAM">(
-    "TEAM"
-  );
-  const [minTeamSize, setMinTeamSize] = useState(5);
-  const [maxTeamSize, setMaxTeamSize] = useState(5);
-  const [capacity, setCapacity] = useState(16);
-  const [entryFee, setEntryFee] = useState(0);
-  const [registrationDeadline, setRegistrationDeadline] = useState("");
-  const [startAt, setStartAt] = useState("");
-  const [endAt, setEndAt] = useState("");
-  const [crowdfunding, setCrowdfunding] = useState(false);
-  const [fundingGoal, setFundingGoal] = useState(0);
-  const [fundingDeadline, setFundingDeadline] = useState("");
 
   const [fieldErrors, setFieldErrors] = useState<FormErrors>({});
   const [apiError, setApiError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Sync draft values up to parent workspace for the live preview card
   function updateAndNotify(overrides: Partial<CreateTournamentFormInput> = {}) {
     const updated: CreateTournamentFormInput = {
       name,
@@ -62,35 +45,9 @@ export function HostTournamentForm({
       location,
       description,
       detail,
-      registrationMode,
-      minTeamSize: registrationMode === "SOLO" ? 1 : minTeamSize,
-      maxTeamSize: registrationMode === "SOLO" ? 1 : maxTeamSize,
-      capacity,
-      entryFee,
-      registrationDeadline,
-      startAt,
-      endAt,
-      crowdfunding,
-      fundingGoal,
-      fundingDeadline,
       ...overrides,
     };
     onValuesChange(updated);
-  }
-
-  function handleModeChange(nextMode: "SOLO" | "TEAM") {
-    setRegistrationMode(nextMode);
-    const newMin = nextMode === "SOLO" ? 1 : 5;
-    const newMax = nextMode === "SOLO" ? 1 : 5;
-    if (nextMode === "SOLO") {
-      setMinTeamSize(1);
-      setMaxTeamSize(1);
-    }
-    updateAndNotify({
-      registrationMode: nextMode,
-      minTeamSize: newMin,
-      maxTeamSize: newMax,
-    });
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -103,17 +60,6 @@ export function HostTournamentForm({
       location,
       description,
       detail,
-      registrationMode,
-      minTeamSize: registrationMode === "SOLO" ? 1 : minTeamSize,
-      maxTeamSize: registrationMode === "SOLO" ? 1 : maxTeamSize,
-      capacity,
-      entryFee,
-      registrationDeadline,
-      startAt,
-      endAt,
-      crowdfunding,
-      fundingGoal,
-      fundingDeadline,
     };
 
     const result = createTournamentFormSchema.safeParse(payload);
@@ -145,25 +91,7 @@ export function HostTournamentForm({
           game: result.data.game,
           location: result.data.location,
           description: result.data.description,
-          detail: result.data.detail,
-          registrationMode: result.data.registrationMode,
-          minTeamSize: result.data.minTeamSize,
-          maxTeamSize: result.data.maxTeamSize,
-          capacity: result.data.capacity,
-          entryFee: result.data.entryFee,
-          registrationDeadline: new Date(
-            result.data.registrationDeadline
-          ).toISOString(),
-          startAt: new Date(result.data.startAt).toISOString(),
-          endAt: new Date(result.data.endAt).toISOString(),
-          ...(result.data.crowdfunding
-            ? {
-                fundingGoal: result.data.fundingGoal,
-                fundingDeadline: new Date(
-                  result.data.fundingDeadline
-                ).toISOString(),
-              }
-            : {}),
+          detail: result.data.detail || undefined,
         },
       });
 
@@ -194,10 +122,20 @@ export function HostTournamentForm({
         </div>
       ) : null}
 
-      {/* 1. General Information Card (Basic Info + Description & Rules) */}
+      <div className="bg-muted/40 text-muted-foreground border-border flex items-start gap-3 rounded-lg border p-4 text-xs leading-relaxed sm:text-sm">
+        <FileEdit className="text-primary mt-0.5 size-4 shrink-0" />
+        <div>
+          <span className="text-foreground font-medium">
+            Draft State Initialization:
+          </span>{" "}
+          Your tournament will be created in Draft state. You can configure
+          registration rules, entry fees, tournament dates, and crowdfunding
+          campaigns directly from your workspace after creation.
+        </div>
+      </div>
+
       <HostTournamentGeneralCard
         organizerName={organizerName}
-        crowdfunding={crowdfunding}
         name={name}
         onNameChange={(val) => {
           setName(val);
@@ -231,85 +169,6 @@ export function HostTournamentForm({
         errors={fieldErrors}
       />
 
-      {/* 2. Format & Capacity Card */}
-      <HostTournamentFormatCard
-        registrationMode={registrationMode}
-        onModeChange={handleModeChange}
-        minTeamSize={minTeamSize}
-        onMinTeamSizeChange={(val) => {
-          setMinTeamSize(val);
-          setFieldErrors((prev) => ({ ...prev, minTeamSize: undefined }));
-          updateAndNotify({ minTeamSize: val });
-        }}
-        maxTeamSize={maxTeamSize}
-        onMaxTeamSizeChange={(val) => {
-          setMaxTeamSize(val);
-          setFieldErrors((prev) => ({ ...prev, maxTeamSize: undefined }));
-          updateAndNotify({ maxTeamSize: val });
-        }}
-        capacity={capacity}
-        onCapacityChange={(val) => {
-          setCapacity(val);
-          setFieldErrors((prev) => ({ ...prev, capacity: undefined }));
-          updateAndNotify({ capacity: val });
-        }}
-        entryFee={entryFee}
-        onEntryFeeChange={(val) => {
-          setEntryFee(val);
-          setFieldErrors((prev) => ({ ...prev, entryFee: undefined }));
-          updateAndNotify({ entryFee: val });
-        }}
-        errors={fieldErrors}
-      />
-
-      {/* 3. Tournament Schedule Card */}
-      <HostTournamentScheduleCard
-        crowdfunding={crowdfunding}
-        registrationDeadline={registrationDeadline}
-        onRegistrationDeadlineChange={(val) => {
-          setRegistrationDeadline(val);
-          setFieldErrors((prev) => ({
-            ...prev,
-            registrationDeadline: undefined,
-          }));
-          updateAndNotify({ registrationDeadline: val });
-        }}
-        startAt={startAt}
-        onStartAtChange={(val) => {
-          setStartAt(val);
-          setFieldErrors((prev) => ({ ...prev, startAt: undefined }));
-          updateAndNotify({ startAt: val });
-        }}
-        endAt={endAt}
-        onEndAtChange={(val) => {
-          setEndAt(val);
-          setFieldErrors((prev) => ({ ...prev, endAt: undefined }));
-          updateAndNotify({ endAt: val });
-        }}
-        errors={fieldErrors}
-      />
-
-      <HostTournamentFundingCard
-        enabled={crowdfunding}
-        onEnabledChange={(value) => {
-          setCrowdfunding(value);
-          updateAndNotify({ crowdfunding: value });
-        }}
-        goal={fundingGoal}
-        onGoalChange={(value) => {
-          setFundingGoal(value);
-          setFieldErrors((prev) => ({ ...prev, fundingGoal: undefined }));
-          updateAndNotify({ fundingGoal: value });
-        }}
-        deadline={fundingDeadline}
-        onDeadlineChange={(value) => {
-          setFundingDeadline(value);
-          setFieldErrors((prev) => ({ ...prev, fundingDeadline: undefined }));
-          updateAndNotify({ fundingDeadline: value });
-        }}
-        errors={fieldErrors}
-      />
-
       {/* Form Submission Actions */}
       <div className="flex flex-col-reverse gap-3 pt-2 sm:flex-row sm:items-center sm:justify-end">
         <Button
@@ -325,12 +184,12 @@ export function HostTournamentForm({
           {isSubmitting ? (
             <>
               <Spinner data-icon="inline-start" />
-              Publishing Tournament...
+              Creating Tournament...
             </>
           ) : (
             <>
               <PlusCircle data-icon="inline-start" />
-              {crowdfunding ? "Start Crowdfunding" : "Publish Tournament"}
+              Create Tournament
             </>
           )}
         </Button>

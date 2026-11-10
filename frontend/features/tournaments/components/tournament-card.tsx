@@ -24,9 +24,9 @@ import {
   formatEntryFee,
   formatRegistrationStatus,
   formatTournamentDate,
-  formatTournamentStatus,
   type Tournament,
 } from "../utils";
+import { TournamentStatusBadge } from "./tournament-status-badge";
 
 export function TournamentCard({
   tournament,
@@ -39,7 +39,6 @@ export function TournamentCard({
     0,
     tournament.capacity - tournament.registeredCount
   );
-  const status = formatTournamentStatus(tournament.status);
   const isCrowdfunding = tournament.status === "CROWDFUNDING";
 
   return (
@@ -47,9 +46,10 @@ export function TournamentCard({
       <CardHeader>
         <div className="flex items-start justify-between gap-3">
           <Badge variant="secondary">{tournament.game}</Badge>
-          <Badge variant="outline" className="capitalize">
-            {status}
-          </Badge>
+          <TournamentStatusBadge
+            status={tournament.status}
+            registrationDeadline={tournament.registrationDeadline}
+          />
         </div>
         <CardTitle>{tournament.name}</CardTitle>
         <CardDescription>Hosted by {tournament.organizerName}</CardDescription>
@@ -96,7 +96,9 @@ export function TournamentCard({
           <div className="text-muted-foreground flex items-center gap-2 text-sm">
             <Users className="size-4" />
             <span>
-              {seatsLeft} of {tournament.capacity} spots available
+              {tournament.capacity > 0
+                ? `${seatsLeft} of ${tournament.capacity} spots available`
+                : `${tournament.registeredCount} registered`}
             </span>
           </div>
         ) : (

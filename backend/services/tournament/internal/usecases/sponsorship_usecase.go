@@ -106,7 +106,7 @@ func (u *SponsorshipUseCase) Start(ctx context.Context, input StartSponsorship) 
 		return nil, ErrInvalidSponsorship
 	}
 	expires := now.Add(15 * time.Minute)
-	if tournament.EndsAt.Before(expires) {
+	if !tournament.EndsAt.IsZero() && tournament.EndsAt.Before(expires) {
 		expires = tournament.EndsAt.UTC().Truncate(time.Microsecond)
 	}
 	pledge := &models.SponsorshipPledge{
@@ -124,7 +124,7 @@ func (u *SponsorshipUseCase) Start(ctx context.Context, input StartSponsorship) 
 }
 
 func sponsorshipOpen(t *models.Tournament, now time.Time) bool {
-	if t.Status == models.TournamentStatusDraft || !now.Before(t.EndsAt) {
+	if t.Status == models.TournamentStatusDraft || (!t.EndsAt.IsZero() && !now.Before(t.EndsAt)) {
 		return false
 	}
 	switch t.Status {

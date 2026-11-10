@@ -659,7 +659,8 @@ func (u *TournamentUseCase) UpdateTournament(
 		}
 		tournament.Funding.GoalAmount = currentGoal
 		tournament.Funding.Deadline = &currentDeadline
-	} else if tournament.Funding != nil && tournament.Funding.Deadline != nil && !newDeadline.IsZero() &&
+	} else if (tournament.Status == models.TournamentStatusDraft || tournament.Status == models.TournamentStatusCrowdfunding) &&
+		tournament.Funding != nil && tournament.Funding.Deadline != nil && !newDeadline.IsZero() &&
 		!tournament.Funding.Deadline.Before(newDeadline) {
 		return nil, ErrInvalidCrowdfunding
 	}

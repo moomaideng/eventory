@@ -43,24 +43,33 @@ export function TeamSubmissionResult({ payment }: { payment: Payment }) {
   const team = submission.data;
   const submitted =
     team && ["LOCKED", "ACCEPTED", "REJECTED"].includes(team.status);
+  const isSolo = Boolean(team) && !team?.inviteCode;
   return (
     <Alert aria-live="polite">
       <AlertTitle>
         {team?.status === "REJECTED"
           ? "Application rejected"
           : submitted
-          ? "Team application submitted"
+          ? isSolo
+            ? "Registration submitted"
+            : "Team application submitted"
           : team?.status === "FORMING"
-            ? "Roster unlocked"
+            ? isSolo
+              ? "Registration not completed"
+              : "Roster unlocked"
             : "Verifying team submission"}
       </AlertTitle>
       <AlertDescription>
         {team?.status === "REJECTED"
           ? "Your organizer rejected this registration. If you paid a fee, its refund is being processed."
           : submitted
-          ? "Your application is with the organizer. Open your team to see its approval status."
+          ? isSolo
+            ? "Your registration is with the organizer for review."
+            : "Your application is with the organizer. Open your team to see its approval status."
           : team?.status === "FORMING"
-            ? "Payment was unsuccessful or expired. Your team was not submitted. Return to the lobby to edit your roster or try again."
+            ? isSolo
+              ? "Payment was unsuccessful or expired. Your registration was not submitted. Go back to the tournament to try again."
+              : "Payment was unsuccessful or expired. Your team was not submitted. Return to the lobby to edit your roster or try again."
             : "Your payment result is saved. We are checking the team application; do not create another payment."}
         {submission.isError && (
           <Button
@@ -71,11 +80,18 @@ export function TeamSubmissionResult({ payment }: { payment: Payment }) {
             Retry verification
           </Button>
         )}
-        {team && team.inviteCode && (
-          <Link className="underline" href={`/lobbies/${team.inviteCode}`}>
+        {team?.inviteCode ? (
+          <Link className="mt-2 block underline" href={`/lobbies/${team.inviteCode}`}>
             Return to team lobby
           </Link>
-        )}
+        ) : team ? (
+          <Link
+            className="mt-2 block underline"
+            href={`/tournaments/${team.tournament.id}`}
+          >
+            Back to the tournament
+          </Link>
+        ) : null}
       </AlertDescription>
     </Alert>
   );

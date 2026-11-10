@@ -658,6 +658,20 @@ func TestUpdateCrowdfundingConfiguration(t *testing.T) {
 		}
 	})
 
+	t.Run("registration deadline ignores the funding deadline once registration is open", func(t *testing.T) {
+		tournament := makeCampaign()
+		tournament.Status = models.TournamentStatusRegistration
+		repo := &mockTournamentRepository{details: tournament}
+		deadline := now.Add(4 * time.Hour)
+		updated, err := usecases.NewTournamentUseCase(repo, newStubAccountService()).UpdateTournament(
+			context.Background(), ownerID, tournamentID,
+			usecases.UpdateTournamentInput{RegistrationDeadline: &deadline},
+		)
+		if err != nil || !updated.RegistrationDeadline.Equal(deadline) || repo.updatedTournament == nil {
+			t.Fatalf("registration deadline update failed: tournament=%+v err=%v", updated, err)
+		}
+	})
+
 	tests := []struct {
 		name   string
 		setup  func(*models.Tournament)
@@ -671,6 +685,7 @@ func TestUpdateCrowdfundingConfiguration(t *testing.T) {
 		{"zero goal", nil, ownerID, usecases.UpdateTournamentInput{FundingGoal: ptr(int64(0))}, usecases.ErrInvalidCrowdfunding},
 		{"deadline after registration", nil, ownerID, usecases.UpdateTournamentInput{FundingDeadline: ptr(now.Add(30 * time.Hour))}, usecases.ErrInvalidCrowdfunding},
 		{"registration deadline moved before funding deadline", nil, ownerID, usecases.UpdateTournamentInput{RegistrationDeadline: ptr(now.Add(4 * time.Hour))}, usecases.ErrInvalidCrowdfunding},
+		{"registration deadline moved before funding deadline while crowdfunding", func(tm *models.Tournament) { tm.Status = models.TournamentStatusCrowdfunding }, ownerID, usecases.UpdateTournamentInput{RegistrationDeadline: ptr(now.Add(4 * time.Hour))}, usecases.ErrInvalidCrowdfunding},
 		{"already crowdfunding", func(tm *models.Tournament) { tm.Status = models.TournamentStatusCrowdfunding }, ownerID, usecases.UpdateTournamentInput{FundingGoal: ptr(int64(3000))}, usecases.ErrCrowdfundingClosed},
 		{"registration is open", func(tm *models.Tournament) { tm.Status = models.TournamentStatusRegistration }, ownerID, usecases.UpdateTournamentInput{FundingGoal: ptr(int64(3000))}, usecases.ErrCrowdfundingClosed},
 	}

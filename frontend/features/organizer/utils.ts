@@ -1,13 +1,9 @@
-import { z } from "zod";
 import type { components } from "@/lib/api/schema";
 
 export type OrganizerSummary =
   components["schemas"]["OrganizerTournamentSummary"];
 export type DashboardEntry = components["schemas"]["OrganizerDashboardEntry"];
 
-/** The lifecycle statuses the API accepts, taken from the generated schema. */
-export type TournamentStatus =
-  components["schemas"]["OverrideTournamentStatusInputBody"]["status"];
 
 export const dashboardQueryOptions = {
   retry: false,
@@ -16,8 +12,10 @@ export const dashboardQueryOptions = {
   refetchInterval: 30_000,
 } as const;
 
-export function toLocalInput(value: string) {
+export function toLocalInput(value?: string | null) {
+  if (!value) return "";
   const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
   return new Date(date.getTime() - date.getTimezoneOffset() * 60_000)
     .toISOString()
     .slice(0, 16);
@@ -36,32 +34,32 @@ export function statusTitle(status: string) {
     .join(" ");
 }
 
-// Mirrors the server's limits in internal/usecases/tournament_status_usecase.go
-// so the organizer sees the problem before a request is sent. The server
-// re-validates regardless; this is convenience, not enforcement.
-export const REASON_MIN_LENGTH = 10;
 export const REASON_MAX_LENGTH = 500;
 
-export const statusOverrideSchema = z.object({
-  status: z.string({ message: "Choose a status." }).min(1, "Choose a status."),
-  reason: z
-    .string()
-    .trim()
-    .min(REASON_MIN_LENGTH, `Give at least ${REASON_MIN_LENGTH} characters.`)
-    .max(REASON_MAX_LENGTH, `Keep it under ${REASON_MAX_LENGTH} characters.`),
+const relativeTimeFormatter = new Intl.RelativeTimeFormat("en", {
+  numeric: "auto",
 });
 
-export type StatusOverrideInput = z.infer<typeof statusOverrideSchema>;
+const MINUTE_MS = 60_000;
+const HOUR_MS = 60 * MINUTE_MS;
+const DAY_MS = 24 * HOUR_MS;
+const MONTH_MS = 30 * DAY_MS;
 
-// Statuses a tournament cannot be moved out of again. Shown as a confirmation
-// before submitting, because the API will not let the organizer take it back.
-//
-// TODO(US6-x): warn when completing a tournament that has no recorded winner.
-// There is no winner, placement, or bracket model yet, so the copy below is
-// deliberately unconditional.
-export const TERMINAL_WARNING: Record<string, string> = {
-  COMPLETED:
-    "A completed tournament becomes a read-only archive. You will not be able to reopen it.",
-  CANCELLED:
-    "Cancelling closes the tournament and cannot be undone. Refunds are not processed by this action.",
-};
+/** Human relative time such as "in 11 days" or "3 hours ago"; null when missing. */
+export function formatRelative(value?: string | null, now: number = Date.now()) {
+  if (!value) return null;
+  const time = new Date(value).getTime();
+  if (Number.isNaN(time)) return null;
+  const diff = time - now;
+  const abs = Math.abs(diff);
+  if (abs < HOUR_MS) {
+    return relativeTimeFormatter.format(Math.round(diff / MINUTE_MS), "minute");
+  }
+  if (abs < DAY_MS) {
+    return relativeTimeFormatter.format(Math.round(diff / HOUR_MS), "hour");
+  }
+  if (abs < MONTH_MS) {
+    return relativeTimeFormatter.format(Math.round(diff / DAY_MS), "day");
+  }
+  return relativeTimeFormatter.format(Math.round(diff / MONTH_MS), "month");
+}

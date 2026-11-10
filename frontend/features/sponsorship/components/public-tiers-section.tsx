@@ -26,13 +26,15 @@ export function PublicTiersSection({
   tournamentId: string;
   currency: string;
   status: string;
-  endsAt: string;
+  endsAt?: string;
   sponsorMode?: boolean;
 }) {
   const { authorizationHeader, isLoading: authLoading } = useAuth();
   const router = useRouter();
   const [selected, setSelected] = useState<SponsorshipTier | null>(null);
-  const [beforeEnd] = useState(() => Date.now() < Date.parse(endsAt));
+  const [beforeEnd] = useState(
+    () => !endsAt || Date.now() < Date.parse(endsAt)
+  );
   const sponsor = useSponsorProfile({
     enabled: sponsorMode && Boolean(selected),
   });
@@ -45,12 +47,7 @@ export function PublicTiersSection({
       sponsor.error.status === 404
     );
   const open =
-    [
-      "CROWDFUNDING",
-      "REGISTRATION_OPEN",
-      "REGISTRATION_CLOSED",
-      "ONGOING",
-    ].includes(status) && beforeEnd;
+    ["CROWDFUNDING", "REGISTRATION", "ONGOING"].includes(status) && beforeEnd;
   const { data, isLoading, error, refetch } = $api.useQuery(
     "get",
     "/api/v1/tournaments/{tournamentId}/sponsorship-tiers",

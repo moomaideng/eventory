@@ -307,7 +307,7 @@ export interface paths {
          * @description Creates a new tournament for the authenticated organizer. Requires an active organizer profile.
          *
          *     ### Rules & Defaults:
-         *     - **Status & Visibility:** Published immediately. Defaults to `REGISTRATION_OPEN`; valid fundingGoal and fundingDeadline start in `CROWDFUNDING`.
+         *     - **Status & Visibility:** Defaults to `REGISTRATION`; valid fundingGoal and fundingDeadline start in `CROWDFUNDING`.
          *     - **Currency:** Defaulted to `THB`.
          *     - **Registration Mode:** If `SOLO`, `minTeamSize` and `maxTeamSize` are automatically set to `1`. If `TEAM`, requires `1 <= minTeamSize <= maxTeamSize`.
          *     - **Date Integrity (400):** Requires `registrationDeadline < startAt < endAt`.
@@ -616,29 +616,9 @@ export interface paths {
         head?: never;
         /**
          * Override a tournament's status
-         * @description Manually moves an owned tournament to another lifecycle status, recording the previous status, the reason, the acting account, and a timestamp. Opening registration from crowdfunding requires complete event details and a met funding goal, unless the owner explicitly force-starts it.
+         * @description Moves an owned tournament to another lifecycle status.
          */
         patch: operations["override-tournament-status"];
-        trace?: never;
-    };
-    "/api/v1/tournaments/{id}/status/history": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * List a tournament's status override history
-         * @description Returns the audit trail of manual status overrides for an owned tournament, newest first.
-         */
-        get: operations["list-tournament-status-history"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
         trace?: never;
     };
     "/api/v1/tournaments/{tournamentId}": {
@@ -664,7 +644,7 @@ export interface paths {
          *
          *     ### Restrictions & Invariants:
          *     - **Ownership (403 Forbidden):** Only the organizer profile that created the tournament can modify it.
-         *     - **Lifecycle Immutability (409 Conflict):** Tournaments with status `ONGOING`, `COMPLETED`, or `CANCELLED` cannot have their configuration modified.
+         *     - **Lifecycle Immutability (409 Conflict):** Tournaments with status `ONGOING` or `COMPLETED` cannot have their configuration modified.
          *     - **Capacity Floor (409 Conflict):** `capacity` cannot be reduced below the number of currently accepted teams/participants (`capacity >= acceptedCount`).
          *     - **Roster Freezing (409 Conflict):** Once any team has locked or been accepted into the tournament (`lockedOrAcceptedCount > 0`), `registrationMode`, `minTeamSize`, and `maxTeamSize` cannot be altered.
          *     - **Date Integrity (400 Bad Request):** Merged dates must maintain `registrationDeadline < startAt < endAt`.
@@ -821,7 +801,7 @@ export interface paths {
         };
         /**
          * List a tournament's sponsorship tiers
-         * @description Returns the sponsorship packages of a published tournament in display order.
+         * @description Returns the sponsorship packages of a published tournament, highest price first.
          */
         get: operations["list-sponsorship-tiers"];
         put?: never;
@@ -1291,7 +1271,7 @@ export interface components {
              * Format: int64
              * @description Maximum participant or team capacity
              */
-            capacity: number;
+            capacity?: number;
             /** @description Short summary description */
             description: string;
             /** @description Tournament rules and full details (Markdown supported) */
@@ -1300,13 +1280,12 @@ export interface components {
              * Format: date-time
              * @description Tournament end timestamp (RFC 3339)
              */
-            endAt: string;
+            endAt?: string;
             /**
              * Format: int64
              * @description Entry fee in whole currency units
-             * @default 0
              */
-            entryFee: number;
+            entryFee?: number;
             /**
              * Format: date-time
              * @description Crowdfunding deadline before registrationDeadline; requires fundingGoal
@@ -1324,32 +1303,30 @@ export interface components {
             /**
              * Format: int64
              * @description Maximum team size (coerced to 1 for SOLO)
-             * @default 1
              */
-            maxTeamSize: number;
+            maxTeamSize?: number;
             /**
              * Format: int64
              * @description Minimum team size (coerced to 1 for SOLO)
-             * @default 1
              */
-            minTeamSize: number;
+            minTeamSize?: number;
             /** @description Tournament name */
             name: string;
             /**
              * Format: date-time
              * @description Registration deadline timestamp (RFC 3339)
              */
-            registrationDeadline: string;
+            registrationDeadline?: string;
             /**
              * @description Registration mode: SOLO or TEAM
              * @enum {string}
              */
-            registrationMode: "SOLO" | "TEAM";
+            registrationMode?: "SOLO" | "TEAM";
             /**
              * Format: date-time
              * @description Tournament start timestamp (RFC 3339)
              */
-            startAt: string;
+            startAt?: string;
         };
         DefineBracketMatchItem: {
             /**
@@ -1570,7 +1547,6 @@ export interface components {
         OrganizerTournamentSummary: {
             funding: components["schemas"]["TournamentFundingResponse"];
             metrics: components["schemas"]["OrganizerDashboardMetricsResponse"];
-            published: boolean;
             /**
              * @description Staff role of the current user in this tournament (OWNER, ADMIN, REFEREE)
              * @enum {string}
@@ -1585,15 +1561,15 @@ export interface components {
              * @example https://example.com/schemas/OverrideTournamentStatusInputBody.json
              */
             readonly $schema?: string;
-            /** @description Allow a crowdfunding owner to open registration before the funding goal is reached; a reason is still required */
+            /** @description Allow a crowdfunding owner to open registration before the funding goal is reached */
             force?: boolean;
-            /** @description Why the status is being overridden; recorded in the audit trail */
-            reason: string;
+            /** @description Optional reason for the status change */
+            reason?: string;
             /**
              * @description Target status
              * @enum {string}
              */
-            status: "DRAFT" | "CROWDFUNDING" | "REGISTRATION_OPEN" | "REGISTRATION_CLOSED" | "ONGOING" | "COMPLETED" | "CANCELLED";
+            status: "DRAFT" | "CROWDFUNDING" | "REGISTRATION" | "ONGOING" | "COMPLETED";
         };
         OverrideTournamentStatusOutputBody: {
             /**
@@ -1602,7 +1578,6 @@ export interface components {
              * @example https://example.com/schemas/OverrideTournamentStatusOutputBody.json
              */
             readonly $schema?: string;
-            change: components["schemas"]["TournamentStatusChangeResponse"];
             status: string;
             tournamentId: string;
         };
@@ -1762,12 +1737,6 @@ export interface components {
              * @description How many sponsors can buy this tier
              */
             slots: number;
-            /**
-             * Format: int64
-             * @description Display order, lowest first
-             * @default 0
-             */
-            sortOrder: number;
         };
         SponsorshipTierResponse: {
             /**
@@ -1798,8 +1767,6 @@ export interface components {
              * @description How many sponsors can buy this tier
              */
             slots: number;
-            /** Format: int64 */
-            sortOrder: number;
             tournamentId: string;
             /** Format: date-time */
             updatedAt: string;
@@ -1979,7 +1946,7 @@ export interface components {
             /** @description Tournament rules and full details (Markdown supported) */
             detail: string;
             /** Format: date-time */
-            endAt: string;
+            endAt?: string;
             /**
              * Format: int64
              * @description Entry fee in whole currency units
@@ -1997,11 +1964,11 @@ export interface components {
             /** Format: int64 */
             registeredCount: number;
             /** Format: date-time */
-            registrationDeadline: string;
+            registrationDeadline?: string;
             /** @enum {string} */
             registrationMode: "SOLO" | "TEAM";
             /** Format: date-time */
-            startAt: string;
+            startAt?: string;
             status: string;
         };
         TournamentStaffListBody: {
@@ -2028,31 +1995,6 @@ export interface components {
             /** @enum {string} */
             role: "OWNER" | "ADMIN" | "REFEREE";
             tournamentId: string;
-        };
-        TournamentStatusChangeResponse: {
-            actorId: string;
-            actorName?: string;
-            /** Format: date-time */
-            createdAt: string;
-            /** @enum {string} */
-            fromStatus: "DRAFT" | "CROWDFUNDING" | "REGISTRATION_OPEN" | "REGISTRATION_CLOSED" | "ONGOING" | "COMPLETED" | "CANCELLED";
-            id: string;
-            reason: string;
-            /** @enum {string} */
-            toStatus: "DRAFT" | "CROWDFUNDING" | "REGISTRATION_OPEN" | "REGISTRATION_CLOSED" | "ONGOING" | "COMPLETED" | "CANCELLED";
-            tournamentId: string;
-        };
-        TournamentStatusHistoryOutputBody: {
-            /**
-             * Format: uri
-             * @description A URL to the JSON Schema for this object.
-             * @example https://example.com/schemas/TournamentStatusHistoryOutputBody.json
-             */
-            readonly $schema?: string;
-            allowedTransitions: string[] | null;
-            /** @enum {string} */
-            currentStatus: "DRAFT" | "CROWDFUNDING" | "REGISTRATION_OPEN" | "REGISTRATION_CLOSED" | "ONGOING" | "COMPLETED" | "CANCELLED";
-            items: components["schemas"]["TournamentStatusChangeResponse"][] | null;
         };
         TournamentTeamResponse: {
             id: string;
@@ -2852,7 +2794,7 @@ export interface operations {
                 minEntryFee?: number;
                 /** @description Maximum entry fee; omit to disable */
                 maxEntryFee?: number;
-                status?: "DRAFT" | "CROWDFUNDING" | "REGISTRATION_OPEN" | "REGISTRATION_CLOSED" | "ONGOING" | "COMPLETED" | "CANCELLED";
+                status?: "DRAFT" | "CROWDFUNDING" | "REGISTRATION" | "ONGOING" | "COMPLETED";
                 sort?: "start_asc" | "start_desc" | "fee_asc" | "fee_desc";
                 page?: number;
                 pageSize?: number;
@@ -3560,38 +3502,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["OverrideTournamentStatusOutputBody"];
-                };
-            };
-            /** @description Error */
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["ErrorModel"];
-                };
-            };
-        };
-    };
-    "list-tournament-status-history": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description Tournament ID */
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["TournamentStatusHistoryOutputBody"];
                 };
             };
             /** @description Error */
