@@ -2,6 +2,7 @@
 skinparam dpi 200
 !include <C4/C4_Container>
 
+LAYOUT_TOP_DOWN()
 LAYOUT_WITH_LEGEND()
 
 title Level 2: Container Diagram - Eventory
@@ -11,9 +12,9 @@ Person(competitor, "Competitor / Captain", "Registers solo or with team")
 Person(sponsor, "Sponsor", "Funds tournaments via packages")
 Person(staff, "Tournament Staff", "Enters match results")
 
-System_Ext(supabase, "Supabase Auth", "Google OAuth and JWT token provider")
-System_Ext(s3, "Object Storage", "S3-compatible storage for sponsor logos")
+System_Ext(supabase, "Supabase Auth", "Google OAuth and JWT token provider (services verify its JWTs)")
 System_Ext(smtp, "SMTP Relay / Mailpit", "Delivers notification emails")
+System_Ext(s3, "Object Storage", "S3-compatible storage for sponsor logos")
 
 System_Boundary(c1, "Eventory Platform") {
     Container(web_app, "Web Client", "Next.js 16, React", "Browser interface for tournament management, lobbies, and mock checkout")
@@ -46,13 +47,16 @@ System_Boundary(c1, "Eventory Platform") {
     broker -[hidden]right- notification_db
 }
 
-Rel(organizer, web_app, "Uses", "HTTPS")
-Rel(competitor, web_app, "Uses", "HTTPS")
-Rel(sponsor, web_app, "Uses", "HTTPS")
-Rel(staff, web_app, "Uses", "HTTPS")
+Lay_R(organizer, competitor)
+Lay_R(competitor, sponsor)
+Lay_R(sponsor, staff)
+Rel_D(organizer, gateway, "Uses", "HTTPS")
+Rel_D(competitor, gateway, "Uses", "HTTPS")
+Rel_D(sponsor, gateway, "Uses", "HTTPS")
+Rel_D(staff, gateway, "Uses", "HTTPS")
 
 Rel_R(web_app, supabase, "Authenticates", "HTTPS")
-Rel_D(web_app, gateway, "API calls", "HTTPS")
+BiRel_R(gateway, web_app, "Routes / (catch-all)", "HTTP/HTTPS")
 
 Rel_D(gateway, account_service, "/api/v1/accounts", "HTTP")
 Rel_D(gateway, tournament_service, "/api/v1/tournaments, /lobbies", "HTTP")
@@ -74,5 +78,4 @@ Rel_D(tournament_service, broker, "Publishes events", "AMQP")
 Rel_D(payment_service, broker, "Publishes payment.confirmed", "AMQP")
 Rel_U(broker, notification_service, "Delivers events", "AMQP")
 Rel_R(notification_service, smtp, "Sends emails", "SMTP")
-
 @enduml
