@@ -3,10 +3,14 @@ name: Database Management (Production)
 on:
   workflow_dispatch:
     inputs:
-      reset_db:
-        description: 'Reset database schema (DROP public CASCADE & re-migrate)'
+      reset_all:
+        description: 'FULL RESET: wipe Postgres, MongoDB and RabbitMQ queues, then re-migrate. Off = migrations only.'
         type: boolean
-        default: true
+        default: false
+      confirm:
+        description: 'Type "reset" to confirm a full reset (ignored when reset_all is off)'
+        type: string
+        default: ''
       seed_data:
         description: 'Seed mock data (tournaments & accounts)'
         type: boolean
@@ -20,6 +24,16 @@ jobs:
     name: Run Database Operations
     runs-on: ubuntu-latest
     steps:
+      - name: Require confirmation for a full reset
+        if: ${{ github.event.inputs.reset_all == 'true' }}
+        env:
+          CONFIRM: ${{ github.event.inputs.confirm }}
+        run: |
+          if [ "$CONFIRM" != "reset" ]; then
+            echo 'A full reset deletes all production data. Re-run with confirm set to "reset".'
+            exit 1
+          fi
+
       - name: Configure SSH
         env:
           ORACLE_SSH_KEY: ${{ secrets.ORACLE_SSH_KEY }}
@@ -35,20 +49,26 @@ jobs:
         env:
           ORACLE_HOST: ${{ secrets.ORACLE_HOST }}
           ORACLE_USER: ${{ secrets.ORACLE_USER }}
-          RESET_DB: ${{ github.event.inputs.reset_db }}
+          RESET_ALL: ${{ github.event.inputs.reset_all }}
           SEED_DATA: ${{ github.event.inputs.seed_data }}
         run: |
           ssh "$ORACLE_USER@$ORACLE_HOST" "
             set -eu
             cd /opt/eventory
 
-            echo '==> Starting Postgres...'
-            sudo docker compose --env-file .env -f docker-compose.yml up -d --wait postgres
+            echo '==> Starting Postgres, MongoDB and RabbitMQ...'
+            sudo docker compose --env-file .env -f docker-compose.yml up -d --wait postgres mongodb rabbitmq
             sudo docker compose --env-file .env -f docker-compose.yml exec -T postgres bash /docker-entrypoint-initdb.d/01-init-databases.sh
 
-            if [ '$RESET_DB' = 'true' ]; then
+            if [ '$RESET_ALL' = 'true' ]; then
               echo '==> Stopping backend services before dropping schemas...'
               sudo docker compose --env-file .env -f docker-compose.yml stop account tournament payment notification
+
+              echo '==> Dropping MongoDB tournament_db (registration forms and answers)...'
+              sudo docker compose --env-file .env -f docker-compose.yml exec -T mongodb sh -c 'mongosh --quiet -u \"\$MONGO_INITDB_ROOT_USERNAME\" -p \"\$MONGO_INITDB_ROOT_PASSWORD\" --authenticationDatabase admin tournament_db --eval \"db.dropDatabase()\"'
+
+              echo '==> Purging RabbitMQ queues (queues and bindings are kept)...'
+              sudo docker compose --env-file .env -f docker-compose.yml exec -T rabbitmq su-exec rabbitmq sh -c 'rabbitmqctl list_queues -q --no-table-headers name | while read -r q; do rabbitmqctl purge_queue \"\$q\" </dev/null || exit 1; done'
 
               echo '==> Resetting service database schemas and migrating...'
               sudo docker compose --env-file .env -f docker-compose.yml run --rm account-migrate ./migrate -reset

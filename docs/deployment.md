@@ -90,8 +90,8 @@ Set once, in the repository settings. Without these, deployment fails.
 
 | Input | What it runs |
 | --- | --- |
-| Reset off | `./migrate` for Account, then Tournament |
-| Reset on | Stop the APIs, `./migrate -reset` for Account, then `./migrate -reset` for Tournament |
-| Seed on | `./seed` for Account, then Tournament |
+| `reset_all` off (default) | `./migrate` for Account, Tournament, Payment, then Notification |
+| `reset_all` on, with `confirm` = `reset` | Stop the APIs, drop MongoDB `tournament_db`, purge every RabbitMQ queue, then `./migrate -reset` for the four services |
+| `seed_data` on | `./seed` for Account, then Tournament |
 
-Reset drops the `public` schema in that service's database only. Account and Tournament each have their own database, so both resets are required. Deleting the `eventory-production_postgres_data` volume removes the data files. The next deploy creates empty databases again.
+A full reset wipes Postgres, MongoDB and the RabbitMQ queues together, because resetting only some of them leaves forms, answers or queued events pointing at deleted data. It does not touch Loki, Tempo, Grafana or the Supabase users. Without the exact `confirm` text the job fails before connecting to the server. Deleting the `eventory-production_postgres_data` volume removes the data files; the next deploy creates empty databases again.
