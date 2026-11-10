@@ -20,7 +20,7 @@ Feature: Tournament discovery
       | startFrom=2026-10-01&startTo=2026-10-01&minEntryFee=500&maxEntryFee=500              | Late Cup                      | 1     |
       | minEntryFee=0&maxEntryFee=0                                                       | Free Cup                      | 1     |
       | startFrom=2026-11-01&startTo=2026-11-30                                            |                               | 0     |
-      | q=late&status=REGISTRATION_OPEN                                                  | Late Cup                      | 1     |
+      | q=late&status=REGISTRATION                                                       | Late Cup                      | 1     |
       | sort=fee_desc&page=2&pageSize=2                                                   | Next Day Cup, Morning Cup     | 5     |
 
   @us2_1

@@ -13,15 +13,8 @@ import (
 )
 
 var (
-	ErrTournamentNotFound          = errors.New("tournament not found")
-	ErrTournamentStateChanged      = errors.New("tournament status changed during update")
-	ErrUnresolvedApplicationsExist = errors.New("all team applications must be resolved (accepted or rejected) before starting the tournament")
-	ErrInsufficientAcceptedTeams   = errors.New("at least 2 accepted teams are required to start the tournament")
-	ErrBracketMissing              = errors.New("a match bracket must be defined before starting the tournament")
-	ErrBracketStage1Mismatch       = errors.New("sum of the input number of teams in stage 1 must equal the number of competing teams")
-	ErrBracketNotSeeded            = errors.New("all stage 1 match slots must be seeded with accepted teams before starting")
-	ErrUnfinishedMatchesExist      = errors.New("every match must have a result before completing the tournament")
-	ErrNoChampionshipWinner        = errors.New("the final match must have a single winner with rank 1")
+	ErrTournamentNotFound     = errors.New("tournament not found")
+	ErrTournamentStateChanged = errors.New("tournament status changed during update")
 )
 
 type TournamentFilters struct {
@@ -47,13 +40,12 @@ type TournamentRepository interface {
 	GetByID(ctx context.Context, id uuid.UUID) (*models.Tournament, error)
 	Create(ctx context.Context, tournament *models.Tournament, funding *models.TournamentFunding) error
 	Update(ctx context.Context, tournament *models.Tournament) error
-	GetActiveTeamCount(ctx context.Context, tournamentID uuid.UUID) (acceptedCount int64, lockedOrAcceptedCount int64, err error)
 	ListOwned(ctx context.Context, organizerID uuid.UUID, page, pageSize int) ([]models.Tournament, int64, error)
 	GetOwned(ctx context.Context, organizerID, tournamentID uuid.UUID) (*models.Tournament, error)
-	UpdateStatus(ctx context.Context, tournamentID uuid.UUID, newStatus models.TournamentStatus) error
+	UpdateStatus(ctx context.Context, tournamentID uuid.UUID, fromStatus, toStatus models.TournamentStatus) error
 	CountActiveTiers(ctx context.Context, tournamentID uuid.UUID) (int64, error)
-	ValidateBracketReadiness(ctx context.Context, tournamentID uuid.UUID) error
-	ValidateCompletionReadiness(ctx context.Context, tournamentID uuid.UUID) error
+	GetTeamCounts(ctx context.Context, tournamentID uuid.UUID) (acceptedCount int64, unresolvedCount int64, err error)
+	GetBracketMatches(ctx context.Context, tournamentID uuid.UUID) ([]models.Match, error)
 }
 
 type tournamentRepositoryImpl struct {
@@ -267,33 +259,6 @@ func (r *tournamentRepositoryImpl) Update(
 	})
 }
 
-func (r *tournamentRepositoryImpl) GetActiveTeamCount(
-	ctx context.Context,
-	tournamentID uuid.UUID,
-) (int64, int64, error) {
-	var acceptedCount int64
-	err := r.db.WithContext(ctx).Model(&models.TournamentTeam{}).
-		Where("tournament_id = ? AND status = ?", tournamentID, models.TournamentTeamStatusAccepted).
-		Count(&acceptedCount).Error
-	if err != nil {
-		return 0, 0, err
-	}
-
-	var lockedOrAcceptedCount int64
-	err = r.db.WithContext(ctx).Model(&models.TournamentTeam{}).
-		Where("tournament_id = ? AND status IN ?", tournamentID, []models.TournamentTeamStatus{
-			models.TournamentTeamStatusAccepted,
-			models.TournamentTeamStatusLocked,
-			models.TournamentTeamStatusPaymentPending,
-		}).
-		Count(&lockedOrAcceptedCount).Error
-	if err != nil {
-		return 0, 0, err
-	}
-
-	return acceptedCount, lockedOrAcceptedCount, nil
-}
-
 func escapeLikePattern(value string) string {
 	replacer := strings.NewReplacer("\\", "\\\\", "%", "\\%", "_", "\\_")
 	return replacer.Replace(value)
@@ -341,27 +306,20 @@ func (r *tournamentRepositoryImpl) GetOwned(ctx context.Context, accountID, tour
 	return &tournament, nil
 }
 
-// ownedTournaments scopes queries to tournaments where the user is an owner or admin.
-func ownedTournaments(tx *gorm.DB, accountID uuid.UUID) *gorm.DB {
-	return tx.Model(&models.Tournament{}).
-		Joins("JOIN tournament_staff ON tournament_staff.tournament_id = tournaments.id").
-		Where("tournament_staff.account_id = ? AND tournament_staff.role IN ?", accountID, []models.TournamentStaffRole{models.TournamentStaffRoleOwner, models.TournamentStaffRoleAdmin})
-}
-
 func (r *tournamentRepositoryImpl) UpdateStatus(
 	ctx context.Context,
 	tournamentID uuid.UUID,
-	newStatus models.TournamentStatus,
+	fromStatus, toStatus models.TournamentStatus,
 ) error {
 	result := r.db.WithContext(ctx).
 		Model(&models.Tournament{}).
-		Where("id = ?", tournamentID).
-		Update("status", newStatus)
+		Where("id = ? AND status = ?", tournamentID, fromStatus).
+		Update("status", toStatus)
 	if result.Error != nil {
 		return result.Error
 	}
 	if result.RowsAffected == 0 {
-		return ErrTournamentNotFound
+		return ErrTournamentStateChanged
 	}
 	return nil
 }
@@ -377,110 +335,38 @@ func (r *tournamentRepositoryImpl) CountActiveTiers(
 	return count, err
 }
 
-func (r *tournamentRepositoryImpl) ValidateBracketReadiness(ctx context.Context, tournamentID uuid.UUID) error {
+func (r *tournamentRepositoryImpl) GetTeamCounts(
+	ctx context.Context,
+	tournamentID uuid.UUID,
+) (int64, int64, error) {
+	var acceptedCount int64
+	if err := r.db.WithContext(ctx).Model(&models.TournamentTeam{}).
+		Where("tournament_id = ? AND status = ?", tournamentID, models.TournamentTeamStatusAccepted).
+		Count(&acceptedCount).Error; err != nil {
+		return 0, 0, err
+	}
+
 	var unresolvedCount int64
-	err := r.db.WithContext(ctx).Model(&models.TournamentTeam{}).
+	if err := r.db.WithContext(ctx).Model(&models.TournamentTeam{}).
 		Where("tournament_id = ? AND status IN ?", tournamentID, []models.TournamentTeamStatus{
 			models.TournamentTeamStatusForming,
 			models.TournamentTeamStatusPaymentPending,
 			models.TournamentTeamStatusLocked,
-		}).Count(&unresolvedCount).Error
-	if err != nil {
-		return err
-	}
-	if unresolvedCount > 0 {
-		return ErrUnresolvedApplicationsExist
+		}).Count(&unresolvedCount).Error; err != nil {
+		return 0, 0, err
 	}
 
-	var acceptedCount int64
-	err = r.db.WithContext(ctx).Model(&models.TournamentTeam{}).
-		Where("tournament_id = ? AND status = ?", tournamentID, models.TournamentTeamStatusAccepted).
-		Count(&acceptedCount).Error
-	if err != nil {
-		return err
-	}
-	if acceptedCount < 2 {
-		return ErrInsufficientAcceptedTeams
-	}
-
-	var matches []models.Match
-	err = r.db.WithContext(ctx).Where("tournament_id = ?", tournamentID).Find(&matches).Error
-	if err != nil {
-		return err
-	}
-	if len(matches) == 0 {
-		return ErrBracketMissing
-	}
-
-	hasChampionship := false
-	stage1TotalCap := 0
-	var stage1IDs []uuid.UUID
-	for _, m := range matches {
-		if m.TargetMatchID == nil {
-			hasChampionship = true
-		}
-		if m.StageLevel == 1 {
-			stage1TotalCap += m.TeamCount
-			stage1IDs = append(stage1IDs, m.ID)
-		}
-	}
-	if !hasChampionship {
-		return ErrBracketMissing
-	}
-	if len(stage1IDs) == 0 || stage1TotalCap != int(acceptedCount) {
-		return ErrBracketStage1Mismatch
-	}
-
-	var seededCount int64
-	err = r.db.WithContext(ctx).Model(&models.MatchEntry{}).
-		Where("match_id IN ?", stage1IDs).
-		Count(&seededCount).Error
-	if err != nil {
-		return err
-	}
-	if seededCount != acceptedCount {
-		return ErrBracketNotSeeded
-	}
-
-	return nil
+	return acceptedCount, unresolvedCount, nil
 }
 
-func (r *tournamentRepositoryImpl) ValidateCompletionReadiness(ctx context.Context, tournamentID uuid.UUID) error {
+func (r *tournamentRepositoryImpl) GetBracketMatches(
+	ctx context.Context,
+	tournamentID uuid.UUID,
+) ([]models.Match, error) {
 	var matches []models.Match
 	err := r.db.WithContext(ctx).
 		Preload("Entries").
 		Where("tournament_id = ?", tournamentID).
 		Find(&matches).Error
-	if err != nil {
-		return err
-	}
-	if len(matches) == 0 {
-		return ErrBracketMissing
-	}
-
-	var championshipMatch *models.Match
-	for i := range matches {
-		if !matches[i].IsCompleted {
-			return ErrUnfinishedMatchesExist
-		}
-		if matches[i].TargetMatchID == nil {
-			championshipMatch = &matches[i]
-		}
-	}
-
-	if championshipMatch == nil {
-		return ErrBracketMissing
-	}
-
-	rank1Count := 0
-	for _, e := range championshipMatch.Entries {
-		if e.FinalRank != nil && *e.FinalRank == 1 {
-			rank1Count++
-		}
-	}
-	if rank1Count != 1 {
-		return ErrNoChampionshipWinner
-	}
-
-	return nil
+	return matches, err
 }

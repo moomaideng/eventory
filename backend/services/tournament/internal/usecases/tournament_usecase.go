@@ -39,15 +39,15 @@ var (
 	ErrCrowdfundingGoalNotReached = errors.New("funding goal has not been reached")
 	ErrRegistrationGateIncomplete = errors.New("event details or registration rules are incomplete")
 	ErrCrowdfundingPlanIncomplete = ErrRegistrationGateIncomplete
-	ErrCrowdfundingSetupIncomplete = errors.New("crowdfunding requires a positive goal, a future deadline, and at least one active sponsorship tier")
-	ErrUnresolvedApplicationsExist = repositories.ErrUnresolvedApplicationsExist
-	ErrInsufficientAcceptedTeams  = repositories.ErrInsufficientAcceptedTeams
-	ErrBracketMissing             = repositories.ErrBracketMissing
-	ErrBracketStage1Mismatch      = repositories.ErrBracketStage1Mismatch
-	ErrBracketNotSeeded           = repositories.ErrBracketNotSeeded
-	ErrUnfinishedMatchesExist     = repositories.ErrUnfinishedMatchesExist
-	ErrNoChampionshipWinner       = repositories.ErrNoChampionshipWinner
-	ErrTournamentStateChanged     = errors.New("tournament status changed; refresh and try again")
+	ErrCrowdfundingSetupIncomplete  = errors.New("crowdfunding requires a positive goal, a future deadline, and at least one active sponsorship tier")
+	ErrUnresolvedApplicationsExist  = errors.New("all team applications must be resolved (accepted or rejected) before starting the tournament")
+	ErrInsufficientAcceptedTeams    = errors.New("at least 2 accepted teams are required to start the tournament")
+	ErrBracketMissing               = errors.New("a match bracket must be defined before starting the tournament")
+	ErrBracketStage1Mismatch        = errors.New("sum of the input number of teams in stage 1 must equal the number of competing teams")
+	ErrBracketNotSeeded             = errors.New("all stage 1 match slots must be seeded with accepted teams before starting")
+	ErrUnfinishedMatchesExist       = errors.New("every match must have a result before completing the tournament")
+	ErrNoChampionshipWinner         = errors.New("the final match must have a single winner with rank 1")
+	ErrTournamentStateChanged       = errors.New("tournament status changed; refresh and try again")
 	ErrInvalidTournamentDescription = errors.New("tournament description exceeds maximum length of 500 characters")
 	ErrInvalidTournamentDetail      = errors.New("tournament detail exceeds maximum length of 10000 characters")
 )
@@ -903,20 +903,23 @@ func (u *TournamentUseCase) OverrideWithForce(
 		if !current.IsRegistrationClosed(time.Now()) {
 			return nil, ErrRegistrationStillOpen
 		}
-		if err := u.tournamentRepo.ValidateBracketReadiness(ctx, tournamentID); err != nil {
+		if err := u.validateBracketReadiness(ctx, tournamentID); err != nil {
 			return nil, err
 		}
 	}
 
 	if current.Status == models.TournamentStatusOngoing && to == models.TournamentStatusCompleted {
-		if err := u.tournamentRepo.ValidateCompletionReadiness(ctx, tournamentID); err != nil {
+		if err := u.validateCompletionReadiness(ctx, tournamentID); err != nil {
 			return nil, err
 		}
 	}
 
-	if err := u.tournamentRepo.UpdateStatus(ctx, tournamentID, to); err != nil {
+	if err := u.tournamentRepo.UpdateStatus(ctx, tournamentID, from, to); err != nil {
 		if errors.Is(err, repositories.ErrTournamentNotFound) {
 			return nil, ErrTournamentNotFound
+		}
+		if errors.Is(err, repositories.ErrTournamentStateChanged) {
+			return nil, ErrTournamentStateChanged
 		}
 		return nil, err
 	}
@@ -927,6 +930,87 @@ func (u *TournamentUseCase) OverrideWithForce(
 		ToStatus:     to,
 		Reason:       rawReason,
 	}, nil
+}
+
+func (u *TournamentUseCase) validateBracketReadiness(ctx context.Context, tournamentID uuid.UUID) error {
+	acceptedCount, unresolvedCount, err := u.tournamentRepo.GetTeamCounts(ctx, tournamentID)
+	if err != nil {
+		return err
+	}
+	if unresolvedCount > 0 {
+		return ErrUnresolvedApplicationsExist
+	}
+	if acceptedCount < 2 {
+		return ErrInsufficientAcceptedTeams
+	}
+
+	matches, err := u.tournamentRepo.GetBracketMatches(ctx, tournamentID)
+	if err != nil {
+		return err
+	}
+	if len(matches) == 0 {
+		return ErrBracketMissing
+	}
+
+	hasChampionship := false
+	stage1TotalCap := 0
+	stage1Count := 0
+	var seededCount int64
+	for _, m := range matches {
+		if m.TargetMatchID == nil {
+			hasChampionship = true
+		}
+		if m.StageLevel == 1 {
+			stage1Count++
+			stage1TotalCap += m.TeamCount
+			seededCount += int64(len(m.Entries))
+		}
+	}
+	if !hasChampionship {
+		return ErrBracketMissing
+	}
+	if stage1Count == 0 || stage1TotalCap != int(acceptedCount) {
+		return ErrBracketStage1Mismatch
+	}
+	if seededCount != acceptedCount {
+		return ErrBracketNotSeeded
+	}
+	return nil
+}
+
+func (u *TournamentUseCase) validateCompletionReadiness(ctx context.Context, tournamentID uuid.UUID) error {
+	matches, err := u.tournamentRepo.GetBracketMatches(ctx, tournamentID)
+	if err != nil {
+		return err
+	}
+	if len(matches) == 0 {
+		return ErrBracketMissing
+	}
+
+	var championshipMatch *models.Match
+	for i := range matches {
+		if !matches[i].IsCompleted {
+			return ErrUnfinishedMatchesExist
+		}
+		if matches[i].TargetMatchID == nil {
+			championshipMatch = &matches[i]
+		}
+	}
+
+	if championshipMatch == nil {
+		return ErrBracketMissing
+	}
+
+	rank1Count := 0
+	for _, e := range championshipMatch.Entries {
+		if e.FinalRank != nil && *e.FinalRank == 1 {
+			rank1Count++
+		}
+	}
+	if rank1Count != 1 {
+		return ErrNoChampionshipWinner
+	}
+	return nil
 }
 
 func registrationPlanProblem(t *models.Tournament, now time.Time) string {

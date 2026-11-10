@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/moomaideng/eventory/internal/events"
 	"github.com/moomaideng/eventory/services/tournament/internal/ports"
+	"github.com/moomaideng/eventory/services/tournament/internal/repositories"
 	"github.com/moomaideng/eventory/services/tournament/internal/usecases"
 	"github.com/moomaideng/eventory/services/tournament/models"
 	"github.com/stretchr/testify/assert"
@@ -15,26 +16,42 @@ import (
 )
 
 type mockReviewRepo struct {
-	reviewFunc func(
-		ctx context.Context,
-		accountID uuid.UUID,
-		reviewerDisplayName string,
-		tournamentID, teamID uuid.UUID,
-		reason string,
-		decide func(tournament *models.Tournament, team *models.TournamentTeam, acceptedEntries int) (models.TournamentTeamStatus, error),
-	) (*models.TournamentTeamReview, *uuid.UUID, error)
+	tournament      *models.Tournament
+	team            *models.TournamentTeam
+	acceptedEntries int
 }
 
-func (m *mockReviewRepo) ApplyReview(
-	ctx context.Context,
-	accountID uuid.UUID,
-	reviewerDisplayName string,
-	tournamentID, teamID uuid.UUID,
-	reason string,
-	decide func(tournament *models.Tournament, team *models.TournamentTeam, acceptedEntries int) (models.TournamentTeamStatus, error),
-) (*models.TournamentTeamReview, *uuid.UUID, error) {
-	return m.reviewFunc(ctx, accountID, reviewerDisplayName, tournamentID, teamID, reason, decide)
+type mockReviewTx struct {
+	repo *mockReviewRepo
 }
+
+func (m *mockReviewRepo) Begin(ctx context.Context) (repositories.TeamReviewTransaction, error) {
+	return &mockReviewTx{repo: m}, nil
+}
+
+func (tx *mockReviewTx) LockTournament(tournamentID uuid.UUID) (*models.Tournament, error) {
+	if tx.repo.tournament == nil {
+		return nil, repositories.ErrTournamentNotFound
+	}
+	return tx.repo.tournament, nil
+}
+
+func (tx *mockReviewTx) LockTeamAndAcceptedCount(tournamentID, teamID uuid.UUID) (*models.TournamentTeam, int, error) {
+	if tx.repo.team == nil {
+		return nil, 0, repositories.ErrTeamEntryNotFound
+	}
+	return tx.repo.team, tx.repo.acceptedEntries, nil
+}
+
+func (tx *mockReviewTx) SaveReview(team *models.TournamentTeam, toStatus models.TournamentTeamStatus, review *models.TournamentTeamReview) error {
+	team.Status = toStatus
+	review.ID = uuid.New()
+	review.CreatedAt = time.Now().UTC()
+	return nil
+}
+
+func (tx *mockReviewTx) Commit() error { return nil }
+func (tx *mockReviewTx) Rollback()     {}
 
 func (m *mockReviewRepo) PendingRefunds(ctx context.Context) ([]models.TournamentTeam, error) {
 	return nil, nil
@@ -81,47 +98,25 @@ func TestTeamReviewUseCase_Review(t *testing.T) {
 	t.Run("accepts application and publishes registration.approved", func(t *testing.T) {
 		pub := &mockPublisher{}
 		repo := &mockReviewRepo{
-			reviewFunc: func(
-				ctx context.Context,
-				accountID uuid.UUID,
-				reviewerDisplayName string,
-				tournID, tID uuid.UUID,
-				reason string,
-				decide func(tournament *models.Tournament, team *models.TournamentTeam, acceptedEntries int) (models.TournamentTeamStatus, error),
-			) (*models.TournamentTeamReview, *uuid.UUID, error) {
-				tourn := &models.Tournament{
-					ID:       tournID,
-					Name:     "Cyber Invitational 2026",
-					Status:   models.TournamentStatusRegistration,
-					Capacity: 16,
-				}
-				team := &models.TournamentTeam{
-					ID:           tID,
-					TournamentID: tournID,
-					Name:         "Cyber Phantoms",
-					Status:       models.TournamentTeamStatusLocked,
-					Members: []models.TournamentTeamMember{
-						{AccountID: captainID, Role: models.TournamentTeamMemberRoleCaptain},
-					},
-				}
-				newStatus, err := decide(tourn, team, 5)
-				require.NoError(t, err)
-				assert.Equal(t, models.TournamentTeamStatusAccepted, newStatus)
-
-				return &models.TournamentTeamReview{
-					ID:                  uuid.New(),
-					TournamentID:        tournID,
-					Tournament:          *tourn,
-					TournamentTeamID:    tID,
-					Team:                *team,
-					FromStatus:          models.TournamentTeamStatusLocked,
-					ToStatus:            newStatus,
-					Reason:              reason,
-					ReviewerAccountID:   accountID,
-					ReviewerDisplayName: reviewerDisplayName,
-					CreatedAt:           time.Now().UTC(),
-				}, nil, nil
+			tournament: &models.Tournament{
+				ID:       tournamentID,
+				Name:     "Cyber Invitational 2026",
+				Status:   models.TournamentStatusRegistration,
+				Capacity: 16,
+				Staff: []models.TournamentStaff{
+					{AccountID: reviewerID, Role: models.TournamentStaffRoleOwner},
+				},
 			},
+			team: &models.TournamentTeam{
+				ID:           teamID,
+				TournamentID: tournamentID,
+				Name:         "Cyber Phantoms",
+				Status:       models.TournamentTeamStatusLocked,
+				Members: []models.TournamentTeamMember{
+					{AccountID: captainID, Role: models.TournamentTeamMemberRoleCaptain},
+				},
+			},
+			acceptedEntries: 5,
 		}
 
 		uc := usecases.NewTeamReviewUseCase(repo, accSvc, &mockRefundService{}, pub)
@@ -146,47 +141,25 @@ func TestTeamReviewUseCase_Review(t *testing.T) {
 	t.Run("rejects application and publishes registration.rejected", func(t *testing.T) {
 		pub := &mockPublisher{}
 		repo := &mockReviewRepo{
-			reviewFunc: func(
-				ctx context.Context,
-				accountID uuid.UUID,
-				reviewerDisplayName string,
-				tournID, tID uuid.UUID,
-				reason string,
-				decide func(tournament *models.Tournament, team *models.TournamentTeam, acceptedEntries int) (models.TournamentTeamStatus, error),
-			) (*models.TournamentTeamReview, *uuid.UUID, error) {
-				tourn := &models.Tournament{
-					ID:       tournID,
-					Name:     "Cyber Invitational 2026",
-					Status:   models.TournamentStatusRegistration,
-					Capacity: 16,
-				}
-				team := &models.TournamentTeam{
-					ID:           tID,
-					TournamentID: tournID,
-					Name:         "Cyber Phantoms",
-					Status:       models.TournamentTeamStatusLocked,
-					Members: []models.TournamentTeamMember{
-						{AccountID: captainID, Role: models.TournamentTeamMemberRoleCaptain},
-					},
-				}
-				newStatus, err := decide(tourn, team, 5)
-				require.NoError(t, err)
-				assert.Equal(t, models.TournamentTeamStatusRejected, newStatus)
-
-				return &models.TournamentTeamReview{
-					ID:                  uuid.New(),
-					TournamentID:        tournID,
-					Tournament:          *tourn,
-					TournamentTeamID:    tID,
-					Team:                *team,
-					FromStatus:          models.TournamentTeamStatusLocked,
-					ToStatus:            newStatus,
-					Reason:              reason,
-					ReviewerAccountID:   accountID,
-					ReviewerDisplayName: reviewerDisplayName,
-					CreatedAt:           time.Now().UTC(),
-				}, nil, nil
+			tournament: &models.Tournament{
+				ID:       tournamentID,
+				Name:     "Cyber Invitational 2026",
+				Status:   models.TournamentStatusRegistration,
+				Capacity: 16,
+				Staff: []models.TournamentStaff{
+					{AccountID: reviewerID, Role: models.TournamentStaffRoleOwner},
+				},
 			},
+			team: &models.TournamentTeam{
+				ID:           teamID,
+				TournamentID: tournamentID,
+				Name:         "Cyber Phantoms",
+				Status:       models.TournamentTeamStatusLocked,
+				Members: []models.TournamentTeamMember{
+					{AccountID: captainID, Role: models.TournamentTeamMemberRoleCaptain},
+				},
+			},
+			acceptedEntries: 5,
 		}
 
 		uc := usecases.NewTeamReviewUseCase(repo, accSvc, &mockRefundService{}, pub)
@@ -206,25 +179,17 @@ func TestTeamReviewUseCase_Review(t *testing.T) {
 	t.Run("returns error when application is not in locked status", func(t *testing.T) {
 		pub := &mockPublisher{}
 		repo := &mockReviewRepo{
-			reviewFunc: func(
-				ctx context.Context,
-				accountID uuid.UUID,
-				reviewerDisplayName string,
-				tournID, tID uuid.UUID,
-				reason string,
-				decide func(tournament *models.Tournament, team *models.TournamentTeam, acceptedEntries int) (models.TournamentTeamStatus, error),
-			) (*models.TournamentTeamReview, *uuid.UUID, error) {
-				tourn := &models.Tournament{
-					ID:       tournID,
-					Status:   models.TournamentStatusRegistration,
-					Capacity: 16,
-				}
-				team := &models.TournamentTeam{
-					ID:     tID,
-					Status: models.TournamentTeamStatusForming,
-				}
-				_, err := decide(tourn, team, 0)
-				return nil, nil, err
+			tournament: &models.Tournament{
+				ID:       tournamentID,
+				Status:   models.TournamentStatusRegistration,
+				Capacity: 16,
+				Staff: []models.TournamentStaff{
+					{AccountID: reviewerID, Role: models.TournamentStaffRoleOwner},
+				},
+			},
+			team: &models.TournamentTeam{
+				ID:     teamID,
+				Status: models.TournamentTeamStatusForming,
 			},
 		}
 

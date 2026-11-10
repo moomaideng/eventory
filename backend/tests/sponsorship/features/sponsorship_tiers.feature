@@ -60,9 +60,11 @@ Feature: Sponsorship tier packages
     Then the response status should be 409
 
     Examples:
-      | status    |
-      | COMPLETED |
-      | CANCELLED |
+      | status       |
+      | CROWDFUNDING |
+      | REGISTRATION |
+      | ONGOING      |
+      | COMPLETED    |
 
   @us5_4
   Scenario: Unpublished tournaments do not show tiers

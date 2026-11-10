@@ -66,10 +66,18 @@ func TestSponsorshipArchive(t *testing.T) {
 				mustAPI(t, s.client, "POST", "/tournaments/sponsorships/"+pledge.ID.String()+"/refresh", nil, payer, 200)
 			}
 
+			if err := app.DB.Model(&s.tournament).Update("status", models.TournamentStatusDraft).Error; err != nil {
+				t.Fatal(err)
+			}
 			mustAPI(t, s.client, "DELETE", path, nil, s.owner, 204)
 			var tier models.SponsorshipTier
 			if err := app.DB.First(&tier, "id = ?", tierID).Error; err != nil || !tier.Archived {
 				t.Fatalf("package must stay stored and archived: %+v, %v", tier, err)
+			}
+			mustAPI(t, s.client, "PUT", path, map[string]any{"name": "Changed", "price": 1, "slots": 1, "perks": []string{"Logo"}}, s.owner, 404)
+			mustAPI(t, s.client, "DELETE", path, nil, s.owner, 404)
+			if err := app.DB.Model(&s.tournament).Update("status", models.TournamentStatusRegistration).Error; err != nil {
+				t.Fatal(err)
 			}
 			for _, list := range []string{s.tiersPath(), s.tiersPath() + "/manage"} {
 				if response := mustAPI(t, s.client, "GET", list, nil, s.owner, 200); bytes.Contains(response.Body, []byte(tierID.String())) {
@@ -79,8 +87,6 @@ func TestSponsorshipArchive(t *testing.T) {
 			if response := uploadPledge(t, checkoutURL, payer, uuid.New(), logo); response.StatusCode != 404 {
 				t.Fatalf("new checkout must reject an archived package: %d %s", response.StatusCode, response.Body)
 			}
-			mustAPI(t, s.client, "PUT", path, map[string]any{"name": "Changed", "price": 1, "slots": 1, "perks": []string{"Logo"}}, s.owner, 404)
-			mustAPI(t, s.client, "DELETE", path, nil, s.owner, 404)
 
 			if result != "UNUSED" {
 				response := mustAPI(t, s.client, "POST", "/tournaments/sponsorships/"+pledge.ID.String()+"/refresh", nil, payer, 200)

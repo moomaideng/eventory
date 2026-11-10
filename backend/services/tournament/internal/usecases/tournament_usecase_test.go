@@ -14,24 +14,19 @@ import (
 )
 
 type mockTournamentRepository struct {
-	filters               repositories.TournamentFilters
-	items                 []repositories.TournamentSearchItem
-	total                 int64
-	err                   error
-	details               *models.Tournament
-	detailsErr            error
-	createdTournament     *models.Tournament
-	createdFunding        *models.TournamentFunding
-	createErr             error
-	updatedTournament     *models.Tournament
-	updateErr             error
-	acceptedCount         int64
-	lockedOrAcceptedCount int64
-	teamCountErr          error
-	activeTiersCount       int64
-	tiersCountErr          error
-	bracketReadinessErr    error
-	completionReadinessErr error
+	filters           repositories.TournamentFilters
+	items             []repositories.TournamentSearchItem
+	total             int64
+	err               error
+	details           *models.Tournament
+	detailsErr        error
+	createdTournament *models.Tournament
+	createdFunding    *models.TournamentFunding
+	createErr         error
+	updatedTournament *models.Tournament
+	updateErr         error
+	activeTiersCount  int64
+	tiersCountErr     error
 }
 
 func (m *mockTournamentRepository) GetPublishedByID(_ context.Context, _ uuid.UUID) (*models.Tournament, error) {
@@ -53,10 +48,6 @@ func (m *mockTournamentRepository) Update(_ context.Context, tournament *models.
 	return m.updateErr
 }
 
-func (m *mockTournamentRepository) GetActiveTeamCount(_ context.Context, _ uuid.UUID) (int64, int64, error) {
-	return m.acceptedCount, m.lockedOrAcceptedCount, m.teamCountErr
-}
-
 func (m *mockTournamentRepository) Search(_ context.Context, filters repositories.TournamentFilters) ([]repositories.TournamentSearchItem, int64, error) {
 	m.filters = filters
 	return m.items, m.total, m.err
@@ -70,7 +61,7 @@ func (m *mockTournamentRepository) GetOwned(_ context.Context, _, _ uuid.UUID) (
 	return nil, nil
 }
 
-func (m *mockTournamentRepository) UpdateStatus(_ context.Context, _ uuid.UUID, _ models.TournamentStatus) error {
+func (m *mockTournamentRepository) UpdateStatus(_ context.Context, _ uuid.UUID, _, _ models.TournamentStatus) error {
 	return nil
 }
 
@@ -81,12 +72,24 @@ func (m *mockTournamentRepository) CountActiveTiers(_ context.Context, _ uuid.UU
 	return m.activeTiersCount, nil
 }
 
-func (m *mockTournamentRepository) ValidateBracketReadiness(_ context.Context, _ uuid.UUID) error {
-	return m.bracketReadinessErr
+func (m *mockTournamentRepository) GetTeamCounts(_ context.Context, _ uuid.UUID) (int64, int64, error) {
+	return 2, 0, nil
 }
 
-func (m *mockTournamentRepository) ValidateCompletionReadiness(_ context.Context, _ uuid.UUID) error {
-	return m.completionReadinessErr
+func (m *mockTournamentRepository) GetBracketMatches(_ context.Context, _ uuid.UUID) ([]models.Match, error) {
+	rank1, rank2 := 1, 2
+	return []models.Match{
+		{
+			ID:          uuid.New(),
+			StageLevel:  1,
+			TeamCount:   2,
+			IsCompleted: true,
+			Entries: []models.MatchEntry{
+				{FinalRank: &rank1},
+				{FinalRank: &rank2},
+			},
+		},
+	}, nil
 }
 
 func ptr[T any](v T) *T { return &v }

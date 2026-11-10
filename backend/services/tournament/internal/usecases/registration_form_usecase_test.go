@@ -37,9 +37,6 @@ func (s *tournamentRepoStub) Create(_ context.Context, _ *models.Tournament, _ *
 func (s *tournamentRepoStub) Update(_ context.Context, _ *models.Tournament) error {
 	return nil
 }
-func (s *tournamentRepoStub) GetActiveTeamCount(_ context.Context, _ uuid.UUID) (int64, int64, error) {
-	return 0, 0, nil
-}
 
 type formRepoStub struct {
 	forms     map[uuid.UUID]*models.RegistrationForm

@@ -9,7 +9,6 @@ import (
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/google/uuid"
 	"github.com/moomaideng/eventory/services/tournament/internal/forms"
-	"github.com/moomaideng/eventory/services/tournament/internal/repositories"
 	"github.com/moomaideng/eventory/services/tournament/internal/usecases"
 	"github.com/moomaideng/eventory/services/tournament/models"
 )
@@ -332,13 +331,13 @@ func teamLobbyHTTPError(err error) error {
 	switch {
 	case errors.Is(err, usecases.ErrNotTeamMember):
 		return huma.Error403Forbidden(err.Error(), err)
-	case errors.Is(err, usecases.ErrMemberAnswersIncomplete), errors.Is(err, repositories.ErrRosterChanged):
+	case errors.Is(err, usecases.ErrMemberAnswersIncomplete), errors.Is(err, usecases.ErrRosterChanged):
 		return huma.Error409Conflict(err.Error(), err)
-	case errors.Is(err, usecases.ErrTournamentNotFound), errors.Is(err, repositories.ErrTeamLobbyNotFound):
+	case errors.Is(err, usecases.ErrTournamentNotFound), errors.Is(err, usecases.ErrTeamLobbyNotFound):
 		return huma.Error404NotFound("Requested tournament or team lobby was not found", err)
 	case errors.Is(err, usecases.ErrPaymentUnavailable):
 		return huma.Error503ServiceUnavailable(err.Error())
-	case errors.Is(err, repositories.ErrInvalidRegistrationFee):
+	case errors.Is(err, usecases.ErrInvalidRegistrationFee):
 		return huma.Error409Conflict(err.Error())
 	case errors.Is(err, usecases.ErrInvalidTeamName), errors.Is(err, usecases.ErrInvalidInviteCode),
 		errors.Is(err, forms.ErrUnrecognizedField), errors.Is(err, forms.ErrDuplicateFieldAnswer),
@@ -347,22 +346,21 @@ func teamLobbyHTTPError(err error) error {
 		return huma.Error400BadRequest("Invalid input", err)
 	case errors.Is(err, usecases.ErrLobbyAccessDenied):
 		return huma.Error403Forbidden("Only the team captain can perform this action", err)
-	case errors.Is(err, repositories.ErrAlreadyInTournamentLobby):
+	case errors.Is(err, usecases.ErrAlreadyInTournamentLobby):
 		return huma.Error409Conflict("You are already in a team for this tournament", err)
 	case errors.Is(err, usecases.ErrNotSoloTournament):
 		return huma.Error409Conflict("This tournament requires a team and does not support solo registration", err)
-	case errors.Is(err, usecases.ErrRegistrationNotOpen),
-		errors.Is(err, repositories.ErrTournamentRegistrationClosed):
+	case errors.Is(err, usecases.ErrRegistrationNotOpen):
 		return huma.Error409Conflict("Tournament registration is closed or the deadline has passed", err)
-	case errors.Is(err, repositories.ErrTeamLobbyFull):
+	case errors.Is(err, usecases.ErrTeamLobbyFull):
 		return huma.Error409Conflict("Tournament or team lobby is full", err)
-	case errors.Is(err, repositories.ErrRosterBelowMinimum):
+	case errors.Is(err, usecases.ErrRosterBelowMinimum):
 		return huma.Error409Conflict("Team roster does not meet the minimum requirement", err)
-	case errors.Is(err, repositories.ErrCannotRemoveCaptain):
+	case errors.Is(err, usecases.ErrCannotRemoveCaptain):
 		return huma.Error409Conflict("Cannot remove the team captain", err)
-	case errors.Is(err, repositories.ErrCannotDisbandLobby):
+	case errors.Is(err, usecases.ErrCannotDisbandLobby):
 		return huma.Error409Conflict("Cannot disband team lobby at this stage", err)
-	case errors.Is(err, repositories.ErrTeamLobbyNotForming):
+	case errors.Is(err, usecases.ErrTeamLobbyNotForming):
 		return huma.Error409Conflict("Team lobby state does not allow this action", err)
 	default:
 		return huma.Error500InternalServerError("Team lobby operation failed", err)

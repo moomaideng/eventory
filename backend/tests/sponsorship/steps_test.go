@@ -91,7 +91,24 @@ func (s *tierScenario) create(user *apptest.TestUser, name string, price, slots,
 	return nil
 }
 
+func (s *tierScenario) draftTournament() error {
+	if err := s.publishedTournament(); err != nil {
+		return err
+	}
+	s.tournament.Status = models.TournamentStatusDraft
+	return s.app.DB.Model(&s.tournament).Update("status", models.TournamentStatusDraft).Error
+}
+
 func (s *tierScenario) given(name string, order int) error {
+	prevStatus := s.tournament.Status
+	if prevStatus != models.TournamentStatusDraft {
+		if err := s.app.DB.Model(&s.tournament).Update("status", models.TournamentStatusDraft).Error; err != nil {
+			return err
+		}
+		defer func() {
+			_ = s.app.DB.Model(&s.tournament).Update("status", prevStatus).Error
+		}()
+	}
 	if err := s.create(s.owner, name, 10000, 2, order, "Logo on stream"); err != nil {
 		return err
 	}
@@ -112,6 +129,15 @@ func (s *tierScenario) remove(user *apptest.TestUser, name string) error {
 }
 
 func (s *tierScenario) visibleTiers(expected string) error {
+	prevStatus := s.tournament.Status
+	if prevStatus == models.TournamentStatusDraft {
+		if err := s.app.DB.Model(&s.tournament).Update("status", models.TournamentStatusRegistration).Error; err != nil {
+			return err
+		}
+		defer func() {
+			_ = s.app.DB.Model(&s.tournament).Update("status", prevStatus).Error
+		}()
+	}
 	resp, err := s.client.Do(http.MethodGet, s.tiersPath(), nil, nil)
 	if err != nil {
 		return err
@@ -165,7 +191,7 @@ func (s *tierScenario) status(code int) error {
 func initializeScenario(sc *godog.ScenarioContext, app *apptest.App) {
 	s := &tierScenario{app: app, client: apptest.NewClient(app.TournamentBaseURL()), tierIDs: map[string]uuid.UUID{}}
 
-	sc.Step(`^an organizer owns a published tournament open for sponsorship$`, s.publishedTournament)
+	sc.Step(`^an organizer owns a published tournament open for sponsorship$`, s.draftTournament)
 	sc.Step(`^another organizer exists$`, func() error {
 		other, err := s.organizer("Rival Host")
 		s.other = other
@@ -179,10 +205,12 @@ func initializeScenario(sc *godog.ScenarioContext, app *apptest.App) {
 		return s.given(b, orderB)
 	})
 	sc.Step(`^the tournament status is "([^"]*)"$`, func(status string) error {
+		s.tournament.Status = models.TournamentStatus(status)
 		return s.app.DB.Model(&s.tournament).Update("status", status).Error
 	})
 	sc.Step(`^the tournament is unpublished$`, func() error {
-		return s.app.DB.Model(&s.tournament).Update("published", false).Error
+		s.tournament.Status = models.TournamentStatusDraft
+		return s.app.DB.Model(&s.tournament).Update("status", models.TournamentStatusDraft).Error
 	})
 	sc.Step(`^the (organizer|other organizer) creates a tier named "([^"]*)" costing (\d+) with (\d+) slots and perks "([^"]*)"$`, func(who, name string, price, slots int, perks string) error {
 		user := s.owner

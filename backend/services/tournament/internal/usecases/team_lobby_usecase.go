@@ -17,13 +17,49 @@ import (
 )
 
 var (
-	ErrNotSoloTournament   = errors.New("this tournament is not configured for solo registration")
-	ErrRegistrationNotOpen = errors.New("tournament registration is not open")
-	ErrInvalidTeamName     = errors.New("team name must be between 1 and 120 characters")
-	ErrLobbyAccessDenied   = errors.New("only the team captain can manage this lobby")
-	ErrInvalidInviteCode   = errors.New("invalid team invite code")
-	ErrPaymentUnavailable  = errors.New("payment status could not be verified; roster remains locked, please retry")
+	ErrNotSoloTournament        = errors.New("this tournament is not configured for solo registration")
+	ErrRegistrationNotOpen      = errors.New("tournament registration is not open")
+	ErrInvalidTeamName          = errors.New("team name must be between 1 and 120 characters")
+	ErrLobbyAccessDenied        = errors.New("only the team captain can manage this lobby")
+	ErrInvalidInviteCode        = errors.New("invalid team invite code")
+	ErrPaymentUnavailable       = errors.New("payment status could not be verified; roster remains locked, please retry")
+	ErrInvalidRegistrationFee   = errors.New("unsupported registration fee or currency")
+	ErrTeamLobbyNotFound        = errors.New("team lobby not found")
+	ErrTeamLobbyNotForming      = errors.New("team lobby is not forming")
+	ErrTeamLobbyFull            = errors.New("team lobby is full")
+	ErrRosterBelowMinimum       = errors.New("roster does not meet the tournament minimum")
+	ErrAlreadyInTournamentLobby = errors.New("account is already in a team for this tournament")
+	ErrCannotRemoveCaptain      = errors.New("captain cannot be removed")
+	ErrCannotDisbandLobby       = errors.New("only a forming team can be disbanded")
+	ErrRosterChanged            = errors.New("roster changed; refresh and retry")
 )
+
+func translateLobbyError(err error) error {
+	switch {
+	case errors.Is(err, repositories.ErrInvalidRegistrationFee):
+		return ErrInvalidRegistrationFee
+	case errors.Is(err, repositories.ErrTeamLobbyNotFound):
+		return ErrTeamLobbyNotFound
+	case errors.Is(err, repositories.ErrTeamLobbyNotForming):
+		return ErrTeamLobbyNotForming
+	case errors.Is(err, repositories.ErrTeamLobbyFull):
+		return ErrTeamLobbyFull
+	case errors.Is(err, repositories.ErrRosterBelowMinimum):
+		return ErrRosterBelowMinimum
+	case errors.Is(err, repositories.ErrAlreadyInTournamentLobby):
+		return ErrAlreadyInTournamentLobby
+	case errors.Is(err, repositories.ErrTournamentRegistrationClosed):
+		return ErrRegistrationNotOpen
+	case errors.Is(err, repositories.ErrCannotRemoveCaptain):
+		return ErrCannotRemoveCaptain
+	case errors.Is(err, repositories.ErrCannotDisbandLobby):
+		return ErrCannotDisbandLobby
+	case errors.Is(err, repositories.ErrRosterChanged):
+		return ErrRosterChanged
+	default:
+		return err
+	}
+}
 
 var inviteCodeRegex = regexp.MustCompile(`^[A-Z0-9]{6}$`)
 
@@ -90,7 +126,7 @@ func (u *TeamLobbyUseCase) RefreshSubmission(ctx context.Context, teamID, accoun
 	}
 	team, err = u.repo.FindByID(ctx, teamID)
 	if err != nil {
-		return nil, err
+		return nil, translateLobbyError(err)
 	}
 	return u.toView(ctx, team)
 }
@@ -134,7 +170,7 @@ func (u *TeamLobbyUseCase) Create(ctx context.Context, tournamentID, captainAcco
 	}
 	answers := firstAnswers(submitted)
 	if err := u.saveNewRegistrationAnswers(ctx, tournamentID, captainAccountID, answers); err != nil {
-		return nil, err
+		return nil, translateLobbyError(err)
 	}
 
 	inviteCode, err := generateInviteCode()
@@ -152,7 +188,7 @@ func (u *TeamLobbyUseCase) Create(ctx context.Context, tournamentID, captainAcco
 	}
 	created, err := u.repo.Create(ctx, team, captainMember)
 	if err != nil {
-		return nil, err
+		return nil, translateLobbyError(err)
 	}
 	return u.toView(ctx, created)
 }
@@ -228,12 +264,12 @@ func (u *TeamLobbyUseCase) RegisterSolo(
 		created, err = u.repo.Create(ctx, team, captainMember)
 	}
 	if err != nil {
-		return nil, err
+		return nil, translateLobbyError(err)
 	}
 
 	locked, err := u.repo.Lock(ctx, created.ID)
 	if err != nil {
-		return nil, err
+		return nil, translateLobbyError(err)
 	}
 
 	if u.payments != nil && locked.Status == models.TournamentTeamStatusPaymentPending {
@@ -242,7 +278,7 @@ func (u *TeamLobbyUseCase) RegisterSolo(
 		}
 		locked, err = u.repo.FindByID(ctx, created.ID)
 		if err != nil {
-			return nil, err
+			return nil, translateLobbyError(err)
 		}
 	}
 
@@ -259,7 +295,7 @@ func (u *TeamLobbyUseCase) GetByInviteCode(ctx context.Context, inviteCode strin
 	}
 	team, err := u.repo.FindByInviteCode(ctx, normalized)
 	if err != nil {
-		return nil, err
+		return nil, translateLobbyError(err)
 	}
 	return u.toView(ctx, team)
 }
@@ -270,7 +306,7 @@ func (u *TeamLobbyUseCase) GetActiveForTournament(ctx context.Context, tournamen
 	}
 	team, err := u.repo.FindActiveByTournamentAndAccount(ctx, tournamentID, accountID)
 	if err != nil {
-		return nil, err
+		return nil, translateLobbyError(err)
 	}
 	return u.toView(ctx, team)
 }
@@ -285,15 +321,24 @@ func (u *TeamLobbyUseCase) Join(ctx context.Context, inviteCode string, memberAc
 	}
 	team, err := u.repo.FindByInviteCode(ctx, normalized)
 	if err != nil {
-		return nil, err
+		return nil, translateLobbyError(err)
+	}
+	if team.Status != models.TournamentTeamStatusForming {
+		return nil, ErrTeamLobbyNotForming
+	}
+	if team.Tournament.Status != models.TournamentStatusRegistration || team.Tournament.IsRegistrationClosed(time.Now()) {
+		return nil, ErrRegistrationNotOpen
+	}
+	if len(team.Members) >= team.Tournament.MaxTeamSize {
+		return nil, ErrTeamLobbyFull
 	}
 	answers := firstAnswers(submitted)
 	if err := u.saveNewRegistrationAnswers(ctx, team.TournamentID, memberAccountID, answers); err != nil {
-		return nil, err
+		return nil, translateLobbyError(err)
 	}
 	joined, err := u.repo.Join(ctx, team.ID, memberAccountID)
 	if err != nil {
-		return nil, err
+		return nil, translateLobbyError(err)
 	}
 	return u.toView(ctx, joined)
 }
@@ -311,7 +356,7 @@ func (u *TeamLobbyUseCase) RegenerateInvite(ctx context.Context, teamID, account
 	}
 	team, err := u.repo.RegenerateInvite(ctx, teamID, inviteCode)
 	if err != nil {
-		return nil, err
+		return nil, translateLobbyError(err)
 	}
 	return u.toView(ctx, team)
 }
@@ -337,7 +382,7 @@ func (u *TeamLobbyUseCase) Lock(ctx context.Context, teamID, accountID uuid.UUID
 	}
 	_, err = u.repo.Lock(ctx, teamID, team.Members)
 	if err != nil {
-		return nil, err
+		return nil, translateLobbyError(err)
 	}
 	return u.RefreshSubmission(ctx, teamID, accountID)
 }
@@ -351,7 +396,7 @@ func (u *TeamLobbyUseCase) RemoveMember(ctx context.Context, teamID, memberID, a
 	}
 	team, err := u.repo.RemoveMember(ctx, teamID, memberID)
 	if err != nil {
-		return nil, err
+		return nil, translateLobbyError(err)
 	}
 	return u.toView(ctx, team)
 }
@@ -363,7 +408,7 @@ func (u *TeamLobbyUseCase) Disband(ctx context.Context, teamID, accountID uuid.U
 	if _, err := u.captainTeam(ctx, teamID, accountID); err != nil {
 		return err
 	}
-	return u.repo.Disband(ctx, teamID)
+	return translateLobbyError(u.repo.Disband(ctx, teamID))
 }
 
 func (u *TeamLobbyUseCase) toView(ctx context.Context, team *models.TournamentTeam) (*TeamLobbyView, error) {
@@ -389,7 +434,7 @@ func (u *TeamLobbyUseCase) toView(ctx context.Context, team *models.TournamentTe
 func (u *TeamLobbyUseCase) captainTeam(ctx context.Context, teamID, accountID uuid.UUID) (*models.TournamentTeam, error) {
 	team, err := u.repo.FindByID(ctx, teamID)
 	if err != nil {
-		return nil, err
+		return nil, translateLobbyError(err)
 	}
 	for _, member := range team.Members {
 		if member.AccountID == accountID && member.Role == models.TournamentTeamMemberRoleCaptain {

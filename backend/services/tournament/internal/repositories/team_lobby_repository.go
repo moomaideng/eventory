@@ -53,7 +53,7 @@ func NewTeamLobbyRepository(db *gorm.DB) TeamLobbyRepository {
 func (r *teamLobbyRepository) FindTournamentByID(ctx context.Context, id uuid.UUID) (*models.Tournament, error) {
 	var tournament models.Tournament
 	err := r.db.WithContext(ctx).
-		Where("id = ? AND published = ?", id, true).
+		Where("id = ? AND status <> ?", id, models.TournamentStatusDraft).
 		First(&tournament).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, nil
@@ -130,7 +130,7 @@ func (r *teamLobbyRepository) Join(ctx context.Context, teamID, accountID uuid.U
 		if team.Status != models.TournamentTeamStatusForming {
 			return ErrTeamLobbyNotForming
 		}
-		if team.Tournament.Status != models.TournamentStatusRegistration {
+		if team.Tournament.Status != models.TournamentStatusRegistration || team.Tournament.IsRegistrationClosed(time.Now()) {
 			return ErrTournamentRegistrationClosed
 		}
 		if len(team.Members) >= team.Tournament.MaxTeamSize {

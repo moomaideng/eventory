@@ -7,23 +7,48 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/moomaideng/eventory/services/tournament/internal/ports"
+	"github.com/moomaideng/eventory/services/tournament/internal/repositories"
 	"github.com/moomaideng/eventory/services/tournament/internal/usecases"
 	"github.com/moomaideng/eventory/services/tournament/models"
 )
 
 type refundReviewRepo struct {
-	team   models.TournamentTeam
-	marked bool
+	ownerID uuid.UUID
+	team    models.TournamentTeam
+	marked  bool
 }
 
-func (r *refundReviewRepo) ApplyReview(_ context.Context, _ uuid.UUID, _ string, tournamentID, teamID uuid.UUID, _ string, decide func(*models.Tournament, *models.TournamentTeam, int) (models.TournamentTeamStatus, error)) (*models.TournamentTeamReview, *uuid.UUID, error) {
-	to, err := decide(&models.Tournament{Status: models.TournamentStatusRegistration, Capacity: 1}, &r.team, 0)
-	if err != nil {
-		return nil, nil, err
-	}
-	r.team.Status = to
-	return &models.TournamentTeamReview{ID: uuid.New(), TournamentID: tournamentID, TournamentTeamID: teamID, ToStatus: to}, r.team.PaymentID, nil
+type refundReviewTx struct {
+	repo *refundReviewRepo
 }
+
+func (r *refundReviewRepo) Begin(_ context.Context) (repositories.TeamReviewTransaction, error) {
+	return &refundReviewTx{repo: r}, nil
+}
+
+func (tx *refundReviewTx) LockTournament(tournamentID uuid.UUID) (*models.Tournament, error) {
+	return &models.Tournament{
+		ID:       tournamentID,
+		Status:   models.TournamentStatusRegistration,
+		Capacity: 1,
+		Staff: []models.TournamentStaff{
+			{AccountID: tx.repo.ownerID, Role: models.TournamentStaffRoleOwner},
+		},
+	}, nil
+}
+
+func (tx *refundReviewTx) LockTeamAndAcceptedCount(_, _ uuid.UUID) (*models.TournamentTeam, int, error) {
+	return &tx.repo.team, 0, nil
+}
+
+func (tx *refundReviewTx) SaveReview(team *models.TournamentTeam, toStatus models.TournamentTeamStatus, review *models.TournamentTeamReview) error {
+	team.Status = toStatus
+	review.ID = uuid.New()
+	return nil
+}
+
+func (tx *refundReviewTx) Commit() error { return nil }
+func (tx *refundReviewTx) Rollback()     {}
 
 func (r *refundReviewRepo) PendingRefunds(context.Context) ([]models.TournamentTeam, error) {
 	if r.team.Status == models.TournamentTeamStatusRejected && r.team.PaymentID != nil && !r.marked {
@@ -55,7 +80,7 @@ func (p *refundPaymentStub) RefundRegistration(_ context.Context, paymentID, ent
 
 func TestRejectedRegistrationRefundRetries(t *testing.T) {
 	entryID, paymentID, tournamentID, reviewerID := uuid.New(), uuid.New(), uuid.New(), uuid.New()
-	repo := &refundReviewRepo{team: models.TournamentTeam{ID: entryID, Status: models.TournamentTeamStatusLocked, PaymentID: &paymentID}}
+	repo := &refundReviewRepo{ownerID: reviewerID, team: models.TournamentTeam{ID: entryID, Status: models.TournamentTeamStatusLocked, PaymentID: &paymentID}}
 	payments := &refundPaymentStub{fail: true}
 	uc := usecases.NewTeamReviewUseCase(repo, newStubAccountService(), payments)
 	result, err := uc.Review(context.Background(), reviewerID, tournamentID, entryID, "REJECT", "Not eligible")
@@ -77,11 +102,11 @@ func TestRejectedRegistrationRefundRetries(t *testing.T) {
 }
 
 func TestAcceptedRegistrationDoesNotRefund(t *testing.T) {
-	entryID, paymentID := uuid.New(), uuid.New()
-	repo := &refundReviewRepo{team: models.TournamentTeam{ID: entryID, Status: models.TournamentTeamStatusLocked, PaymentID: &paymentID}}
+	entryID, paymentID, reviewerID := uuid.New(), uuid.New(), uuid.New()
+	repo := &refundReviewRepo{ownerID: reviewerID, team: models.TournamentTeam{ID: entryID, Status: models.TournamentTeamStatusLocked, PaymentID: &paymentID}}
 	payments := &refundPaymentStub{}
 	uc := usecases.NewTeamReviewUseCase(repo, newStubAccountService(), payments)
-	if _, err := uc.Review(context.Background(), uuid.New(), uuid.New(), entryID, "ACCEPT", ""); err != nil || payments.calls != 0 {
+	if _, err := uc.Review(context.Background(), reviewerID, uuid.New(), entryID, "ACCEPT", ""); err != nil || payments.calls != 0 {
 		t.Fatalf("accepted entry requested a refund: err=%v calls=%d", err, payments.calls)
 	}
 }

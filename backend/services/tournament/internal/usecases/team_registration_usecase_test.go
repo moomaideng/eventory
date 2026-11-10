@@ -5,7 +5,6 @@ import (
 	"errors"
 	"github.com/google/uuid"
 	"github.com/moomaideng/eventory/services/tournament/internal/forms"
-	"github.com/moomaideng/eventory/services/tournament/internal/repositories"
 	"github.com/moomaideng/eventory/services/tournament/internal/usecases"
 	"github.com/moomaideng/eventory/services/tournament/models"
 	"testing"
@@ -101,7 +100,7 @@ func TestTeamRegistration_OnlyOwnAnswersCanChangeWhileForming(t *testing.T) {
 		u, repo, form, _, member := teamAnswerFixture()
 		repo.team.Status = status
 		_, err := u.SaveRegistrationAnswers(context.Background(), repo.team.ID, member, validTeamAnswers())
-		if !errors.Is(err, repositories.ErrTeamLobbyNotForming) || form.upserted != nil {
+		if !errors.Is(err, usecases.ErrTeamLobbyNotForming) || form.upserted != nil {
 			t.Fatalf("status=%s err=%v", status, err)
 		}
 	}
@@ -150,7 +149,7 @@ func TestTeamRegistration_StorageFailureAndDuplicateDoNotChangeMembership(t *tes
 	form.upsertError = nil
 	repo.activeTeam = repo.team
 	_, err = u.Create(context.Background(), repo.tournament.ID, captain, "Duplicate", validTeamAnswers())
-	if !errors.Is(err, repositories.ErrAlreadyInTournamentLobby) || form.upserted != nil {
+	if !errors.Is(err, usecases.ErrAlreadyInTournamentLobby) || form.upserted != nil {
 		t.Fatalf("duplicate error=%v overwrote=%v", err, form.upserted)
 	}
 }

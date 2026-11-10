@@ -19,9 +19,16 @@ type statusRepositoryStub struct {
 	tournament *models.Tournament
 	err        error
 
+	customTeamCounts bool
+	acceptedCount    int64
+	unresolvedCount  int64
+	customMatches    bool
+	matches          []models.Match
+
 	called        bool
 	gotAccountID  uuid.UUID
 	gotTournament uuid.UUID
+	persistedFrom models.TournamentStatus
 	persistedTo   models.TournamentStatus
 }
 
@@ -39,15 +46,30 @@ func (r *statusRepositoryStub) GetByID(_ context.Context, id uuid.UUID) (*models
 	}, nil
 }
 
-func (r *statusRepositoryStub) UpdateStatus(_ context.Context, id uuid.UUID, newStatus models.TournamentStatus) error {
+func (r *statusRepositoryStub) UpdateStatus(_ context.Context, id uuid.UUID, fromStatus, toStatus models.TournamentStatus) error {
 	r.called = true
 	r.gotTournament = id
-	r.persistedTo = newStatus
+	r.persistedFrom = fromStatus
+	r.persistedTo = toStatus
 	if r.err != nil {
 		return r.err
 	}
-	r.current = newStatus
+	r.current = toStatus
 	return nil
+}
+
+func (r *statusRepositoryStub) GetTeamCounts(ctx context.Context, id uuid.UUID) (int64, int64, error) {
+	if r.customTeamCounts {
+		return r.acceptedCount, r.unresolvedCount, nil
+	}
+	return r.mockTournamentRepository.GetTeamCounts(ctx, id)
+}
+
+func (r *statusRepositoryStub) GetBracketMatches(ctx context.Context, id uuid.UUID) ([]models.Match, error) {
+	if r.customMatches {
+		return r.matches, nil
+	}
+	return r.mockTournamentRepository.GetBracketMatches(ctx, id)
 }
 
 func TestOverrideAllowsPermittedTransitions(t *testing.T) {
@@ -416,20 +438,30 @@ func TestAllowedTransitionsFromReturnsACopy(t *testing.T) {
 
 func TestRegistrationToOngoingValidation(t *testing.T) {
 	ownerID, tournamentID := uuid.New(), uuid.New()
+	seededMatches := []models.Match{
+		{
+			ID:         uuid.New(),
+			StageLevel: 1,
+			TeamCount:  2,
+			Entries:    []models.MatchEntry{{}, {}},
+		},
+	}
 
 	tests := []struct {
-		name         string
-		openDeadline bool
-		bracketErr   error
-		want         error
+		name            string
+		openDeadline    bool
+		acceptedCount   int64
+		unresolvedCount int64
+		matches         []models.Match
+		want            error
 	}{
-		{name: "registration still open", openDeadline: true, want: usecases.ErrRegistrationStillOpen},
-		{name: "unresolved applications", bracketErr: usecases.ErrUnresolvedApplicationsExist, want: usecases.ErrUnresolvedApplicationsExist},
-		{name: "insufficient accepted teams", bracketErr: usecases.ErrInsufficientAcceptedTeams, want: usecases.ErrInsufficientAcceptedTeams},
-		{name: "missing bracket", bracketErr: usecases.ErrBracketMissing, want: usecases.ErrBracketMissing},
-		{name: "stage 1 capacity mismatch", bracketErr: usecases.ErrBracketStage1Mismatch, want: usecases.ErrBracketStage1Mismatch},
-		{name: "bracket not seeded", bracketErr: usecases.ErrBracketNotSeeded, want: usecases.ErrBracketNotSeeded},
-		{name: "valid transition to ongoing", want: nil},
+		{name: "registration still open", openDeadline: true, acceptedCount: 2, matches: seededMatches, want: usecases.ErrRegistrationStillOpen},
+		{name: "unresolved applications", acceptedCount: 2, unresolvedCount: 1, matches: seededMatches, want: usecases.ErrUnresolvedApplicationsExist},
+		{name: "insufficient accepted teams", acceptedCount: 1, matches: seededMatches, want: usecases.ErrInsufficientAcceptedTeams},
+		{name: "missing bracket", acceptedCount: 2, matches: nil, want: usecases.ErrBracketMissing},
+		{name: "stage 1 capacity mismatch", acceptedCount: 2, matches: []models.Match{{ID: uuid.New(), StageLevel: 1, TeamCount: 4, Entries: []models.MatchEntry{{}, {}}}}, want: usecases.ErrBracketStage1Mismatch},
+		{name: "bracket not seeded", acceptedCount: 2, matches: []models.Match{{ID: uuid.New(), StageLevel: 1, TeamCount: 2, Entries: []models.MatchEntry{{}}}}, want: usecases.ErrBracketNotSeeded},
+		{name: "valid transition to ongoing", acceptedCount: 2, matches: seededMatches, want: nil},
 	}
 
 	for _, tt := range tests {
@@ -444,8 +476,16 @@ func TestRegistrationToOngoingValidation(t *testing.T) {
 				RegistrationDeadline: deadline,
 				Staff:                []models.TournamentStaff{{AccountID: ownerID, Role: models.TournamentStaffRoleOwner}},
 			}
-			repo := &statusRepositoryStub{current: models.TournamentStatusRegistration, tournament: tourn, gotAccountID: ownerID}
-			repo.bracketReadinessErr = tt.bracketErr
+			repo := &statusRepositoryStub{
+				current:          models.TournamentStatusRegistration,
+				tournament:       tourn,
+				gotAccountID:     ownerID,
+				customTeamCounts: true,
+				acceptedCount:    tt.acceptedCount,
+				unresolvedCount:  tt.unresolvedCount,
+				customMatches:    true,
+				matches:          tt.matches,
+			}
 			useCase := usecases.NewTournamentUseCase(repo, newStubAccountService())
 
 			res, err := useCase.Override(context.Background(), ownerID, tournamentID, "ONGOING", "")
@@ -461,15 +501,40 @@ func TestRegistrationToOngoingValidation(t *testing.T) {
 
 func TestOngoingToCompletedValidation(t *testing.T) {
 	ownerID, tournamentID := uuid.New(), uuid.New()
+	rank1, rank2 := 1, 2
 
 	tests := []struct {
-		name          string
-		completionErr error
-		want          error
+		name    string
+		matches []models.Match
+		want    error
 	}{
-		{name: "unfinished matches exist", completionErr: usecases.ErrUnfinishedMatchesExist, want: usecases.ErrUnfinishedMatchesExist},
-		{name: "no single championship winner", completionErr: usecases.ErrNoChampionshipWinner, want: usecases.ErrNoChampionshipWinner},
-		{name: "valid completion", want: nil},
+		{
+			name:    "unfinished matches exist",
+			matches: []models.Match{{ID: uuid.New(), StageLevel: 1, TeamCount: 2, IsCompleted: false}},
+			want:    usecases.ErrUnfinishedMatchesExist,
+		},
+		{
+			name: "no single championship winner",
+			matches: []models.Match{{
+				ID:          uuid.New(),
+				StageLevel:  1,
+				TeamCount:   2,
+				IsCompleted: true,
+				Entries:     []models.MatchEntry{{FinalRank: &rank2}, {FinalRank: &rank2}},
+			}},
+			want: usecases.ErrNoChampionshipWinner,
+		},
+		{
+			name: "valid completion",
+			matches: []models.Match{{
+				ID:          uuid.New(),
+				StageLevel:  1,
+				TeamCount:   2,
+				IsCompleted: true,
+				Entries:     []models.MatchEntry{{FinalRank: &rank1}, {FinalRank: &rank2}},
+			}},
+			want: nil,
+		},
 	}
 
 	for _, tt := range tests {
@@ -479,8 +544,13 @@ func TestOngoingToCompletedValidation(t *testing.T) {
 				Status: models.TournamentStatusOngoing,
 				Staff:  []models.TournamentStaff{{AccountID: ownerID, Role: models.TournamentStaffRoleOwner}},
 			}
-			repo := &statusRepositoryStub{current: models.TournamentStatusOngoing, tournament: tourn, gotAccountID: ownerID}
-			repo.completionReadinessErr = tt.completionErr
+			repo := &statusRepositoryStub{
+				current:       models.TournamentStatusOngoing,
+				tournament:    tourn,
+				gotAccountID:  ownerID,
+				customMatches: true,
+				matches:       tt.matches,
+			}
 			useCase := usecases.NewTournamentUseCase(repo, newStubAccountService())
 
 			res, err := useCase.Override(context.Background(), ownerID, tournamentID, "COMPLETED", "")

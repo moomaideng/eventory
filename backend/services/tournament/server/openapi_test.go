@@ -18,6 +18,7 @@ import (
 	paymentconfig "github.com/moomaideng/eventory/services/payment/config"
 	paymentserver "github.com/moomaideng/eventory/services/payment/server"
 	"github.com/moomaideng/eventory/services/tournament/config"
+	"github.com/moomaideng/eventory/services/tournament/internal/forms"
 	"github.com/moomaideng/eventory/services/tournament/internal/ports"
 	"github.com/moomaideng/eventory/services/tournament/internal/repositories"
 	"github.com/moomaideng/eventory/services/tournament/internal/usecases"
@@ -66,15 +67,18 @@ func TestTournamentOpenAPISpec(t *testing.T) {
 		HTTPPort:    "8082",
 	}
 	accSvc := &dummyAccountSvc{}
+	tournamentRepo := repositories.NewTournamentRepository(db)
 	teamLobbyRepo := repositories.NewTeamLobbyRepository(db)
-	teamLobbyUseCase := usecases.NewTeamLobbyUseCase(teamLobbyRepo, accSvc, nil, nil, nil)
-	sponsorships := usecases.NewSponsorshipUseCase(repositories.NewSponsorshipRepository(db), repositories.NewTournamentRepository(db), accSvc, nil)
-	teamReviews := usecases.NewTeamReviewUseCase(repositories.NewTeamReviewRepository(db), accSvc, nil)
-	announcements := usecases.NewAnnouncementUseCase(repositories.NewAnnouncementRepository(db), accSvc, nil)
 	opts := options.Client().ApplyURI("mongodb://localhost:27017").SetServerSelectionTimeout(50 * time.Millisecond)
 	client, _ := mongo.Connect(opts)
 	mongoDB := client.Database("tournament_db")
-	tournamentRouter := newHTTPRouter(db, mongoDB, tournamentCfg, accSvc, teamLobbyUseCase, sponsorships, teamReviews, announcements)
+	formRepo := repositories.NewRegistrationFormRepository(mongoDB)
+	fieldRegistry := forms.NewDefaultRegistry()
+	teamLobbyUseCase := usecases.NewTeamLobbyUseCase(teamLobbyRepo, accSvc, nil, formRepo, fieldRegistry)
+	sponsorships := usecases.NewSponsorshipUseCase(repositories.NewSponsorshipRepository(db), tournamentRepo, accSvc, nil)
+	teamReviews := usecases.NewTeamReviewUseCase(repositories.NewTeamReviewRepository(db), accSvc, nil)
+	announcements := usecases.NewAnnouncementUseCase(repositories.NewAnnouncementRepository(db), accSvc, nil)
+	tournamentRouter := newHTTPRouter(db, mongoDB, tournamentCfg, accSvc, tournamentRepo, formRepo, fieldRegistry, teamLobbyUseCase, sponsorships, teamReviews, announcements)
 
 	tournamentDoc, err := fetchOpenAPI(tournamentRouter)
 	require.NoError(t, err)
