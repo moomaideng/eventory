@@ -16,8 +16,10 @@ export const dashboardQueryOptions = {
   refetchInterval: 30_000,
 } as const;
 
-export function toLocalInput(value: string) {
+export function toLocalInput(value?: string | null) {
+  if (!value) return "";
   const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
   return new Date(date.getTime() - date.getTimezoneOffset() * 60_000)
     .toISOString()
     .slice(0, 16);

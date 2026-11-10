@@ -13,20 +13,17 @@ import {
   DashboardLoading,
   RefreshDashboard,
 } from "@/features/organizer/components/dashboard-shared";
-import { DashboardOverview } from "@/features/organizer/components/dashboard-overview";
-import { FundingSettingsDialog } from "@/features/organizer/components/funding-settings-dialog";
-import { PlannedEventDetailsDialog } from "@/features/organizer/components/planned-event-details-dialog";
-import { RegistrationRulesDialog } from "@/features/organizer/components/registration-rules-dialog";
+import { RegistrationOverview } from "@/features/organizer/components/registration-overview";
 import { RegistrationTable } from "@/features/organizer/components/registration-table";
-import { StatusControlDialog } from "@/features/organizer/components/status-control-dialog";
-import { dashboardQueryOptions, statusLabel } from "@/features/organizer/utils";
+import { TournamentHomeTab } from "@/features/organizer/components/tournament-home-tab";
+import { dashboardQueryOptions } from "@/features/organizer/utils";
 import {
   LeaveTournamentDialog,
   StaffRoleBadge,
-  TournamentStaffSection,
 } from "@/features/tournament-staff";
 import { SponsorshipTierSection } from "@/features/sponsorship";
 import { AnnouncementSection } from "@/features/announcements";
+import { TournamentStatusBadge } from "@/features/tournaments/components/tournament-status-badge";
 
 export function TournamentWorkspace({
   tournamentId,
@@ -43,7 +40,9 @@ export function TournamentWorkspace({
     },
     { ...dashboardQueryOptions, enabled: Boolean(authorizationHeader) }
   );
+
   const loading = authLoading || !authorizationHeader || isLoading;
+
   return (
     <div className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-8 px-4 py-10 sm:px-8">
       <div>
@@ -57,6 +56,7 @@ export function TournamentWorkspace({
           My tournaments
         </Button>
       </div>
+
       {loading ? (
         <DashboardLoading />
       ) : error || !data ? (
@@ -66,8 +66,8 @@ export function TournamentWorkspace({
           {(() => {
             const isOwner = data.summary.role === "OWNER";
             const canReview = isOwner || data.summary.role === "ADMIN";
-            // Owners and admins may post announcements, like reviewing applications.
             const canAnnounce = canReview;
+
             return (
               <>
                 <header className="flex flex-col items-start justify-between gap-5 sm:flex-row sm:items-center">
@@ -79,12 +79,12 @@ export function TournamentWorkspace({
                       <Badge variant="secondary">
                         {data.summary.tournament.game}
                       </Badge>
-                      <Badge variant="outline" className="capitalize">
-                        {statusLabel(data.summary.tournament.status)}
-                      </Badge>
-                      <Badge variant="outline">
-                        {data.summary.published ? "Published" : "Unpublished"}
-                      </Badge>
+                      <TournamentStatusBadge
+                        status={data.summary.tournament.status}
+                        registrationDeadline={
+                          data.summary.tournament.registrationDeadline
+                        }
+                      />
                     </div>
                     <div className="flex items-center gap-4">
                       <div className="bg-primary/10 text-primary flex size-12 shrink-0 items-center justify-center rounded-lg">
@@ -100,64 +100,19 @@ export function TournamentWorkspace({
                       </div>
                     </div>
                   </div>
+
                   <div className="flex flex-wrap items-center gap-2">
-                    {isOwner &&
-                    data.summary.tournament.status === "CROWDFUNDING" &&
-                    data.summary.funding.deadline ? (
-                      <PlannedEventDetailsDialog
-                        tournamentId={tournamentId}
-                        details={{
-                          location: data.summary.tournament.location,
-                          description: data.summary.tournament.description,
-                          detail: data.summary.tournament.detail,
-                          registrationDeadline:
-                            data.summary.tournament.registrationDeadline,
-                          startAt: data.summary.tournament.startAt,
-                          endAt: data.summary.tournament.endAt,
-                        }}
-                        fundingDeadline={data.summary.funding.deadline}
-                      />
-                    ) : null}
-                    {isOwner &&
-                    data.summary.tournament.status === "CROWDFUNDING" ? (
-                      <RegistrationRulesDialog
-                        tournamentId={tournamentId}
-                        rules={{
-                          registrationMode:
-                            data.summary.tournament.registrationMode,
-                          minTeamSize: data.summary.tournament.minTeamSize,
-                          maxTeamSize: data.summary.tournament.maxTeamSize,
-                          capacity: data.summary.tournament.capacity,
-                          entryFee: data.summary.tournament.entryFee,
-                        }}
-                      />
-                    ) : null}
-                    {isOwner ? (
-                      data.summary.tournament.status === "CROWDFUNDING" &&
-                      data.summary.funding.deadline ? (
-                        <FundingSettingsDialog
-                          tournamentId={tournamentId}
-                          goal={data.summary.funding.goalAmount}
-                          deadline={data.summary.funding.deadline}
-                          registrationDeadline={
-                            data.summary.tournament.registrationDeadline
-                          }
-                        />
-                      ) : null
-                    ) : null}
-                    {isOwner ? (
-                      <StatusControlDialog
-                        tournamentId={tournamentId}
-                        currentStatus={data.summary.tournament.status}
-                        funding={data.summary.funding}
-                      />
-                    ) : (
+                    <RefreshDashboard
+                      fetching={isFetching}
+                      onRefresh={() => void refetch()}
+                    />
+                    {!isOwner ? (
                       <LeaveTournamentDialog
                         tournamentId={tournamentId}
                         tournamentName={data.summary.tournament.name}
                       />
-                    )}
-                    {data.summary.published ? (
+                    ) : null}
+                    {data.summary.tournament.status !== "DRAFT" ? (
                       <Button
                         render={<Link href={`/tournaments/${tournamentId}`} />}
                         nativeButton={false}
@@ -169,9 +124,14 @@ export function TournamentWorkspace({
                   </div>
                 </header>
 
-                <Tabs defaultValue="dashboard">
+                <Tabs defaultValue="home">
                   <TabsList>
-                    <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
+                    <TabsTrigger value="home">Home</TabsTrigger>
+                    {canReview ? (
+                      <TabsTrigger value="registration">
+                        Registration
+                      </TabsTrigger>
+                    ) : null}
                     {canAnnounce ? (
                       <TabsTrigger value="announcements">
                         Announcements
@@ -183,72 +143,72 @@ export function TournamentWorkspace({
                       </TabsTrigger>
                     ) : null}
                     {isOwner ? (
-                      <TabsTrigger value="staff">Manage Staff</TabsTrigger>
-                    ) : null}
-                    {isOwner ? (
-                      <TabsTrigger value="sponsorship">Sponsorship</TabsTrigger>
+                      <TabsTrigger value="sponsorship">
+                        Sponsorship
+                      </TabsTrigger>
                     ) : null}
                   </TabsList>
 
-                  <TabsContent value="dashboard" keepMounted>
-                    <div className="flex flex-wrap items-center justify-between gap-4">
-                      <div>
-                        <h2 className="text-xl font-semibold tracking-tight">
-                          Overview & Metrics
-                        </h2>
-                        <p className="text-muted-foreground text-sm">
-                          Live participant pipeline, capacity, and crowdfunding
-                          metrics.
-                        </p>
-                      </div>
-                      <RefreshDashboard
-                        fetching={isFetching}
-                        onRefresh={() => void refetch()}
-                      />
-                    </div>
-                    <DashboardOverview summary={data.summary} />
-                    <RegistrationTable
-                      key={tournamentId}
-                      entries={data.entries ?? []}
-                      metrics={data.summary.metrics}
+                  {/* 1. Home Tab: Default landing page for all staff */}
+                  <TabsContent value="home" keepMounted>
+                    <TournamentHomeTab
                       tournamentId={tournamentId}
-                      canReview={canReview}
+                      summary={data.summary}
+                      isOwner={isOwner}
+                      onRefresh={() => void refetch()}
                     />
                   </TabsContent>
 
+                  {/* 2. Registration Tab: Only for Owner & Admins */}
+                  {canReview ? (
+                    <TabsContent value="registration" keepMounted>
+                      <div className="flex flex-col gap-6">
+                        <div className="flex flex-wrap items-center justify-between gap-4">
+                          <div>
+                            <h2 className="text-xl font-semibold tracking-tight">
+                              Registration & Applications
+                            </h2>
+                            <p className="text-muted-foreground text-sm">
+                              Live participant pipeline, capacity, and applicant review.
+                            </p>
+                          </div>
+                        </div>
+                        <RegistrationOverview summary={data.summary} />
+                        <RegistrationTable
+                          key={tournamentId}
+                          entries={data.entries ?? []}
+                          metrics={data.summary.metrics}
+                          tournamentId={tournamentId}
+                          canReview={canReview}
+                        />
+                      </div>
+                    </TabsContent>
+                  ) : null}
+
+                  {/* 3. Announcements Tab */}
                   {canAnnounce ? (
                     <TabsContent value="announcements" keepMounted>
                       <AnnouncementSection
                         tournamentId={tournamentId}
-                        published={data.summary.published}
+                        published={data.summary.tournament.status !== "DRAFT"}
                       />
                     </TabsContent>
                   ) : null}
 
+                  {/* 4. Registration Form Builder Tab */}
                   {isOwner ? (
                     <TabsContent value="form" keepMounted>
                       <RegistrationFormBuilder tournamentId={tournamentId} />
                     </TabsContent>
                   ) : null}
 
-                  {isOwner ? (
-                    <TabsContent value="staff" keepMounted>
-                      <TournamentStaffSection
-                        tournamentId={tournamentId}
-                        isOwner={isOwner}
-                      />
-                    </TabsContent>
-                  ) : null}
-
+                  {/* 5. Sponsorship Tab */}
                   {isOwner ? (
                     <TabsContent value="sponsorship">
                       <SponsorshipTierSection
                         tournamentId={tournamentId}
                         currency={data.summary.tournament.currency}
-                        editable={
-                          data.summary.tournament.status !== "COMPLETED" &&
-                          data.summary.tournament.status !== "CANCELLED"
-                        }
+                        editable={data.summary.tournament.status !== "COMPLETED"}
                       />
                     </TabsContent>
                   ) : null}
