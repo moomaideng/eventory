@@ -22,8 +22,8 @@ type refundReviewTx struct {
 	repo *refundReviewRepo
 }
 
-func (r *refundReviewRepo) Begin(_ context.Context) (repositories.TeamReviewTransaction, error) {
-	return &refundReviewTx{repo: r}, nil
+func (r *refundReviewRepo) InTransaction(_ context.Context, fn func(repositories.TeamReviewTransaction) error) error {
+	return fn(&refundReviewTx{repo: r})
 }
 
 func (tx *refundReviewTx) LockTournament(tournamentID uuid.UUID) (*models.Tournament, error) {
@@ -46,9 +46,6 @@ func (tx *refundReviewTx) SaveReview(team *models.TournamentTeam, toStatus model
 	review.ID = uuid.New()
 	return nil
 }
-
-func (tx *refundReviewTx) Commit() error { return nil }
-func (tx *refundReviewTx) Rollback()     {}
 
 func (r *refundReviewRepo) PendingRefunds(context.Context) ([]models.TournamentTeam, error) {
 	if r.team.Status == models.TournamentTeamStatusRejected && r.team.PaymentID != nil && !r.marked {

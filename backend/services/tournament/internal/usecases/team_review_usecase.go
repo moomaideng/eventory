@@ -199,48 +199,45 @@ func (u *TeamReviewUseCase) applyReview(
 	to models.TournamentTeamStatus,
 	reason string,
 ) (*models.TournamentTeamReview, *uuid.UUID, error) {
-	tx, err := u.repo.Begin(ctx)
+	var review *models.TournamentTeamReview
+	var paymentID *uuid.UUID
+
+	err := u.repo.InTransaction(ctx, func(tx repositories.TeamReviewTransaction) error {
+		tournament, err := tx.LockTournament(tournamentID)
+		if err != nil {
+			return err
+		}
+
+		staff, ok := tournament.StaffMember(accountID)
+		if !ok || (!staff.IsOwner() && !staff.IsAdmin()) {
+			return ErrTournamentNotFound
+		}
+
+		team, acceptedEntries, err := tx.LockTeamAndAcceptedCount(tournamentID, entryID)
+		if err != nil {
+			return err
+		}
+
+		if err := checkReview(tournament, team.Status, to, acceptedEntries); err != nil {
+			return err
+		}
+
+		from := team.Status
+		paymentID = team.PaymentID
+		review = &models.TournamentTeamReview{
+			TournamentID:        tournament.ID,
+			Tournament:          *tournament,
+			TournamentTeamID:    team.ID,
+			Team:                *team,
+			FromStatus:          from,
+			ToStatus:            to,
+			Reason:              reason,
+			ReviewerAccountID:   accountID,
+			ReviewerDisplayName: reviewerDisplayName,
+		}
+		return tx.SaveReview(team, to, review)
+	})
 	if err != nil {
-		return nil, nil, err
-	}
-	defer tx.Rollback()
-
-	tournament, err := tx.LockTournament(tournamentID)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	staff, ok := tournament.StaffMember(accountID)
-	if !ok || (!staff.IsOwner() && !staff.IsAdmin()) {
-		return nil, nil, ErrTournamentNotFound
-	}
-
-	team, acceptedEntries, err := tx.LockTeamAndAcceptedCount(tournamentID, entryID)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	if err := checkReview(tournament, team.Status, to, acceptedEntries); err != nil {
-		return nil, nil, err
-	}
-
-	from := team.Status
-	paymentID := team.PaymentID
-	review := &models.TournamentTeamReview{
-		TournamentID:        tournament.ID,
-		Tournament:          *tournament,
-		TournamentTeamID:    team.ID,
-		Team:                *team,
-		FromStatus:          from,
-		ToStatus:            to,
-		Reason:              reason,
-		ReviewerAccountID:   accountID,
-		ReviewerDisplayName: reviewerDisplayName,
-	}
-	if err := tx.SaveReview(team, to, review); err != nil {
-		return nil, nil, err
-	}
-	if err := tx.Commit(); err != nil {
 		return nil, nil, err
 	}
 	return review, paymentID, nil
