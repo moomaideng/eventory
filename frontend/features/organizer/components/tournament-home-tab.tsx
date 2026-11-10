@@ -1,9 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { Sparkles } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { TournamentStatusBadge } from "@/features/tournaments/components/tournament-status-badge";
+import { TournamentStatusTimeline } from "./tournament-status-timeline";
 import { TournamentGeneralSection } from "./tournament-general-section";
 import { TournamentGateSection } from "./tournament-gate-section";
 import { TournamentTimelineSection } from "./tournament-timeline-section";
@@ -12,7 +10,6 @@ import {
   EditTournamentSectionDialog,
   type SectionType,
 } from "./edit-tournament-section-dialog";
-import { ChangeTournamentStatusDialog } from "./change-tournament-status-dialog";
 import type { OrganizerSummary } from "@/features/organizer/utils";
 
 export function TournamentHomeTab({
@@ -30,7 +27,6 @@ export function TournamentHomeTab({
   const status = tournament.status;
 
   const [editSection, setEditSection] = useState<SectionType | null>(null);
-  const [statusDialogOpen, setStatusDialogOpen] = useState(false);
 
   // Mutation rules from backend/README.md:
   // General Info: Editable in DRAFT, CROWDFUNDING, REGISTRATION, ONGOING. Locked in COMPLETED.
@@ -50,29 +46,13 @@ export function TournamentHomeTab({
 
   return (
     <div className="flex flex-col gap-10">
-      {/* Top Action Bar for Home Tab */}
-      <div className="border-border bg-card/40 flex flex-wrap items-center justify-between gap-4 rounded-xl border p-4 sm:p-5">
-        <div className="flex items-center gap-3">
-          <span className="text-muted-foreground text-xs font-semibold uppercase tracking-wider">
-            Status
-          </span>
-          <TournamentStatusBadge
-            status={tournament.status}
-            registrationDeadline={tournament.registrationDeadline}
-          />
-        </div>
-
-        {isOwner && status !== "COMPLETED" ? (
-          <Button
-            size="sm"
-            onClick={() => setStatusDialogOpen(true)}
-            className="font-medium"
-          >
-            <Sparkles data-icon="inline-start" />
-            Update Status
-          </Button>
-        ) : null}
-      </div>
+      {/* Tournament Status Lifecycle Timeline */}
+      <TournamentStatusTimeline
+        tournamentId={tournamentId}
+        summary={summary}
+        isOwner={isOwner}
+        onSuccess={onRefresh}
+      />
 
       {/* 1. General Information Section */}
       <TournamentGeneralSection
@@ -114,15 +94,6 @@ export function TournamentHomeTab({
           if (!isOpen) setEditSection(null);
         }}
         summary={summary}
-        onSuccess={onRefresh}
-      />
-
-      <ChangeTournamentStatusDialog
-        tournamentId={tournamentId}
-        currentStatus={tournament.status}
-        funding={funding}
-        open={statusDialogOpen}
-        onOpenChange={setStatusDialogOpen}
         onSuccess={onRefresh}
       />
     </div>
