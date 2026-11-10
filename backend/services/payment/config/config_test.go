@@ -7,6 +7,7 @@ func TestServiceKeyConfiguration(t *testing.T) {
 	t.Setenv("GRPC_PORT", "9093")
 	t.Setenv("DB_DSN", "postgresql://unused/payment_db")
 	t.Setenv("ENVIRONMENT", "production")
+	t.Setenv("BROKER_URL", "amqp://unused/")
 	for _, key := range []string{"short", "local-payment-service-key-not-for-production"} {
 		t.Setenv("PAYMENT_SERVICE_KEY", key)
 		if _, err := Load(); err == nil {

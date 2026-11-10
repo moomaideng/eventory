@@ -3,6 +3,7 @@ package usecases_test
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -91,8 +92,8 @@ func (s *teamLobbyRepositoryStub) Disband(_ context.Context, _ uuid.UUID) error 
 func (s *teamLobbyRepositoryStub) Pending(_ context.Context) ([]models.TournamentTeam, error) {
 	return nil, nil
 }
-func (s *teamLobbyRepositoryStub) ApplyPayment(_ context.Context, _ *models.TournamentTeam, _ uuid.UUID, status string) error {
-	s.applied = status
+func (s *teamLobbyRepositoryStub) ApplyPayment(_ context.Context, _ *models.TournamentTeam, _ uuid.UUID, status models.PaymentStatus) error {
+	s.applied = string(status)
 	return nil
 }
 
@@ -523,6 +524,57 @@ func TestSubmissionRequiresAuthoritativeMatchingInvoice(t *testing.T) {
 			}
 			if repo.applied != "PAID" {
 				t.Fatal("paid attempt was not submitted")
+			}
+		})
+	}
+}
+
+func TestApplyPaymentOutcome(t *testing.T) {
+	attempt, payer := uuid.New(), uuid.New()
+	expires := time.Now().Add(time.Minute).UTC().Truncate(time.Microsecond)
+	pending := func() *models.TournamentTeam {
+		return &models.TournamentTeam{ID: uuid.New(), Status: models.TournamentTeamStatusPaymentPending, PaymentAttemptID: &attempt, PaymentPayerID: &payer, PaymentExpiresAt: &expires, PaymentAmountMinor: 10000}
+	}
+	outcome := func(team *models.TournamentTeam, status models.PaymentStatus) usecases.PaymentOutcome {
+		return usecases.PaymentOutcome{Status: status, PaymentID: uuid.New(), PayerAccountID: payer, Reference: team.ID.String() + ":" + attempt.String(), AmountMinor: 10000, Currency: "THB", ExpiresAt: expires}
+	}
+	for _, tc := range []struct {
+		name        string
+		team        *models.TournamentTeam // nil: no such team
+		change      func(*usecases.PaymentOutcome)
+		wantApplied string
+		wantErr     error
+	}{
+		{"paid locks the roster", pending(), nil, "PAID", nil},
+		{"expired releases the roster", pending(), func(o *usecases.PaymentOutcome) { o.Status = models.PaymentExpired }, "EXPIRED", nil},
+		{"cancelled releases the roster", pending(), func(o *usecases.PaymentOutcome) { o.Status = models.PaymentCancelled }, "CANCELLED", nil},
+		{"deleted team is ignored", nil, nil, "", nil},
+		{"settled team is left alone", &models.TournamentTeam{ID: uuid.New(), Status: models.TournamentTeamStatusLocked}, nil, "", nil},
+		{"event for an older attempt is ignored", pending(), func(o *usecases.PaymentOutcome) {
+			o.Reference = strings.Split(o.Reference, ":")[0] + ":" + uuid.NewString()
+		}, "", nil},
+		{"malformed reference is rejected", pending(), func(o *usecases.PaymentOutcome) { o.Reference = "not-a-team" }, "", usecases.ErrPaymentMismatch},
+		{"wrong payer is rejected", pending(), func(o *usecases.PaymentOutcome) { o.PayerAccountID = uuid.New() }, "", usecases.ErrPaymentMismatch},
+		{"wrong amount is rejected", pending(), func(o *usecases.PaymentOutcome) { o.AmountMinor++ }, "", usecases.ErrPaymentMismatch},
+		{"wrong currency is rejected", pending(), func(o *usecases.PaymentOutcome) { o.Currency = "USD" }, "", usecases.ErrPaymentMismatch},
+		{"wrong deadline is rejected", pending(), func(o *usecases.PaymentOutcome) { o.ExpiresAt = o.ExpiresAt.Add(time.Second) }, "", usecases.ErrPaymentMismatch},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			team := tc.team
+			if team == nil {
+				team = pending()
+			}
+			o := outcome(team, models.PaymentPaid)
+			if tc.change != nil {
+				tc.change(&o)
+			}
+			repo := &teamLobbyRepositoryStub{team: tc.team}
+			err := newTestTeamLobbyUseCase(repo, nil, registrationPaymentStub{}).ApplyPaymentOutcome(context.Background(), o)
+			if !errors.Is(err, tc.wantErr) {
+				t.Fatalf("error = %v, want %v", err, tc.wantErr)
+			}
+			if repo.applied != tc.wantApplied {
+				t.Fatalf("applied = %q, want %q", repo.applied, tc.wantApplied)
 			}
 		})
 	}

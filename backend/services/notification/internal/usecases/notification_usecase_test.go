@@ -265,11 +265,13 @@ func TestProcessPaymentConfirmed(t *testing.T) {
 		OccurredAt:    time.Now().UTC(),
 		CorrelationID: uuid.New(),
 		Data: events.PaymentConfirmedData{
-			PaymentID:      paymentID,
-			PayerAccountID: payerID,
-			AmountMinor:    125000,
-			Currency:       "THB",
-			Description:    "Grand Masters 2026 Entry Fee",
+			PaymentInvoice: events.PaymentInvoice{
+				PaymentID:      paymentID,
+				PayerAccountID: payerID,
+				AmountMinor:    125000,
+				Currency:       "THB",
+			},
+			Description: "Grand Masters 2026 Entry Fee",
 			Recipient: events.EventRecipient{
 				AccountID:   payerID,
 				Email:       "payer@example.com",

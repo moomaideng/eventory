@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/moomaideng/eventory/internal/events"
 	accountconfig "github.com/moomaideng/eventory/services/account/config"
 	accountserver "github.com/moomaideng/eventory/services/account/server"
 	notificationconfig "github.com/moomaideng/eventory/services/notification/config"
@@ -105,7 +106,7 @@ func TestTournamentOpenAPISpec(t *testing.T) {
 			Environment: "development",
 			HTTPPort:    "8083",
 			ServiceKey:  "01234567890123456789012345678901",
-		})
+		}, events.NoopPublisher{})
 		paymentDoc, err := fetchOpenAPI(paymentApp.HTTP)
 		require.NoError(t, err)
 

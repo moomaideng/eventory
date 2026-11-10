@@ -2,8 +2,10 @@ package ports
 
 import (
 	"context"
-	"github.com/google/uuid"
 	"time"
+
+	"github.com/google/uuid"
+	"github.com/moomaideng/eventory/services/tournament/models"
 )
 
 type RegistrationPaymentRequest struct {
@@ -18,14 +20,14 @@ type RegistrationPaymentRequest struct {
 }
 
 type RegistrationPayment struct {
-	ID             uuid.UUID `json:"id"`
-	PayerAccountID uuid.UUID `json:"payerAccountId"`
-	Source         string    `json:"source"`
-	Reference      string    `json:"reference"`
-	AmountMinor    int64     `json:"amountMinor"`
-	Currency       string    `json:"currency"`
-	ExpiresAt      time.Time `json:"expiresAt"`
-	Status         string    `json:"status"`
+	ID             uuid.UUID            `json:"id"`
+	PayerAccountID uuid.UUID            `json:"payerAccountId"`
+	Source         string               `json:"source"`
+	Reference      string               `json:"reference"`
+	AmountMinor    int64                `json:"amountMinor"`
+	Currency       string               `json:"currency"`
+	ExpiresAt      time.Time            `json:"expiresAt"`
+	Status         models.PaymentStatus `json:"status"`
 }
 
 type PaymentService interface {

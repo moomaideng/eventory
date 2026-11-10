@@ -4,6 +4,7 @@ import (
 	"context"
 	cryptorand "crypto/rand"
 	"errors"
+	"fmt"
 	"math/big"
 	"regexp"
 	"strings"
@@ -476,7 +477,7 @@ func (u *TeamLobbyUseCase) Reconcile(ctx context.Context, team *models.Tournamen
 		desc = "Registration for " + team.Tournament.Name
 	}
 	request := ports.RegistrationPaymentRequest{
-		PayerAccountID: *team.PaymentPayerID, Source: "TEAM_REGISTRATION",
+		PayerAccountID: *team.PaymentPayerID, Source: models.PaymentSourceTeamRegistration,
 		Reference: team.ID.String() + ":" + team.PaymentAttemptID.String(), IdempotencyKey: team.PaymentAttemptID.String(),
 		Description: desc, AmountMinor: team.PaymentAmountMinor, Currency: "THB", ExpiresAt: *team.PaymentExpiresAt,
 	}
@@ -484,24 +485,47 @@ func (u *TeamLobbyUseCase) Reconcile(ctx context.Context, team *models.Tournamen
 	if err != nil {
 		return ErrPaymentUnavailable
 	}
-	if payment.ID == uuid.Nil || payment.PayerAccountID != request.PayerAccountID || payment.Source != request.Source || payment.Reference != request.Reference || payment.AmountMinor != request.AmountMinor || payment.Currency != request.Currency || !payment.ExpiresAt.Equal(request.ExpiresAt) {
+	if payment.Source != request.Source || payment.Reference != request.Reference || !attemptMatches(team, outcomeOf(payment)) || !settleable(payment.Status) {
 		return ErrPaymentUnavailable
 	}
-	if team.PaymentID != nil && *team.PaymentID != payment.ID {
-		return ErrPaymentUnavailable
-	}
-	switch payment.Status {
-	case "UNPAID", "PAID", "EXPIRED", "CANCELLED":
-		return u.repo.ApplyPayment(ctx, team, payment.ID, payment.Status)
-	default:
-		return ErrPaymentUnavailable
-	}
+	return u.repo.ApplyPayment(ctx, team, payment.ID, payment.Status)
 }
 
-// Pending lists registrations awaiting a payment outcome. A background poller
-// feeds each one to Reconcile so attempts are recovered even if the captain
-// closes the checkout or a service restarts between payment confirmation and
-// application submission.
-func (u *TeamLobbyUseCase) Pending(ctx context.Context) ([]models.TournamentTeam, error) {
-	return u.repo.Pending(ctx)
+// ApplyPaymentOutcome records the result of a payment event on the
+// registration it refers to ("<team id>:<attempt id>"). A team that is gone,
+// no longer pending, or on a newer attempt is left alone, so redelivered and
+// late events are harmless. An event whose terms differ from the attempt
+// returns ErrPaymentMismatch.
+func (u *TeamLobbyUseCase) ApplyPaymentOutcome(ctx context.Context, outcome PaymentOutcome) error {
+	teamPart, attemptPart, _ := strings.Cut(outcome.Reference, ":")
+	teamID, teamErr := uuid.Parse(teamPart)
+	attemptID, attemptErr := uuid.Parse(attemptPart)
+	if teamErr != nil || attemptErr != nil {
+		return fmt.Errorf("%w: registration reference %q", ErrPaymentMismatch, outcome.Reference)
+	}
+	team, err := u.repo.FindByID(ctx, teamID)
+	if errors.Is(err, repositories.ErrTeamLobbyNotFound) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	if team.Status != models.TournamentTeamStatusPaymentPending || team.PaymentAttemptID == nil || *team.PaymentAttemptID != attemptID {
+		return nil
+	}
+	if !attemptMatches(team, outcome) || !settleable(outcome.Status) {
+		return fmt.Errorf("%w: team %s", ErrPaymentMismatch, team.ID)
+	}
+	return u.repo.ApplyPayment(ctx, team, outcome.PaymentID, outcome.Status)
+}
+
+// attemptMatches reports whether the invoice was issued for the team's current
+// payment attempt.
+func attemptMatches(team *models.TournamentTeam, p PaymentOutcome) bool {
+	return p.PaymentID != uuid.Nil &&
+		team.PaymentPayerID != nil && p.PayerAccountID == *team.PaymentPayerID &&
+		team.PaymentExpiresAt != nil && p.ExpiresAt.Equal(*team.PaymentExpiresAt) &&
+		p.AmountMinor == team.PaymentAmountMinor &&
+		p.Currency == "THB" &&
+		(team.PaymentID == nil || *team.PaymentID == p.PaymentID)
 }

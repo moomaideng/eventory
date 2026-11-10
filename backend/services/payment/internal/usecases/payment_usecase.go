@@ -8,7 +8,6 @@ import (
 	"unicode/utf8"
 
 	"github.com/google/uuid"
-	"github.com/moomaideng/eventory/internal/events"
 	"github.com/moomaideng/eventory/services/payment/internal/repositories"
 	"github.com/moomaideng/eventory/services/payment/models"
 	"gorm.io/gorm"
@@ -28,15 +27,11 @@ type CreatePayment struct {
 }
 
 type PaymentUseCase struct {
-	repo      repositories.PaymentRepository
-	publisher events.Publisher
+	repo repositories.PaymentRepository
 }
 
-func NewPaymentUseCase(repo repositories.PaymentRepository, publisher events.Publisher) *PaymentUseCase {
-	if publisher == nil {
-		publisher = events.NoopPublisher{}
-	}
-	return &PaymentUseCase{repo: repo, publisher: publisher}
+func NewPaymentUseCase(repo repositories.PaymentRepository) *PaymentUseCase {
+	return &PaymentUseCase{repo: repo}
 }
 
 func (uc *PaymentUseCase) Create(ctx context.Context, input CreatePayment) (*models.Invoice, error) {
@@ -51,9 +46,11 @@ func (uc *PaymentUseCase) Create(ctx context.Context, input CreatePayment) (*mod
 			return nil, ErrInvalid
 		}
 	}
-	invoice := &models.Invoice{ID: uuid.New(), PayerAccountID: input.PayerAccountID,
+	invoice := &models.Invoice{
+		ID: uuid.New(), PayerAccountID: input.PayerAccountID,
 		Source: input.Source, Reference: input.Reference, IdempotencyKey: input.IdempotencyKey, Description: input.Description,
-		AmountMinor: input.AmountMinor, Currency: input.Currency, ExpiresAt: input.ExpiresAt.UTC().Truncate(time.Microsecond), Provider: "MOCK"}
+		AmountMinor: input.AmountMinor, Currency: input.Currency, ExpiresAt: input.ExpiresAt.UTC().Truncate(time.Microsecond), Provider: "MOCK",
+	}
 	// Exact retries still return the original invoice after its deadline passes.
 	existing, err := uc.repo.FindByKey(ctx, input.Source, input.IdempotencyKey)
 	if err == nil {
@@ -65,9 +62,9 @@ func (uc *PaymentUseCase) Create(ctx context.Context, input CreatePayment) (*mod
 	if !errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, err
 	}
-	// A durable team attempt can be recovered after an outage. Creating its
-	// already-expired invoice is safe: CompleteMock cannot pay it.
-	if !invoice.ExpiresAt.After(time.Now()) && input.Source != "TEAM_REGISTRATION" && input.Source != "SOLO_REGISTRATION" && input.Source != "SPONSORSHIP" {
+	// A durable reservation attempt can be recovered after an outage. Creating
+	// its already-expired invoice is safe: CompleteMock cannot pay it.
+	if !invoice.ExpiresAt.After(time.Now()) && !invoice.HoldsReservation() {
 		return nil, ErrInvalid
 	}
 	return uc.repo.Create(ctx, invoice)
@@ -86,7 +83,7 @@ func (uc *PaymentUseCase) RefundRegistration(ctx context.Context, invoiceID, ent
 		return nil, ErrInvalid
 	}
 	return uc.repo.Refund(ctx, invoiceID, func(invoice *models.Invoice) error {
-		if invoice.Source != "TEAM_REGISTRATION" || !strings.HasPrefix(invoice.Reference, entryID.String()+":") || invoice.PaidAt == nil {
+		if invoice.Source != models.SourceTeamRegistration || !strings.HasPrefix(invoice.Reference, entryID.String()+":") || invoice.PaidAt == nil {
 			return repositories.ErrConflict
 		}
 		if invoice.RefundedAt != nil {
@@ -138,57 +135,52 @@ func (uc *PaymentUseCase) CompleteMock(ctx context.Context, payer, id uuid.UUID,
 	if result != models.Succeeded && result != models.Failed && result != models.Cancelled {
 		return nil, ErrInvalid
 	}
-	invoice, err := uc.repo.Complete(ctx, payer, id, func(payment *models.Invoice) error {
+	var email string
+	if len(payerEmail) > 0 {
+		email = payerEmail[0]
+	}
+	invoice, err := uc.repo.Complete(ctx, payer, id, func(payment *models.Invoice) ([]models.OutboxEvent, error) {
 		if payment.Provider != "MOCK" {
-			return repositories.ErrConflict
+			return nil, repositories.ErrConflict
 		}
 		if payment.PaidAt != nil && result == models.Succeeded {
-			return nil
+			return nil, nil
 		}
 		now := time.Now().UTC().Truncate(time.Microsecond)
 		if payment.Status(now) != models.Unpaid {
-			return repositories.ErrConflict
+			return nil, repositories.ErrConflict
 		}
 		if result == models.Succeeded {
 			payment.PaidAt = &now
-		} else if payment.Source == "TEAM_REGISTRATION" || payment.Source == "SOLO_REGISTRATION" || payment.Source == "SPONSORSHIP" {
-			// Close this attempt before the tournament service unlocks the roster.
-			payment.CancelledAt = &now
+			event, err := confirmedEvent(payment, email)
+			return []models.OutboxEvent{event}, err
 		}
-		return nil
+		if payment.HoldsReservation() {
+			// Close the attempt for good so the caller can release what it reserved.
+			payment.CancelledAt = &now
+			event, err := cancelledEvent(payment)
+			return []models.OutboxEvent{event}, err
+		}
+		return nil, nil
 	})
 	if err != nil {
 		return nil, err
 	}
-
-	if result == models.Succeeded && invoice != nil && invoice.PaidAt != nil && uc.publisher != nil {
-		var email string
-		if len(payerEmail) > 0 {
-			email = payerEmail[0]
-		}
-		event := events.PaymentConfirmed{
-			SpecVersion:   events.EventSpecVersion,
-			ID:            uuid.New(),
-			Type:          events.PaymentConfirmedType,
-			Source:        "payment-service",
-			OccurredAt:    *invoice.PaidAt,
-			CorrelationID: uuid.New(),
-			Data: events.PaymentConfirmedData{
-				PaymentID:      invoice.ID,
-				PayerAccountID: invoice.PayerAccountID,
-				AmountMinor:    invoice.AmountMinor,
-				Currency:       invoice.Currency,
-				Description:    invoice.Description,
-				Recipient: events.EventRecipient{
-					AccountID: invoice.PayerAccountID,
-					Email:     email,
-				},
-			},
-		}
-		_ = uc.publisher.Publish(ctx, events.PaymentConfirmedType, event)
-	}
-
 	return invoice, nil
+}
+
+// AnnounceExpired queues payment.expired for unpaid invoices past their
+// deadline. Expiry is the clock's doing, so something has to notice it.
+func (uc *PaymentUseCase) AnnounceExpired(ctx context.Context, now time.Time, limit int) (int, error) {
+	return uc.repo.AnnounceExpired(ctx, now, limit, expiredEvent)
+}
+
+// PublishOutbox sends queued events through publish. See the repository for
+// what a failure leaves behind.
+func (uc *PaymentUseCase) PublishOutbox(ctx context.Context, limit int, publish func(routingKey string, payload []byte) error) (int, error) {
+	return uc.repo.PublishOutbox(ctx, limit, func(event *models.OutboxEvent) error {
+		return publish(event.RoutingKey, event.Payload)
+	})
 }
 
 func (uc *PaymentUseCase) GetReceipt(ctx context.Context, payer, id uuid.UUID) (*models.Invoice, error) {

@@ -56,13 +56,64 @@ func TestSponsorshipRejectsMismatchedPayment(t *testing.T) {
 		{"unknown status", func(p *ports.RegistrationPayment) { p.Status = "INVALID" }},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			p := &ports.RegistrationPayment{ID: paymentID, PayerAccountID: payer, Source: SponsorshipPaymentSource, Reference: pledgeID.String(), AmountMinor: 10000, Currency: "THB", ExpiresAt: expires, Status: "PAID"}
+			p := &ports.RegistrationPayment{ID: paymentID, PayerAccountID: payer, Source: models.PaymentSourceSponsorship, Reference: pledgeID.String(), AmountMinor: 10000, Currency: "THB", ExpiresAt: expires, Status: "PAID"}
 			tc.change(p)
 			pledge := &models.SponsorshipPledge{ID: pledgeID, PayerAccountID: payer, AmountMinor: 10000, Currency: "THB", ExpiresAt: expires, Status: models.PledgePending, PaymentID: &paymentID}
 			// Invalid payment data must be rejected before any repository transaction starts.
 			u := NewSponsorshipUseCase(nil, nil, nil, sponsorshipPaymentStub{p})
 			if err := u.Reconcile(context.Background(), pledge); !errors.Is(err, ErrPaymentUnavailable) {
 				t.Fatalf("mismatched payment was accepted: %v", err)
+			}
+		})
+	}
+}
+
+type pledgeLookupStub struct {
+	repositories.SponsorshipRepository // Begin is unset: reaching it fails the test
+	pledge                             *models.SponsorshipPledge
+}
+
+func (s pledgeLookupStub) Get(context.Context, uuid.UUID) (*models.SponsorshipPledge, error) {
+	if s.pledge == nil {
+		return nil, repositories.ErrPledgeNotFound
+	}
+	return s.pledge, nil
+}
+
+func TestSponsorshipPaymentOutcomeChecksThePledgeBeforeSettling(t *testing.T) {
+	payer, pledgeID, paymentID := uuid.New(), uuid.New(), uuid.New()
+	expires := time.Now().UTC().Add(time.Minute).Truncate(time.Microsecond)
+	pledge := func(status models.PledgeStatus) *models.SponsorshipPledge {
+		return &models.SponsorshipPledge{ID: pledgeID, PayerAccountID: payer, AmountMinor: 10000, Currency: "THB", ExpiresAt: expires, Status: status}
+	}
+	for _, tc := range []struct {
+		name    string
+		pledge  *models.SponsorshipPledge
+		change  func(*PaymentOutcome)
+		wantErr error
+	}{
+		{"deleted pledge is ignored", nil, nil, nil},
+		{"settled pledge is left alone", pledge(models.PledgeConfirmed), nil, nil},
+		{"malformed reference", pledge(models.PledgePending), func(o *PaymentOutcome) { o.Reference = "nope" }, ErrPaymentMismatch},
+		{"different payer", pledge(models.PledgePending), func(o *PaymentOutcome) { o.PayerAccountID = uuid.New() }, ErrPaymentMismatch},
+		{"different price", pledge(models.PledgePending), func(o *PaymentOutcome) { o.AmountMinor++ }, ErrPaymentMismatch},
+		{"different currency", pledge(models.PledgePending), func(o *PaymentOutcome) { o.Currency = "USD" }, ErrPaymentMismatch},
+		{"different deadline", pledge(models.PledgePending), func(o *PaymentOutcome) { o.ExpiresAt = o.ExpiresAt.Add(time.Second) }, ErrPaymentMismatch},
+		{"different invoice", func() *models.SponsorshipPledge {
+			p := pledge(models.PledgePending)
+			other := uuid.New()
+			p.PaymentID = &other
+			return p
+		}(), nil, ErrPaymentMismatch},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			outcome := PaymentOutcome{Status: models.PaymentPaid, PaymentID: paymentID, PayerAccountID: payer, Reference: pledgeID.String(), AmountMinor: 10000, Currency: "THB", ExpiresAt: expires}
+			if tc.change != nil {
+				tc.change(&outcome)
+			}
+			u := NewSponsorshipUseCase(pledgeLookupStub{pledge: tc.pledge}, nil, nil, nil)
+			if err := u.ApplyPaymentOutcome(context.Background(), outcome); !errors.Is(err, tc.wantErr) {
+				t.Fatalf("error = %v, want %v", err, tc.wantErr)
 			}
 		})
 	}

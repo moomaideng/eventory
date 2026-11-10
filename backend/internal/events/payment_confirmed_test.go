@@ -16,11 +16,13 @@ func validPaymentConfirmedEvent() PaymentConfirmed {
 		OccurredAt:    time.Now().UTC(),
 		CorrelationID: uuid.New(),
 		Data: PaymentConfirmedData{
-			PaymentID:      uuid.New(),
-			PayerAccountID: uuid.New(),
-			AmountMinor:    50000,
-			Currency:       "THB",
-			Description:    "Cyber Championship entry fee",
+			PaymentInvoice: PaymentInvoice{
+				PaymentID:      uuid.New(),
+				PayerAccountID: uuid.New(),
+				AmountMinor:    50000,
+				Currency:       "THB",
+			},
+			Description: "Cyber Championship entry fee",
 			Recipient: EventRecipient{
 				AccountID:   uuid.New(),
 				Email:       "payer@example.com",

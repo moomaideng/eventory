@@ -15,7 +15,6 @@ var ErrPledgeNotFound = errors.New("sponsorship not found")
 type SponsorshipRepository interface {
 	Begin(ctx context.Context) (SponsorshipTransaction, error)
 	Get(ctx context.Context, id uuid.UUID) (*models.SponsorshipPledge, error)
-	Pending(ctx context.Context) ([]models.SponsorshipPledge, error)
 	ListConfirmed(ctx context.Context, tournamentID uuid.UUID) ([]models.SponsorshipPledge, error)
 	ListOwned(ctx context.Context, payerID uuid.UUID, page, limit int) ([]OwnedSponsorship, int64, error)
 	Logo(ctx context.Context, pledgeID uuid.UUID) (*models.SponsorshipLogo, error)
@@ -58,12 +57,6 @@ func (r *sponsorshipRepository) Get(ctx context.Context, id uuid.UUID) (*models.
 		return nil, ErrPledgeNotFound
 	}
 	return &pledge, err
-}
-
-func (r *sponsorshipRepository) Pending(ctx context.Context) ([]models.SponsorshipPledge, error) {
-	var pledges []models.SponsorshipPledge
-	err := r.db.WithContext(ctx).Where("status = ?", models.PledgePending).Order("created_at").Find(&pledges).Error
-	return pledges, err
 }
 
 func (r *sponsorshipRepository) ListConfirmed(ctx context.Context, tournamentID uuid.UUID) ([]models.SponsorshipPledge, error) {

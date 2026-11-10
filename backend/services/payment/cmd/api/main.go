@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/moomaideng/eventory/internal/database"
+	"github.com/moomaideng/eventory/internal/events"
 	"github.com/moomaideng/eventory/internal/logger"
 	"github.com/moomaideng/eventory/internal/telemetry"
 	"github.com/moomaideng/eventory/services/payment/config"
@@ -38,7 +39,13 @@ func main() {
 		slog.Error("failed to connect to database", "error", err)
 		panic(err)
 	}
-	app := server.NewApp(db, cfg)
+	publisher, err := events.NewRabbitMQPublisher(cfg.BrokerURL)
+	if err != nil {
+		slog.Error("failed to create event publisher", "error", err)
+		panic(err)
+	}
+	app := server.NewApp(db, cfg, publisher)
+	go app.RunBackground(ctx)
 	httpServer := &http.Server{Addr: ":" + cfg.HTTPPort, Handler: app.HTTP, ReadHeaderTimeout: 10 * time.Second}
 
 	lis, err := net.Listen("tcp", ":"+cfg.GRPCPort)
