@@ -23,7 +23,7 @@ export function TournamentGateSection({
 
   const rosterLabel =
     tournament.registrationMode === "SOLO"
-      ? "Solo (1v1)"
+      ? "Solo"
       : tournament.minTeamSize === tournament.maxTeamSize
         ? `${tournament.minTeamSize} players per team`
         : `${tournament.minTeamSize} – ${tournament.maxTeamSize} players per team`;

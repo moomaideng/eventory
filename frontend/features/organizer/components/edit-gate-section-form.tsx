@@ -145,7 +145,7 @@ export function EditGateSectionForm({
               </label>
               <label className="flex items-center gap-2 text-sm cursor-pointer">
                 <RadioGroupItem value="SOLO" />
-                <span>Solo (1v1)</span>
+                <span>Solo</span>
               </label>
             </RadioGroup>
           </Field>
