@@ -176,15 +176,15 @@ Before transitioning:
 5. **Timeline (Mandatory & Complete)**:
    - `StartsAt` and `EndsAt` must be set.
    - `RegistrationDeadline < StartsAt < EndsAt`.
-6. **Registration Form (Mandatory & Complete)**:
-   - Registration form must exist in MongoDB with valid field configurations.
+6. **Registration Form (Optional)**:
+   - Registration forms are optional. If created, the form schema is locked against further edits once in `REGISTRATION`.
 
 #### 3.3 Post-Transition State & Locking
 - Tournament status becomes `REGISTRATION`.
 - **LOCKED**:
-  - Registration Form schema is locked against further edits.
-  - Registration Gate (`RegistrationMode`, `EntryFee`, `Currency`, `MinTeamSize`, `MaxTeamSize`, `Capacity`) is frozen.
-  - *Exception*: `RegistrationDeadline` remains editable during `REGISTRATION`.
+   - Registration Form schema is locked against further edits (if one was defined).
+   - Registration Gate (`RegistrationMode`, `EntryFee`, `Currency`, `MinTeamSize`, `MaxTeamSize`, `Capacity`) is frozen.
+   - *Exception*: `RegistrationDeadline` remains editable during `REGISTRATION`.
 - **PUBLIC**: Visible to all players; team lobbies and registration open.
 
 ---
@@ -200,9 +200,9 @@ For tournaments that conducted crowdfunding and are now ready to open participan
 Before transitioning:
 1. **Ownership**: Caller must be tournament owner.
 2. **Current Status**: Must be `CROWDFUNDING`.
-3. **Registration Gate & Form Complete**:
-   - Registration form defined in MongoDB.
+3. **Registration Gate (Mandatory & Complete)**:
    - Gate parameters (`Capacity >= 1`, `EntryFee >= 0`, team size rules, `RegistrationDeadline > now`) fully configured.
+   - Registration form is optional (if defined, locked upon transition).
 4. **Timeline Complete**:
    - `StartsAt` and `EndsAt` configured.
    - `RegistrationDeadline < StartsAt < EndsAt`.
@@ -355,7 +355,7 @@ Update database migrations to drop unused tables and replace `WHERE published = 
   - [x] Freeze sponsorship tier modifications once in `CROWDFUNDING`.
 - [x] **Stage 3 & 4: ➔ REGISTRATION Transitions**
   - [x] Implement transition guards for `REGISTRATION` (supporting both `DRAFT` and `CROWDFUNDING` sources).
-  - [x] Enforce gate parameters, timeline rules, and form existence.
+  - [x] Enforce gate parameters and timeline rules (registration form is optional; frozen if defined).
   - [x] Freeze form schema and gate parameters (except deadline).
 - [x] **Stage 5: REGISTRATION Closed Substate & Bracket Gate**
   - [x] Guard `DefineBracket` and `SeedStage1` to only permit execution when `now >= RegistrationDeadline`.
