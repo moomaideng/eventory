@@ -13,11 +13,15 @@ const tournamentDateFormatter = new Intl.DateTimeFormat("en-GB", {
 
 const currencyFormatters = new Map<string, Intl.NumberFormat>();
 
-export function formatTournamentDate(value: string) {
+export function formatTournamentDate(value?: string | null) {
+  if (!value) return "Date not set";
   return tournamentDateFormatter.format(new Date(value));
 }
 
-export function formatDateRange(startAt: string, endAt: string) {
+export function formatDateRange(startAt?: string | null, endAt?: string | null) {
+  if (!startAt && !endAt) return "Dates not set";
+  if (!startAt) return `Until ${formatTournamentDate(endAt)}`;
+  if (!endAt) return `From ${formatTournamentDate(startAt)}`;
   return `${formatTournamentDate(startAt)} – ${formatTournamentDate(endAt)}`;
 }
 
@@ -57,14 +61,52 @@ export function formatRegistrationType(value: string) {
   return "Solo registration";
 }
 
-export function formatTournamentStatus(value: string) {
-  return value.replaceAll("_", " ").toLowerCase();
+export function formatTournamentStatus(
+  value: string,
+  registrationDeadline?: string | null
+) {
+  switch (value) {
+    case "DRAFT":
+      return "Draft";
+    case "CROWDFUNDING":
+      return "Crowdfunding";
+    case "REGISTRATION":
+      if (
+        registrationDeadline &&
+        new Date(registrationDeadline).getTime() <= Date.now()
+      ) {
+        return "Registration closed";
+      }
+      return "Registration open";
+    case "REGISTRATION_OPEN":
+      return "Registration open";
+    case "REGISTRATION_CLOSED":
+      return "Registration closed";
+    case "ONGOING":
+      return "Ongoing";
+    case "COMPLETED":
+      return "Completed";
+    default:
+      return value.replaceAll("_", " ").toLowerCase();
+  }
 }
 
-export function formatRegistrationStatus(status: string, deadline: string) {
+export function formatRegistrationStatus(
+  status: string,
+  deadline?: string | null
+) {
   switch (status) {
+    case "REGISTRATION":
+      if (deadline) {
+        const isClosed = new Date(deadline).getTime() <= Date.now();
+        if (isClosed) return "Registration closed";
+        return `Registration closes ${formatTournamentDate(deadline)}`;
+      }
+      return "Registration open";
     case "REGISTRATION_OPEN":
-      return `Registration closes ${formatTournamentDate(deadline)}`;
+      return deadline
+        ? `Registration closes ${formatTournamentDate(deadline)}`
+        : "Registration open";
     case "REGISTRATION_CLOSED":
       return "Registration closed";
     case "ONGOING":
@@ -76,9 +118,11 @@ export function formatRegistrationStatus(status: string, deadline: string) {
     case "CROWDFUNDING":
       return "Funding in progress";
     case "DRAFT":
-      return "Not published";
+      return "Draft";
     default:
-      return `Registration closes ${formatTournamentDate(deadline)}`;
+      return deadline
+        ? `Registration closes ${formatTournamentDate(deadline)}`
+        : formatTournamentStatus(status, deadline);
   }
 }
 

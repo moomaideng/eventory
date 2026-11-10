@@ -19,17 +19,6 @@ export function HostTournamentWorkspace() {
     location: "Online",
     description: "",
     detail: "",
-    registrationMode: "TEAM",
-    minTeamSize: 5,
-    maxTeamSize: 5,
-    capacity: 16,
-    entryFee: 0,
-    registrationDeadline: "",
-    startAt: "",
-    endAt: "",
-    crowdfunding: false,
-    fundingGoal: 0,
-    fundingDeadline: "",
   });
 
   if (isLoading) {
@@ -99,16 +88,6 @@ export function HostTournamentWorkspace() {
             game={draft.game}
             location={draft.location}
             description={draft.description}
-            registrationMode={draft.registrationMode}
-            minTeamSize={draft.minTeamSize}
-            maxTeamSize={draft.maxTeamSize}
-            capacity={draft.capacity}
-            entryFee={draft.entryFee}
-            registrationDeadline={draft.registrationDeadline}
-            startAt={draft.startAt}
-            crowdfunding={draft.crowdfunding}
-            fundingGoal={draft.fundingGoal}
-            fundingDeadline={draft.fundingDeadline}
             organizerName={profile?.organizerName}
           />
         </div>
