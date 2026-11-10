@@ -136,6 +136,7 @@ func (r *accountRepositoryImpl) UpsertOrganizerProfile(ctx context.Context, prof
 				if rerr := r.db.WithContext(ctx).Where("account_id = ?", profile.AccountID).First(&fallback).Error; rerr == nil {
 					fallback.OrganizerName = profile.OrganizerName
 					fallback.OrganizerEmail = profile.OrganizerEmail
+					fallback.Phone = profile.Phone
 					if err := r.db.WithContext(ctx).Save(&fallback).Error; err != nil {
 						return nil, err
 					}
@@ -150,6 +151,7 @@ func (r *accountRepositoryImpl) UpsertOrganizerProfile(ctx context.Context, prof
 
 	existing.OrganizerName = profile.OrganizerName
 	existing.OrganizerEmail = profile.OrganizerEmail
+	existing.Phone = profile.Phone
 	if err := r.db.WithContext(ctx).Save(&existing).Error; err != nil {
 		return nil, err
 	}
@@ -181,6 +183,7 @@ func (r *accountRepositoryImpl) UpsertSponsorProfile(ctx context.Context, profil
 				if rerr := r.db.WithContext(ctx).Where("account_id = ?", profile.AccountID).First(&fallback).Error; rerr == nil {
 					fallback.SponsorName = profile.SponsorName
 					fallback.SponsorEmail = profile.SponsorEmail
+					fallback.Phone = profile.Phone
 					fallback.Tags = profile.Tags
 					if err := r.db.WithContext(ctx).Save(&fallback).Error; err != nil {
 						return nil, err
@@ -196,6 +199,7 @@ func (r *accountRepositoryImpl) UpsertSponsorProfile(ctx context.Context, profil
 
 	existing.SponsorName = profile.SponsorName
 	existing.SponsorEmail = profile.SponsorEmail
+	existing.Phone = profile.Phone
 	existing.Tags = profile.Tags
 	if err := r.db.WithContext(ctx).Save(&existing).Error; err != nil {
 		return nil, err

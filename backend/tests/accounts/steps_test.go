@@ -239,6 +239,20 @@ func (s *accountScenarioContext) theUserUpsertsTheirOrganizerProfile(orgName, em
 	return nil
 }
 
+func (s *accountScenarioContext) theUserUpsertsTheirOrganizerProfileWithPhone(orgName, email, phone string) error {
+	body := handlers.UpsertOrganizerProfileRequest{
+		OrganizerName:  orgName,
+		OrganizerEmail: &email,
+		Phone:          &phone,
+	}
+	resp, err := s.client.Do(http.MethodPut, "/accounts/me/organizer-profile", body, s.currentUser.AuthHeaders())
+	if err != nil {
+		return err
+	}
+	s.resp = resp
+	return nil
+}
+
 func (s *accountScenarioContext) theUserRetrievesTheirOrganizerProfile() error {
 	resp, err := s.client.Do(http.MethodGet, "/accounts/me/organizer-profile", nil, s.currentUser.AuthHeaders())
 	if err != nil {
@@ -252,6 +266,21 @@ func (s *accountScenarioContext) theUserUpsertsTheirSponsorProfile(sponsorName, 
 	body := handlers.UpsertSponsorProfileRequest{
 		SponsorName:  sponsorName,
 		SponsorEmail: &email,
+		Tags:         []string{"gaming"},
+	}
+	resp, err := s.client.Do(http.MethodPut, "/accounts/me/sponsor-profile", body, s.currentUser.AuthHeaders())
+	if err != nil {
+		return err
+	}
+	s.resp = resp
+	return nil
+}
+
+func (s *accountScenarioContext) theUserUpsertsTheirSponsorProfileWithPhone(sponsorName, email, phone string) error {
+	body := handlers.UpsertSponsorProfileRequest{
+		SponsorName:  sponsorName,
+		SponsorEmail: &email,
+		Phone:        &phone,
 		Tags:         []string{"gaming"},
 	}
 	resp, err := s.client.Do(http.MethodPut, "/accounts/me/sponsor-profile", body, s.currentUser.AuthHeaders())
@@ -726,6 +755,28 @@ func (s *accountScenarioContext) theSponsorContactEmailShouldBe(expected string)
 	return nil
 }
 
+func (s *accountScenarioContext) theOrganizerContactPhoneShouldBe(expected string) error {
+	var out handlers.OrganizerProfileResponse
+	if err := s.resp.JSON(&out); err != nil {
+		return fmt.Errorf("failed to parse organizer response: %w", err)
+	}
+	if ptrValue(out.Phone) != expected {
+		return fmt.Errorf("expected organizer phone %q, got %q", expected, ptrValue(out.Phone))
+	}
+	return nil
+}
+
+func (s *accountScenarioContext) theSponsorContactPhoneShouldBe(expected string) error {
+	var out handlers.SponsorProfileResponse
+	if err := s.resp.JSON(&out); err != nil {
+		return fmt.Errorf("failed to parse sponsor response: %w", err)
+	}
+	if ptrValue(out.Phone) != expected {
+		return fmt.Errorf("expected sponsor phone %q, got %q", expected, ptrValue(out.Phone))
+	}
+	return nil
+}
+
 func InitializeScenario(sc *godog.ScenarioContext) {
 	var s *accountScenarioContext
 
@@ -798,11 +849,17 @@ func InitializeScenario(sc *godog.ScenarioContext) {
 	sc.Step(`^the user upserts their organizer profile with organization "([^"]*)" and email "([^"]*)"$`, func(name, email string) error {
 		return s.theUserUpsertsTheirOrganizerProfile(name, email)
 	})
+	sc.Step(`^the user upserts their organizer profile with organization "([^"]*)", email "([^"]*)" and phone "([^"]*)"$`, func(name, email, phone string) error {
+		return s.theUserUpsertsTheirOrganizerProfileWithPhone(name, email, phone)
+	})
 	sc.Step(`^the user retrieves their organizer profile$`, func() error {
 		return s.theUserRetrievesTheirOrganizerProfile()
 	})
 	sc.Step(`^the user upserts their sponsor profile with company "([^"]*)" and email "([^"]*)"$`, func(name, email string) error {
 		return s.theUserUpsertsTheirSponsorProfile(name, email)
+	})
+	sc.Step(`^the user upserts their sponsor profile with company "([^"]*)", email "([^"]*)" and phone "([^"]*)"$`, func(name, email, phone string) error {
+		return s.theUserUpsertsTheirSponsorProfileWithPhone(name, email, phone)
 	})
 	sc.Step(`^the user retrieves their sponsor profile$`, func() error {
 		return s.theUserRetrievesTheirSponsorProfile()
@@ -872,6 +929,12 @@ func InitializeScenario(sc *godog.ScenarioContext) {
 	})
 	sc.Step(`^the sponsor profile name should be "([^"]*)"$`, func(name string) error {
 		return s.theSponsorProfileNameShouldBe(name)
+	})
+	sc.Step(`^the organizer contact phone should be "([^"]*)"$`, func(phone string) error {
+		return s.theOrganizerContactPhoneShouldBe(phone)
+	})
+	sc.Step(`^the sponsor contact phone should be "([^"]*)"$`, func(phone string) error {
+		return s.theSponsorContactPhoneShouldBe(phone)
 	})
 	sc.Step(`^the sponsor contact email should be "([^"]*)"$`, func(email string) error {
 		return s.theSponsorContactEmailShouldBe(email)

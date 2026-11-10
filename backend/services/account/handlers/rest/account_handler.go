@@ -59,6 +59,7 @@ type OrganizerProfileResponse struct {
 	AccountID      uuid.UUID `json:"accountId" doc:"Associated account UUID"`
 	OrganizerName  string    `json:"organizerName" doc:"Organizer organization or brand name"`
 	OrganizerEmail string    `json:"organizerEmail" doc:"Contact email for organizer"`
+	Phone          *string   `json:"phone,omitempty" doc:"Contact phone number for organizer"`
 	CreatedAt      time.Time `json:"createdAt" doc:"Timestamp of profile creation"`
 	UpdatedAt      time.Time `json:"updatedAt" doc:"Timestamp of last profile update"`
 }
@@ -72,6 +73,7 @@ type OrganizerProfileOutput struct {
 type UpsertOrganizerProfileRequest struct {
 	OrganizerName  string  `json:"organizerName" doc:"Organizer organization or brand name" minLength:"1" maxLength:"150"`
 	OrganizerEmail *string `json:"organizerEmail,omitempty" doc:"Contact email for organizer" maxLength:"255"`
+	Phone          *string `json:"phone,omitempty" doc:"Contact phone number for organizer" maxLength:"32"`
 }
 
 // UpsertOrganizerProfileInput represents request payload for upserting an organizer profile.
@@ -84,6 +86,7 @@ type SponsorProfileResponse struct {
 	AccountID    uuid.UUID `json:"accountId" doc:"Associated account UUID"`
 	SponsorName  string    `json:"sponsorName" doc:"Sponsor company or organization name"`
 	SponsorEmail string    `json:"sponsorEmail" doc:"Contact email for sponsorship communications"`
+	Phone        *string   `json:"phone,omitempty" doc:"Contact phone number for sponsor"`
 	Tags         []string  `json:"tags" doc:"Sponsor interests and business tags"`
 	CreatedAt    time.Time `json:"createdAt" doc:"Timestamp of profile creation"`
 	UpdatedAt    time.Time `json:"updatedAt" doc:"Timestamp of last profile update"`
@@ -98,6 +101,7 @@ type SponsorProfileOutput struct {
 type UpsertSponsorProfileRequest struct {
 	SponsorName  string   `json:"sponsorName" doc:"Sponsor company or organization name" minLength:"1" maxLength:"150"`
 	SponsorEmail *string  `json:"sponsorEmail" doc:"Contact email shown to organizers" minLength:"1" maxLength:"255" format:"email"`
+	Phone        *string  `json:"phone,omitempty" doc:"Contact phone number for sponsor" maxLength:"32"`
 	Tags         []string `json:"tags" minItems:"1" maxItems:"10" doc:"Free-form sponsor tags, each up to 40 characters"`
 }
 
@@ -148,6 +152,7 @@ func toOrganizerProfileResponse(p *models.OrganizerProfile) OrganizerProfileResp
 		AccountID:      p.AccountID,
 		OrganizerName:  p.OrganizerName,
 		OrganizerEmail: p.OrganizerEmail,
+		Phone:          p.Phone,
 		CreatedAt:      p.CreatedAt,
 		UpdatedAt:      p.UpdatedAt,
 	}
@@ -158,6 +163,7 @@ func toSponsorProfileResponse(p *models.SponsorProfile) SponsorProfileResponse {
 		AccountID:    p.AccountID,
 		SponsorName:  p.SponsorName,
 		SponsorEmail: p.SponsorEmail,
+		Phone:        p.Phone,
 		Tags:         p.Tags,
 		CreatedAt:    p.CreatedAt,
 		UpdatedAt:    p.UpdatedAt,
@@ -322,6 +328,7 @@ func RegisterAccountRoutes(api huma.API, accountUseCase *usecases.AccountUseCase
 		profile, err := accountUseCase.UpsertOrganizerProfile(ctx, acc.ID, usecases.UpsertOrganizerProfileInput{
 			OrganizerName:  input.Body.OrganizerName,
 			OrganizerEmail: input.Body.OrganizerEmail,
+			Phone:          input.Body.Phone,
 		})
 		if err != nil {
 			if errors.Is(err, usecases.ErrInvalidOrganizerName) {
@@ -380,6 +387,7 @@ func RegisterAccountRoutes(api huma.API, accountUseCase *usecases.AccountUseCase
 		profile, err := accountUseCase.UpsertSponsorProfile(ctx, acc.ID, usecases.UpsertSponsorProfileInput{
 			SponsorName:  input.Body.SponsorName,
 			SponsorEmail: input.Body.SponsorEmail,
+			Phone:        input.Body.Phone,
 			Tags:         input.Body.Tags,
 		})
 		if err != nil {

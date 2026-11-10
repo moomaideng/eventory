@@ -76,25 +76,27 @@ Feature: Account Management and Profiles
   @US1-3 @valid
   Scenario: Upsert and retrieve linked organizer profile
     Given an active onboarded user with display name "Org Lead" and handle "org_lead"
-    When the user upserts their organizer profile with organization "Esports Global" and email "contact@esportsglobal.gg"
+    When the user upserts their organizer profile with organization "Esports Global", email "contact@esportsglobal.gg" and phone "+66811112222"
     Then the response status code should be 200
     And the organizer profile name should be "Esports Global"
     When the user retrieves their organizer profile
     Then the response status code should be 200
     And the organizer profile name should be "Esports Global"
     And the organizer contact email should be "contact@esportsglobal.gg"
+    And the organizer contact phone should be "+66811112222"
 
   # [VALID] Link and read Sponsor role profile
   @US1-3 @valid
   Scenario: Upsert and retrieve linked sponsor profile
     Given an active onboarded user with display name "Sponsor Rep" and handle "sponsor_rep"
-    When the user upserts their sponsor profile with company "Red Bull Thailand" and email "sponsor@redbull.co.th"
+    When the user upserts their sponsor profile with company "Red Bull Thailand", email "sponsor@redbull.co.th" and phone "+66822223333"
     Then the response status code should be 200
     And the sponsor profile name should be "Red Bull Thailand"
     When the user retrieves their sponsor profile
     Then the response status code should be 200
     And the sponsor profile name should be "Red Bull Thailand"
     And the sponsor contact email should be "sponsor@redbull.co.th"
+    And the sponsor contact phone should be "+66822223333"
 
   # =========================================================================
   # US1-4

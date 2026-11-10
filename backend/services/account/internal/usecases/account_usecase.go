@@ -47,12 +47,14 @@ type UpdateAccountInput struct {
 type UpsertOrganizerProfileInput struct {
 	OrganizerName  string
 	OrganizerEmail *string
+	Phone          *string
 }
 
 // UpsertSponsorProfileInput specifies input parameters for creating or updating a sponsor profile.
 type UpsertSponsorProfileInput struct {
 	SponsorName  string
 	SponsorEmail *string
+	Phone        *string
 	Tags         []string
 }
 
@@ -386,10 +388,16 @@ func (u *AccountUseCase) UpsertOrganizerProfile(ctx context.Context, accountID u
 		}
 	}
 
+	var phone *string
+	if input.Phone != nil {
+		phone = cleanOptionalString(*input.Phone)
+	}
+
 	profile := &models.OrganizerProfile{
 		AccountID:      accountID,
 		OrganizerName:  name,
 		OrganizerEmail: email,
+		Phone:          phone,
 	}
 
 	return u.accountRepo.UpsertOrganizerProfile(ctx, profile)
@@ -441,7 +449,11 @@ func (u *AccountUseCase) UpsertSponsorProfile(ctx context.Context, accountID uui
 	if len(email) > 255 || parseErr != nil || parsed.Address != email {
 		return nil, ErrInvalidSponsorDirectory
 	}
-	profile := &models.SponsorProfile{AccountID: accountID, SponsorName: name, SponsorEmail: email, Tags: tags}
+	var phone *string
+	if input.Phone != nil {
+		phone = cleanOptionalString(*input.Phone)
+	}
+	profile := &models.SponsorProfile{AccountID: accountID, SponsorName: name, SponsorEmail: email, Phone: phone, Tags: tags}
 
 	return u.accountRepo.UpsertSponsorProfile(ctx, profile)
 }
