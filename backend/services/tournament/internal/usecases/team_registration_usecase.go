@@ -122,7 +122,7 @@ func (u *TeamLobbyUseCase) SaveRegistrationAnswers(ctx context.Context, teamID, 
 	if team.Status != models.TournamentTeamStatusForming {
 		return nil, repositories.ErrTeamLobbyNotForming
 	}
-	if team.Tournament.Status != models.TournamentStatusRegistrationOpen || !time.Now().Before(team.Tournament.RegistrationDeadline) {
+	if team.Tournament.Status != models.TournamentStatusRegistration || !time.Now().Before(team.Tournament.RegistrationDeadline) {
 		return nil, ErrRegistrationNotOpen
 	}
 	if err := u.validateRegistrationAnswers(ctx, team.TournamentID, answers); err != nil {

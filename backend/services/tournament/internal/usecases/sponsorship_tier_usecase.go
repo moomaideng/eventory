@@ -19,7 +19,7 @@ var (
 	ErrInvalidSponsorshipTierPrice  = errors.New("tier price must be greater than zero")
 	ErrInvalidSponsorshipTierSlots  = errors.New("tier must have at least one slot")
 	ErrInvalidSponsorshipTierPerks  = errors.New("tier needs 1 to 10 perks, each at most 200 characters")
-	ErrSponsorshipClosed            = errors.New("tiers cannot be changed on a completed or cancelled tournament")
+	ErrSponsorshipClosed            = errors.New("sponsorship tiers can only be modified while the tournament is in draft")
 )
 
 const (
@@ -179,7 +179,7 @@ func checkTierEditable(tournament *models.Tournament, accountID uuid.UUID) error
 	if !isTournamentOrganizer(tournament, accountID) {
 		return ErrTournamentNotFound
 	}
-	if tournament.Status == models.TournamentStatusCompleted || tournament.Status == models.TournamentStatusCancelled {
+	if tournament.Status != models.TournamentStatusDraft {
 		return ErrSponsorshipClosed
 	}
 	return nil

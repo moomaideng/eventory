@@ -39,8 +39,7 @@ const reviewReasonMaxLength = 500
 // on applications. Applications arrive while registration is open, and the
 // organizer may keep working through them after it closes.
 var reviewableStages = []models.TournamentStatus{
-	models.TournamentStatusRegistrationOpen,
-	models.TournamentStatusRegistrationClosed,
+	models.TournamentStatusRegistration,
 }
 
 // ReviewResult is what one decision looks like to callers.

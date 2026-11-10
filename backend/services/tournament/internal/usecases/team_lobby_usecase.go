@@ -129,7 +129,7 @@ func (u *TeamLobbyUseCase) Create(ctx context.Context, tournamentID, captainAcco
 	if tournament == nil {
 		return nil, ErrTournamentNotFound
 	}
-	if tournament.Status != models.TournamentStatusRegistrationOpen {
+	if tournament.Status != models.TournamentStatusRegistration || tournament.IsRegistrationClosed(time.Now()) {
 		return nil, ErrRegistrationNotOpen
 	}
 	answers := firstAnswers(submitted)
@@ -176,7 +176,7 @@ func (u *TeamLobbyUseCase) RegisterSolo(
 	if !tournament.IsSolo() {
 		return nil, ErrNotSoloTournament
 	}
-	if tournament.Status != models.TournamentStatusRegistrationOpen {
+	if tournament.Status != models.TournamentStatusRegistration || tournament.IsRegistrationClosed(time.Now()) {
 		return nil, ErrRegistrationNotOpen
 	}
 

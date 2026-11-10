@@ -28,7 +28,7 @@ func SeedTournaments(db *gorm.DB) error {
 			EndsAt: now.AddDate(0, 0, 3).Add(20 * time.Hour), RegistrationDeadline: now.AddDate(0, 0, 2),
 			RegistrationMode: models.TournamentRegistrationModeTeam, MinTeamSize: 5, MaxTeamSize: 5,
 			EntryFee: 0, Currency: "THB", Capacity: 32,
-			Status: models.TournamentStatusRegistrationOpen, Published: true,
+			Status: models.TournamentStatusRegistration,
 		},
 		{
 			ID:          uuid.MustParse("33333333-0000-4000-8000-000000000002"),
@@ -39,7 +39,7 @@ func SeedTournaments(db *gorm.DB) error {
 			EndsAt: now.AddDate(0, 0, 11).Add(18 * time.Hour), RegistrationDeadline: now.AddDate(0, 0, 7),
 			RegistrationMode: models.TournamentRegistrationModeTeam, MinTeamSize: 5, MaxTeamSize: 5,
 			EntryFee: 250, Currency: "THB", Capacity: 24,
-			Status: models.TournamentStatusRegistrationOpen, Published: true,
+			Status: models.TournamentStatusRegistration,
 		},
 		{
 			ID:          uuid.MustParse("33333333-0000-4000-8000-000000000003"),
@@ -49,7 +49,7 @@ func SeedTournaments(db *gorm.DB) error {
 			EndsAt: now.AddDate(0, 0, 21).Add(14 * time.Hour), RegistrationDeadline: now.AddDate(0, 0, 17),
 			RegistrationMode: models.TournamentRegistrationModeSolo, MinTeamSize: 1, MaxTeamSize: 1,
 			EntryFee: 500, Currency: "THB", Capacity: 64,
-			Status: models.TournamentStatusRegistrationOpen, Published: true,
+			Status: models.TournamentStatusRegistration,
 		},
 		{
 			ID:          uuid.MustParse("33333333-0000-4000-8000-000000000004"),
@@ -59,7 +59,7 @@ func SeedTournaments(db *gorm.DB) error {
 			EndsAt: now.AddDate(0, 0, 6).Add(12 * time.Hour), RegistrationDeadline: now.AddDate(0, 0, -1),
 			RegistrationMode: models.TournamentRegistrationModeSolo, MinTeamSize: 1, MaxTeamSize: 1,
 			EntryFee: 100, Currency: "THB", Capacity: 40,
-			Status: models.TournamentStatusRegistrationClosed, Published: true,
+			Status: models.TournamentStatusRegistration,
 		},
 		{
 			ID:          uuid.MustParse("33333333-0000-4000-8000-000000000005"),
@@ -69,7 +69,7 @@ func SeedTournaments(db *gorm.DB) error {
 			EndsAt: now.AddDate(0, 0, 47).Add(14 * time.Hour), RegistrationDeadline: now.AddDate(0, 0, 35),
 			RegistrationMode: models.TournamentRegistrationModeTeam, MinTeamSize: 5, MaxTeamSize: 5,
 			EntryFee: 1200, Currency: "THB", Capacity: 16,
-			Status: models.TournamentStatusRegistrationOpen, Published: true,
+			Status: models.TournamentStatusRegistration,
 		},
 		{
 			ID:          uuid.MustParse("33333333-0000-4000-8000-000000000006"),
@@ -79,7 +79,7 @@ func SeedTournaments(db *gorm.DB) error {
 			EndsAt: now.AddDate(0, 0, 14).Add(19 * time.Hour), RegistrationDeadline: now.AddDate(0, 0, 11),
 			RegistrationMode: models.TournamentRegistrationModeTeam, MinTeamSize: 1, MaxTeamSize: 3,
 			EntryFee: 300, Currency: "THB", Capacity: 24,
-			Status: models.TournamentStatusRegistrationClosed, Published: true,
+			Status: models.TournamentStatusRegistration,
 		},
 		{
 			ID:          uuid.MustParse("33333333-0000-4000-8000-000000000007"),
@@ -89,7 +89,7 @@ func SeedTournaments(db *gorm.DB) error {
 			EndsAt: now.AddDate(0, 0, 28).Add(17 * time.Hour), RegistrationDeadline: now.AddDate(0, 0, 24),
 			RegistrationMode: models.TournamentRegistrationModeSolo, MinTeamSize: 1, MaxTeamSize: 1,
 			EntryFee: 150, Currency: "THB", Capacity: 48,
-			Status: models.TournamentStatusRegistrationOpen, Published: true,
+			Status: models.TournamentStatusRegistration,
 		},
 	}
 

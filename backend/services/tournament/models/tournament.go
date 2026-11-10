@@ -9,17 +9,11 @@ import (
 type TournamentStatus string
 
 const (
-	// TODO(US3-1): Draft overlaps with Tournament.Published == false.
-	// Published = visibility, Status = lifecycle stage; they only collide at draft.
-	// US3-1: HOOF owns the decision — until then, nothing sets DRAFT.
 	TournamentStatusDraft        TournamentStatus = "DRAFT"
 	TournamentStatusCrowdfunding TournamentStatus = "CROWDFUNDING"
-
-	TournamentStatusRegistrationOpen   TournamentStatus = "REGISTRATION_OPEN"
-	TournamentStatusRegistrationClosed TournamentStatus = "REGISTRATION_CLOSED"
-	TournamentStatusOngoing            TournamentStatus = "ONGOING"
-	TournamentStatusCompleted          TournamentStatus = "COMPLETED"
-	TournamentStatusCancelled          TournamentStatus = "CANCELLED"
+	TournamentStatusRegistration TournamentStatus = "REGISTRATION"
+	TournamentStatusOngoing      TournamentStatus = "ONGOING"
+	TournamentStatusCompleted    TournamentStatus = "COMPLETED"
 )
 
 type TournamentRegistrationMode string
@@ -53,7 +47,7 @@ type Tournament struct {
 	Detail               string                     `gorm:"type:text;not null;default:''"`
 	Game                 string                     `gorm:"type:varchar(80);not null"`
 	Location             string                     `gorm:"type:varchar(160);not null"`
-	StartsAt             time.Time                  `gorm:"column:start_at;not null;index:idx_tournaments_public_start,priority:3"`
+	StartsAt             time.Time                  `gorm:"column:start_at;not null;index:idx_tournaments_public_start,priority:2"`
 	EndsAt               time.Time                  `gorm:"column:end_at;not null"`
 	RegistrationDeadline time.Time                  `gorm:"not null"`
 	EntryFee             int64                      `gorm:"not null;default:0;index"`
@@ -62,14 +56,18 @@ type Tournament struct {
 	MinTeamSize          int                        `gorm:"not null;default:1"`
 	MaxTeamSize          int                        `gorm:"not null;default:1"`
 	Capacity             int                        `gorm:"not null"`
-	Status               TournamentStatus           `gorm:"type:varchar(32);not null;index:idx_tournaments_public_start,priority:2"`
-	Published            bool                       `gorm:"not null;default:false;index:idx_tournaments_public_start,priority:1"`
+	Status               TournamentStatus           `gorm:"type:varchar(32);not null;index:idx_tournaments_public_start,priority:1"`
 	Staff                []TournamentStaff          `gorm:"foreignKey:TournamentID;constraint:OnDelete:CASCADE;"`
 	Teams                []TournamentTeam           `gorm:"foreignKey:TournamentID;constraint:OnDelete:CASCADE;"`
 	Matches              []Match                    `gorm:"foreignKey:TournamentID;constraint:OnDelete:CASCADE;"`
 	Funding              *TournamentFunding         `gorm:"foreignKey:TournamentID;constraint:OnDelete:CASCADE;"`
 	CreatedAt            time.Time
 	UpdatedAt            time.Time
+}
+
+// IsRegistrationClosed reports whether the registration deadline has passed.
+func (t *Tournament) IsRegistrationClosed(now time.Time) bool {
+	return !now.Before(t.RegistrationDeadline)
 }
 
 // IsSolo reports whether this tournament is intended for solo participants.

@@ -84,8 +84,7 @@ func (s *teamLobbyScenarioContext) createPublishedTournament() error {
 		MinTeamSize:          2,
 		MaxTeamSize:          3,
 		Capacity:             16,
-		Status:               models.TournamentStatusRegistrationOpen,
-		Published:            true,
+		Status:               models.TournamentStatusRegistration,
 	}
 	if err := app.DB.Create(s.tournament).Error; err != nil {
 		return fmt.Errorf("create tournament: %w", err)

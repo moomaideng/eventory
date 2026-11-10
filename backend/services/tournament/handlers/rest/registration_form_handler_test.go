@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"testing"
+	"time"
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/danielgtaylor/huma/v2/humatest"
@@ -53,11 +54,17 @@ func (m *mockTournamentRepo) ListOwned(_ context.Context, _ uuid.UUID, _, _ int)
 func (m *mockTournamentRepo) GetOwned(_ context.Context, _, _ uuid.UUID) (*models.Tournament, error) {
 	return nil, nil
 }
-func (m *mockTournamentRepo) ApplyOverride(_ context.Context, _ uuid.UUID, _ string, _ uuid.UUID, _ string, _ func(*models.Tournament) (models.TournamentStatus, error)) (*models.TournamentStatusChange, error) {
-	return nil, nil
+func (m *mockTournamentRepo) UpdateStatus(_ context.Context, _ uuid.UUID, _ models.TournamentStatus) error {
+	return nil
 }
-func (m *mockTournamentRepo) ListHistory(_ context.Context, _, _ uuid.UUID) (*repositories.TournamentStatusHistory, error) {
-	return nil, nil
+func (m *mockTournamentRepo) CountActiveTiers(_ context.Context, _ uuid.UUID) (int64, error) {
+	return 0, nil
+}
+func (m *mockTournamentRepo) ValidateBracketReadiness(_ context.Context, _ uuid.UUID) error {
+	return nil
+}
+func (m *mockTournamentRepo) ValidateCompletionReadiness(_ context.Context, _ uuid.UUID) error {
+	return nil
 }
 
 type mockFormRepo struct {
@@ -133,7 +140,8 @@ func TestRegistrationFormRoutes(t *testing.T) {
 		Staff: []models.TournamentStaff{
 			{AccountID: organizerAccountID, Role: models.TournamentStaffRoleOwner},
 		},
-		Status: models.TournamentStatusRegistrationOpen,
+		Status:               models.TournamentStatusDraft,
+		RegistrationDeadline: time.Now().Add(time.Hour),
 	}
 
 	tRepo := &mockTournamentRepo{tournament: tourney}

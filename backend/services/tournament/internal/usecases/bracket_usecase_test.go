@@ -363,8 +363,9 @@ func TestDefineBracket(t *testing.T) {
 	adminID := uuid.New()
 
 	baseTournament := &models.Tournament{
-		ID:     tournamentID,
-		Status: models.TournamentStatusRegistrationClosed,
+		ID:                   tournamentID,
+		Status:               models.TournamentStatusRegistration,
+		RegistrationDeadline: time.Now().Add(-time.Hour),
 	}
 
 	final := "final"
@@ -400,6 +401,42 @@ func TestDefineBracket(t *testing.T) {
 
 		_, err := uc.DefineBracket(context.Background(), ownerID, tournamentID, validMatches)
 		if err != usecases.ErrBracketTournamentImmutable {
+			t.Fatalf("expected ErrBracketTournamentImmutable, got %v", err)
+		}
+	})
+
+	t.Run("forbidden if registration still open", func(t *testing.T) {
+		openTourn := &models.Tournament{
+			ID:                   tournamentID,
+			Status:               models.TournamentStatusRegistration,
+			RegistrationDeadline: time.Now().Add(time.Hour),
+		}
+		repo := &mockBracketRepository{
+			tournament: openTourn,
+			staffRole:  &ownerRole,
+		}
+		uc := usecases.NewBracketUseCase(repo)
+
+		_, err := uc.DefineBracket(context.Background(), ownerID, tournamentID, validMatches)
+		if !errors.Is(err, usecases.ErrRegistrationStillOpen) {
+			t.Fatalf("expected ErrRegistrationStillOpen, got %v", err)
+		}
+	})
+
+	t.Run("forbidden if tournament draft", func(t *testing.T) {
+		draftTourn := &models.Tournament{
+			ID:                   tournamentID,
+			Status:               models.TournamentStatusDraft,
+			RegistrationDeadline: time.Now().Add(-time.Hour),
+		}
+		repo := &mockBracketRepository{
+			tournament: draftTourn,
+			staffRole:  &ownerRole,
+		}
+		uc := usecases.NewBracketUseCase(repo)
+
+		_, err := uc.DefineBracket(context.Background(), ownerID, tournamentID, validMatches)
+		if !errors.Is(err, usecases.ErrBracketTournamentImmutable) {
 			t.Fatalf("expected ErrBracketTournamentImmutable, got %v", err)
 		}
 	})
@@ -495,8 +532,9 @@ func TestSeedStage1(t *testing.T) {
 	ownerID := uuid.New()
 
 	tourn := &models.Tournament{
-		ID:     tournamentID,
-		Status: models.TournamentStatusRegistrationClosed,
+		ID:                   tournamentID,
+		Status:               models.TournamentStatusRegistration,
+		RegistrationDeadline: time.Now().Add(-time.Hour),
 	}
 
 	match1ID := uuid.New()

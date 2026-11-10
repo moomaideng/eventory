@@ -29,16 +29,25 @@ var (
 	ErrInvalidTeamSize            = errors.New("minimum team size must be at least 1 and less than or equal to maximum team size")
 	ErrInvalidCrowdfunding        = errors.New("crowdfunding requires a positive funding goal and a deadline after now but before the registration deadline")
 	ErrCrowdfundingClosed         = errors.New("funding can only be changed while crowdfunding is active")
-	ErrTournamentCannotBeModified = errors.New("ongoing, completed, or cancelled tournaments cannot be modified")
+	ErrTournamentCannotBeModified = errors.New("ongoing or completed tournaments cannot be modified")
 	ErrCapacityBelowAcceptedTeams = errors.New("capacity cannot be less than the number of accepted teams")
 	ErrRosterRulesLocked          = errors.New("team size and registration mode cannot be modified after teams have locked or been accepted")
 	ErrInvalidDashboardPage       = errors.New("invalid dashboard pagination")
 	ErrInvalidStatusTransition    = errors.New("this status change is not allowed")
 	ErrStatusUnchanged            = errors.New("tournament is already in that status")
-	ErrOverrideReasonRequired     = errors.New("a reason between 10 and 500 characters is required")
 	ErrUnknownStatus              = errors.New("unknown tournament status")
 	ErrCrowdfundingGoalNotReached = errors.New("funding goal has not been reached")
-	ErrCrowdfundingPlanIncomplete = errors.New("event details or registration rules are incomplete")
+	ErrRegistrationGateIncomplete = errors.New("event details or registration rules are incomplete")
+	ErrCrowdfundingPlanIncomplete = ErrRegistrationGateIncomplete
+	ErrRegistrationFormRequired   = errors.New("registration form must be configured before opening registration")
+	ErrCrowdfundingSetupIncomplete = errors.New("crowdfunding requires a positive goal, a future deadline, and at least one active sponsorship tier")
+	ErrUnresolvedApplicationsExist = repositories.ErrUnresolvedApplicationsExist
+	ErrInsufficientAcceptedTeams  = repositories.ErrInsufficientAcceptedTeams
+	ErrBracketMissing             = repositories.ErrBracketMissing
+	ErrBracketStage1Mismatch      = repositories.ErrBracketStage1Mismatch
+	ErrBracketNotSeeded           = repositories.ErrBracketNotSeeded
+	ErrUnfinishedMatchesExist     = repositories.ErrUnfinishedMatchesExist
+	ErrNoChampionshipWinner       = repositories.ErrNoChampionshipWinner
 	ErrTournamentStateChanged     = errors.New("tournament status changed; refresh and try again")
 	ErrInvalidTournamentDescription = errors.New("tournament description exceeds maximum length of 500 characters")
 	ErrInvalidTournamentDetail      = errors.New("tournament detail exceeds maximum length of 10000 characters")
@@ -47,8 +56,6 @@ var (
 const (
 	tournamentDescriptionMaxLength = 500
 	tournamentDetailMaxLength      = 10000
-	overrideReasonMinLength = 10
-	overrideReasonMaxLength = 500
 )
 
 type CreateTournamentInput struct {
@@ -57,14 +64,14 @@ type CreateTournamentInput struct {
 	Detail               string
 	Game                 string
 	Location             string
-	StartsAt             time.Time
-	EndsAt               time.Time
-	RegistrationDeadline time.Time
-	EntryFee             int64
-	RegistrationMode     string
-	MinTeamSize          int
-	MaxTeamSize          int
-	Capacity             int
+	StartsAt             *time.Time
+	EndsAt               *time.Time
+	RegistrationDeadline *time.Time
+	EntryFee             *int64
+	RegistrationMode     *string
+	MinTeamSize          *int
+	MaxTeamSize          *int
+	Capacity             *int
 	FundingGoal          *int64
 	FundingDeadline      *time.Time
 }
@@ -216,24 +223,20 @@ type TournamentStatusOverride struct {
 	FromStatus   models.TournamentStatus
 	ToStatus     models.TournamentStatus
 	Reason       string
-	Change       models.TournamentStatusChange
-}
-
-// TournamentStatusDetail describes where a tournament stands and where an
-// organizer may move it next.
-type TournamentStatusDetail struct {
-	CurrentStatus      models.TournamentStatus
-	AllowedTransitions []models.TournamentStatus
-	Changes            []models.TournamentStatusChange
 }
 
 type TournamentUseCase struct {
 	tournamentRepo repositories.TournamentRepository
 	accountSvc     ports.AccountService
+	formRepo       repositories.RegistrationFormRepository
 }
 
 func NewTournamentUseCase(tournamentRepo repositories.TournamentRepository, accountSvc ports.AccountService) *TournamentUseCase {
 	return &TournamentUseCase{tournamentRepo: tournamentRepo, accountSvc: accountSvc}
+}
+
+func (u *TournamentUseCase) SetFormRepository(repo repositories.RegistrationFormRepository) {
+	u.formRepo = repo
 }
 
 // validate query
@@ -265,14 +268,12 @@ func (u *TournamentUseCase) Search(
 
 	status := models.TournamentStatus(strings.ToUpper(strings.TrimSpace(input.Status)))
 	validStatuses := map[models.TournamentStatus]bool{
-		"":                                        true,
-		models.TournamentStatusDraft:              true,
-		models.TournamentStatusCrowdfunding:       true,
-		models.TournamentStatusRegistrationOpen:   true,
-		models.TournamentStatusRegistrationClosed: true,
-		models.TournamentStatusOngoing:            true,
-		models.TournamentStatusCompleted:          true,
-		models.TournamentStatusCancelled:          true,
+		"":                                  true,
+		models.TournamentStatusDraft:        true,
+		models.TournamentStatusCrowdfunding: true,
+		models.TournamentStatusRegistration: true,
+		models.TournamentStatusOngoing:      true,
+		models.TournamentStatusCompleted:    true,
 	}
 	if !validStatuses[status] {
 		return nil, ErrInvalidTournamentFilters
@@ -364,9 +365,7 @@ func (u *TournamentUseCase) GetDetails(
 	}, nil
 }
 
-// CreateTournament initializes and persists a new tournament record for an organizer.
-// A funding goal and deadline launch a published crowdfunding tournament;
-// otherwise registration opens immediately. Both paths validate their dates.
+// CreateTournament initializes and persists a new tournament record for an organizer in DRAFT status.
 func (u *TournamentUseCase) CreateTournament(
 	ctx context.Context,
 	accountID uuid.UUID,
@@ -393,45 +392,74 @@ func (u *TournamentUseCase) CreateTournament(
 		return nil, ErrInvalidTournamentDetail
 	}
 
-	if !input.RegistrationDeadline.Before(input.StartsAt) || !input.StartsAt.Before(input.EndsAt) {
-		return nil, ErrInvalidTournamentDates
+	var startsAt, endsAt, regDeadline time.Time
+	if input.StartsAt != nil {
+		startsAt = *input.StartsAt
 	}
-	if input.EntryFee < 0 {
-		return nil, ErrInvalidTournamentFee
+	if input.EndsAt != nil {
+		endsAt = *input.EndsAt
 	}
-	if input.Capacity < 1 {
-		return nil, ErrInvalidTournamentCapacity
+	if input.RegistrationDeadline != nil {
+		regDeadline = *input.RegistrationDeadline
+	}
+	if err := validateChronologicalDates(regDeadline, startsAt, endsAt); err != nil {
+		return nil, err
 	}
 
-	mode := models.TournamentRegistrationMode(strings.ToUpper(strings.TrimSpace(input.RegistrationMode)))
-	var minTeamSize, maxTeamSize int
-	switch mode {
-	case models.TournamentRegistrationModeSolo:
-		minTeamSize = 1
-		maxTeamSize = 1
-	case models.TournamentRegistrationModeTeam:
-		if input.MinTeamSize < 1 || input.MaxTeamSize < input.MinTeamSize {
-			return nil, ErrInvalidTeamSize
+	var entryFee int64
+	if input.EntryFee != nil {
+		if *input.EntryFee < 0 {
+			return nil, ErrInvalidTournamentFee
 		}
-		minTeamSize = input.MinTeamSize
-		maxTeamSize = input.MaxTeamSize
-	default:
-		return nil, ErrInvalidRegistrationMode
+		entryFee = *input.EntryFee
+	}
+
+	var capacity int
+	if input.Capacity != nil {
+		if *input.Capacity < 1 {
+			return nil, ErrInvalidTournamentCapacity
+		}
+		capacity = *input.Capacity
+	}
+
+	mode := models.TournamentRegistrationModeSolo
+	minTeamSize := 1
+	maxTeamSize := 1
+	if input.RegistrationMode != nil && strings.TrimSpace(*input.RegistrationMode) != "" {
+		mode = models.TournamentRegistrationMode(strings.ToUpper(strings.TrimSpace(*input.RegistrationMode)))
+		switch mode {
+		case models.TournamentRegistrationModeSolo:
+			minTeamSize = 1
+			maxTeamSize = 1
+		case models.TournamentRegistrationModeTeam:
+			min := 1
+			if input.MinTeamSize != nil {
+				min = *input.MinTeamSize
+			}
+			max := min
+			if input.MaxTeamSize != nil {
+				max = *input.MaxTeamSize
+			}
+			if min < 1 || max < min {
+				return nil, ErrInvalidTeamSize
+			}
+			minTeamSize = min
+			maxTeamSize = max
+		default:
+			return nil, ErrInvalidRegistrationMode
+		}
 	}
 
 	// Always default to THB for now.
-	// In the future, currency selection may be expanded based on team consensus.
 	currency := "THB"
 
 	var funding *models.TournamentFunding
-	status := models.TournamentStatusRegistrationOpen
 	if input.FundingGoal != nil || input.FundingDeadline != nil {
 		if input.FundingGoal == nil || input.FundingDeadline == nil ||
-			!validFunding(*input.FundingGoal, *input.FundingDeadline, input.RegistrationDeadline) {
+			!validFunding(*input.FundingGoal, *input.FundingDeadline, regDeadline) {
 			return nil, ErrInvalidCrowdfunding
 		}
 		funding = &models.TournamentFunding{GoalAmount: *input.FundingGoal, Deadline: input.FundingDeadline}
-		status = models.TournamentStatusCrowdfunding
 	}
 
 	tournament := &models.Tournament{
@@ -446,17 +474,16 @@ func (u *TournamentUseCase) CreateTournament(
 		Detail:               detail,
 		Game:                 game,
 		Location:             location,
-		StartsAt:             input.StartsAt,
-		EndsAt:               input.EndsAt,
-		RegistrationDeadline: input.RegistrationDeadline,
-		EntryFee:             input.EntryFee,
+		StartsAt:             startsAt,
+		EndsAt:               endsAt,
+		RegistrationDeadline: regDeadline,
+		EntryFee:             entryFee,
 		Currency:             currency,
 		RegistrationMode:     mode,
 		MinTeamSize:          minTeamSize,
 		MaxTeamSize:          maxTeamSize,
-		Capacity:             input.Capacity,
-		Status:               status,
-		Published:            true,
+		Capacity:             capacity,
+		Status:               models.TournamentStatusDraft,
 	}
 
 	if err := u.tournamentRepo.Create(ctx, tournament, funding); err != nil {
@@ -465,8 +492,27 @@ func (u *TournamentUseCase) CreateTournament(
 	return tournament, nil
 }
 
+func validateChronologicalDates(regDeadline, startsAt, endsAt time.Time) error {
+	if !regDeadline.IsZero() && !startsAt.IsZero() && !regDeadline.Before(startsAt) {
+		return ErrInvalidTournamentDates
+	}
+	if !startsAt.IsZero() && !endsAt.IsZero() && !startsAt.Before(endsAt) {
+		return ErrInvalidTournamentDates
+	}
+	if !regDeadline.IsZero() && !endsAt.IsZero() && startsAt.IsZero() && !regDeadline.Before(endsAt) {
+		return ErrInvalidTournamentDates
+	}
+	return nil
+}
+
 func validFunding(goal int64, deadline, registrationDeadline time.Time) bool {
-	return goal > 0 && deadline.After(time.Now()) && deadline.Before(registrationDeadline)
+	if goal <= 0 || !deadline.After(time.Now()) {
+		return false
+	}
+	if !registrationDeadline.IsZero() && !deadline.Before(registrationDeadline) {
+		return false
+	}
+	return true
 }
 
 // UpdateTournament modifies mutable tournament attributes subject to strict safety invariants.
@@ -489,29 +535,26 @@ func (u *TournamentUseCase) UpdateTournament(
 		return nil, ErrNotTournamentOwner
 	}
 
-	// CANCELLED is terminal: the event cannot be re-configured afterwards.
-	if tournament.Status == models.TournamentStatusOngoing ||
-		tournament.Status == models.TournamentStatusCompleted ||
-		tournament.Status == models.TournamentStatusCancelled {
+	if tournament.Status == models.TournamentStatusCompleted {
 		return nil, ErrTournamentCannotBeModified
 	}
-
-	acceptedCount, lockedOrAcceptedCount, err := u.tournamentRepo.GetActiveTeamCount(ctx, tournamentID)
-	if err != nil {
-		return nil, err
+	if tournament.Status == models.TournamentStatusOngoing {
+		if input.StartsAt != nil || input.EndsAt != nil || input.RegistrationDeadline != nil ||
+			input.EntryFee != nil || input.RegistrationMode != nil || input.MinTeamSize != nil ||
+			input.MaxTeamSize != nil || input.Capacity != nil || input.FundingGoal != nil ||
+			input.FundingDeadline != nil {
+			return nil, ErrTournamentCannotBeModified
+		}
 	}
 
-	if input.Capacity != nil {
-		if *input.Capacity < 1 {
-			return nil, ErrInvalidTournamentCapacity
+	// In REGISTRATION status, the registration gate cannot be modified.
+	if tournament.Status == models.TournamentStatusRegistration {
+		if input.Capacity != nil && *input.Capacity != tournament.Capacity {
+			return nil, ErrRosterRulesLocked
 		}
-		if int64(*input.Capacity) < acceptedCount {
-			return nil, ErrCapacityBelowAcceptedTeams
+		if input.EntryFee != nil && *input.EntryFee != tournament.EntryFee {
+			return nil, ErrRosterRulesLocked
 		}
-		tournament.Capacity = *input.Capacity
-	}
-
-	if lockedOrAcceptedCount > 0 {
 		if input.RegistrationMode != nil {
 			normalized := models.TournamentRegistrationMode(strings.ToUpper(strings.TrimSpace(*input.RegistrationMode)))
 			if normalized != tournament.RegistrationMode {
@@ -524,7 +567,24 @@ func (u *TournamentUseCase) UpdateTournament(
 		if input.MaxTeamSize != nil && *input.MaxTeamSize != tournament.MaxTeamSize {
 			return nil, ErrRosterRulesLocked
 		}
-	} else {
+	}
+
+	// Gate editing allowed in DRAFT and CROWDFUNDING
+	if tournament.Status != models.TournamentStatusRegistration && tournament.Status != models.TournamentStatusOngoing {
+		if input.Capacity != nil {
+			if *input.Capacity < 1 {
+				return nil, ErrInvalidTournamentCapacity
+			}
+			tournament.Capacity = *input.Capacity
+		}
+
+		if input.EntryFee != nil {
+			if *input.EntryFee < 0 {
+				return nil, ErrInvalidTournamentFee
+			}
+			tournament.EntryFee = *input.EntryFee
+		}
+
 		newMode := tournament.RegistrationMode
 		if input.RegistrationMode != nil {
 			normalized := models.TournamentRegistrationMode(strings.ToUpper(strings.TrimSpace(*input.RegistrationMode)))
@@ -571,34 +631,44 @@ func (u *TournamentUseCase) UpdateTournament(
 		newEndsAt = *input.EndsAt
 	}
 
-	if !newDeadline.Before(newStartsAt) || !newStartsAt.Before(newEndsAt) {
-		return nil, ErrInvalidTournamentDates
-	}
-	if input.FundingGoal != nil || input.FundingDeadline != nil {
-		if tournament.Status != models.TournamentStatusCrowdfunding || tournament.Funding == nil ||
-			tournament.Funding.Deadline == nil || !tournament.Funding.Deadline.After(time.Now()) {
-			return nil, ErrCrowdfundingClosed
-		}
-		goal := tournament.Funding.GoalAmount
-		if input.FundingGoal != nil {
-			goal = *input.FundingGoal
-		}
-		deadline := *tournament.Funding.Deadline
-		if input.FundingDeadline != nil {
-			deadline = *input.FundingDeadline
-		}
-		if !validFunding(goal, deadline, newDeadline) {
-			return nil, ErrInvalidCrowdfunding
-		}
-		tournament.Funding.GoalAmount = goal
-		tournament.Funding.Deadline = &deadline
-	} else if tournament.Status == models.TournamentStatusCrowdfunding && tournament.Funding != nil && tournament.Funding.Deadline != nil &&
-		!tournament.Funding.Deadline.Before(newDeadline) {
-		return nil, ErrInvalidCrowdfunding
+	if err := validateChronologicalDates(newDeadline, newStartsAt, newEndsAt); err != nil {
+		return nil, err
 	}
 	tournament.RegistrationDeadline = newDeadline
 	tournament.StartsAt = newStartsAt
 	tournament.EndsAt = newEndsAt
+
+	// Crowdfunding info is only editable in DRAFT status
+	if input.FundingGoal != nil || input.FundingDeadline != nil {
+		if tournament.Status != models.TournamentStatusDraft {
+			return nil, ErrCrowdfundingClosed
+		}
+		var currentGoal int64
+		var currentDeadline time.Time
+		if tournament.Funding != nil {
+			currentGoal = tournament.Funding.GoalAmount
+			if tournament.Funding.Deadline != nil {
+				currentDeadline = *tournament.Funding.Deadline
+			}
+		}
+		if input.FundingGoal != nil {
+			currentGoal = *input.FundingGoal
+		}
+		if input.FundingDeadline != nil {
+			currentDeadline = *input.FundingDeadline
+		}
+		if !validFunding(currentGoal, currentDeadline, newDeadline) {
+			return nil, ErrInvalidCrowdfunding
+		}
+		if tournament.Funding == nil {
+			tournament.Funding = &models.TournamentFunding{}
+		}
+		tournament.Funding.GoalAmount = currentGoal
+		tournament.Funding.Deadline = &currentDeadline
+	} else if tournament.Funding != nil && tournament.Funding.Deadline != nil && !newDeadline.IsZero() &&
+		!tournament.Funding.Deadline.Before(newDeadline) {
+		return nil, ErrInvalidCrowdfunding
+	}
 
 	if input.Name != nil {
 		trimmed := strings.TrimSpace(*input.Name)
@@ -634,12 +704,6 @@ func (u *TournamentUseCase) UpdateTournament(
 			return nil, ErrInvalidTournamentLocation
 		}
 		tournament.Location = trimmed
-	}
-	if input.EntryFee != nil {
-		if *input.EntryFee < 0 {
-			return nil, ErrInvalidTournamentFee
-		}
-		tournament.EntryFee = *input.EntryFee
 	}
 
 	if err := u.tournamentRepo.Update(ctx, tournament); err != nil {
@@ -749,35 +813,22 @@ func summarizeDashboard(tournament models.Tournament, organizerName string) Orga
 }
 
 // allowedTransitions maps each status to the statuses an organizer may manually
-// override it to.
+// transition it to.
 var allowedTransitions = map[models.TournamentStatus][]models.TournamentStatus{
 	models.TournamentStatusDraft: {
-		models.TournamentStatusRegistrationOpen,
-		models.TournamentStatusCancelled,
+		models.TournamentStatusCrowdfunding,
+		models.TournamentStatusRegistration,
 	},
 	models.TournamentStatusCrowdfunding: {
-		models.TournamentStatusRegistrationOpen,
-		models.TournamentStatusCancelled,
+		models.TournamentStatusRegistration,
 	},
-	models.TournamentStatusRegistrationOpen: {
-		models.TournamentStatusRegistrationClosed,
-		models.TournamentStatusOngoing, // skip ahead when registration is cut short
-		models.TournamentStatusCompleted,
-		models.TournamentStatusCancelled,
-	},
-	models.TournamentStatusRegistrationClosed: {
-		models.TournamentStatusRegistrationOpen, // reopen after a delay
+	models.TournamentStatusRegistration: {
 		models.TournamentStatusOngoing,
-		models.TournamentStatusCompleted,
-		models.TournamentStatusCancelled,
 	},
 	models.TournamentStatusOngoing: {
-		models.TournamentStatusRegistrationClosed, // started early by mistake
 		models.TournamentStatusCompleted,
-		models.TournamentStatusCancelled,
 	},
-	models.TournamentStatusCompleted: {}, // terminal
-	models.TournamentStatusCancelled: {}, // terminal
+	models.TournamentStatusCompleted: {},
 }
 
 func (u *TournamentUseCase) Override(
@@ -799,45 +850,7 @@ func (u *TournamentUseCase) OverrideWithForce(
 		return nil, ErrUnknownStatus
 	}
 
-	reason := strings.TrimSpace(rawReason)
-	if n := utf8.RuneCountInString(reason); n < overrideReasonMinLength || n > overrideReasonMaxLength {
-		return nil, ErrOverrideReasonRequired
-	}
-
-	actor, err := u.accountSvc.GetAccount(ctx, accountID)
-	if err != nil {
-		return nil, err
-	}
-	actorDisplayName := actor.DisplayName
-
-	var from models.TournamentStatus
-	change, err := u.tournamentRepo.ApplyOverride(ctx, accountID, actorDisplayName, tournamentID, reason,
-		func(current *models.Tournament) (models.TournamentStatus, error) {
-			from = current.Status
-			if current.Status == to {
-				return "", ErrStatusUnchanged
-			}
-			if !canTransition(current.Status, to) {
-				return "", ErrInvalidStatusTransition
-			}
-			if force && (current.Status != models.TournamentStatusCrowdfunding || to != models.TournamentStatusRegistrationOpen) {
-				return "", ErrInvalidStatusTransition
-			}
-			if current.Status == models.TournamentStatusCrowdfunding {
-				if current.OwnerID() != accountID {
-					return "", ErrNotTournamentOwner
-				}
-				if to == models.TournamentStatusRegistrationOpen {
-					if problem := crowdfundingPlanProblem(current, time.Now()); problem != "" {
-						return "", fmt.Errorf("%w: %s", ErrCrowdfundingPlanIncomplete, problem)
-					}
-					if !force && current.Funding.RaisedAmount < current.Funding.GoalAmount {
-						return "", ErrCrowdfundingGoalNotReached
-					}
-				}
-			}
-			return to, nil
-		})
+	current, err := u.tournamentRepo.GetByID(ctx, tournamentID)
 	if err != nil {
 		if errors.Is(err, repositories.ErrTournamentNotFound) {
 			return nil, ErrTournamentNotFound
@@ -845,16 +858,102 @@ func (u *TournamentUseCase) OverrideWithForce(
 		return nil, err
 	}
 
+	staff, ok := current.StaffMember(accountID)
+	if !ok || !staff.IsOwner() {
+		return nil, ErrNotTournamentOwner
+	}
+
+	from := current.Status
+	if current.Status == to {
+		return nil, ErrStatusUnchanged
+	}
+	if !canTransition(current.Status, to) {
+		return nil, ErrInvalidStatusTransition
+	}
+	if force && (current.Status != models.TournamentStatusCrowdfunding || to != models.TournamentStatusRegistration) {
+		return nil, ErrInvalidStatusTransition
+	}
+	if current.Status == models.TournamentStatusDraft && to == models.TournamentStatusCrowdfunding {
+		if current.Funding == nil || current.Funding.GoalAmount <= 0 || current.Funding.Deadline == nil || !current.Funding.Deadline.After(time.Now()) {
+			return nil, ErrCrowdfundingSetupIncomplete
+		}
+		tierCount, err := u.tournamentRepo.CountActiveTiers(ctx, tournamentID)
+		if err != nil {
+			return nil, err
+		}
+		if tierCount == 0 {
+			return nil, ErrCrowdfundingSetupIncomplete
+		}
+		if !current.RegistrationDeadline.IsZero() && !current.Funding.Deadline.Before(current.RegistrationDeadline) {
+			return nil, ErrCrowdfundingSetupIncomplete
+		}
+	}
+	if current.Status == models.TournamentStatusDraft && to == models.TournamentStatusRegistration {
+		if problem := registrationPlanProblem(current, time.Now()); problem != "" {
+			return nil, fmt.Errorf("%w: %s", ErrRegistrationGateIncomplete, problem)
+		}
+		if u.formRepo != nil {
+			_, err := u.formRepo.GetFormByTournamentID(ctx, tournamentID)
+			if errors.Is(err, repositories.ErrFormNotFound) {
+				return nil, ErrRegistrationFormRequired
+			}
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
+	if current.Status == models.TournamentStatusCrowdfunding && to == models.TournamentStatusRegistration {
+		if problem := registrationPlanProblem(current, time.Now()); problem != "" {
+			return nil, fmt.Errorf("%w: %s", ErrRegistrationGateIncomplete, problem)
+		}
+		if current.Funding != nil && current.Funding.Deadline != nil && !current.Funding.Deadline.Before(current.RegistrationDeadline) {
+			return nil, fmt.Errorf("%w: %s", ErrRegistrationGateIncomplete, "set the funding deadline before registration closes")
+		}
+		if !force && current.Funding != nil && current.Funding.RaisedAmount < current.Funding.GoalAmount {
+			return nil, ErrCrowdfundingGoalNotReached
+		}
+		if u.formRepo != nil {
+			_, err := u.formRepo.GetFormByTournamentID(ctx, tournamentID)
+			if errors.Is(err, repositories.ErrFormNotFound) {
+				return nil, ErrRegistrationFormRequired
+			}
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
+
+	if current.Status == models.TournamentStatusRegistration && to == models.TournamentStatusOngoing {
+		if !current.IsRegistrationClosed(time.Now()) {
+			return nil, ErrRegistrationStillOpen
+		}
+		if err := u.tournamentRepo.ValidateBracketReadiness(ctx, tournamentID); err != nil {
+			return nil, err
+		}
+	}
+
+	if current.Status == models.TournamentStatusOngoing && to == models.TournamentStatusCompleted {
+		if err := u.tournamentRepo.ValidateCompletionReadiness(ctx, tournamentID); err != nil {
+			return nil, err
+		}
+	}
+
+	if err := u.tournamentRepo.UpdateStatus(ctx, tournamentID, to); err != nil {
+		if errors.Is(err, repositories.ErrTournamentNotFound) {
+			return nil, ErrTournamentNotFound
+		}
+		return nil, err
+	}
+
 	return &TournamentStatusOverride{
-		TournamentID: tournamentID, FromStatus: from, ToStatus: to,
-		Reason: reason, Change: *change,
+		TournamentID: tournamentID,
+		FromStatus:   from,
+		ToStatus:     to,
+		Reason:       rawReason,
 	}, nil
 }
 
-func crowdfundingPlanProblem(t *models.Tournament, now time.Time) string {
-	if !t.Published || t.Funding == nil || t.Funding.GoalAmount <= 0 || t.Funding.Deadline == nil {
-		return "the crowdfunding setup is incomplete"
-	}
+func registrationPlanProblem(t *models.Tournament, now time.Time) string {
 	if strings.TrimSpace(t.Name) == "" || strings.TrimSpace(t.Game) == "" {
 		return "the tournament name or game is missing"
 	}
@@ -864,14 +963,11 @@ func crowdfundingPlanProblem(t *models.Tournament, now time.Time) string {
 	if t.Capacity < 1 || t.EntryFee < 0 {
 		return "set a valid capacity and entry fee"
 	}
-	if !t.RegistrationDeadline.After(now) {
+	if t.RegistrationDeadline.IsZero() || !t.RegistrationDeadline.After(now) {
 		return "set a future registration deadline"
 	}
-	if !t.RegistrationDeadline.Before(t.StartsAt) || !t.StartsAt.Before(t.EndsAt) {
+	if t.StartsAt.IsZero() || t.EndsAt.IsZero() || !t.RegistrationDeadline.Before(t.StartsAt) || !t.StartsAt.Before(t.EndsAt) {
 		return "set the registration deadline before the event start and the event end after the start"
-	}
-	if !t.Funding.Deadline.Before(t.RegistrationDeadline) {
-		return "set the funding deadline before registration closes"
 	}
 	switch t.RegistrationMode {
 	case models.TournamentRegistrationModeSolo:
@@ -884,24 +980,6 @@ func crowdfundingPlanProblem(t *models.Tournament, now time.Time) string {
 		}
 	}
 	return "set a valid registration mode and team size"
-}
-
-func (u *TournamentUseCase) History(
-	ctx context.Context,
-	accountID, tournamentID uuid.UUID,
-) (*TournamentStatusDetail, error) {
-	history, err := u.tournamentRepo.ListHistory(ctx, accountID, tournamentID)
-	if err != nil {
-		if errors.Is(err, repositories.ErrTournamentNotFound) {
-			return nil, ErrTournamentNotFound
-		}
-		return nil, err
-	}
-	return &TournamentStatusDetail{
-		CurrentStatus:      history.CurrentStatus,
-		AllowedTransitions: AllowedTransitionsFrom(history.CurrentStatus),
-		Changes:            history.Changes,
-	}, nil
 }
 
 func canTransition(from, to models.TournamentStatus) bool {

@@ -4,54 +4,26 @@ import (
 	"context"
 	"errors"
 	"net/http"
-	"time"
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/google/uuid"
 	"github.com/moomaideng/eventory/services/tournament/internal/middlewares"
 	"github.com/moomaideng/eventory/services/tournament/internal/usecases"
-	"github.com/moomaideng/eventory/services/tournament/models"
 )
-
-type TournamentStatusChangeResponse struct {
-	ID           uuid.UUID `json:"id"`
-	TournamentID uuid.UUID `json:"tournamentId"`
-	FromStatus   string    `json:"fromStatus" enum:"DRAFT,CROWDFUNDING,REGISTRATION_OPEN,REGISTRATION_CLOSED,ONGOING,COMPLETED,CANCELLED"`
-	ToStatus     string    `json:"toStatus" enum:"DRAFT,CROWDFUNDING,REGISTRATION_OPEN,REGISTRATION_CLOSED,ONGOING,COMPLETED,CANCELLED"`
-	Reason       string    `json:"reason"`
-	ActorID      uuid.UUID `json:"actorId"`
-	ActorName    string    `json:"actorName,omitempty"`
-	CreatedAt    time.Time `json:"createdAt"`
-}
 
 type OverrideTournamentStatusInput struct {
 	TournamentID uuid.UUID `path:"id" doc:"Tournament ID"`
 	Body         struct {
-		Status string `json:"status" enum:"DRAFT,CROWDFUNDING,REGISTRATION_OPEN,REGISTRATION_CLOSED,ONGOING,COMPLETED,CANCELLED" doc:"Target status"`
-		Reason string `json:"reason" minLength:"10" maxLength:"500" doc:"Why the status is being overridden; recorded in the audit trail"`
-		Force  bool   `json:"force,omitempty" doc:"Allow a crowdfunding owner to open registration before the funding goal is reached; a reason is still required"`
+		Status string `json:"status" enum:"DRAFT,CROWDFUNDING,REGISTRATION,ONGOING,COMPLETED" doc:"Target status"`
+		Reason string `json:"reason,omitempty" maxLength:"500" doc:"Optional reason for the status change"`
+		Force  bool   `json:"force,omitempty" doc:"Allow a crowdfunding owner to open registration before the funding goal is reached"`
 	}
 }
 
 type OverrideTournamentStatusOutput struct {
 	Body struct {
-		TournamentID uuid.UUID                      `json:"tournamentId"`
-		Status       string                         `json:"status"`
-		Change       TournamentStatusChangeResponse `json:"change"`
-	}
-}
-
-type TournamentStatusHistoryInput struct {
-	TournamentID uuid.UUID `path:"id" doc:"Tournament ID"`
-}
-
-type TournamentStatusHistoryOutput struct {
-	Body struct {
-		CurrentStatus string `json:"currentStatus" enum:"DRAFT,CROWDFUNDING,REGISTRATION_OPEN,REGISTRATION_CLOSED,ONGOING,COMPLETED,CANCELLED"`
-		// AllowedTransitions is empty for terminal statuses, which is how the
-		// client knows to disable the override control entirely.
-		AllowedTransitions []string                         `json:"allowedTransitions"`
-		Items              []TournamentStatusChangeResponse `json:"items"`
+		TournamentID uuid.UUID `json:"tournamentId"`
+		Status       string    `json:"status"`
 	}
 }
 
@@ -65,10 +37,7 @@ func RegisterTournamentStatusRoutes(
 		Method:      http.MethodPatch,
 		Path:        "/api/v1/tournaments/{id}/status",
 		Summary:     "Override a tournament's status",
-		Description: "Manually moves an owned tournament to another lifecycle status, " +
-			"recording the previous status, the reason, the acting account, and a timestamp. " +
-			"Opening registration from crowdfunding requires complete event details and a met funding goal, " +
-			"unless the owner explicitly force-starts it.",
+		Description: "Moves an owned tournament to another lifecycle status.",
 		Tags:        []string{"Organizer dashboard"},
 		Middlewares: huma.Middlewares{auth, organizer},
 		Security:    []map[string][]string{{"bearer": {}}},
@@ -89,55 +58,8 @@ func RegisterTournamentStatusRoutes(
 		output := &OverrideTournamentStatusOutput{}
 		output.Body.TournamentID = result.TournamentID
 		output.Body.Status = string(result.ToStatus)
-		output.Body.Change = toStatusChangeResponse(result.Change)
 		return output, nil
 	})
-
-	huma.Register(api, huma.Operation{
-		OperationID: "list-tournament-status-history",
-		Method:      http.MethodGet,
-		Path:        "/api/v1/tournaments/{id}/status/history",
-		Summary:     "List a tournament's status override history",
-		Description: "Returns the audit trail of manual status overrides for an owned tournament, newest first.",
-		Tags:        []string{"Organizer dashboard"},
-		Middlewares: huma.Middlewares{auth, organizer},
-		Security:    []map[string][]string{{"bearer": {}}},
-	}, func(ctx context.Context, input *TournamentStatusHistoryInput) (*TournamentStatusHistoryOutput, error) {
-		profile, err := middlewares.GetOrganizerProfile(ctx)
-		if err != nil {
-			return nil, tournamentStatusHTTPError(err)
-		}
-
-		detail, err := tournaments.History(ctx, profile.AccountID, input.TournamentID)
-		if err != nil {
-			return nil, tournamentStatusHTTPError(err)
-		}
-
-		output := &TournamentStatusHistoryOutput{}
-		output.Body.CurrentStatus = string(detail.CurrentStatus)
-		output.Body.AllowedTransitions = make([]string, 0, len(detail.AllowedTransitions))
-		for _, status := range detail.AllowedTransitions {
-			output.Body.AllowedTransitions = append(output.Body.AllowedTransitions, string(status))
-		}
-		output.Body.Items = make([]TournamentStatusChangeResponse, 0, len(detail.Changes))
-		for _, change := range detail.Changes {
-			output.Body.Items = append(output.Body.Items, toStatusChangeResponse(change))
-		}
-		return output, nil
-	})
-}
-
-func toStatusChangeResponse(change models.TournamentStatusChange) TournamentStatusChangeResponse {
-	return TournamentStatusChangeResponse{
-		ID:           change.ID,
-		TournamentID: change.TournamentID,
-		FromStatus:   string(change.FromStatus),
-		ToStatus:     string(change.ToStatus),
-		Reason:       change.Reason,
-		ActorID:      change.ActorAccountID,
-		ActorName:    change.ActorDisplayName,
-		CreatedAt:    change.CreatedAt,
-	}
 }
 
 func tournamentStatusHTTPError(err error) error {
@@ -148,21 +70,29 @@ func tournamentStatusHTTPError(err error) error {
 	case errors.Is(err, middlewares.ErrOrganizerProfileRequired):
 		return huma.Error403Forbidden("Organizer profile required to perform this action", err)
 	case errors.Is(err, usecases.ErrTournamentNotFound):
-		// Ownership failures are reported as 404, never 403: confirming a
-		// tournament exists would leak it to accounts that do not own it.
 		return huma.Error404NotFound("Tournament not found or not owned by your account")
 	case errors.Is(err, usecases.ErrNotTournamentOwner):
-		return huma.Error403Forbidden("Only the tournament owner can launch or cancel crowdfunding")
+		return huma.Error403Forbidden("Only the tournament owner can change crowdfunding or registration status")
 	case errors.Is(err, usecases.ErrCrowdfundingGoalNotReached):
-		return huma.Error422UnprocessableEntity("Funding goal has not been reached. Use force start with a reason to open registration early")
-	case errors.Is(err, usecases.ErrCrowdfundingPlanIncomplete):
+		return huma.Error422UnprocessableEntity("Funding goal has not been reached. Use force start to open registration early")
+	case errors.Is(err, usecases.ErrCrowdfundingSetupIncomplete):
+		return huma.Error422UnprocessableEntity(err.Error())
+	case errors.Is(err, usecases.ErrCrowdfundingPlanIncomplete),
+		errors.Is(err, usecases.ErrRegistrationGateIncomplete),
+		errors.Is(err, usecases.ErrRegistrationFormRequired),
+		errors.Is(err, usecases.ErrRegistrationStillOpen),
+		errors.Is(err, usecases.ErrUnresolvedApplicationsExist),
+		errors.Is(err, usecases.ErrInsufficientAcceptedTeams),
+		errors.Is(err, usecases.ErrBracketMissing),
+		errors.Is(err, usecases.ErrBracketStage1Mismatch),
+		errors.Is(err, usecases.ErrBracketNotSeeded),
+		errors.Is(err, usecases.ErrUnfinishedMatchesExist),
+		errors.Is(err, usecases.ErrNoChampionshipWinner):
 		return huma.Error422UnprocessableEntity(err.Error())
 	case errors.Is(err, usecases.ErrInvalidStatusTransition):
 		return huma.Error422UnprocessableEntity("That status change is not allowed from the tournament's current status")
 	case errors.Is(err, usecases.ErrStatusUnchanged):
 		return huma.Error422UnprocessableEntity("Tournament is already in that status")
-	case errors.Is(err, usecases.ErrOverrideReasonRequired):
-		return huma.Error422UnprocessableEntity("A reason between 10 and 500 characters is required")
 	case errors.Is(err, usecases.ErrUnknownStatus):
 		return huma.Error400BadRequest("Unknown tournament status")
 	default:

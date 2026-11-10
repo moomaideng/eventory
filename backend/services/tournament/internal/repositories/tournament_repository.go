@@ -10,12 +10,18 @@ import (
 	"github.com/google/uuid"
 	"github.com/moomaideng/eventory/services/tournament/models"
 	"gorm.io/gorm"
-	"gorm.io/gorm/clause"
 )
 
 var (
-	ErrTournamentNotFound     = errors.New("tournament not found")
-	ErrTournamentStateChanged = errors.New("tournament status changed during update")
+	ErrTournamentNotFound          = errors.New("tournament not found")
+	ErrTournamentStateChanged      = errors.New("tournament status changed during update")
+	ErrUnresolvedApplicationsExist = errors.New("all team applications must be resolved (accepted or rejected) before starting the tournament")
+	ErrInsufficientAcceptedTeams   = errors.New("at least 2 accepted teams are required to start the tournament")
+	ErrBracketMissing              = errors.New("a match bracket must be defined before starting the tournament")
+	ErrBracketStage1Mismatch       = errors.New("sum of the input number of teams in stage 1 must equal the number of competing teams")
+	ErrBracketNotSeeded            = errors.New("all stage 1 match slots must be seeded with accepted teams before starting")
+	ErrUnfinishedMatchesExist      = errors.New("every match must have a result before completing the tournament")
+	ErrNoChampionshipWinner        = errors.New("the final match must have a single winner with rank 1")
 )
 
 type TournamentFilters struct {
@@ -35,13 +41,6 @@ type TournamentSearchItem struct {
 	RegisteredCount int64
 }
 
-// TournamentStatusHistory pairs a tournament's current status with its override
-// trail so the modal can render both from a single request.
-type TournamentStatusHistory struct {
-	CurrentStatus models.TournamentStatus
-	Changes       []models.TournamentStatusChange
-}
-
 type TournamentRepository interface {
 	Search(ctx context.Context, filters TournamentFilters) ([]TournamentSearchItem, int64, error)
 	GetPublishedByID(ctx context.Context, id uuid.UUID) (*models.Tournament, error)
@@ -51,15 +50,10 @@ type TournamentRepository interface {
 	GetActiveTeamCount(ctx context.Context, tournamentID uuid.UUID) (acceptedCount int64, lockedOrAcceptedCount int64, err error)
 	ListOwned(ctx context.Context, organizerID uuid.UUID, page, pageSize int) ([]models.Tournament, int64, error)
 	GetOwned(ctx context.Context, organizerID, tournamentID uuid.UUID) (*models.Tournament, error)
-	ApplyOverride(
-		ctx context.Context,
-		accountID uuid.UUID,
-		actorDisplayName string,
-		tournamentID uuid.UUID,
-		reason string,
-		mutate func(current *models.Tournament) (models.TournamentStatus, error),
-	) (*models.TournamentStatusChange, error)
-	ListHistory(ctx context.Context, accountID, tournamentID uuid.UUID) (*TournamentStatusHistory, error)
+	UpdateStatus(ctx context.Context, tournamentID uuid.UUID, newStatus models.TournamentStatus) error
+	CountActiveTiers(ctx context.Context, tournamentID uuid.UUID) (int64, error)
+	ValidateBracketReadiness(ctx context.Context, tournamentID uuid.UUID) error
+	ValidateCompletionReadiness(ctx context.Context, tournamentID uuid.UUID) error
 }
 
 type tournamentRepositoryImpl struct {
@@ -76,7 +70,7 @@ func (r *tournamentRepositoryImpl) Search(
 ) ([]TournamentSearchItem, int64, error) {
 	query := r.db.WithContext(ctx).
 		Model(&models.Tournament{}).
-		Where("published = ?", true)
+		Where("status <> ?", models.TournamentStatusDraft)
 
 	if filters.Query != "" {
 		pattern := "%" + escapeLikePattern(filters.Query) + "%"
@@ -169,7 +163,7 @@ func (r *tournamentRepositoryImpl) GetPublishedByID(
 ) (*models.Tournament, error) {
 	var tournament models.Tournament
 	err := r.db.WithContext(ctx).
-		Where("id = ? AND published = ?", id, true).
+		Where("id = ? AND status <> ?", id, models.TournamentStatusDraft).
 		Preload("Staff", orderedStaff).
 		Preload("Teams", func(db *gorm.DB) *gorm.DB {
 			return db.Where("status = ?", models.TournamentTeamStatusAccepted).Order("name ASC")
@@ -256,12 +250,18 @@ func (r *tournamentRepositoryImpl) Update(
 			return ErrTournamentStateChanged
 		}
 		if tournament.Funding != nil {
-			return tx.Model(&models.TournamentFunding{}).
-				Where("tournament_id = ?", tournament.ID).
-				Updates(map[string]any{
-					"goal_amount": tournament.Funding.GoalAmount,
-					"deadline":    tournament.Funding.Deadline,
-				}).Error
+			tournament.Funding.TournamentID = tournament.ID
+			var existing models.TournamentFunding
+			err := tx.Where("tournament_id = ?", tournament.ID).First(&existing).Error
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return tx.Create(tournament.Funding).Error
+			} else if err != nil {
+				return err
+			}
+			return tx.Model(&existing).Updates(map[string]any{
+				"goal_amount": tournament.Funding.GoalAmount,
+				"deadline":    tournament.Funding.Deadline,
+			}).Error
 		}
 		return nil
 	})
@@ -348,94 +348,139 @@ func ownedTournaments(tx *gorm.DB, accountID uuid.UUID) *gorm.DB {
 		Where("tournament_staff.account_id = ? AND tournament_staff.role IN ?", accountID, []models.TournamentStaffRole{models.TournamentStaffRoleOwner, models.TournamentStaffRoleAdmin})
 }
 
-func (r *tournamentRepositoryImpl) ApplyOverride(
+func (r *tournamentRepositoryImpl) UpdateStatus(
 	ctx context.Context,
-	accountID uuid.UUID,
-	actorDisplayName string,
 	tournamentID uuid.UUID,
-	reason string,
-	mutate func(current *models.Tournament) (models.TournamentStatus, error),
-) (*models.TournamentStatusChange, error) {
-	var change models.TournamentStatusChange
-
-	err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		var tournament models.Tournament
-
-		// Lock the row for the rest of the transaction so two concurrent
-		// overrides cannot both read the same FromStatus and clobber each
-		// other.
-		err := ownedTournaments(tx, accountID).
-			Clauses(clause.Locking{Strength: "UPDATE", Table: clause.Table{Name: "tournaments"}}).
-			Where("id = ?", tournamentID).
-			Preload("Staff", orderedStaff).
-			First(&tournament).Error
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return ErrTournamentNotFound
-		}
-		if err != nil {
-			return err
-		}
-		if tournament.Status == models.TournamentStatusCrowdfunding {
-			var funding models.TournamentFunding
-			err = tx.Clauses(clause.Locking{Strength: "UPDATE"}).
-				Where("tournament_id = ?", tournament.ID).First(&funding).Error
-			if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
-				return err
-			}
-			if err == nil {
-				tournament.Funding = &funding
-			}
-		}
-
-		to, err := mutate(&tournament)
-		if err != nil {
-			return err
-		}
-
-		from := tournament.Status
-		if err := tx.Model(&tournament).Update("status", to).Error; err != nil {
-			return err
-		}
-
-		change = models.TournamentStatusChange{
-			TournamentID:     tournament.ID,
-			FromStatus:       from,
-			ToStatus:         to,
-			Reason:           reason,
-			ActorAccountID:   accountID,
-			ActorDisplayName: actorDisplayName,
-		}
-		return tx.Create(&change).Error
-	})
-	if err != nil {
-		return nil, err
+	newStatus models.TournamentStatus,
+) error {
+	result := r.db.WithContext(ctx).
+		Model(&models.Tournament{}).
+		Where("id = ?", tournamentID).
+		Update("status", newStatus)
+	if result.Error != nil {
+		return result.Error
 	}
-	return &change, nil
+	if result.RowsAffected == 0 {
+		return ErrTournamentNotFound
+	}
+	return nil
 }
 
-func (r *tournamentRepositoryImpl) ListHistory(
+func (r *tournamentRepositoryImpl) CountActiveTiers(
 	ctx context.Context,
-	accountID, tournamentID uuid.UUID,
-) (*TournamentStatusHistory, error) {
-	var tournament models.Tournament
-	err := ownedTournaments(r.db.WithContext(ctx), accountID).
-		Select("id", "status").
-		Where("id = ?", tournamentID).
-		First(&tournament).Error
-	if errors.Is(err, gorm.ErrRecordNotFound) {
-		return nil, ErrTournamentNotFound
-	}
+	tournamentID uuid.UUID,
+) (int64, error) {
+	var count int64
+	err := r.db.WithContext(ctx).Model(&models.SponsorshipTier{}).
+		Where("tournament_id = ? AND archived = false AND price > 0 AND slots >= 1", tournamentID).
+		Count(&count).Error
+	return count, err
+}
+
+func (r *tournamentRepositoryImpl) ValidateBracketReadiness(ctx context.Context, tournamentID uuid.UUID) error {
+	var unresolvedCount int64
+	err := r.db.WithContext(ctx).Model(&models.TournamentTeam{}).
+		Where("tournament_id = ? AND status IN ?", tournamentID, []models.TournamentTeamStatus{
+			models.TournamentTeamStatusForming,
+			models.TournamentTeamStatusPaymentPending,
+			models.TournamentTeamStatusLocked,
+		}).Count(&unresolvedCount).Error
 	if err != nil {
-		return nil, err
+		return err
+	}
+	if unresolvedCount > 0 {
+		return ErrUnresolvedApplicationsExist
 	}
 
-	changes := make([]models.TournamentStatusChange, 0)
-	err = r.db.WithContext(ctx).
-		Where("tournament_id = ?", tournamentID).
-		Order("created_at DESC, id ASC").
-		Find(&changes).Error
+	var acceptedCount int64
+	err = r.db.WithContext(ctx).Model(&models.TournamentTeam{}).
+		Where("tournament_id = ? AND status = ?", tournamentID, models.TournamentTeamStatusAccepted).
+		Count(&acceptedCount).Error
 	if err != nil {
-		return nil, err
+		return err
 	}
-	return &TournamentStatusHistory{CurrentStatus: tournament.Status, Changes: changes}, nil
+	if acceptedCount < 2 {
+		return ErrInsufficientAcceptedTeams
+	}
+
+	var matches []models.Match
+	err = r.db.WithContext(ctx).Where("tournament_id = ?", tournamentID).Find(&matches).Error
+	if err != nil {
+		return err
+	}
+	if len(matches) == 0 {
+		return ErrBracketMissing
+	}
+
+	hasChampionship := false
+	stage1TotalCap := 0
+	var stage1IDs []uuid.UUID
+	for _, m := range matches {
+		if m.TargetMatchID == nil {
+			hasChampionship = true
+		}
+		if m.StageLevel == 1 {
+			stage1TotalCap += m.TeamCount
+			stage1IDs = append(stage1IDs, m.ID)
+		}
+	}
+	if !hasChampionship {
+		return ErrBracketMissing
+	}
+	if len(stage1IDs) == 0 || stage1TotalCap != int(acceptedCount) {
+		return ErrBracketStage1Mismatch
+	}
+
+	var seededCount int64
+	err = r.db.WithContext(ctx).Model(&models.MatchEntry{}).
+		Where("match_id IN ?", stage1IDs).
+		Count(&seededCount).Error
+	if err != nil {
+		return err
+	}
+	if seededCount != acceptedCount {
+		return ErrBracketNotSeeded
+	}
+
+	return nil
+}
+
+func (r *tournamentRepositoryImpl) ValidateCompletionReadiness(ctx context.Context, tournamentID uuid.UUID) error {
+	var matches []models.Match
+	err := r.db.WithContext(ctx).
+		Preload("Entries").
+		Where("tournament_id = ?", tournamentID).
+		Find(&matches).Error
+	if err != nil {
+		return err
+	}
+	if len(matches) == 0 {
+		return ErrBracketMissing
+	}
+
+	var championshipMatch *models.Match
+	for i := range matches {
+		if !matches[i].IsCompleted {
+			return ErrUnfinishedMatchesExist
+		}
+		if matches[i].TargetMatchID == nil {
+			championshipMatch = &matches[i]
+		}
+	}
+
+	if championshipMatch == nil {
+		return ErrBracketMissing
+	}
+
+	rank1Count := 0
+	for _, e := range championshipMatch.Entries {
+		if e.FinalRank != nil && *e.FinalRank == 1 {
+			rank1Count++
+		}
+	}
+	if rank1Count != 1 {
+		return ErrNoChampionshipWinner
+	}
+
+	return nil
 }

@@ -99,8 +99,7 @@ func (s *reviewScenarioContext) createTournamentIn(mode models.TournamentRegistr
 		MinTeamSize:          1,
 		MaxTeamSize:          maxTeamSize,
 		Capacity:             capacity,
-		Status:               models.TournamentStatusRegistrationOpen,
-		Published:            true,
+		Status:               models.TournamentStatusRegistration,
 	}
 	if err := app.DB.Create(s.tournament).Error; err != nil {
 		return fmt.Errorf("create tournament: %w", err)

@@ -16,7 +16,7 @@ var (
 	ErrBracketTournamentNotFound     = errors.New("tournament not found")
 	ErrBracketCallerNotOwner         = errors.New("caller is not authorized: must be tournament owner")
 	ErrBracketCallerNotStaff         = errors.New("caller is not authorized: must be tournament owner, admin, or referee")
-	ErrBracketTournamentImmutable    = errors.New("bracket operations cannot be performed while tournament is ongoing, completed, or cancelled")
+	ErrBracketTournamentImmutable    = errors.New("bracket operations cannot be performed while tournament is ongoing or completed")
 	ErrBracketEmpty                  = errors.New("bracket must contain at least one match")
 	ErrBracketDuplicateTempID        = errors.New("duplicate temporary match identifier")
 	ErrBracketEmptyMatchName         = errors.New("match name cannot be empty")
@@ -52,6 +52,7 @@ var (
 	ErrBracketSwapSameMatch          = errors.New("teams to swap must be in different matches")
 	ErrBracketSwapStageMismatch      = errors.New("teams to swap must be in the same stage")
 	ErrBracketSwapTeamNotInMatch     = errors.New("team is not a participant of the given match")
+	ErrRegistrationStillOpen         = errors.New("bracket operations can only be performed after registration has closed")
 )
 
 type DefineBracketMatchInput struct {
@@ -290,10 +291,11 @@ func (u *BracketUseCase) DefineBracket(
 		return nil, err
 	}
 
-	if tournament.Status == models.TournamentStatusOngoing ||
-		tournament.Status == models.TournamentStatusCompleted ||
-		tournament.Status == models.TournamentStatusCancelled {
+	if tournament.Status != models.TournamentStatusRegistration {
 		return nil, ErrBracketTournamentImmutable
+	}
+	if !tournament.IsRegistrationClosed(time.Now()) {
+		return nil, ErrRegistrationStillOpen
 	}
 
 	hasCompleted, err := u.repo.HasCompletedMatches(ctx, tournamentID)
@@ -381,10 +383,11 @@ func (u *BracketUseCase) SeedStage1(
 		return nil, err
 	}
 
-	if tournament.Status == models.TournamentStatusOngoing ||
-		tournament.Status == models.TournamentStatusCompleted ||
-		tournament.Status == models.TournamentStatusCancelled {
+	if tournament.Status != models.TournamentStatusRegistration {
 		return nil, ErrBracketTournamentImmutable
+	}
+	if !tournament.IsRegistrationClosed(time.Now()) {
+		return nil, ErrRegistrationStillOpen
 	}
 
 	stage1Matches, err := u.repo.GetStage1Matches(ctx, tournamentID)
@@ -483,8 +486,7 @@ func (u *BracketUseCase) RecordMatchResults(
 		return nil, err
 	}
 
-	if tournament.Status == models.TournamentStatusCompleted ||
-		tournament.Status == models.TournamentStatusCancelled {
+	if tournament.Status != models.TournamentStatusOngoing {
 		return nil, ErrBracketTournamentImmutable
 	}
 
@@ -580,9 +582,14 @@ func (u *BracketUseCase) ScheduleMatch(
 	if err != nil {
 		return nil, err
 	}
-	if tournament.Status == models.TournamentStatusCompleted ||
-		tournament.Status == models.TournamentStatusCancelled {
+	if tournament.Status == models.TournamentStatusCompleted {
 		return nil, ErrBracketTournamentImmutable
+	}
+	if tournament.Status != models.TournamentStatusRegistration && tournament.Status != models.TournamentStatusOngoing {
+		return nil, ErrBracketTournamentImmutable
+	}
+	if tournament.Status == models.TournamentStatusRegistration && !tournament.IsRegistrationClosed(time.Now()) {
+		return nil, ErrRegistrationStillOpen
 	}
 	if !scheduledAt.After(time.Now()) {
 		return nil, ErrBracketScheduleInPast
@@ -615,9 +622,14 @@ func (u *BracketUseCase) SwapTeams(
 	if err != nil {
 		return nil, err
 	}
-	if tournament.Status == models.TournamentStatusCompleted ||
-		tournament.Status == models.TournamentStatusCancelled {
+	if tournament.Status == models.TournamentStatusCompleted {
 		return nil, ErrBracketTournamentImmutable
+	}
+	if tournament.Status != models.TournamentStatusRegistration && tournament.Status != models.TournamentStatusOngoing {
+		return nil, ErrBracketTournamentImmutable
+	}
+	if tournament.Status == models.TournamentStatusRegistration && !tournament.IsRegistrationClosed(time.Now()) {
+		return nil, ErrRegistrationStillOpen
 	}
 	if a.MatchID == b.MatchID {
 		return nil, ErrBracketSwapSameMatch

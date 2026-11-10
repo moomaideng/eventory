@@ -15,7 +15,7 @@ import (
 func teamAnswerFixture() (*usecases.TeamLobbyUseCase, *teamLobbyRepositoryStub, *registrationFormRepositoryStub, uuid.UUID, uuid.UUID) {
 	captain, member := uuid.New(), uuid.New()
 	tournament := &models.Tournament{ID: uuid.New(), RegistrationMode: models.TournamentRegistrationModeTeam,
-		Status: models.TournamentStatusRegistrationOpen, RegistrationDeadline: time.Now().Add(time.Hour), MinTeamSize: 2, MaxTeamSize: 5}
+		Status: models.TournamentStatusRegistration, RegistrationDeadline: time.Now().Add(time.Hour), MinTeamSize: 2, MaxTeamSize: 5}
 	repo := &teamLobbyRepositoryStub{tournament: tournament, team: &models.TournamentTeam{
 		ID: uuid.New(), TournamentID: tournament.ID, Tournament: *tournament, Status: models.TournamentTeamStatusForming,
 		Members: []models.TournamentTeamMember{

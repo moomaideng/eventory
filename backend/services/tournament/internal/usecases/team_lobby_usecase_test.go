@@ -162,7 +162,7 @@ func TestCreateTeamLobby_InitializesCaptainAndInvite(t *testing.T) {
 	tournamentID := uuid.New()
 	captainID := uuid.New()
 	repo := &teamLobbyRepositoryStub{tournament: &models.Tournament{
-		ID: tournamentID, Status: models.TournamentStatusRegistrationOpen,
+		ID: tournamentID, Status: models.TournamentStatusRegistration, RegistrationDeadline: time.Now().Add(time.Hour),
 		RegistrationMode: models.TournamentRegistrationModeTeam, MinTeamSize: 5, MaxTeamSize: 5,
 	}}
 	useCase := newTestTeamLobbyUseCase(repo, newStubAccountService().withAccount(captainID, "captain", "Captain"))
@@ -194,7 +194,7 @@ func TestCreateTeamLobby_RejectsUnavailableTournamentState(t *testing.T) {
 			name: "tournament not found", tournament: nil, want: usecases.ErrTournamentNotFound,
 		},
 		{
-			name: "closed registration", tournament: &models.Tournament{ID: tournamentID, Status: models.TournamentStatusRegistrationClosed, RegistrationMode: models.TournamentRegistrationModeTeam}, want: usecases.ErrRegistrationNotOpen,
+			name: "closed registration", tournament: &models.Tournament{ID: tournamentID, Status: models.TournamentStatusRegistration, RegistrationMode: models.TournamentRegistrationModeTeam, RegistrationDeadline: time.Now().Add(-time.Hour)}, want: usecases.ErrRegistrationNotOpen,
 		},
 		{
 			name: "crowdfunding registration", tournament: &models.Tournament{ID: tournamentID, Status: models.TournamentStatusCrowdfunding, RegistrationMode: models.TournamentRegistrationModeTeam}, want: usecases.ErrRegistrationNotOpen,
@@ -216,7 +216,8 @@ func TestRegisterSolo_Success(t *testing.T) {
 	playerID := uuid.New()
 	tournament := &models.Tournament{
 		ID:               tournamentID,
-		Status:           models.TournamentStatusRegistrationOpen,
+		Status:               models.TournamentStatusRegistration,
+		RegistrationDeadline: time.Now().Add(time.Hour),
 		MinTeamSize:      1,
 		MaxTeamSize:      1,
 		RegistrationMode: models.TournamentRegistrationModeSolo,
@@ -248,7 +249,8 @@ func TestRegisterSolo_WithFormValidation(t *testing.T) {
 	playerID := uuid.New()
 	tournament := &models.Tournament{
 		ID:               tournamentID,
-		Status:           models.TournamentStatusRegistrationOpen,
+		Status:               models.TournamentStatusRegistration,
+		RegistrationDeadline: time.Now().Add(time.Hour),
 		MinTeamSize:      1,
 		MaxTeamSize:      1,
 		RegistrationMode: models.TournamentRegistrationModeSolo,
@@ -297,7 +299,8 @@ func TestRegisterSolo_RejectsNonSoloTournament(t *testing.T) {
 	playerID := uuid.New()
 	tournament := &models.Tournament{
 		ID:               tournamentID,
-		Status:           models.TournamentStatusRegistrationOpen,
+		Status:               models.TournamentStatusRegistration,
+		RegistrationDeadline: time.Now().Add(time.Hour),
 		MinTeamSize:      5,
 		MaxTeamSize:      5,
 		RegistrationMode: models.TournamentRegistrationModeTeam,
