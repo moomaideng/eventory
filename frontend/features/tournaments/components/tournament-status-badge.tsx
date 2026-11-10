@@ -40,11 +40,6 @@ export function TournamentStatusBadge({
     } else {
       variant = "default";
     }
-  } else if (status === "REGISTRATION_OPEN") {
-    variant = "default";
-  } else if (status === "REGISTRATION_CLOSED") {
-    variant = "outline";
-    modifierClass = "text-muted-foreground";
   } else if (status === "ONGOING") {
     variant = "default";
   } else if (status === "COMPLETED") {

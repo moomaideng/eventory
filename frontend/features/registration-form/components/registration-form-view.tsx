@@ -19,6 +19,7 @@ import {
 } from "@/features/registration-form/utils";
 import { formFieldSchema, type FormField } from "@/features/registration-form/schemas";
 import type { components } from "@/lib/api/schema";
+import { isRegistrationOpen } from "@/features/tournaments/utils";
 
 type ApiFormField = components["schemas"]["FormField"];
 
@@ -259,7 +260,7 @@ export function RegistrationFormView({ tournamentId }: { tournamentId: string })
     );
   }
 
-  if (tournament.status !== "REGISTRATION_OPEN") {
+  if (!isRegistrationOpen(tournament)) {
     return (
       <div className="mx-auto w-full max-w-3xl px-4 py-8">
         <Card>

@@ -18,7 +18,11 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { PublicTiersSection } from "@/features/sponsorship";
-import { formatRegistrationType, formatTournamentStatus } from "../utils";
+import {
+  formatRegistrationType,
+  formatTournamentStatus,
+  isRegistrationOpen,
+} from "../utils";
 import { TournamentAboutCard } from "./tournament-about-card";
 import { TournamentDetailsSkeleton } from "./tournament-details-skeleton";
 import { TournamentFundingCard } from "./tournament-funding-card";
@@ -96,13 +100,16 @@ export function TournamentDetails({
     tournament.capacity - tournament.registeredCount,
     0
   );
-  const status = formatTournamentStatus(tournament.status);
+  const status = formatTournamentStatus(
+    tournament.status,
+    tournament.registrationDeadline
+  );
   const registrationType = formatRegistrationType(tournament.registrationMode);
   const isSolo = tournament.registrationMode === "SOLO";
   const isCrowdfunding = tournament.status === "CROWDFUNDING";
   const canCreateTeam =
     !isSolo &&
-    tournament.status === "REGISTRATION_OPEN" &&
+    isRegistrationOpen(tournament) &&
     !isMyTeamFetching &&
     !isMyTeamError &&
     !myTeam;
@@ -156,17 +163,8 @@ export function TournamentDetails({
             </AlertDescription>
           </Alert>
         ) : null}
-        {tournament.status === "CANCELLED" ? (
-          <Alert>
-            <AlertTitle>Tournament cancelled</AlertTitle>
-            <AlertDescription>
-              This event will not take place. Participant registration is
-              closed.
-            </AlertDescription>
-          </Alert>
-        ) : null}
         {!sponsorMode && isSolo && !isCrowdfunding ? (
-          tournament.status !== "REGISTRATION_OPEN" ? (
+          !isRegistrationOpen(tournament) ? (
             <Button disabled className="self-start">
               Registration closed
             </Button>

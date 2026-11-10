@@ -15,6 +15,7 @@ import {
   formatDateRange,
   formatMoney,
   formatRegistrationStatus,
+  isRegistrationOpen,
   type Tournament,
 } from "../utils";
 
@@ -68,7 +69,7 @@ export function TournamentAboutCard({
                 <Clock3 className="text-muted-foreground mt-0.5 size-5 shrink-0" />
                 <div className="flex flex-col gap-1">
                   <p className="text-sm font-medium">
-                    {tournament.status === "REGISTRATION_OPEN"
+                    {isRegistrationOpen(tournament)
                       ? "Registration deadline"
                       : "Registration status"}
                   </p>

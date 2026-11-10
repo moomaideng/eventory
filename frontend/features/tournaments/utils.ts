@@ -78,10 +78,6 @@ export function formatTournamentStatus(
         return "Registration closed";
       }
       return "Registration open";
-    case "REGISTRATION_OPEN":
-      return "Registration open";
-    case "REGISTRATION_CLOSED":
-      return "Registration closed";
     case "ONGOING":
       return "Ongoing";
     case "COMPLETED":
@@ -103,18 +99,10 @@ export function formatRegistrationStatus(
         return `Registration closes ${formatTournamentDate(deadline)}`;
       }
       return "Registration open";
-    case "REGISTRATION_OPEN":
-      return deadline
-        ? `Registration closes ${formatTournamentDate(deadline)}`
-        : "Registration open";
-    case "REGISTRATION_CLOSED":
-      return "Registration closed";
     case "ONGOING":
       return "Tournament in progress";
     case "COMPLETED":
       return "Tournament completed";
-    case "CANCELLED":
-      return "Tournament cancelled";
     case "CROWDFUNDING":
       return "Funding in progress";
     case "DRAFT":
@@ -124,6 +112,20 @@ export function formatRegistrationStatus(
         ? `Registration closes ${formatTournamentDate(deadline)}`
         : formatTournamentStatus(status, deadline);
   }
+}
+
+/**
+ * Registration is a derived substate of REGISTRATION: open until the
+ * registration deadline passes. A missing deadline never counts as open.
+ */
+export function isRegistrationOpen(
+  tournament: { status: string; registrationDeadline?: string | null },
+  now: number = Date.now()
+) {
+  if (tournament.status !== "REGISTRATION" || !tournament.registrationDeadline) {
+    return false;
+  }
+  return new Date(tournament.registrationDeadline).getTime() > now;
 }
 
 export function initials(name: string) {
