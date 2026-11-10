@@ -98,16 +98,16 @@ All manual status transitions require the caller to be the tournament **Owner** 
 
 ### `REGISTRATION` Open vs. Closed Substates
 
-Within `REGISTRATION`, operational rules split dynamically based on `IsRegistrationClosed(now)` (`!now.Before(RegistrationDeadline)`):
+Within `REGISTRATION`, player-facing rules split dynamically based on `IsRegistrationClosed(now)` (`!now.Before(RegistrationDeadline)`):
 
 - **Open (`now < RegistrationDeadline`):**
-  - Competitors can create team lobbies, join via invite code, submit/update registration form answers, pay entry fees, and lock rosters.
+  - Competitors can create team lobbies, join via invite code, submit/update registration form answers, pay entry fees (a cancelled or expired solo payment returns the registration to `FORMING` so the player can retry), and lock rosters.
   - Organizers can review (`ACCEPT` / `REJECT`) locked applications.
-  - Match bracket creation and seeding are **blocked** (`ErrRegistrationStillOpen`).
 - **Closed (`now >= RegistrationDeadline`):**
   - Competitors can no longer create lobbies, join teams, edit form answers, or lock rosters.
   - Organizers can finish reviewing remaining `LOCKED` applications.
-  - Organizers can define the match bracket (`POST /bracket`) and seed Stage 1 (`POST /seed`).
+
+Bracket definition/seeding (`POST /bracket`, `/seed`), team swap, and match scheduling are allowed throughout `REGISTRATION`, open or closed; schedule and swap also stay available in `ONGOING`. Match results are `ONGOING` only. The deadline is enforced solely at the `REGISTRATION` ➔ `ONGOING` transition (`ErrRegistrationStillOpen`).
 
 ### Data Mutation Matrix by Status
 
@@ -118,10 +118,10 @@ Within `REGISTRATION`, operational rules split dynamically based on `IsRegistrat
 | **Registration Form** | Dynamic MongoDB form schema (`PUT /form`) | Editable | Editable | **Locked** | **Locked** | Locked |
 | **Registration Deadline** | `RegistrationDeadline` (`< StartsAt`) | Editable (optional) | Editable | Editable | **Locked** | Locked |
 | **Event Timeline** | `StartsAt`, `EndsAt` (`RegistrationDeadline < StartsAt < EndsAt`) | Editable (optional) | Editable | Editable | **Locked** | Locked |
-| **Crowdfunding & Tiers** | `FundingGoal`, `FundingDeadline`, `SponsorshipTier` CRUD | Editable | **Locked** | **Locked** | **Locked** | Locked |
-| **Sponsorship Pledges** | Sponsor self-serve checkout (`POST .../checkout`) | Blocked | **Open** (if `< EndsAt`) | **Open** (if `< EndsAt`) | **Open** (if `< EndsAt`) | Locked |
+| **Crowdfunding & Tiers** | `FundingGoal`, `FundingDeadline`, `SponsorshipTier` CRUD (tiers editable in `DRAFT` only; ordered automatically by price, highest first, ties by creation time) | Editable | **Locked** | **Locked** | **Locked** | Locked |
+| **Sponsorship Pledges** | Sponsor self-serve checkout (`POST .../checkout`) | Blocked | **Open** (until `EndsAt`, if set) | **Open** (until `EndsAt`, if set) | **Open** (until `EndsAt`, if set) | Locked |
 | **Team Applications** | Organizer review (`ACCEPT` / `REJECT` `LOCKED` teams) | Blocked | Blocked | **Open** | Blocked | Locked |
-| **Bracket Structure** | Define bracket layout & seed Stage 1 (`POST /bracket`, `/seed`) | Blocked | Blocked | **Editable after `RegistrationDeadline`** | **Locked** | Locked |
+| **Bracket Structure** | Define bracket layout & seed Stage 1 (`POST /bracket`, `/seed`) | Blocked | Blocked | **Editable** | **Locked** | Locked |
 | **Match Runtime** | Record match results (`POST /matches/{matchId}/results`) | Blocked | Blocked | Blocked | **Editable** | Locked |
 | **Staff & Announcements** | Manage `TournamentStaff`, post `TournamentAnnouncement` | Editable | Editable | Editable | Editable | Editable |
 

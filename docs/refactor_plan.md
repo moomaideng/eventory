@@ -35,8 +35,8 @@ flowchart LR
 | **Timeline** | `StartsAt`, `EndsAt` | Editable (optional) | Editable | Editable | **Locked** | Read-only |
 | **Crowdfunding Info** | `Funding` (goal, deadline), Sponsor Tiers | Editable | **Locked** | **Locked** | **Locked** | Read-only |
 | **Staff List** | `Staff` | Editable | Editable | Editable | Editable | Editable |
-| **Match Bracket** | `Matches` (structure, seeds) | Inactive | Inactive | **Editable ONLY when registration closed** | **Locked** | Read-only |
-| **Match Runtime** | `Matches` (venue, schedule, results) | Inactive | Inactive | Inactive | **Editable** | Read-only |
+| **Match Bracket** | `Matches` (structure, seeds) | Inactive | Inactive | **Editable** | **Locked** | Read-only |
+| **Match Runtime** | `Matches` (venue, schedule, results) | Inactive | Inactive | Schedule and team swap only | **Editable** (results ONGOING only) | Read-only |
 
 ---
 
@@ -135,7 +135,7 @@ flowchart TD
 ### Stage 2: Transition `DRAFT ➔ CROWDFUNDING`
 
 #### 2.1 Trigger & Endpoint
-- Initiated by the owner via dedicated action: `POST /api/v1/tournaments/{id}/publish-crowdfunding` (or `POST /api/v1/tournaments/{id}/transition` with target `CROWDFUNDING`).
+- Initiated by the owner via `PATCH /api/v1/tournaments/{id}/status` with `{"status": "CROWDFUNDING"}`.
 
 #### 2.2 Validation Invariants
 Before transitioning:
@@ -160,7 +160,7 @@ Before transitioning:
 For tournaments bypassing crowdfunding and moving directly to registration:
 
 #### 3.1 Trigger & Endpoint
-- Initiated by the owner via: `POST /api/v1/tournaments/{id}/open-registration` (or transition target `REGISTRATION`).
+- Initiated by the owner via `PATCH /api/v1/tournaments/{id}/status` with `{"status": "REGISTRATION"}`.
 
 #### 3.2 Validation Invariants
 Before transitioning:
@@ -194,7 +194,7 @@ Before transitioning:
 For tournaments that conducted crowdfunding and are now ready to open participant registration.
 
 #### 4.1 Trigger & Endpoint
-- Initiated by the owner via: `POST /api/v1/tournaments/{id}/open-registration` (or transition target `REGISTRATION`).
+- Initiated by the owner via `PATCH /api/v1/tournaments/{id}/status` with `{"status": "REGISTRATION"}`.
 
 #### 4.2 Validation Invariants
 Before transitioning:
@@ -206,7 +206,7 @@ Before transitioning:
 4. **Timeline Complete**:
    - `StartsAt` and `EndsAt` configured.
    - `RegistrationDeadline < StartsAt < EndsAt`.
-   - If `Funding.Deadline` was set, verify `Funding.Deadline <= RegistrationDeadline`.
+   - If `Funding.Deadline` was set, verify `Funding.Deadline <= RegistrationDeadline` (enforced only in `DRAFT` and `CROWDFUNDING`; not re-checked once `REGISTRATION` begins).
 5. **Funding Outcome Verification**:
    - Validate whether crowdfunding goal was reached or if the organizer is permitted to progress after campaign conclusion.
 
@@ -219,7 +219,7 @@ Before transitioning:
 ### Stage 5: `REGISTRATION` Lifecycle & Closed Substate
 
 #### 5.1 Temporal Substate Evaluation
-The registration phase is divided into two operational substates evaluated dynamically without database mutations:
+The registration phase has two substates evaluated dynamically without database mutations (open iff `now < RegistrationDeadline`):
 ```go
 func (t *Tournament) IsRegistrationClosed(now time.Time) bool {
     return !now.Before(t.RegistrationDeadline)
@@ -231,13 +231,13 @@ REGISTRATION State
 ├─ Substate: OPEN   (now < RegistrationDeadline)
 │  ├─ Players can create lobbies, join, pay, and lock entries
 │  ├─ Organizers can review/accept/reject applications
-│  ├─ Organizers can extend RegistrationDeadline
-│  └─ Match brackets CANNOT be edited
+│  └─ Organizers can extend RegistrationDeadline
 │
 └─ Substate: CLOSED (now >= RegistrationDeadline)
    ├─ Applicants can NO LONGER submit or modify entries
-   ├─ Organizers finalize review of all remaining applications
-   └─ Organizers CAN define and edit Match Brackets
+   └─ Organizers finalize review of all remaining applications
+
+Bracket define/seed, team swap, and match scheduling are available in both substates.
 ```
 
 #### 5.2 Mutability During `REGISTRATION`
@@ -246,15 +246,15 @@ REGISTRATION State
 - **Tournament Timeline (`StartsAt`, `EndsAt`)**: Editable by the owner, provided `RegistrationDeadline < StartsAt < EndsAt`.
 - **Other Registration Gate Fields**: Strictly immutable.
 - **Match Brackets**:
-  - `now < RegistrationDeadline`: Bracket editing returns an error (`ErrRegistrationStillOpen`).
-  - `now >= RegistrationDeadline`: Bracket editing (`DefineBracket`, match layout, seeding) is unlocked.
+  - Bracket definition and seeding (`POST /bracket`, `/seed`), team swap, and match schedule are allowed throughout `REGISTRATION`, open or closed.
+  - The registration deadline is enforced only at the `REGISTRATION ➔ ONGOING` transition (`ErrRegistrationStillOpen` if `now < RegistrationDeadline`).
 
 ---
 
 ### Stage 6: Transition `REGISTRATION ➔ ONGOING`
 
 #### 6.1 Trigger & Endpoint
-- Initiated by owner/admin via: `POST /api/v1/tournaments/{id}/start-tournament` (or transition target `ONGOING`).
+- Initiated by the owner via `PATCH /api/v1/tournaments/{id}/status` with `{"status": "ONGOING"}`.
 
 #### 6.2 Validation Invariants
 Before transitioning:
@@ -303,26 +303,16 @@ Before transitioning:
 
 ## 4. Code Quality & Architecture Improvements
 
-### 4.1 Unified Transition Handler Pattern
-Instead of a generic `ApplyOverride` with loose string arguments and forced reason strings, implement explicit domain transition handlers:
-```go
-// Domain transition methods in TournamentUseCase
-func (u *TournamentUseCase) LaunchCrowdfunding(ctx context.Context, accountID, tournamentID uuid.UUID) (*models.Tournament, error)
-func (u *TournamentUseCase) OpenRegistration(ctx context.Context, accountID, tournamentID uuid.UUID) (*models.Tournament, error)
-func (u *TournamentUseCase) StartTournament(ctx context.Context, accountID, tournamentID uuid.UUID) (*models.Tournament, error)
-func (u *TournamentUseCase) CompleteTournament(ctx context.Context, accountID, tournamentID uuid.UUID) (*models.Tournament, error)
-```
-Each transition handler:
-1. Obtains an exclusive row lock (`SELECT ... FOR UPDATE`).
-2. Evaluates its specific pre-conditions and business invariants.
-3. Performs the atomic state update.
-4. Returns clean, domain-specific errors on validation failures.
+### 4.1 Single Status Endpoint
+All manual transitions go through `PATCH /api/v1/tournaments/{id}/status` with body `{status, reason?, force?}` (`TournamentUseCase.Override` / `OverrideWithForce`). `reason` is optional; `force` lets the owner skip the funding-goal check on `CROWDFUNDING ➔ REGISTRATION`. There are no per-transition endpoints.
+
+Each transition evaluates its pre-conditions, then applies the update with optimistic concurrency (`WHERE id = ? AND status = ?`) and returns domain-specific errors on validation failures.
 
 ### 4.2 Clean Error Hierarchy
 Replace generic status errors with descriptive sentinel errors:
 - `ErrCrowdfundingSetupIncomplete`
 - `ErrRegistrationGateIncomplete`
-- `ErrRegistrationStillOpen` (attempting bracket configuration before registration closes)
+- `ErrRegistrationStillOpen` (attempting to start the tournament before the registration deadline passes)
 - `ErrUnresolvedApplicationsExist` (pending applications exist when attempting to start)
 - `ErrBracketStage1Mismatch`
 - `ErrUnfinishedMatchesExist` (attempting to complete before all matches finish)
@@ -357,8 +347,8 @@ Update database migrations to drop unused tables and replace `WHERE published = 
   - [x] Implement transition guards for `REGISTRATION` (supporting both `DRAFT` and `CROWDFUNDING` sources).
   - [x] Enforce gate parameters and timeline rules (registration form is optional; frozen if defined).
   - [x] Freeze form schema and gate parameters (except deadline).
-- [x] **Stage 5: REGISTRATION Closed Substate & Bracket Gate**
-  - [x] Guard `DefineBracket` and `SeedStage1` to only permit execution when `now >= RegistrationDeadline`.
+- [x] **Stage 5: REGISTRATION Open/Closed Substate**
+  - [x] `DefineBracket`, `SeedStage1`, team swap, and match schedule are allowed during the whole `REGISTRATION` status (open or closed); the deadline is enforced only at `REGISTRATION ➔ ONGOING`.
   - [x] Update team lobby and registration submission to check `now < RegistrationDeadline`.
 - [x] **Stage 6: REGISTRATION ➔ ONGOING Transition**
   - [x] Enforce registration deadline passed (`now >= RegistrationDeadline`).
