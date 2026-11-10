@@ -17,6 +17,8 @@ import (
 )
 
 type mockAnnouncementRepo struct {
+	tournament    *models.Tournament
+	tournamentErr error
 	createErr     error
 	audience      *repositories.AnnouncementAudience
 	audienceErr   error
@@ -26,30 +28,33 @@ type mockAnnouncementRepo struct {
 	savedBody     string
 }
 
-func (m *mockAnnouncementRepo) Create(
-	_ context.Context,
-	authorAccountID uuid.UUID,
-	authorDisplayName string,
-	tournamentID uuid.UUID,
-	title, body string,
-) (*models.TournamentAnnouncement, error) {
-	m.createCalls++
-	if m.createErr != nil {
-		return nil, m.createErr
+func (m *mockAnnouncementRepo) GetTournament(_ context.Context, tournamentID uuid.UUID) (*models.Tournament, error) {
+	if m.tournamentErr != nil {
+		return nil, m.tournamentErr
 	}
-	m.savedTitle, m.savedBody = title, body
-	return &models.TournamentAnnouncement{
-		ID:                uuid.New(),
-		TournamentID:      tournamentIDOrNil(tournamentID),
-		Title:             title,
-		Body:              body,
-		AuthorAccountID:   authorAccountID,
-		AuthorDisplayName: authorDisplayName,
-		CreatedAt:         time.Now().UTC(),
-	}, nil
+	if m.tournament != nil {
+		return m.tournament, nil
+	}
+	return nil, repositories.ErrTournamentNotFound
 }
 
-func tournamentIDOrNil(id uuid.UUID) uuid.UUID { return id }
+func (m *mockAnnouncementRepo) Create(
+	_ context.Context,
+	announcement *models.TournamentAnnouncement,
+) error {
+	m.createCalls++
+	if m.createErr != nil {
+		return m.createErr
+	}
+	m.savedTitle, m.savedBody = announcement.Title, announcement.Body
+	if announcement.ID == uuid.Nil {
+		announcement.ID = uuid.New()
+	}
+	if announcement.CreatedAt.IsZero() {
+		announcement.CreatedAt = time.Now().UTC()
+	}
+	return nil
+}
 
 func (m *mockAnnouncementRepo) List(context.Context, uuid.UUID) ([]models.TournamentAnnouncement, error) {
 	return nil, nil
@@ -119,8 +124,17 @@ func TestAnnouncementUseCase_Create(t *testing.T) {
 		}
 	}
 
+	ownedTournament := func() *models.Tournament {
+		return &models.Tournament{
+			ID: tournamentID,
+			Staff: []models.TournamentStaff{
+				{AccountID: authorID, Role: models.TournamentStaffRoleOwner},
+			},
+		}
+	}
+
 	t.Run("publishes one event per member of the accepted teams", func(t *testing.T) {
-		repo := &mockAnnouncementRepo{audience: newAudience()}
+		repo := &mockAnnouncementRepo{tournament: ownedTournament(), audience: newAudience()}
 		pub := &mockPublisher{}
 		uc := usecases.NewAnnouncementUseCase(repo, accSvc, pub)
 
@@ -153,7 +167,7 @@ func TestAnnouncementUseCase_Create(t *testing.T) {
 	})
 
 	t.Run("saves the trimmed title and message", func(t *testing.T) {
-		repo := &mockAnnouncementRepo{audience: newAudience()}
+		repo := &mockAnnouncementRepo{tournament: ownedTournament(), audience: newAudience()}
 		uc := usecases.NewAnnouncementUseCase(repo, accSvc, &mockPublisher{})
 
 		_, err := uc.Create(context.Background(), authorID, tournamentID, "  Venue change  ", "\n The final moves. \n")
@@ -179,7 +193,7 @@ func TestAnnouncementUseCase_Create(t *testing.T) {
 		}
 		for _, tc := range cases {
 			t.Run(tc.name, func(t *testing.T) {
-				repo := &mockAnnouncementRepo{audience: newAudience()}
+				repo := &mockAnnouncementRepo{tournament: ownedTournament(), audience: newAudience()}
 				pub := &mockPublisher{}
 				uc := usecases.NewAnnouncementUseCase(repo, accSvc, pub)
 
@@ -194,7 +208,7 @@ func TestAnnouncementUseCase_Create(t *testing.T) {
 
 	t.Run("counts characters, not bytes", func(t *testing.T) {
 		// 150 Thai letters take 450 bytes, 2000 take 6000: both are within the limits.
-		repo := &mockAnnouncementRepo{audience: newAudience()}
+		repo := &mockAnnouncementRepo{tournament: ownedTournament(), audience: newAudience()}
 		uc := usecases.NewAnnouncementUseCase(repo, accSvc, &mockPublisher{})
 
 		_, err := uc.Create(context.Background(), authorID, tournamentID, strings.Repeat("ก", 150), strings.Repeat("ก", 2000))
@@ -203,7 +217,7 @@ func TestAnnouncementUseCase_Create(t *testing.T) {
 	})
 
 	t.Run("notifies nobody when the post is refused", func(t *testing.T) {
-		repo := &mockAnnouncementRepo{createErr: repositories.ErrTournamentNotFound, audience: newAudience()}
+		repo := &mockAnnouncementRepo{tournamentErr: repositories.ErrTournamentNotFound, audience: newAudience()}
 		pub := &mockPublisher{}
 		uc := usecases.NewAnnouncementUseCase(repo, accSvc, pub)
 
@@ -215,7 +229,7 @@ func TestAnnouncementUseCase_Create(t *testing.T) {
 	})
 
 	t.Run("sends nothing when no team is accepted yet", func(t *testing.T) {
-		repo := &mockAnnouncementRepo{audience: &repositories.AnnouncementAudience{TournamentName: "Cyber Championship"}}
+		repo := &mockAnnouncementRepo{tournament: ownedTournament(), audience: &repositories.AnnouncementAudience{TournamentName: "Cyber Championship"}}
 		pub := &mockPublisher{}
 		uc := usecases.NewAnnouncementUseCase(repo, accSvc, pub)
 
@@ -226,7 +240,7 @@ func TestAnnouncementUseCase_Create(t *testing.T) {
 	})
 
 	t.Run("still posts when publishing fails", func(t *testing.T) {
-		repo := &mockAnnouncementRepo{audience: newAudience()}
+		repo := &mockAnnouncementRepo{tournament: ownedTournament(), audience: newAudience()}
 		pub := &alwaysFailingPublisher{}
 		uc := usecases.NewAnnouncementUseCase(repo, accSvc, pub)
 
@@ -238,7 +252,7 @@ func TestAnnouncementUseCase_Create(t *testing.T) {
 	})
 
 	t.Run("one failed publish does not stop the others", func(t *testing.T) {
-		repo := &mockAnnouncementRepo{audience: newAudience()}
+		repo := &mockAnnouncementRepo{tournament: ownedTournament(), audience: newAudience()}
 		pub := &failFirstPublisher{}
 		uc := usecases.NewAnnouncementUseCase(repo, accSvc, pub)
 
@@ -249,7 +263,7 @@ func TestAnnouncementUseCase_Create(t *testing.T) {
 	})
 
 	t.Run("still posts when the audience lookup fails", func(t *testing.T) {
-		repo := &mockAnnouncementRepo{audienceErr: errors.New("database unavailable")}
+		repo := &mockAnnouncementRepo{tournament: ownedTournament(), audienceErr: errors.New("database unavailable")}
 		pub := &mockPublisher{}
 		uc := usecases.NewAnnouncementUseCase(repo, accSvc, pub)
 
@@ -261,7 +275,7 @@ func TestAnnouncementUseCase_Create(t *testing.T) {
 	})
 
 	t.Run("works without a publisher", func(t *testing.T) {
-		repo := &mockAnnouncementRepo{audience: newAudience()}
+		repo := &mockAnnouncementRepo{tournament: ownedTournament(), audience: newAudience()}
 		uc := usecases.NewAnnouncementUseCase(repo, accSvc, nil)
 
 		_, err := uc.Create(context.Background(), authorID, tournamentID, "Title", "Body")

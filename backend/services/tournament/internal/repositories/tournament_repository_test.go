@@ -85,8 +85,11 @@ func TestOrganizerDashboardOwnershipPostgres(t *testing.T) {
 	if savedFunding.GoalAmount != 2500 || savedFunding.Deadline == nil || !savedFunding.Deadline.Equal(fundingDeadline) {
 		t.Fatalf("funding update was not persisted: %+v", savedFunding)
 	}
-	if err := repo.UpdateStatus(ctx, tournament.ID, models.TournamentStatusRegistration); err != nil {
+	if err := repo.UpdateStatus(ctx, tournament.ID, models.TournamentStatusCrowdfunding, models.TournamentStatusRegistration); err != nil {
 		t.Fatalf("status update failed: %v", err)
+	}
+	if err := repo.UpdateStatus(ctx, tournament.ID, models.TournamentStatusCrowdfunding, models.TournamentStatusOngoing); !errors.Is(err, repositories.ErrTournamentStateChanged) {
+		t.Fatalf("stale status transition must fail with state changed: %v", err)
 	}
 	tournament.Name = "Stale plan edit"
 	if err := repo.Update(ctx, &tournament); !errors.Is(err, repositories.ErrTournamentStateChanged) {

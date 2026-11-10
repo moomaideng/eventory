@@ -92,6 +92,8 @@ func tournamentStatusHTTPError(err error) error {
 		return huma.Error422UnprocessableEntity("That status change is not allowed from the tournament's current status")
 	case errors.Is(err, usecases.ErrStatusUnchanged):
 		return huma.Error422UnprocessableEntity("Tournament is already in that status")
+	case errors.Is(err, usecases.ErrTournamentStateChanged):
+		return huma.Error409Conflict(err.Error())
 	case errors.Is(err, usecases.ErrUnknownStatus):
 		return huma.Error400BadRequest("Unknown tournament status")
 	default:

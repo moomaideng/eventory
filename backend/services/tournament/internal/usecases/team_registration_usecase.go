@@ -54,9 +54,9 @@ func (u *TeamLobbyUseCase) saveNewRegistrationAnswers(ctx context.Context, tourn
 		return err
 	}
 	if _, err := u.repo.FindActiveByTournamentAndAccount(ctx, tournamentID, accountID); err == nil {
-		return repositories.ErrAlreadyInTournamentLobby
+		return ErrAlreadyInTournamentLobby
 	} else if !errors.Is(err, repositories.ErrTeamLobbyNotFound) {
-		return err
+		return translateLobbyError(err)
 	}
 	return u.storeRegistrationAnswers(ctx, tournamentID, accountID, answers)
 }
@@ -106,7 +106,7 @@ func (u *TeamLobbyUseCase) SaveRegistrationAnswers(ctx context.Context, teamID, 
 	}
 	registration, err := u.repo.LockRegistration(ctx, teamID)
 	if err != nil {
-		return nil, err
+		return nil, translateLobbyError(err)
 	}
 	defer registration.Release()
 	team := registration.Team()
@@ -120,7 +120,7 @@ func (u *TeamLobbyUseCase) SaveRegistrationAnswers(ctx context.Context, teamID, 
 		return nil, ErrNotTeamMember
 	}
 	if team.Status != models.TournamentTeamStatusForming {
-		return nil, repositories.ErrTeamLobbyNotForming
+		return nil, ErrTeamLobbyNotForming
 	}
 	if team.Tournament.Status != models.TournamentStatusRegistration || !time.Now().Before(team.Tournament.RegistrationDeadline) {
 		return nil, ErrRegistrationNotOpen

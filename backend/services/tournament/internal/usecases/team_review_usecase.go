@@ -112,13 +112,7 @@ func (u *TeamReviewUseCase) Review(
 		return nil, err
 	}
 
-	review, paymentID, err := u.repo.ApplyReview(ctx, accountID, reviewer.DisplayName, tournamentID, entryID, reason,
-		func(tournament *models.Tournament, team *models.TournamentTeam, acceptedEntries int) (models.TournamentTeamStatus, error) {
-			if err := checkReview(tournament, team.Status, to, acceptedEntries); err != nil {
-				return "", err
-			}
-			return to, nil
-		})
+	review, paymentID, err := u.applyReview(ctx, accountID, reviewer.DisplayName, tournamentID, entryID, to, reason)
 	if err != nil {
 		return nil, translateReviewError(err)
 	}
@@ -195,6 +189,61 @@ func (u *TeamReviewUseCase) Review(
 		ReviewerDisplayName: review.ReviewerDisplayName,
 		CreatedAt:           review.CreatedAt,
 	}, nil
+}
+
+func (u *TeamReviewUseCase) applyReview(
+	ctx context.Context,
+	accountID uuid.UUID,
+	reviewerDisplayName string,
+	tournamentID, entryID uuid.UUID,
+	to models.TournamentTeamStatus,
+	reason string,
+) (*models.TournamentTeamReview, *uuid.UUID, error) {
+	tx, err := u.repo.Begin(ctx)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer tx.Rollback()
+
+	tournament, err := tx.LockTournament(tournamentID)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	staff, ok := tournament.StaffMember(accountID)
+	if !ok || (!staff.IsOwner() && !staff.IsAdmin()) {
+		return nil, nil, ErrTournamentNotFound
+	}
+
+	team, acceptedEntries, err := tx.LockTeamAndAcceptedCount(tournamentID, entryID)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	if err := checkReview(tournament, team.Status, to, acceptedEntries); err != nil {
+		return nil, nil, err
+	}
+
+	from := team.Status
+	paymentID := team.PaymentID
+	review := &models.TournamentTeamReview{
+		TournamentID:        tournament.ID,
+		Tournament:          *tournament,
+		TournamentTeamID:    team.ID,
+		Team:                *team,
+		FromStatus:          from,
+		ToStatus:            to,
+		Reason:              reason,
+		ReviewerAccountID:   accountID,
+		ReviewerDisplayName: reviewerDisplayName,
+	}
+	if err := tx.SaveReview(team, to, review); err != nil {
+		return nil, nil, err
+	}
+	if err := tx.Commit(); err != nil {
+		return nil, nil, err
+	}
+	return review, paymentID, nil
 }
 
 func (u *TeamReviewUseCase) refund(ctx context.Context, entryID, paymentID uuid.UUID) error {

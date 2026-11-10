@@ -45,26 +45,23 @@ func (m *mockTournamentRepo) Create(_ context.Context, _ *models.Tournament, _ *
 func (m *mockTournamentRepo) Update(_ context.Context, _ *models.Tournament) error {
 	return nil
 }
-func (m *mockTournamentRepo) GetActiveTeamCount(_ context.Context, _ uuid.UUID) (int64, int64, error) {
-	return 0, 0, nil
-}
 func (m *mockTournamentRepo) ListOwned(_ context.Context, _ uuid.UUID, _, _ int) ([]models.Tournament, int64, error) {
 	return nil, 0, nil
 }
 func (m *mockTournamentRepo) GetOwned(_ context.Context, _, _ uuid.UUID) (*models.Tournament, error) {
 	return nil, nil
 }
-func (m *mockTournamentRepo) UpdateStatus(_ context.Context, _ uuid.UUID, _ models.TournamentStatus) error {
+func (m *mockTournamentRepo) UpdateStatus(_ context.Context, _ uuid.UUID, _, _ models.TournamentStatus) error {
 	return nil
 }
 func (m *mockTournamentRepo) CountActiveTiers(_ context.Context, _ uuid.UUID) (int64, error) {
 	return 0, nil
 }
-func (m *mockTournamentRepo) ValidateBracketReadiness(_ context.Context, _ uuid.UUID) error {
-	return nil
+func (m *mockTournamentRepo) GetTeamCounts(_ context.Context, _ uuid.UUID) (int64, int64, error) {
+	return 0, 0, nil
 }
-func (m *mockTournamentRepo) ValidateCompletionReadiness(_ context.Context, _ uuid.UUID) error {
-	return nil
+func (m *mockTournamentRepo) GetBracketMatches(_ context.Context, _ uuid.UUID) ([]models.Match, error) {
+	return nil, nil
 }
 
 type mockFormRepo struct {

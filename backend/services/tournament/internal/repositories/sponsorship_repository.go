@@ -90,7 +90,7 @@ func (r *sponsorshipRepository) Logo(ctx context.Context, pledgeID uuid.UUID) (*
 	var logo models.SponsorshipLogo
 	err := r.db.WithContext(ctx).Joins("JOIN sponsorship_pledges p ON p.id = sponsorship_logos.pledge_id").
 		Joins("JOIN tournaments t ON t.id = p.tournament_id").
-		Where("pledge_id = ? AND p.status = ? AND t.published = true", pledgeID, models.PledgeConfirmed).First(&logo).Error
+		Where("pledge_id = ? AND p.status = ? AND t.status <> ?", pledgeID, models.PledgeConfirmed, models.TournamentStatusDraft).First(&logo).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, ErrPledgeNotFound
 	}

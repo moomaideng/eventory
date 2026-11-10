@@ -205,14 +205,15 @@ func TestSponsorshipCrowdfundingLaunch(t *testing.T) {
 		"registrationMode": "SOLO", "entryFee": 0, "minTeamSize": 1, "maxTeamSize": 1, "capacity": 8,
 		"fundingGoal": 10000, "fundingDeadline": deadline,
 	}, owner, http.StatusCreated)
-	if err := created.JSON(&s.tournament); err != nil || s.tournament.Status != models.TournamentStatusCrowdfunding {
-		t.Fatalf("create crowdfunding tournament: %s, %v", created.Body, err)
+	if err := created.JSON(&s.tournament); err != nil || s.tournament.Status != models.TournamentStatusDraft {
+		t.Fatalf("create draft tournament: %s, %v", created.Body, err)
 	}
 	if err := s.given("Gold", 0); err != nil {
 		t.Fatal(err)
 	}
 	path := "/tournaments/" + s.tournament.ID.String()
-	launch := map[string]any{"status": "REGISTRATION_OPEN", "reason": "Event details are ready for registration"}
+	mustAPI(t, s.client, "PATCH", path+"/status", map[string]any{"status": "CROWDFUNDING"}, owner, http.StatusOK)
+	launch := map[string]any{"status": "REGISTRATION", "reason": "Event details are ready for registration"}
 	mustAPI(t, s.client, "PATCH", path+"/status", launch, owner, http.StatusUnprocessableEntity)
 
 	var imageBuffer bytes.Buffer

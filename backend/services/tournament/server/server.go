@@ -54,6 +54,7 @@ func newApp(db *gorm.DB, mongoDB *mongo.Database, cfg config.Config, accountSvc 
 	if err != nil {
 		panic(err)
 	}
+	tournamentRepo := repositories.NewTournamentRepository(db)
 	teamLobbyRepo := repositories.NewTeamLobbyRepository(db)
 	var formRepo repositories.RegistrationFormRepository
 	var fieldRegistry *forms.FieldRegistry
@@ -65,7 +66,7 @@ func newApp(db *gorm.DB, mongoDB *mongo.Database, cfg config.Config, accountSvc 
 		fieldRegistry = forms.NewDefaultRegistry()
 	}
 	teamLobbyUseCase := usecases.NewTeamLobbyUseCase(teamLobbyRepo, accountSvc, payments, formRepo, fieldRegistry)
-	sponsorships := usecases.NewSponsorshipUseCase(repositories.NewSponsorshipRepository(db), repositories.NewTournamentRepository(db), accountSvc, payments)
+	sponsorships := usecases.NewSponsorshipUseCase(repositories.NewSponsorshipRepository(db), tournamentRepo, accountSvc, payments)
 
 	var eventPublisher events.Publisher = events.NoopPublisher{}
 	if cfg.BrokerURL != "" {
@@ -79,7 +80,7 @@ func newApp(db *gorm.DB, mongoDB *mongo.Database, cfg config.Config, accountSvc 
 	announcements := usecases.NewAnnouncementUseCase(repositories.NewAnnouncementRepository(db), accountSvc, eventPublisher)
 	return &App{
 		Close: payments.Close,
-		HTTP:  newHTTPRouter(db, mongoDB, cfg, accountSvc, teamLobbyUseCase, sponsorships, teamReviews, announcements),
+		HTTP:  newHTTPRouter(db, mongoDB, cfg, accountSvc, tournamentRepo, formRepo, fieldRegistry, teamLobbyUseCase, sponsorships, teamReviews, announcements),
 		RunSubmissions: func(ctx context.Context) {
 			go sponsorshipPoller(sponsorships).run(ctx)
 			go refundPoller(teamReviews).run(ctx)
@@ -135,7 +136,19 @@ func refundPoller(u *usecases.TeamReviewUseCase) poller[models.TournamentTeam] {
 	}
 }
 
-func newHTTPRouter(db *gorm.DB, mongoDB *mongo.Database, cfg config.Config, accountSvc ports.AccountService, teamLobbyUseCase *usecases.TeamLobbyUseCase, sponsorships *usecases.SponsorshipUseCase, teamReviewUseCase *usecases.TeamReviewUseCase, announcementUseCase *usecases.AnnouncementUseCase) http.Handler {
+func newHTTPRouter(
+	db *gorm.DB,
+	mongoDB *mongo.Database,
+	cfg config.Config,
+	accountSvc ports.AccountService,
+	tournamentRepo repositories.TournamentRepository,
+	formRepo repositories.RegistrationFormRepository,
+	fieldRegistry *forms.FieldRegistry,
+	teamLobbyUseCase *usecases.TeamLobbyUseCase,
+	sponsorships *usecases.SponsorshipUseCase,
+	teamReviewUseCase *usecases.TeamReviewUseCase,
+	announcementUseCase *usecases.AnnouncementUseCase,
+) http.Handler {
 	router := chi.NewMux()
 	router.Use(telemetry.HTTPMiddleware(config.ServiceName))
 	router.Use(middlewares.RequestID)
@@ -191,7 +204,6 @@ func newHTTPRouter(db *gorm.DB, mongoDB *mongo.Database, cfg config.Config, acco
 		return nil, nil
 	})
 
-	tournamentRepo := repositories.NewTournamentRepository(db)
 	tournamentStaffRepo := repositories.NewTournamentStaffRepository(db)
 	sponsorshipTierRepo := repositories.NewSponsorshipTierRepository(db)
 	bracketRepo := repositories.NewBracketRepository(db)
@@ -218,12 +230,7 @@ func newHTTPRouter(db *gorm.DB, mongoDB *mongo.Database, cfg config.Config, acco
 	resthandlers.RegisterSponsorshipRoutes(api, auth, sponsorships)
 	resthandlers.RegisterAnnouncementRoutes(api, auth, announcementUseCase)
 
-	if mongoDB != nil {
-		formRepo := repositories.NewRegistrationFormRepository(mongoDB)
-		if err := formRepo.EnsureIndexes(context.Background()); err != nil {
-			slog.Error("failed to ensure registration form indexes", "error", err)
-		}
-		fieldRegistry := forms.NewDefaultRegistry()
+	if formRepo != nil && fieldRegistry != nil {
 		formUseCase := usecases.NewRegistrationFormUseCase(tournamentRepo, formRepo, fieldRegistry)
 		resthandlers.RegisterRegistrationFormRoutes(api, auth, organizer, formUseCase)
 	}

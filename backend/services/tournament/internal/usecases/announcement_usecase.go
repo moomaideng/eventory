@@ -76,8 +76,23 @@ func (u *AnnouncementUseCase) Create(
 		return nil, err
 	}
 
-	announcement, err := u.repo.Create(ctx, accountID, author.DisplayName, tournamentID, title, body)
+	tournament, err := u.repo.GetTournament(ctx, tournamentID)
 	if err != nil {
+		return nil, translateAnnouncementError(err)
+	}
+	staff, ok := tournament.StaffMember(accountID)
+	if !ok || (!staff.IsOwner() && !staff.IsAdmin()) {
+		return nil, ErrTournamentNotFound
+	}
+
+	announcement := &models.TournamentAnnouncement{
+		TournamentID:      tournament.ID,
+		Title:             title,
+		Body:              body,
+		AuthorAccountID:   accountID,
+		AuthorDisplayName: author.DisplayName,
+	}
+	if err := u.repo.Create(ctx, announcement); err != nil {
 		return nil, translateAnnouncementError(err)
 	}
 
