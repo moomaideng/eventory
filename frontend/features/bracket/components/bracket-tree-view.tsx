@@ -248,7 +248,7 @@ export function BracketTreeView({
         <p className="text-sm text-muted-foreground max-w-sm mt-1 mb-4">
           {canEdit
             ? "Start building your bracket tree by adding matches to Stage 1."
-            : "The tournament bracket has not been generated yet. It will appear here once the organizer builds it after registration closes."}
+            : "The tournament bracket has not been generated yet. It will appear here once the organizer builds it."}
         </p>
 
         {canEdit && onAddNewMatch ? (

@@ -13,7 +13,6 @@ import {
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
-import { formatTournamentDate } from "@/features/tournaments/utils";
 import { useBracket } from "../hooks/use-bracket";
 import { BracketTreeView } from "./bracket-tree-view";
 import { MatchDialog } from "./match-dialog";
@@ -102,29 +101,20 @@ export function BracketWorkspace({ tournamentId }: BracketWorkspaceProps) {
   );
 
   const status = tournament?.status;
-  const registrationDeadline = tournament?.registrationDeadline;
-  const [now] = useState(() => Date.now());
-  const deadlinePassed = registrationDeadline
-    ? now >= new Date(registrationDeadline).getTime()
-    : false;
   const isOwner = role === "OWNER";
-  const isRegistrationLocked = status === "REGISTRATION" && deadlinePassed;
-  const canEditStructure = isOwner && isRegistrationLocked && !hasCompletedMatches;
-  const canScheduleMatches = isRegistrationLocked || status === "ONGOING";
+  const inRegistration = status === "REGISTRATION";
+  const canEditStructure = isOwner && inRegistration && !hasCompletedMatches;
+  const canScheduleMatches = inRegistration || status === "ONGOING";
   const canRecordResults = status === "ONGOING";
 
   let lockNotice: string | null = null;
   if (status === "DRAFT" || status === "CROWDFUNDING") {
-    lockNotice = "Bracket can be built once registration has closed.";
-  } else if (status === "REGISTRATION" && !deadlinePassed) {
-    lockNotice = registrationDeadline
-      ? `Bracket editing unlocks when registration closes on ${formatTournamentDate(registrationDeadline)}.`
-      : "Bracket editing unlocks when registration closes.";
+    lockNotice = "The bracket can be built once registration opens.";
   } else if (status === "ONGOING") {
     lockNotice = "Bracket structure is locked; you can schedule matches and record results.";
   } else if (status === "COMPLETED") {
     lockNotice = "Tournament completed; bracket is read-only.";
-  } else if (isRegistrationLocked && !isOwner) {
+  } else if (inRegistration && !isOwner) {
     lockNotice = "Only the tournament owner can edit the bracket structure.";
   }
 

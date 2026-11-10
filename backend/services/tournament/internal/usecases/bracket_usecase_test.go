@@ -405,7 +405,7 @@ func TestDefineBracket(t *testing.T) {
 		}
 	})
 
-	t.Run("forbidden if registration still open", func(t *testing.T) {
+	t.Run("allowed while registration is still open", func(t *testing.T) {
 		openTourn := &models.Tournament{
 			ID:                   tournamentID,
 			Status:               models.TournamentStatusRegistration,
@@ -417,9 +417,9 @@ func TestDefineBracket(t *testing.T) {
 		}
 		uc := usecases.NewBracketUseCase(repo)
 
-		_, err := uc.DefineBracket(context.Background(), ownerID, tournamentID, validMatches)
-		if !errors.Is(err, usecases.ErrRegistrationStillOpen) {
-			t.Fatalf("expected ErrRegistrationStillOpen, got %v", err)
+		result, err := uc.DefineBracket(context.Background(), ownerID, tournamentID, validMatches)
+		if err != nil || len(result) != 3 {
+			t.Fatalf("expected the bracket to be saved before the deadline, got %d matches, err %v", len(result), err)
 		}
 	})
 

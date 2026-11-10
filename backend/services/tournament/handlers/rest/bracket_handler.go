@@ -401,9 +401,7 @@ func bracketHTTPError(err error) error {
 	case errors.Is(err, usecases.ErrBracketCallerNotStaff):
 		return huma.Error403Forbidden("Only tournament staff (owner, admin, referee) can manage matches", err)
 	case errors.Is(err, usecases.ErrBracketTournamentImmutable):
-		return huma.Error409Conflict("Bracket operations cannot be performed while tournament is ongoing, completed, or cancelled", err)
-	case errors.Is(err, usecases.ErrRegistrationStillOpen):
-		return huma.Error409Conflict("Bracket operations can only be performed after registration has closed", err)
+		return huma.Error409Conflict("Bracket operations are not available in the tournament's current status", err)
 	case errors.Is(err, usecases.ErrBracketAlreadyCompleted):
 		return huma.Error409Conflict("Bracket cannot be modified after matches have been completed", err)
 	case errors.Is(err, usecases.ErrBracketMatchAlreadyCompleted):
