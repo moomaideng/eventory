@@ -25,6 +25,14 @@ function getTimeRemaining(deadlineStr: string | undefined | null, status: string
       return { value: "In progress", detail: "Tournament underway" };
   }
 
+  if (status === "DRAFT") {
+    return {
+      value: "Registration not open",
+      detail: deadlineStr
+        ? `Opens when you start registration • deadline ${formatTournamentDate(deadlineStr)}`
+        : "Opens when you start registration",
+    };
+  }
   if (!deadlineStr) {
     return { value: "Not set", detail: "No deadline configured" };
   }

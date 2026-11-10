@@ -19,11 +19,13 @@ type RegistrationFormResponse = components["schemas"]["RegistrationFormResponse"
 interface RegistrationFormEditorProps {
   tournamentId: string;
   initialData?: RegistrationFormResponse;
+  editable: boolean;
 }
 
 function RegistrationFormEditor({
   tournamentId,
   initialData,
+  editable,
 }: RegistrationFormEditorProps) {
   const { authorizationHeader } = useAuth();
   const queryClient = useQueryClient();
@@ -223,7 +225,9 @@ function RegistrationFormEditor({
             ) : null}
           </div>
           <p className="text-muted-foreground text-sm">
-            Customize the questionnaire players must fill out when registering for this tournament.
+            {editable
+              ? "Customize the questionnaire players must fill out when registering for this tournament."
+              : "Registration questions are locked once registration opens. This is the form players see."}
           </p>
         </div>
 
@@ -234,36 +238,43 @@ function RegistrationFormEditor({
             </span>
           )}
 
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={handleAddField}
-          >
-            <Plus data-icon="inline-start" />
-            Add Question
-          </Button>
+          {editable ? (
+            <>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleAddField}
+              >
+                <Plus data-icon="inline-start" />
+                Add Question
+              </Button>
 
-          <Button
-            type="button"
-            size="sm"
-            onClick={handleSave}
-            disabled={saveMutation.isPending}
-          >
-            {saveMutation.isPending ? (
-              <Spinner data-icon="inline-start" className="size-4" />
-            ) : (
-              <Save data-icon="inline-start" />
-            )}
-            Save Form
-          </Button>
+              <Button
+                type="button"
+                size="sm"
+                onClick={handleSave}
+                disabled={saveMutation.isPending}
+              >
+                {saveMutation.isPending ? (
+                  <Spinner data-icon="inline-start" className="size-4" />
+                ) : (
+                  <Save data-icon="inline-start" />
+                )}
+                Save Form
+              </Button>
+            </>
+          ) : null}
         </div>
       </div>
 
       {/* 2-Column Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_20rem] xl:grid-cols-[minmax(0,1fr)_22rem] gap-8 items-start w-full">
         {/* Main Form Canvas */}
-        <div className="flex flex-col gap-6 min-w-0">
+        <div
+          className="flex flex-col gap-6 min-w-0"
+          inert={!editable}
+        >
           <FormHeaderCard
             title={title}
             description={description}
@@ -288,10 +299,12 @@ function RegistrationFormEditor({
                   Basic competitor details are already collected by default. Add custom fields if your tournament requires rank proof, Discord handles, or jerseys.
                 </p>
               </div>
-              <Button type="button" variant="outline" size="sm" onClick={handleAddField}>
-                <Plus data-icon="inline-start" />
-                Add Question
-              </Button>
+              {editable ? (
+                <Button type="button" variant="outline" size="sm" onClick={handleAddField}>
+                  <Plus data-icon="inline-start" />
+                  Add Question
+                </Button>
+              ) : null}
             </div>
           ) : (
             <div className="flex flex-col gap-6">
@@ -311,8 +324,7 @@ function RegistrationFormEditor({
             </div>
           )}
 
-          {/* Bottom Actions */}
-          {fields.length > 0 && (
+          {editable && fields.length > 0 && (
             <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
               <Button
                 type="button"
@@ -359,8 +371,11 @@ function RegistrationFormEditor({
 
 export function RegistrationFormBuilder({
   tournamentId,
+  editable = true,
 }: {
   tournamentId: string;
+  /** The form schema can only be changed while the tournament is DRAFT or CROWDFUNDING. */
+  editable?: boolean;
 }) {
   const { authorizationHeader, isLoading: authLoading } = useAuth();
 
@@ -390,6 +405,7 @@ export function RegistrationFormBuilder({
       key={data?.id ?? "new"}
       tournamentId={tournamentId}
       initialData={data}
+      editable={editable}
     />
   );
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowLeft, ArrowUpRight, Trophy } from "lucide-react";
+import { ArrowLeft, ArrowUpRight, Network, Trophy } from "lucide-react";
 import { useAuth } from "@/context/auth-context";
 import { $api } from "@/lib/api/client";
 import { RegistrationFormBuilder } from "@/features/registration-form/components/registration-form-builder";
@@ -113,6 +113,22 @@ export function TournamentWorkspace({
                         tournamentName={data.summary.tournament.name}
                       />
                     ) : null}
+                    {["REGISTRATION", "ONGOING", "COMPLETED"].includes(
+                      data.summary.tournament.status
+                    ) ? (
+                      <Button
+                        variant="outline"
+                        render={
+                          <Link
+                            href={`/organizer/tournaments/${tournamentId}/bracket`}
+                          />
+                        }
+                        nativeButton={false}
+                      >
+                        <Network data-icon="inline-start" />
+                        Bracket
+                      </Button>
+                    ) : null}
                     {data.summary.tournament.status !== "DRAFT" ? (
                       <Button
                         render={<Link href={`/tournaments/${tournamentId}`} />}
@@ -181,7 +197,10 @@ export function TournamentWorkspace({
                           entries={data.entries ?? []}
                           metrics={data.summary.metrics}
                           tournamentId={tournamentId}
-                          canReview={canReview}
+                          canReview={
+                            canReview &&
+                            data.summary.tournament.status === "REGISTRATION"
+                          }
                         />
                       </div>
                     </TabsContent>
@@ -208,7 +227,13 @@ export function TournamentWorkspace({
                   {/* 5. Registration Form Builder Tab */}
                   {isOwner ? (
                     <TabsContent value="form" keepMounted>
-                      <RegistrationFormBuilder tournamentId={tournamentId} />
+                      <RegistrationFormBuilder
+                        tournamentId={tournamentId}
+                        editable={
+                          data.summary.tournament.status === "DRAFT" ||
+                          data.summary.tournament.status === "CROWDFUNDING"
+                        }
+                      />
                     </TabsContent>
                   ) : null}
 
@@ -218,7 +243,7 @@ export function TournamentWorkspace({
                       <SponsorshipTierSection
                         tournamentId={tournamentId}
                         currency={data.summary.tournament.currency}
-                        editable={data.summary.tournament.status !== "COMPLETED"}
+                        editable={data.summary.tournament.status === "DRAFT"}
                       />
                     </TabsContent>
                   ) : null}
