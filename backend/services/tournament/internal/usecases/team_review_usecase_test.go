@@ -25,8 +25,8 @@ type mockReviewTx struct {
 	repo *mockReviewRepo
 }
 
-func (m *mockReviewRepo) Begin(ctx context.Context) (repositories.TeamReviewTransaction, error) {
-	return &mockReviewTx{repo: m}, nil
+func (m *mockReviewRepo) InTransaction(ctx context.Context, fn func(repositories.TeamReviewTransaction) error) error {
+	return fn(&mockReviewTx{repo: m})
 }
 
 func (tx *mockReviewTx) LockTournament(tournamentID uuid.UUID) (*models.Tournament, error) {
@@ -49,9 +49,6 @@ func (tx *mockReviewTx) SaveReview(team *models.TournamentTeam, toStatus models.
 	review.CreatedAt = time.Now().UTC()
 	return nil
 }
-
-func (tx *mockReviewTx) Commit() error { return nil }
-func (tx *mockReviewTx) Rollback()     {}
 
 func (m *mockReviewRepo) PendingRefunds(ctx context.Context) ([]models.TournamentTeam, error) {
 	return nil, nil

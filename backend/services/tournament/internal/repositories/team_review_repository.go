@@ -19,7 +19,7 @@ var ErrTeamEntryNotFound = errors.New("team entry not found")
 // TeamReviewRepository persists organizer decisions on team applications
 // (US3-6) together with their audit trail.
 type TeamReviewRepository interface {
-	Begin(ctx context.Context) (TeamReviewTransaction, error)
+	InTransaction(ctx context.Context, fn func(tx TeamReviewTransaction) error) error
 	PendingRefunds(ctx context.Context) ([]models.TournamentTeam, error)
 	MarkRefunded(ctx context.Context, teamID, paymentID uuid.UUID) error
 }
@@ -30,8 +30,6 @@ type TeamReviewTransaction interface {
 	LockTournament(tournamentID uuid.UUID) (*models.Tournament, error)
 	LockTeamAndAcceptedCount(tournamentID, teamID uuid.UUID) (*models.TournamentTeam, int, error)
 	SaveReview(team *models.TournamentTeam, toStatus models.TournamentTeamStatus, review *models.TournamentTeamReview) error
-	Commit() error
-	Rollback()
 }
 
 type teamReviewRepository struct {
@@ -46,12 +44,10 @@ func NewTeamReviewRepository(db *gorm.DB) TeamReviewRepository {
 	return &teamReviewRepository{db: db}
 }
 
-func (r *teamReviewRepository) Begin(ctx context.Context) (TeamReviewTransaction, error) {
-	tx := r.db.WithContext(ctx).Begin()
-	if tx.Error != nil {
-		return nil, tx.Error
-	}
-	return &teamReviewTransaction{db: tx}, nil
+func (r *teamReviewRepository) InTransaction(ctx context.Context, fn func(tx TeamReviewTransaction) error) error {
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		return fn(&teamReviewTransaction{db: tx})
+	})
 }
 
 func (tx *teamReviewTransaction) LockTournament(tournamentID uuid.UUID) (*models.Tournament, error) {
@@ -108,14 +104,6 @@ func (tx *teamReviewTransaction) SaveReview(
 		return err
 	}
 	return tx.db.Create(review).Error
-}
-
-func (tx *teamReviewTransaction) Commit() error {
-	return tx.db.Commit().Error
-}
-
-func (tx *teamReviewTransaction) Rollback() {
-	tx.db.Rollback()
 }
 
 func (r *teamReviewRepository) PendingRefunds(ctx context.Context) ([]models.TournamentTeam, error) {
