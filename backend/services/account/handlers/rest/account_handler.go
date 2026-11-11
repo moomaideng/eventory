@@ -19,8 +19,6 @@ type AccountResponse struct {
 	Email       string               `json:"email" doc:"User email address verified by Auth Provider"`
 	Handle      string               `json:"handle" doc:"Unique public handle (e.g. @moomai_01)"`
 	DisplayName string               `json:"displayName" doc:"User display name"`
-	AvatarURL   *string              `json:"avatarUrl,omitempty" doc:"User avatar image URL"`
-	Phone       *string              `json:"phone,omitempty" doc:"Contact phone number"`
 	Status      models.AccountStatus `json:"status" doc:"Account status (ONBOARDING, ACTIVE, SUSPENDED)" enum:"ONBOARDING,ACTIVE,SUSPENDED"`
 	CreatedAt   time.Time            `json:"createdAt" doc:"Timestamp of account creation"`
 }
@@ -45,8 +43,6 @@ type GetAccountByIDInput struct {
 type UpdateAccountRequest struct {
 	DisplayName *string `json:"displayName,omitempty" doc:"New display name" minLength:"1" maxLength:"64"`
 	Handle      *string `json:"handle,omitempty" doc:"New unique handle" minLength:"3" maxLength:"32"`
-	Phone       *string `json:"phone,omitempty" doc:"New contact phone"`
-	AvatarURL   *string `json:"avatarUrl,omitempty" doc:"New avatar URL"`
 }
 
 // UpdateAccountInput represents request payload for updating profile fields.
@@ -140,8 +136,6 @@ func toAccountResponse(acc *models.Account) AccountResponse {
 		Email:       acc.Email,
 		Handle:      acc.Handle,
 		DisplayName: acc.DisplayName,
-		AvatarURL:   acc.AvatarURL,
-		Phone:       acc.Phone,
 		Status:      acc.Status,
 		CreatedAt:   acc.CreatedAt,
 	}
@@ -256,7 +250,7 @@ func RegisterAccountRoutes(api huma.API, accountUseCase *usecases.AccountUseCase
 		Method:      http.MethodPatch,
 		Path:        "/me",
 		Summary:     "Update Current User Account",
-		Description: "Updates profile fields (displayName, handle, phone, avatarUrl) of the authenticated user.",
+		Description: "Updates profile fields (displayName, handle) of the authenticated user.",
 		Tags:        []string{"Accounts"},
 		Security:    []map[string][]string{{"bearer": {}}},
 	}, func(ctx context.Context, input *UpdateAccountInput) (*AccountOutput, error) {
@@ -268,8 +262,6 @@ func RegisterAccountRoutes(api huma.API, accountUseCase *usecases.AccountUseCase
 		updated, err := accountUseCase.UpdateAccount(ctx, acc.ID, usecases.UpdateAccountInput{
 			DisplayName: input.Body.DisplayName,
 			Handle:      input.Body.Handle,
-			Phone:       input.Body.Phone,
-			AvatarURL:   input.Body.AvatarURL,
 		})
 		if err != nil {
 			if errors.Is(err, usecases.ErrHandleAlreadyExists) {

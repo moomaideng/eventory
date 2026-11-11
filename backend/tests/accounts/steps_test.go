@@ -201,10 +201,10 @@ func (s *accountScenarioContext) theUserRequestsTheirCurrentAccountDetailsViaGet
 	return nil
 }
 
-func (s *accountScenarioContext) theUserUpdatesTheirProfileWithDisplayNameAndPhone(name, phone string) error {
+func (s *accountScenarioContext) theUserUpdatesTheirProfileWithDisplayNameAndHandle(name, handle string) error {
 	body := handlers.UpdateAccountRequest{
 		DisplayName: &name,
-		Phone:       &phone,
+		Handle:      &handle,
 	}
 	resp, err := s.client.Do(http.MethodPatch, "/accounts/me", body, s.currentUser.AuthHeaders())
 	if err != nil {
@@ -454,14 +454,11 @@ func ptrValue(p *string) string {
 }
 
 func samePrimaryProfile(want, got handlers.AccountResponse) error {
-	if got.DisplayName != want.DisplayName ||
-		got.Handle != want.Handle ||
-		ptrValue(got.Phone) != ptrValue(want.Phone) ||
-		ptrValue(got.AvatarURL) != ptrValue(want.AvatarURL) {
+	if got.DisplayName != want.DisplayName || got.Handle != want.Handle {
 		return fmt.Errorf(
-			"expected profile %q/%q/%q/%q, got %q/%q/%q/%q",
-			want.DisplayName, want.Handle, ptrValue(want.Phone), ptrValue(want.AvatarURL),
-			got.DisplayName, got.Handle, ptrValue(got.Phone), ptrValue(got.AvatarURL),
+			"expected profile %q/%q, got %q/%q",
+			want.DisplayName, want.Handle,
+			got.DisplayName, got.Handle,
 		)
 	}
 	return nil
@@ -470,20 +467,6 @@ func samePrimaryProfile(want, got handlers.AccountResponse) error {
 func (s *accountScenarioContext) theAccountOwnerIsSignedInWithAnActiveAccount() error {
 	if err := s.anActiveOnboardedUserWithDisplayNameAndHandle("Primary Owner", "primary_owner"); err != nil {
 		return err
-	}
-
-	// Give every editable field a value so "stay the same" is a real check.
-	phone := "+66800000000"
-	avatar := "https://example.com/avatar-old.png"
-	resp, err := s.client.Do(http.MethodPatch, "/accounts/me", handlers.UpdateAccountRequest{
-		Phone:     &phone,
-		AvatarURL: &avatar,
-	}, s.currentUser.AuthHeaders())
-	if err != nil {
-		return err
-	}
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("expected 200 when seeding phone and avatar, got %d: %s", resp.StatusCode, resp.Body)
 	}
 
 	before, err := s.getMyAccount()
@@ -497,14 +480,10 @@ func (s *accountScenarioContext) theAccountOwnerIsSignedInWithAnActiveAccount() 
 func (s *accountScenarioContext) theyUpdateAllPrimaryProfileFieldsWithValidInformation() error {
 	name := "Primary Owner Updated"
 	handle := "primary_owner_v2"
-	phone := "+66811112222"
-	avatar := "https://example.com/avatar-new.png"
 
 	resp, err := s.client.Do(http.MethodPatch, "/accounts/me", handlers.UpdateAccountRequest{
 		DisplayName: &name,
 		Handle:      &handle,
-		Phone:       &phone,
-		AvatarURL:   &avatar,
 	}, s.currentUser.AuthHeaders())
 	if err != nil {
 		return err
@@ -513,8 +492,6 @@ func (s *accountScenarioContext) theyUpdateAllPrimaryProfileFieldsWithValidInfor
 	s.primaryExpected = handlers.AccountResponse{
 		DisplayName: name,
 		Handle:      handle,
-		Phone:       &phone,
-		AvatarURL:   &avatar,
 	}
 	return nil
 }
@@ -650,17 +627,6 @@ func (s *accountScenarioContext) theReturnedAccountDisplayNameShouldBe(expected 
 
 func (s *accountScenarioContext) theUpdatedAccountDisplayNameShouldBe(expected string) error {
 	return s.theReturnedAccountDisplayNameShouldBe(expected)
-}
-
-func (s *accountScenarioContext) theUpdatedAccountPhoneShouldBe(expected string) error {
-	var out handlers.AccountResponse
-	if err := s.resp.JSON(&out); err != nil {
-		return fmt.Errorf("failed to parse account response: %w", err)
-	}
-	if out.Phone == nil || *out.Phone != expected {
-		return fmt.Errorf("expected phone %q, got %v", expected, out.Phone)
-	}
-	return nil
 }
 
 func (s *accountScenarioContext) theCreatedAccountStatusShouldBe(expectedStatus string) error {
@@ -840,8 +806,8 @@ func InitializeScenario(sc *godog.ScenarioContext) {
 	sc.Step(`^the user requests their current account details via "GET /me"$`, func() error {
 		return s.theUserRequestsTheirCurrentAccountDetailsViaGetMe()
 	})
-	sc.Step(`^the user updates their profile with display name "([^"]*)" and phone "([^"]*)"$`, func(name, phone string) error {
-		return s.theUserUpdatesTheirProfileWithDisplayNameAndPhone(name, phone)
+	sc.Step(`^the user updates their profile with display name "([^"]*)" and handle "([^"]*)"$`, func(name, handle string) error {
+		return s.theUserUpdatesTheirProfileWithDisplayNameAndHandle(name, handle)
 	})
 	sc.Step(`^the user updates their profile with display name "([^"]*)"$`, func(name string) error {
 		return s.theUserUpdatesTheirProfileWithDisplayName(name)
@@ -879,7 +845,7 @@ func InitializeScenario(sc *godog.ScenarioContext) {
 	sc.Step(`^the account owner is signed in with an active account$`, func() error {
 		return s.theAccountOwnerIsSignedInWithAnActiveAccount()
 	})
-	sc.Step(`^they update their display name, phone number, avatar and handle with valid information$`, func() error {
+	sc.Step(`^they update their display name and handle with valid information$`, func() error {
 		return s.theyUpdateAllPrimaryProfileFieldsWithValidInformation()
 	})
 	sc.Step(`^the update should succeed$`, func() error {
@@ -917,9 +883,6 @@ func InitializeScenario(sc *godog.ScenarioContext) {
 	})
 	sc.Step(`^the updated account display name should be "([^"]*)"$`, func(name string) error {
 		return s.theUpdatedAccountDisplayNameShouldBe(name)
-	})
-	sc.Step(`^the updated account phone should be "([^"]*)"$`, func(phone string) error {
-		return s.theUpdatedAccountPhoneShouldBe(phone)
 	})
 	sc.Step(`^the organizer profile name should be "([^"]*)"$`, func(name string) error {
 		return s.theOrganizerProfileNameShouldBe(name)

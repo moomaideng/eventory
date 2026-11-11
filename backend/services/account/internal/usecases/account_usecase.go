@@ -39,8 +39,6 @@ type CreateAccountInput struct {
 type UpdateAccountInput struct {
 	DisplayName *string
 	Handle      *string
-	Phone       *string
-	AvatarURL   *string
 }
 
 // UpsertOrganizerProfileInput specifies input parameters for creating or updating an organizer profile.
@@ -256,14 +254,6 @@ func (u *AccountUseCase) UpdateAccount(ctx context.Context, id uuid.UUID, input 
 			}
 			account.Handle = h
 		}
-	}
-
-	if input.Phone != nil {
-		account.Phone = cleanOptionalString(*input.Phone)
-	}
-
-	if input.AvatarURL != nil {
-		account.AvatarURL = cleanOptionalString(*input.AvatarURL)
 	}
 
 	if account.Status == models.AccountStatusOnboarding {
