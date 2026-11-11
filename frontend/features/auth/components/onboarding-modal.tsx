@@ -142,13 +142,7 @@ function OnboardingForm({ user }: { user: UserProfile }) {
 
       if (data) {
         // Instantly update React Query cache and Auth context
-        updateUserProfile(
-          data.displayName,
-          data.handle,
-          data.avatarUrl ?? undefined,
-          data.phone ?? undefined,
-          "ACTIVE"
-        );
+        updateUserProfile(data.displayName, data.handle, "ACTIVE");
         queryClient.setQueryData(["get", "/api/v1/accounts/me"], data);
         await queryClient.invalidateQueries({
           queryKey: ["get", "/api/v1/accounts/me"],

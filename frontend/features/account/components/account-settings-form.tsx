@@ -3,16 +3,8 @@
 import { useState, type FormEvent } from "react";
 import { CircleCheck } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import {
   Field,
   FieldDescription,
@@ -38,12 +30,10 @@ export type SaveResult =
 interface AccountSettingsFormProps {
   /** Values currently stored on the account. */
   initial: AccountSettingsInput;
-  /** Photo to show when no avatar URL is saved (the sign-in photo). */
-  fallbackAvatarUrl?: string;
   onSave: (values: AccountSettingsInput) => Promise<SaveResult>;
 }
 
-const FIELDS: FieldName[] = ["displayName", "handle", "phone", "avatarUrl"];
+const FIELDS: FieldName[] = ["displayName", "handle"];
 
 // Same cleaning as the onboarding form: drop a leading @, turn spaces into
 // underscores, lowercase, and remove anything else the API would not accept.
@@ -57,7 +47,6 @@ function sanitizeHandleInput(raw: string): string {
 
 export function AccountSettingsForm({
   initial,
-  fallbackAvatarUrl,
   onSave,
 }: AccountSettingsFormProps) {
   const [values, setValues] = useState(initial);
@@ -89,8 +78,6 @@ export function AccountSettingsForm({
       setFieldErrors({
         displayName: flat.displayName?.[0],
         handle: flat.handle?.[0],
-        phone: flat.phone?.[0],
-        avatarUrl: flat.avatarUrl?.[0],
       });
       return;
     }
@@ -114,30 +101,9 @@ export function AccountSettingsForm({
     }
   }
 
-  const avatarSrc = baseline.avatarUrl || fallbackAvatarUrl;
-
   return (
     <form onSubmit={handleSubmit} noValidate>
       <Card>
-        <CardHeader>
-          <div className="flex items-center gap-4">
-            <Avatar size="lg">
-              {avatarSrc ? (
-                <AvatarImage src={avatarSrc} alt={baseline.displayName} />
-              ) : null}
-              <AvatarFallback>
-                {baseline.displayName.slice(0, 2).toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
-            <div className="flex flex-col gap-1">
-              <CardTitle>Profile</CardTitle>
-              <CardDescription>
-                How you appear to organizers, sponsors and other players.
-              </CardDescription>
-            </div>
-          </div>
-        </CardHeader>
-
         <CardContent>
           <FieldGroup>
             <Field data-invalid={Boolean(fieldErrors.displayName)}>
@@ -182,47 +148,6 @@ export function AccountSettingsForm({
               </FieldDescription>
               {fieldErrors.handle ? (
                 <FieldError>{fieldErrors.handle}</FieldError>
-              ) : null}
-            </Field>
-
-            <Field data-invalid={Boolean(fieldErrors.phone)}>
-              <FieldLabel htmlFor="account-phone">Phone</FieldLabel>
-              <Input
-                id="account-phone"
-                type="tel"
-                autoComplete="tel"
-                value={values.phone}
-                onChange={(event) => updateField("phone", event.target.value)}
-                placeholder="+66 81 234 5678"
-                maxLength={20}
-                disabled={isSaving}
-                aria-invalid={Boolean(fieldErrors.phone)}
-              />
-              <FieldDescription>Optional.</FieldDescription>
-              {fieldErrors.phone ? (
-                <FieldError>{fieldErrors.phone}</FieldError>
-              ) : null}
-            </Field>
-
-            <Field data-invalid={Boolean(fieldErrors.avatarUrl)}>
-              <FieldLabel htmlFor="account-avatar-url">Avatar URL</FieldLabel>
-              <Input
-                id="account-avatar-url"
-                type="url"
-                value={values.avatarUrl}
-                onChange={(event) =>
-                  updateField("avatarUrl", event.target.value)
-                }
-                placeholder="https://example.com/me.png"
-                disabled={isSaving}
-                aria-invalid={Boolean(fieldErrors.avatarUrl)}
-              />
-              <FieldDescription>
-                Optional. A link to an image hosted elsewhere. Leave it empty to
-                use your sign-in photo, if you have one.
-              </FieldDescription>
-              {fieldErrors.avatarUrl ? (
-                <FieldError>{fieldErrors.avatarUrl}</FieldError>
               ) : null}
             </Field>
           </FieldGroup>

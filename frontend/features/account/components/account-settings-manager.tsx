@@ -25,18 +25,16 @@ type Account = components["schemas"]["AccountResponse"];
 // Matches every cached copy of GET /accounts/me, whatever its request params.
 const ACCOUNT_QUERY_KEY = ["get", "/api/v1/accounts/me"] as const;
 
-// The API leaves empty phone/avatar out (or sends null); the form uses "".
+// The form only edits the display name and handle.
 function toFormValues(account: Account): AccountSettingsInput {
   return {
     displayName: account.displayName,
     handle: account.handle,
-    phone: account.phone ?? "",
-    avatarUrl: account.avatarUrl ?? "",
   };
 }
 
 export function AccountSettingsManager() {
-  const { user, isLoading: isAuthLoading, authorizationHeader } = useAuth();
+  const { isLoading: isAuthLoading, authorizationHeader } = useAuth();
   const queryClient = useQueryClient();
 
   // Same request as auth-context, so this reads the shared cache entry
@@ -128,7 +126,6 @@ export function AccountSettingsManager() {
     <AccountSettingsForm
       key={account.id}
       initial={toFormValues(account)}
-      fallbackAvatarUrl={user?.avatarUrl}
       onSave={handleSave}
     />
   );
