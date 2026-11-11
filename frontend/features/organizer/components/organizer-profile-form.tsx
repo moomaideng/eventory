@@ -1,6 +1,10 @@
 "use client";
 
-import { useState, type FormEvent, type MouseEvent as ReactMouseEvent } from "react";
+import {
+  useState,
+  type FormEvent,
+  type MouseEvent as ReactMouseEvent,
+} from "react";
 import { Trophy } from "lucide-react";
 import {
   AlertDialog,
@@ -30,10 +34,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
-import {
-  organizerProfileSchema,
-  type OrganizerProfileInput,
-} from "../schemas";
+import { organizerProfileSchema, type OrganizerProfileInput } from "../schemas";
 
 type FieldErrors = Partial<
   Record<"organizerName" | "organizerEmail" | "phone", string>
@@ -63,8 +64,9 @@ export function OrganizerProfileForm({
   const [phone, setPhone] = useState(initialPhone);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [pendingData, setPendingData] =
-    useState<OrganizerProfileInput | null>(null);
+  const [pendingData, setPendingData] = useState<OrganizerProfileInput | null>(
+    null
+  );
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -195,8 +197,8 @@ export function OrganizerProfileForm({
           <AlertDialogHeader>
             <AlertDialogTitle>Save changes?</AlertDialogTitle>
             <AlertDialogDescription>
-              Sponsors and participants will see this organizer name and
-              email the next time they view your tournaments.
+              Sponsors and participants will see this organizer name and email
+              the next time they view your tournaments.
             </AlertDialogDescription>
           </AlertDialogHeader>
           {saveError ? (

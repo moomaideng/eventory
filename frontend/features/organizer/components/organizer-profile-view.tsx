@@ -42,9 +42,7 @@ export function OrganizerProfileView({
           <p className="text-muted-foreground text-sm">Contact email</p>
           <p className="font-medium">
             {organizerEmail || (
-              <span className="text-muted-foreground font-normal">
-                Not set
-              </span>
+              <span className="text-muted-foreground font-normal">Not set</span>
             )}
           </p>
         </div>
@@ -52,9 +50,7 @@ export function OrganizerProfileView({
           <p className="text-muted-foreground text-sm">Phone</p>
           <p className="font-medium">
             {phone || (
-              <span className="text-muted-foreground font-normal">
-                Not set
-              </span>
+              <span className="text-muted-foreground font-normal">Not set</span>
             )}
           </p>
         </div>

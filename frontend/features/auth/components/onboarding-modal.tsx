@@ -24,10 +24,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { useAuth, type UserProfile } from "@/context/auth-context";
 import { apiClient } from "@/lib/api/client";
 import { extractProblemMessage } from "@/lib/schemas";
-import {
-  onboardingFormSchema,
-  type OnboardingFormValues,
-} from "../schemas";
+import { onboardingFormSchema, type OnboardingFormValues } from "../schemas";
 
 type FieldErrors = Partial<Record<keyof OnboardingFormValues, string>>;
 
@@ -167,19 +164,19 @@ function OnboardingForm({ user }: { user: UserProfile }) {
         <AlertDialogTitle className="text-xl font-bold">
           Set Up Your Profile
         </AlertDialogTitle>
-        <AlertDialogDescription className="text-sm text-muted-foreground">
+        <AlertDialogDescription className="text-muted-foreground text-sm">
           Choose your display name and handle to get started.
         </AlertDialogDescription>
       </AlertDialogHeader>
 
       {/* Connected Account Identity Card */}
-      <div className="mt-1 flex items-center justify-between gap-3 rounded-lg border border-border/70 bg-muted/30 p-3">
+      <div className="border-border/70 bg-muted/30 mt-1 flex items-center justify-between gap-3 rounded-lg border p-3">
         <div className="flex min-w-0 items-center gap-3">
-          <Avatar size="default" className="border border-border">
+          <Avatar size="default" className="border-border border">
             {user.avatarUrl && (
               <AvatarImage src={user.avatarUrl} alt={user.displayName} />
             )}
-            <AvatarFallback className="font-semibold text-xs uppercase">
+            <AvatarFallback className="text-xs font-semibold uppercase">
               {user.displayName?.charAt(0) || user.email.charAt(0) || "P"}
             </AvatarFallback>
           </Avatar>
@@ -187,7 +184,7 @@ function OnboardingForm({ user }: { user: UserProfile }) {
             <span className="text-muted-foreground text-xs font-medium">
               Connected Account
             </span>
-            <span className="truncate text-sm font-semibold text-foreground">
+            <span className="text-foreground truncate text-sm font-semibold">
               {user.email}
             </span>
           </div>
@@ -237,17 +234,15 @@ function OnboardingForm({ user }: { user: UserProfile }) {
 
           {/* Player Handle Field */}
           <Field data-invalid={Boolean(fieldErrors.handle)}>
-            <FieldLabel htmlFor="onboarding-handle">
-              Handle
-            </FieldLabel>
+            <FieldLabel htmlFor="onboarding-handle">Handle</FieldLabel>
 
             <div className="relative flex items-center">
-              <span className="text-muted-foreground pointer-events-none absolute left-3 select-none text-sm font-semibold">
+              <span className="text-muted-foreground pointer-events-none absolute left-3 text-sm font-semibold select-none">
                 @
               </span>
               <Input
                 id="onboarding-handle"
-                className="pl-7 lowercase font-mono tracking-tight"
+                className="pl-7 font-mono tracking-tight lowercase"
                 value={handle}
                 onChange={(e) => handleHandleChange(e.target.value)}
                 placeholder="your_tag"
@@ -268,7 +263,7 @@ function OnboardingForm({ user }: { user: UserProfile }) {
         {apiError && (
           <div
             role="alert"
-            className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive"
+            className="border-destructive/30 bg-destructive/10 text-destructive rounded-lg border p-3 text-sm"
           >
             {apiError}
           </div>
@@ -278,7 +273,9 @@ function OnboardingForm({ user }: { user: UserProfile }) {
         <div className="mt-2 flex flex-col gap-2">
           <Button
             type="submit"
-            disabled={isSubmitting || !displayName.trim() || !isHandleLengthValid}
+            disabled={
+              isSubmitting || !displayName.trim() || !isHandleLengthValid
+            }
             className="w-full font-semibold"
           >
             {isSubmitting ? (

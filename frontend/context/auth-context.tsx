@@ -16,10 +16,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { MOCK_USER } from "./mock-data";
 import { getSafeRedirectPath } from "@/lib/auth-redirect";
-import {
-  setDevSessionAction,
-  getDevSessionAction,
-} from "@/lib/dev-session";
+import { setDevSessionAction, getDevSessionAction } from "@/lib/dev-session";
 
 export type AccountStatus = "ONBOARDING" | "ACTIVE" | "SUSPENDED";
 
@@ -266,20 +263,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     [router]
   );
 
-  const loginWithGoogle = useCallback(
-    async (redirectTo?: string) => {
-      await triggerGoogleOAuth(redirectTo);
-    },
-    []
-  );
+  const loginWithGoogle = useCallback(async (redirectTo?: string) => {
+    await triggerGoogleOAuth(redirectTo);
+  }, []);
 
   // Update primary user profile details with query cache update & invalidation
   const updateUserProfile = useCallback(
-    (
-      displayName: string,
-      handle?: string,
-      status?: AccountStatus
-    ) => {
+    (displayName: string, handle?: string, status?: AccountStatus) => {
       if (devUser) {
         setDevUser((prev) =>
           prev
