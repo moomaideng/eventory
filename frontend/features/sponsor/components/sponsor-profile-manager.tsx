@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ShieldAlert } from "lucide-react";
+import { Plus, ShieldAlert } from "lucide-react";
 import { $api, apiClient } from "@/lib/api/client";
 import { useAuth } from "@/context/auth-context";
 import {
@@ -11,6 +11,14 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty";
+import {
+  Card,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { extractProblemMessage } from "@/lib/schemas";
 import type { SponsorProfileInput } from "../schemas";
@@ -20,6 +28,7 @@ import { SponsorProfileView } from "./sponsor-profile-view";
 interface SponsorProfileData {
   sponsorName: string;
   sponsorEmail?: string | null;
+  phone?: string | null;
   tags?: string[] | null;
 }
 
@@ -61,6 +70,7 @@ export function SponsorProfileManager() {
           body: {
             sponsorName: data.sponsorName,
             sponsorEmail: data.sponsorEmail,
+            phone: data.phone,
             tags: data.tags,
           },
         }
@@ -99,8 +109,9 @@ export function SponsorProfileManager() {
   }
 
   const current = override ?? profile;
+  const hasNoProfile = !current && error?.status === 404;
 
-  if (error || !current) {
+  if (!current && !hasNoProfile) {
     return (
       <Empty className="border">
         <EmptyHeader>
@@ -119,9 +130,10 @@ export function SponsorProfileManager() {
   if (mode === "edit") {
     return (
       <SponsorProfileForm
-        initialName={current.sponsorName}
-        initialEmail={current.sponsorEmail ?? ""}
-        initialTags={current.tags ?? []}
+        initialName={current?.sponsorName ?? ""}
+        initialEmail={current?.sponsorEmail ?? ""}
+        initialPhone={current?.phone ?? ""}
+        initialTags={current?.tags ?? []}
         onCancel={() => setMode("view")}
         onConfirmSave={handleConfirmSave}
         isSaving={isSaving}
@@ -130,10 +142,31 @@ export function SponsorProfileManager() {
     );
   }
 
+  if (!current) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Sponsor profile</CardTitle>
+          <CardDescription>
+            You do not have a sponsor profile yet. Create one to appear in the
+            sponsor directory.
+          </CardDescription>
+        </CardHeader>
+        <CardFooter className="justify-end">
+          <Button onClick={() => setMode("edit")}>
+            <Plus data-icon="inline-start" />
+            Create sponsor profile
+          </Button>
+        </CardFooter>
+      </Card>
+    );
+  }
+
   return (
     <SponsorProfileView
       sponsorName={current.sponsorName}
       sponsorEmail={current.sponsorEmail}
+      phone={current.phone}
       tags={current.tags ?? []}
       onEdit={() => setMode("edit")}
     />

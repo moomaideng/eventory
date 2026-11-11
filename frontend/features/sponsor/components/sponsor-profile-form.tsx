@@ -38,12 +38,13 @@ import { SponsorTagsField } from "./sponsor-tags-field";
 import { sponsorProfileSchema, type SponsorProfileInput } from "../schemas";
 
 type FieldErrors = Partial<
-  Record<"sponsorName" | "sponsorEmail" | "tags", string>
+  Record<"sponsorName" | "sponsorEmail" | "phone" | "tags", string>
 >;
 
 interface SponsorProfileFormProps {
   initialName: string;
   initialEmail: string;
+  initialPhone: string;
   initialTags: string[];
   onCancel: () => void;
   onConfirmSave: (data: SponsorProfileInput) => Promise<boolean>;
@@ -54,6 +55,7 @@ interface SponsorProfileFormProps {
 export function SponsorProfileForm({
   initialName,
   initialEmail,
+  initialPhone,
   initialTags,
   onCancel,
   onConfirmSave,
@@ -62,6 +64,7 @@ export function SponsorProfileForm({
 }: SponsorProfileFormProps) {
   const [sponsorName, setSponsorName] = useState(initialName);
   const [sponsorEmail, setSponsorEmail] = useState(initialEmail);
+  const [phone, setPhone] = useState(initialPhone);
   const [tags, setTags] = useState(initialTags);
   const [tagDraft, setTagDraft] = useState("");
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
@@ -76,6 +79,7 @@ export function SponsorProfileForm({
     const result = sponsorProfileSchema.safeParse({
       sponsorName,
       sponsorEmail,
+      phone,
       tags: [...tags, tagDraft],
     });
 
@@ -84,6 +88,7 @@ export function SponsorProfileForm({
       setFieldErrors({
         sponsorName: flat.sponsorName?.[0],
         sponsorEmail: flat.sponsorEmail?.[0],
+        phone: flat.phone?.[0],
         tags: flat.tags?.[0],
       });
       return;
@@ -164,6 +169,27 @@ export function SponsorProfileForm({
                 <FieldError>{fieldErrors.sponsorEmail}</FieldError>
               ) : null}
             </Field>
+
+            <Field data-invalid={Boolean(fieldErrors.phone)}>
+              <FieldLabel htmlFor="sponsor-phone">Phone</FieldLabel>
+              <Input
+                id="sponsor-phone"
+                type="tel"
+                value={phone}
+                onChange={(event) => {
+                  setPhone(event.target.value);
+                  setFieldErrors((prev) => ({ ...prev, phone: undefined }));
+                }}
+                placeholder="+66 81 234 5678"
+                maxLength={20}
+                aria-invalid={Boolean(fieldErrors.phone)}
+              />
+              <FieldDescription>Optional.</FieldDescription>
+              {fieldErrors.phone ? (
+                <FieldError>{fieldErrors.phone}</FieldError>
+              ) : null}
+            </Field>
+
             <SponsorTagsField
               value={tags}
               onChange={setTags}

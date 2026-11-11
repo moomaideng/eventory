@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { optionalPhoneSchema } from "@/lib/schemas";
 
 /**
  * Validates the organizer profile form (#62) before sending to
@@ -15,6 +16,7 @@ export const organizerProfileSchema = z.object({
     .trim()
     .transform((val) => (val === "" ? undefined : val))
     .pipe(z.string().email("Enter a valid email address.").optional()),
+  phone: optionalPhoneSchema.optional(),
 });
 
 export type OrganizerProfileInput = z.infer<typeof organizerProfileSchema>;

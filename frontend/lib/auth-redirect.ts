@@ -47,7 +47,7 @@ export function getRedirectDestinationLabel(path: string): string | null {
   if (safePath.startsWith("/organizer")) return "Organizer Workspace";
   if (safePath.startsWith("/sponsor")) return "Sponsor Workspace";
   if (safePath.startsWith("/tournaments")) return "Tournaments";
-  if (safePath.startsWith("/settings")) return "Account Settings";
+  if (safePath.startsWith("/settings")) return "Profile Settings";
 
   return "your requested page";
 }
