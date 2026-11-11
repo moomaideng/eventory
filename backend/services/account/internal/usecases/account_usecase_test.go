@@ -430,12 +430,10 @@ func TestUpdateAccount_Success(t *testing.T) {
 
 	newName := "New Shadow Ninja"
 	newHandle := "shadow_ninja"
-	phone := "+66812345678"
 
 	updated, err := useCase.UpdateAccount(context.Background(), userID, usecases.UpdateAccountInput{
 		DisplayName: &newName,
 		Handle:      &newHandle,
-		Phone:       &phone,
 	})
 	if err != nil {
 		t.Fatalf("expected no error, got: %v", err)
@@ -446,9 +444,6 @@ func TestUpdateAccount_Success(t *testing.T) {
 	}
 	if updated.Handle != "shadow_ninja" {
 		t.Errorf("expected updated Handle 'shadow_ninja', got %v", updated.Handle)
-	}
-	if updated.Phone == nil || *updated.Phone != phone {
-		t.Errorf("expected updated Phone %v, got %v", phone, updated.Phone)
 	}
 }
 

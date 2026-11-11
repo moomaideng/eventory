@@ -21,8 +21,6 @@ type Account struct {
 	Email       string        `gorm:"type:varchar(255);not null;uniqueIndex"`
 	Handle      string        `gorm:"type:varchar(32);not null;uniqueIndex"`
 	DisplayName string        `gorm:"type:varchar(64);not null"`
-	AvatarURL   *string       `gorm:"type:text"`
-	Phone       *string       `gorm:"type:varchar(32)"`
 	Status      AccountStatus `gorm:"type:varchar(16);not null;default:'ONBOARDING'"`
 	CreatedAt   time.Time
 	UpdatedAt   time.Time

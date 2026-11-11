@@ -61,10 +61,10 @@ Feature: Account Management and Profiles
   # [VALID] Update personal profile details
   Scenario: Update personal profile details
     Given an active onboarded user with display name "Bob Original" and handle "bob_original"
-    When the user updates their profile with display name "Bob Updated" and phone "+66812345678"
+    When the user updates their profile with display name "Bob Updated" and handle "bob_updated"
     Then the response status code should be 200
     And the updated account display name should be "Bob Updated"
-    And the updated account phone should be "+66812345678"
+    And the updated account handle should be "bob_updated"
 
   # =========================================================================
   # US1-3
@@ -108,7 +108,7 @@ Feature: Account Management and Profiles
   @US1-4 @valid
   Scenario: Update and view primary profile details
     Given the account owner is signed in with an active account
-    When they update their display name, phone number, avatar and handle with valid information
+    When they update their display name and handle with valid information
     Then the update should succeed
     And viewing their primary profile should show the new information
 
