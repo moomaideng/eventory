@@ -71,9 +71,9 @@ Security Guard: Accounts in ONBOARDING status cannot create Organizer or Sponsor
 * **Estimate:** 3 points
 
 * **[VALID] Business Conditions (Success):**
-  * **Given** an authenticated account owner with existing Organizer or Sponsor profiles
-  * **When** the user views or updates role profile details (such as organization/sponsor name or contact email)
-  * **Then** the system returns or saves the updated role profile details and displays them across the platform.
+  * **Given** an authenticated account owner on the Profile settings page, which has a separate Organizer section and Sponsor section
+  * **When** the user views or updates a role profile (organization or sponsor name, contact email, optional phone), or creates a role profile they do not have yet
+  * **Then** the system saves the role profile and shows the saved details back to the user. The Organizer and Sponsor profiles keep separate phone numbers.
 
 * **[INVALID] Business Conditions (Rejection):**
   * **Given** an account owner submitting blank required fields (such as an empty organization or sponsor name)
@@ -87,9 +87,9 @@ Security Guard: Accounts in ONBOARDING status cannot create Organizer or Sponsor
 * **Estimate:** 3 points
 
 * **[VALID] Business Conditions (Success):**
-  * **Given** an authenticated account owner
-  * **When** the user views primary account details or updates display name, phone, avatar, or available unique handle
-  * **Then** the system returns or saves the profile data and reflects the updates across the platform.
+  * **Given** an authenticated account owner on the Profile settings page
+  * **When** the user views primary account details or updates display name or available unique handle
+  * **Then** the system returns or saves the profile data and reflects the updates across the platform. The primary account has no phone number or avatar: phone numbers belong to the Organizer and Sponsor profiles, and the navbar photo comes from the user's sign-in provider.
 
 * **[INVALID] Business Conditions (Rejection):**
   * **Given** an account owner updates their handle to one already taken by another account, or clears the display name
