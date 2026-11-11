@@ -36,9 +36,7 @@ export function OrganizerProfileManager() {
   const [mode, setMode] = useState<"view" | "edit">("view");
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
-  const [override, setOverride] = useState<OrganizerProfileData | null>(
-    null
-  );
+  const [override, setOverride] = useState<OrganizerProfileData | null>(null);
 
   const {
     data: profile,
@@ -120,8 +118,7 @@ export function OrganizerProfileManager() {
           </EmptyMedia>
           <EmptyTitle>Organizer profile unavailable</EmptyTitle>
           <EmptyDescription>
-            We could not load your organizer profile. Try refreshing the
-            page.
+            We could not load your organizer profile. Try refreshing the page.
           </EmptyDescription>
         </EmptyHeader>
       </Empty>
