@@ -1112,6 +1112,8 @@ export interface components {
             organizerEmail: string;
             /** @description Organizer organization or brand name */
             organizerName: string;
+            /** @description Contact phone number for organizer */
+            phone?: string;
             /**
              * Format: date-time
              * @description Timestamp of last profile update
@@ -1155,6 +1157,8 @@ export interface components {
              * @description Timestamp of profile creation
              */
             createdAt: string;
+            /** @description Contact phone number for sponsor */
+            phone?: string;
             /** @description Contact email for sponsorship communications */
             sponsorEmail: string;
             /** @description Sponsor company or organization name */
@@ -1194,6 +1198,8 @@ export interface components {
             organizerEmail?: string;
             /** @description Organizer organization or brand name */
             organizerName: string;
+            /** @description Contact phone number for organizer */
+            phone?: string;
         };
         UpsertSponsorProfileRequest: {
             /**
@@ -1202,6 +1208,8 @@ export interface components {
              * @example https://example.com/schemas/UpsertSponsorProfileRequest.json
              */
             readonly $schema?: string;
+            /** @description Contact phone number for sponsor */
+            phone?: string;
             /**
              * Format: email
              * @description Contact email shown to organizers
