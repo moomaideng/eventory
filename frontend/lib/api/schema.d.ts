@@ -43,7 +43,7 @@ export interface paths {
         head?: never;
         /**
          * Update Current User Account
-         * @description Updates profile fields (displayName, handle, phone, avatarUrl) of the authenticated user.
+         * @description Updates profile fields (displayName, handle) of the authenticated user.
          */
         patch: operations["update-my-account"];
         trace?: never;
@@ -1024,8 +1024,6 @@ export interface components {
              * @example https://example.com/schemas/AccountResponse.json
              */
             readonly $schema?: string;
-            /** @description User avatar image URL */
-            avatarUrl?: string;
             /**
              * Format: date-time
              * @description Timestamp of account creation
@@ -1039,8 +1037,6 @@ export interface components {
             handle: string;
             /** @description Unique account UUID matching Supabase Auth UID */
             id: string;
-            /** @description Contact phone number */
-            phone?: string;
             /**
              * @description Account status (ONBOARDING, ACTIVE, SUSPENDED)
              * @enum {string}
@@ -1178,14 +1174,10 @@ export interface components {
              * @example https://example.com/schemas/UpdateAccountRequest.json
              */
             readonly $schema?: string;
-            /** @description New avatar URL */
-            avatarUrl?: string;
             /** @description New display name */
             displayName?: string;
             /** @description New unique handle */
             handle?: string;
-            /** @description New contact phone */
-            phone?: string;
         };
         UpsertOrganizerProfileRequest: {
             /**

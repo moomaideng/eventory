@@ -29,7 +29,6 @@ export interface UserProfile {
   displayName: string;
   handle: string;
   avatarUrl?: string;
-  phone?: string;
   status: AccountStatus;
 }
 
@@ -43,8 +42,6 @@ export interface AuthContextType {
   updateUserProfile: (
     displayName: string,
     handle?: string,
-    avatarUrl?: string,
-    phone?: string,
     status?: AccountStatus
   ) => void;
   refreshUser: () => Promise<void>;
@@ -148,9 +145,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           session?.user?.email?.split("@")[0] ||
           devUser?.handle ||
           "user",
-        avatarUrl:
-          account.avatarUrl || session?.user?.avatarUrl || devUser?.avatarUrl,
-        phone: account.phone || undefined,
+        avatarUrl: session?.user?.avatarUrl || devUser?.avatarUrl,
         status: (account.status as AccountStatus) || "ACTIVE",
       };
     }
@@ -283,8 +278,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     (
       displayName: string,
       handle?: string,
-      avatarUrl?: string,
-      phone?: string,
       status?: AccountStatus
     ) => {
       if (devUser) {
@@ -294,8 +287,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 ...prev,
                 displayName,
                 handle: handle || prev.handle,
-                avatarUrl: avatarUrl || prev.avatarUrl,
-                phone: phone || prev.phone,
                 status: status || prev.status,
               }
             : null
@@ -311,8 +302,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             ...old,
             displayName,
             handle: handle || old.handle,
-            avatarUrl: avatarUrl || old.avatarUrl,
-            phone: phone || old.phone,
             status: status || old.status,
           };
         }
