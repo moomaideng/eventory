@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 interface SponsorProfileViewProps {
   sponsorName: string;
   sponsorEmail?: string | null;
+  phone?: string | null;
   tags: string[];
   onEdit: () => void;
 }
@@ -22,6 +23,7 @@ interface SponsorProfileViewProps {
 export function SponsorProfileView({
   sponsorName,
   sponsorEmail,
+  phone,
   tags,
   onEdit,
 }: SponsorProfileViewProps) {
@@ -43,6 +45,14 @@ export function SponsorProfileView({
           <p className="text-muted-foreground text-sm">Contact email</p>
           <p className="font-medium">
             {sponsorEmail || (
+              <span className="text-muted-foreground font-normal">Not set</span>
+            )}
+          </p>
+        </div>
+        <div className="flex flex-col gap-1">
+          <p className="text-muted-foreground text-sm">Phone</p>
+          <p className="font-medium">
+            {phone || (
               <span className="text-muted-foreground font-normal">Not set</span>
             )}
           </p>

@@ -187,7 +187,7 @@ export function NavbarRight({
                 <DropdownMenuGroup>
                   <DropdownMenuItem render={<Link href="/settings" />}>
                     <Settings data-icon="inline-start" />
-                    Account settings
+                    Profile settings
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     render={

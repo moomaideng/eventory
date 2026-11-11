@@ -36,12 +36,13 @@ import {
 } from "../schemas";
 
 type FieldErrors = Partial<
-  Record<"organizerName" | "organizerEmail", string>
+  Record<"organizerName" | "organizerEmail" | "phone", string>
 >;
 
 interface OrganizerProfileFormProps {
   initialName: string;
   initialEmail: string;
+  initialPhone: string;
   onCancel: () => void;
   onConfirmSave: (data: OrganizerProfileInput) => Promise<boolean>;
   isSaving: boolean;
@@ -51,6 +52,7 @@ interface OrganizerProfileFormProps {
 export function OrganizerProfileForm({
   initialName,
   initialEmail,
+  initialPhone,
   onCancel,
   onConfirmSave,
   isSaving,
@@ -58,6 +60,7 @@ export function OrganizerProfileForm({
 }: OrganizerProfileFormProps) {
   const [organizerName, setOrganizerName] = useState(initialName);
   const [organizerEmail, setOrganizerEmail] = useState(initialEmail);
+  const [phone, setPhone] = useState(initialPhone);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [dialogOpen, setDialogOpen] = useState(false);
   const [pendingData, setPendingData] =
@@ -69,6 +72,7 @@ export function OrganizerProfileForm({
     const result = organizerProfileSchema.safeParse({
       organizerName,
       organizerEmail,
+      phone,
     });
 
     if (!result.success) {
@@ -76,6 +80,7 @@ export function OrganizerProfileForm({
       setFieldErrors({
         organizerName: flat.organizerName?.[0],
         organizerEmail: flat.organizerEmail?.[0],
+        phone: flat.phone?.[0],
       });
       return;
     }
@@ -150,6 +155,26 @@ export function OrganizerProfileForm({
               <FieldDescription>Optional.</FieldDescription>
               {fieldErrors.organizerEmail ? (
                 <FieldError>{fieldErrors.organizerEmail}</FieldError>
+              ) : null}
+            </Field>
+
+            <Field data-invalid={Boolean(fieldErrors.phone)}>
+              <FieldLabel htmlFor="organizer-phone">Phone</FieldLabel>
+              <Input
+                id="organizer-phone"
+                type="tel"
+                value={phone}
+                onChange={(event) => {
+                  setPhone(event.target.value);
+                  setFieldErrors((prev) => ({ ...prev, phone: undefined }));
+                }}
+                placeholder="+66 81 234 5678"
+                maxLength={20}
+                aria-invalid={Boolean(fieldErrors.phone)}
+              />
+              <FieldDescription>Optional.</FieldDescription>
+              {fieldErrors.phone ? (
+                <FieldError>{fieldErrors.phone}</FieldError>
               ) : null}
             </Field>
           </FieldGroup>

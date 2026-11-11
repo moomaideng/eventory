@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ShieldAlert } from "lucide-react";
+import { Plus, ShieldAlert } from "lucide-react";
 import { $api, apiClient } from "@/lib/api/client";
 import { useAuth } from "@/context/auth-context";
 import {
@@ -11,6 +11,14 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty";
+import {
+  Card,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { extractProblemMessage } from "@/lib/schemas";
 import type { OrganizerProfileInput } from "../schemas";
@@ -20,6 +28,7 @@ import { OrganizerProfileView } from "./organizer-profile-view";
 interface OrganizerProfileData {
   organizerName: string;
   organizerEmail?: string | null;
+  phone?: string | null;
 }
 
 export function OrganizerProfileManager() {
@@ -62,6 +71,7 @@ export function OrganizerProfileManager() {
           body: {
             organizerName: data.organizerName,
             organizerEmail: data.organizerEmail,
+            phone: data.phone,
           },
         }
       );
@@ -99,8 +109,9 @@ export function OrganizerProfileManager() {
   }
 
   const current = override ?? profile;
+  const hasNoProfile = !current && error?.status === 404;
 
-  if (error || !current) {
+  if (!current && !hasNoProfile) {
     return (
       <Empty className="border">
         <EmptyHeader>
@@ -120,8 +131,9 @@ export function OrganizerProfileManager() {
   if (mode === "edit") {
     return (
       <OrganizerProfileForm
-        initialName={current.organizerName}
-        initialEmail={current.organizerEmail ?? ""}
+        initialName={current?.organizerName ?? ""}
+        initialEmail={current?.organizerEmail ?? ""}
+        initialPhone={current?.phone ?? ""}
         onCancel={() => setMode("view")}
         onConfirmSave={handleConfirmSave}
         isSaving={isSaving}
@@ -130,10 +142,31 @@ export function OrganizerProfileManager() {
     );
   }
 
+  if (!current) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Organizer profile</CardTitle>
+          <CardDescription>
+            You do not have an organizer profile yet. Create one to host
+            tournaments.
+          </CardDescription>
+        </CardHeader>
+        <CardFooter className="justify-end">
+          <Button onClick={() => setMode("edit")}>
+            <Plus data-icon="inline-start" />
+            Create organizer profile
+          </Button>
+        </CardFooter>
+      </Card>
+    );
+  }
+
   return (
     <OrganizerProfileView
       organizerName={current.organizerName}
       organizerEmail={current.organizerEmail}
+      phone={current.phone}
       onEdit={() => setMode("edit")}
     />
   );

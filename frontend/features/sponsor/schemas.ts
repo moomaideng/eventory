@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { optionalPhoneSchema } from "@/lib/schemas";
 
 export const sponsorTagsSchema = z
   .array(z.string())
@@ -23,6 +24,7 @@ export const sponsorOnboardingSchema = z.object({
     .trim()
     .email("Enter a valid contact email.")
     .max(255),
+  phone: optionalPhoneSchema.optional(),
   tags: sponsorTagsSchema,
 });
 export const sponsorProfileSchema = sponsorOnboardingSchema;

@@ -14,12 +14,14 @@ import { Button } from "@/components/ui/button";
 interface OrganizerProfileViewProps {
   organizerName: string;
   organizerEmail?: string | null;
+  phone?: string | null;
   onEdit: () => void;
 }
 
 export function OrganizerProfileView({
   organizerName,
   organizerEmail,
+  phone,
   onEdit,
 }: OrganizerProfileViewProps) {
   return (
@@ -40,6 +42,16 @@ export function OrganizerProfileView({
           <p className="text-muted-foreground text-sm">Contact email</p>
           <p className="font-medium">
             {organizerEmail || (
+              <span className="text-muted-foreground font-normal">
+                Not set
+              </span>
+            )}
+          </p>
+        </div>
+        <div className="flex flex-col gap-1">
+          <p className="text-muted-foreground text-sm">Phone</p>
+          <p className="font-medium">
+            {phone || (
               <span className="text-muted-foreground font-normal">
                 Not set
               </span>
