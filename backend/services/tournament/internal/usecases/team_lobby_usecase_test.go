@@ -528,6 +528,24 @@ func TestSubmissionRequiresAuthoritativeMatchingInvoice(t *testing.T) {
 	}
 }
 
+func TestReconcile_ClearedAttemptWaitsForExplicitRetry(t *testing.T) {
+	team := &models.TournamentTeam{ID: uuid.New(), Status: models.TournamentTeamStatusPaymentPending}
+	u := newTestTeamLobbyUseCase(&teamLobbyRepositoryStub{team: team}, nil,
+		registrationPaymentStub{err: errors.New("invoice must not be requested before retry")})
+	if err := u.Reconcile(context.Background(), team); err != nil {
+		t.Fatalf("cleared attempt should remain pending: %v", err)
+	}
+	if team.Status != models.TournamentTeamStatusPaymentPending {
+		t.Fatal("refresh must not unfreeze the roster")
+	}
+	// An inconsistent partial attempt must still fail closed.
+	paymentID := uuid.New()
+	team.PaymentID = &paymentID
+	if err := u.Reconcile(context.Background(), team); !errors.Is(err, usecases.ErrPaymentUnavailable) {
+		t.Fatalf("incomplete payment metadata: %v", err)
+	}
+}
+
 func TestApplyPaymentOutcome(t *testing.T) {
 	attempt, payer := uuid.New(), uuid.New()
 	expires := time.Now().Add(time.Minute).UTC().Truncate(time.Microsecond)
@@ -545,8 +563,8 @@ func TestApplyPaymentOutcome(t *testing.T) {
 		wantErr     error
 	}{
 		{"paid locks the roster", pending(), nil, "PAID", nil},
-		{"expired releases the roster", pending(), func(o *usecases.PaymentOutcome) { o.Status = models.PaymentExpired }, "EXPIRED", nil},
-		{"cancelled releases the roster", pending(), func(o *usecases.PaymentOutcome) { o.Status = models.PaymentCancelled }, "CANCELLED", nil},
+		{"expired clears the attempt", pending(), func(o *usecases.PaymentOutcome) { o.Status = models.PaymentExpired }, "EXPIRED", nil},
+		{"cancelled clears the attempt", pending(), func(o *usecases.PaymentOutcome) { o.Status = models.PaymentCancelled }, "CANCELLED", nil},
 		{"deleted team is ignored", nil, nil, "", nil},
 		{"settled team is left alone", &models.TournamentTeam{ID: uuid.New(), Status: models.TournamentTeamStatusLocked}, nil, "", nil},
 		{"event for an older attempt is ignored", pending(), func(o *usecases.PaymentOutcome) {
