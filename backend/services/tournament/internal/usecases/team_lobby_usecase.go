@@ -368,6 +368,16 @@ func (u *TeamLobbyUseCase) Lock(ctx context.Context, teamID, accountID uuid.UUID
 	if err != nil {
 		return nil, err
 	}
+	// Settle a closed invoice first so this request can start a fresh attempt.
+	if team.Status == models.TournamentTeamStatusPaymentPending {
+		if err := u.Reconcile(ctx, team); err != nil {
+			return nil, err
+		}
+		team, err = u.repo.FindByID(ctx, teamID)
+		if err != nil {
+			return nil, translateLobbyError(err)
+		}
+	}
 	wasForming := team.Status == models.TournamentTeamStatusForming
 	if wasForming {
 		ready, err := u.memberReadiness(ctx, team)
@@ -469,6 +479,10 @@ func (u *TeamLobbyUseCase) Reconcile(ctx context.Context, team *models.Tournamen
 		return nil
 	}
 	if u.payments == nil {
+		return nil
+	}
+	// A failed/expired attempt has been cleared but the roster remains frozen.
+	if team.PaymentAttemptID == nil && team.PaymentID == nil && team.PaymentPayerID == nil && team.PaymentExpiresAt == nil && team.PaymentAmountMinor == 0 {
 		return nil
 	}
 	if team.PaymentAttemptID == nil || team.PaymentPayerID == nil || team.PaymentExpiresAt == nil {

@@ -189,10 +189,11 @@ func (r *teamLobbyRepository) Lock(ctx context.Context, teamID uuid.UUID, expect
 		if err != nil {
 			return err
 		}
-		if team.Status == models.TournamentTeamStatusPaymentPending || team.Status == models.TournamentTeamStatusLocked {
+		if team.Status == models.TournamentTeamStatusLocked ||
+			(team.Status == models.TournamentTeamStatusPaymentPending && team.PaymentAttemptID != nil) {
 			return nil
 		}
-		if team.Status != models.TournamentTeamStatusForming {
+		if team.Status != models.TournamentTeamStatusForming && team.Status != models.TournamentTeamStatusPaymentPending {
 			return ErrTeamLobbyNotForming
 		}
 		if len(expected) > 0 {
@@ -339,7 +340,8 @@ func (r *teamLobbyRepository) ApplyPayment(ctx context.Context, team *models.Tou
 		updates["status"] = models.TournamentTeamStatusLocked
 		updates["locked_at"] = time.Now().UTC()
 	case models.PaymentExpired, models.PaymentCancelled:
-		updates["status"] = models.TournamentTeamStatusForming
+		// Keep the roster frozen; a new attempt starts only when the captain retries.
+		updates["status"] = models.TournamentTeamStatusPaymentPending
 		updates["payment_attempt_id"] = nil
 		updates["payment_id"] = nil
 		updates["payment_payer_id"] = nil

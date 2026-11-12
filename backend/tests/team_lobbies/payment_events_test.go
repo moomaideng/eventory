@@ -52,10 +52,11 @@ func TestPaymentResultSettlesRegistrationWithoutRefresh(t *testing.T) {
 		t.Helper()
 		var team models.TournamentTeam
 		for deadline := time.Now().Add(20 * time.Second); time.Now().Before(deadline); time.Sleep(200 * time.Millisecond) {
+			team = models.TournamentTeam{}
 			if err := app.DB.First(&team, "id = ?", s.lobby.ID).Error; err != nil {
 				t.Fatal(err)
 			}
-			if team.Status == want {
+			if team.Status == want && (want != models.TournamentTeamStatusPaymentPending || team.PaymentAttemptID == nil) {
 				return
 			}
 		}
@@ -70,6 +71,16 @@ func TestPaymentResultSettlesRegistrationWithoutRefresh(t *testing.T) {
 	t.Run("failed", func(t *testing.T) {
 		s, paymentID := pendingLobby(t)
 		pay(t, s, paymentID, "FAILED")
-		waitForStatus(t, s, models.TournamentTeamStatusForming)
+		waitForStatus(t, s, models.TournamentTeamStatusPaymentPending)
+		resp, err := s.client.Do(http.MethodPost, "/lobbies/"+s.lobby.ID.String()+"/lock", nil, s.captain.AuthHeaders())
+		if err != nil || resp.StatusCode != 200 {
+			t.Fatalf("retry: %v %v", err, resp)
+		}
+		var retried handlers.TeamLobbyResponse
+		if err := resp.JSON(&retried); err != nil || retried.PaymentID == nil || *retried.PaymentID == paymentID {
+			t.Fatalf("retry result: %+v %v", retried, err)
+		}
+		pay(t, s, *retried.PaymentID, "SUCCEEDED")
+		waitForStatus(t, s, models.TournamentTeamStatusLocked)
 	})
 }

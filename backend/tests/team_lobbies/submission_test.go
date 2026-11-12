@@ -147,11 +147,13 @@ func TestRosterSubmission(t *testing.T) {
 		}
 	})
 	for _, result := range []string{"FAILED", "CANCELLED"} {
-		t.Run(result+" unlocks and permits a new attempt", func(t *testing.T) {
+		t.Run(result+" keeps the roster frozen and permits a new attempt", func(t *testing.T) {
 			s := fixture(t, 100)
 			first := lock(t, s)
 			request(t, payments, http.MethodPost, "/"+first.PaymentID.String()+"/mock-result", map[string]string{"result": result}, s.captain, 200)
-			refresh(t, s, "FORMING")
+			refresh(t, s, "PAYMENT_PENDING")
+			request(t, s.client, http.MethodDelete, "/lobbies/"+s.lobby.ID.String(), nil, s.captain, 409)
+			request(t, s.client, http.MethodPost, "/lobbies/"+s.lobby.ID.String()+"/invite/regenerate", nil, s.captain, 409)
 			review(t, s, 0)
 			request(t, payments, http.MethodPost, "/"+first.PaymentID.String()+"/mock-result", map[string]string{"result": "SUCCEEDED"}, s.captain, 409)
 			next := lock(t, s)
@@ -160,7 +162,48 @@ func TestRosterSubmission(t *testing.T) {
 			}
 		})
 	}
-	t.Run("expired attempt unlocks and cannot be paid", func(t *testing.T) {
+	t.Run("one retry recovers a closed invoice before its event arrives", func(t *testing.T) {
+		s := fixture(t, 100)
+		first := lock(t, s)
+		request(t, payments, http.MethodPost, "/"+first.PaymentID.String()+"/mock-result", map[string]string{"result": "FAILED"}, s.captain, 200)
+		// No refresh and no broker delivery: Lock must settle and retry in one call.
+		next := lock(t, s)
+		if next.Status != "PAYMENT_PENDING" || next.PaymentID == nil || *next.PaymentID == *first.PaymentID {
+			t.Fatalf("retry did not create a payable attempt: %+v", next)
+		}
+		if repeated := lock(t, s); repeated.PaymentID == nil || *repeated.PaymentID != *next.PaymentID {
+			t.Fatal("repeated retry created another invoice")
+		}
+		review(t, s, 0)
+		request(t, payments, http.MethodPost, "/"+next.PaymentID.String()+"/mock-result", map[string]string{"result": "SUCCEEDED"}, s.captain, 200)
+		refresh(t, s, "LOCKED")
+		review(t, s, 1)
+	})
+	t.Run("solo failed payment can be retried without another registration", func(t *testing.T) {
+		s := fixture(t, 100)
+		request(t, s.client, http.MethodDelete, "/lobbies/"+s.lobby.ID.String(), nil, s.captain, 204)
+		if err := app.DB.Model(s.tournament).Updates(map[string]any{"registration_mode": "SOLO", "max_team_size": 1}).Error; err != nil {
+			t.Fatal(err)
+		}
+		resp := request(t, s.client, http.MethodPost, "/tournaments/"+s.tournament.ID.String()+"/solo-register", map[string]any{"answers": []any{}}, s.captain, 201)
+		var first handlers.TeamLobbyResponse
+		if err := resp.JSON(&first); err != nil {
+			t.Fatal(err)
+		}
+		s.lobby.ID = first.ID
+		if first.PaymentID == nil {
+			t.Fatal("solo invoice missing")
+		}
+		request(t, payments, http.MethodPost, "/"+first.PaymentID.String()+"/mock-result", map[string]string{"result": "FAILED"}, s.captain, 200)
+		next := lock(t, s)
+		if next.ID != first.ID || len(next.Members) != 1 || next.PaymentID == nil || *next.PaymentID == *first.PaymentID {
+			t.Fatalf("solo retry lost its application: %+v", next)
+		}
+		request(t, payments, http.MethodPost, "/"+next.PaymentID.String()+"/mock-result", map[string]string{"result": "SUCCEEDED"}, s.captain, 200)
+		refresh(t, s, "LOCKED")
+		review(t, s, 1)
+	})
+	t.Run("expired attempt keeps the roster frozen and cannot be paid", func(t *testing.T) {
 		s := fixture(t, 100)
 		first := lock(t, s)
 		expired := time.Now().UTC().Add(-time.Minute).Truncate(time.Microsecond)
@@ -170,7 +213,7 @@ func TestRosterSubmission(t *testing.T) {
 		if err := app.DB.Model(&models.TournamentTeam{}).Where("id = ?", s.lobby.ID).Update("payment_expires_at", expired).Error; err != nil {
 			t.Fatal(err)
 		}
-		refresh(t, s, "FORMING")
+		refresh(t, s, "PAYMENT_PENDING")
 		review(t, s, 0)
 		request(t, payments, http.MethodPost, "/"+first.PaymentID.String()+"/mock-result", map[string]string{"result": "SUCCEEDED"}, s.captain, 409)
 	})
