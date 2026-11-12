@@ -1,17 +1,14 @@
-export const suggestedSponsorTags = [
-  "Technology",
-  "Gaming & Esports",
-  "Food & Beverage",
-  "Fashion & Apparel",
-  "Health & Wellness",
-  "Education",
-  "Finance",
-  "Travel & Hospitality",
-  "Media & Entertainment",
-] as const;
-
 export function normalizeSponsorTags(tags: string[]) {
   return [
-    ...new Set(tags.map((tag) => tag.trim().toLowerCase()).filter(Boolean)),
+    ...new Set(
+      tags
+        .map((tag) => tag.trim().replace(/^#+/, "").trim().toLowerCase())
+        .filter(Boolean)
+    ),
   ];
+}
+
+// Preserve spaces in saved legacy tags; tokenize only newly typed hashtags.
+export function parseSponsorTagDraft(draft: string) {
+  return normalizeSponsorTags(draft.split(/[\s#,]+/u));
 }

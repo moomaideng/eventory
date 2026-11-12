@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
-import { Mail, Search, Users } from "lucide-react";
+import { Mail, Users } from "lucide-react";
 import { useAuth } from "@/context/auth-context";
 import { $api } from "@/lib/api/client";
 import { Button } from "@/components/ui/button";
@@ -14,45 +14,49 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectGroup,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+
+import { SponsorDirectoryFilters } from "@/features/organizer/components/sponsor-directory-filters";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export function SponsorDirectory() {
   const { authorizationHeader, isLoading: authLoading } = useAuth();
-  const [searchDraft, setSearchDraft] = useState("");
-  const [tagDraft, setTagDraft] = useState("");
   const [search, setSearch] = useState("");
-  const [tag, setTag] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [tags, setTags] = useState<string[]>([]);
   const [page, setPage] = useState(1);
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(search.trim()), 250);
+    return () => clearTimeout(timer);
+  }, [search]);
+  function clearFilters() {
+    setSearch("");
+    setTags([]);
+    setPage(1);
+  }
+  function chooseTag(tag: string) {
+    if (!tags.includes(tag) && tags.length < 10) setTags([...tags, tag]);
+    setSearch("");
+    setPage(1);
+  }
   const { data, error, isLoading, isFetching, refetch } = $api.useQuery(
     "get",
     "/api/v1/accounts/sponsors",
     {
-      params: { query: { search, tag, page, pageSize: 12 } },
+      params: {
+        query: {
+          search: debouncedSearch,
+          tag: tags.join(","),
+          page,
+          pageSize: 12,
+        },
+      },
       headers: { Authorization: authorizationHeader ?? "" },
     },
     {
       enabled: Boolean(authorizationHeader),
       retry: false,
-      placeholderData: (previousData) => previousData,
     }
   );
-
-  function applyFilters(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setPage(1);
-    setSearch(searchDraft.trim());
-    setTag(tagDraft === "" ? "" : tagDraft);
-  }
 
   return (
     <div className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-8 px-4 py-10 sm:px-8">
@@ -66,63 +70,30 @@ export function SponsorDirectory() {
         </p>
       </header>
 
-      <form
-        className="grid gap-3 sm:grid-cols-[1fr_1fr_auto]"
-        onSubmit={applyFilters}
-      >
-        <div>
-          <label
-            htmlFor="sponsor-search"
-            className="mb-1 block text-sm font-medium"
-          >
-            Sponsor name
-          </label>
-          <Input
-            id="sponsor-search"
-            value={searchDraft}
-            onChange={(event) => setSearchDraft(event.target.value)}
-            placeholder="Search sponsors"
-            maxLength={100}
-          />
-        </div>
-        <div>
-          <label
-            htmlFor="sponsor-tag-filter"
-            className="mb-1 block text-sm font-medium"
-          >
-            Tag
-          </label>
-          <Select
-            items={[
-              { label: "All tags", value: "" },
-              ...(data?.tags ?? []).map((value) => ({
-                label: value,
-                value,
-              })),
-            ]}
-            value={tagDraft}
-            onValueChange={(value) => setTagDraft(String(value))}
-          >
-            <SelectTrigger id="sponsor-tag-filter" className="w-full">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectGroup>
-                <SelectItem value="">All tags</SelectItem>
-                {(data?.tags ?? []).map((value) => (
-                  <SelectItem key={value} value={value}>
-                    {value}
-                  </SelectItem>
-                ))}
-              </SelectGroup>
-            </SelectContent>
-          </Select>
-        </div>
-        <Button className="self-end" type="submit">
-          <Search data-icon="inline-start" />
-          Search
-        </Button>
-      </form>
+      <SponsorDirectoryFilters
+        search={search}
+        onSearch={(value) => {
+          setSearch(value);
+          setPage(1);
+        }}
+        selected={tags}
+        onAdd={chooseTag}
+        onRemove={(tag) => {
+          setTags(tags.filter((item) => item !== tag));
+          setPage(1);
+        }}
+        onClear={clearFilters}
+        tags={data?.tags ?? undefined}
+        loading={
+          authLoading ||
+          isLoading ||
+          isFetching ||
+          search.trim() !== debouncedSearch
+        }
+        error={Boolean(error)}
+        onRetry={() => void refetch()}
+        sponsors={data?.items ?? []}
+      />
 
       {authLoading || (authorizationHeader && isLoading) ? (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -171,21 +142,12 @@ export function SponsorDirectory() {
             </EmptyMedia>
             <EmptyTitle>No sponsors found</EmptyTitle>
             <EmptyDescription>
-              Try a different name or tag. Sponsors appear here after creating a
-              profile.
+              Sponsors must match every selected tag and your search. Remove a
+              tag or try another name.
             </EmptyDescription>
           </EmptyHeader>
-          {page > 1 || search || tag ? (
-            <Button
-              variant="outline"
-              onClick={() => {
-                setPage(1);
-                setSearch("");
-                setTag("");
-                setSearchDraft("");
-                setTagDraft("");
-              }}
-            >
+          {page > 1 || search || tags.length ? (
+            <Button variant="outline" onClick={clearFilters}>
               Clear filters
             </Button>
           ) : null}
@@ -198,7 +160,7 @@ export function SponsorDirectory() {
           </p>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {(data.items ?? []).map((sponsor) => (
-              <Card key={sponsor.accountId}>
+              <Card key={sponsor.accountId} id={`sponsor-${sponsor.accountId}`}>
                 <CardHeader>
                   <CardTitle className="text-lg">
                     {sponsor.sponsorName}
@@ -207,9 +169,16 @@ export function SponsorDirectory() {
                 <CardContent className="space-y-3">
                   <div className="flex flex-wrap gap-2">
                     {(sponsor.tags ?? []).map((tag) => (
-                      <Badge key={tag} variant="secondary">
-                        {tag}
-                      </Badge>
+                      <Button
+                        key={tag}
+                        variant="secondary"
+                        size="sm"
+                        disabled={tags.includes(tag) || tags.length >= 10}
+                        onClick={() => chooseTag(tag)}
+                        aria-label={`Filter by ${tag}`}
+                      >
+                        #{tag}
+                      </Button>
                     ))}
                   </div>
                   <a

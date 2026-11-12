@@ -102,8 +102,8 @@ type UpsertSponsorProfileRequest struct {
 }
 
 type SponsorDirectoryInput struct {
-	Search   string `query:"search" doc:"Search sponsor name"`
-	Tag      string `query:"tag" doc:"Filter by an exact tag (case-insensitive)" maxLength:"40"`
+	Search   string `query:"search" doc:"Search sponsor names or tags by partial text" maxLength:"100"`
+	Tag      string `query:"tag" doc:"Comma-separated exact tags; sponsors must match every tag (up to 10)" maxLength:"409"`
 	Page     int    `query:"page" default:"1" minimum:"1"`
 	PageSize int    `query:"pageSize" default:"12" minimum:"1" maximum:"50"`
 }
@@ -411,6 +411,9 @@ func RegisterAccountRoutes(api huma.API, accountUseCase *usecases.AccountUseCase
 		}
 		page, err := accountUseCase.ListSponsorDirectory(ctx, acc.ID, input.Search, input.Tag, input.Page, input.PageSize)
 		if err != nil {
+			if errors.Is(err, usecases.ErrInvalidSponsorDirectory) {
+				return nil, huma.Error422UnprocessableEntity("Use up to 10 tags of at most 40 characters each")
+			}
 			if errors.Is(err, usecases.ErrSponsorDirectoryForbidden) {
 				return nil, huma.Error403Forbidden("Organizer profile required")
 			}

@@ -11,7 +11,7 @@ func NormalizeSponsorTags(values []string) ([]string, error) {
 	tags := make([]string, 0, len(values))
 	seen := map[string]bool{}
 	for _, value := range values {
-		tag := strings.ToLower(strings.TrimSpace(value))
+		tag := strings.ToLower(strings.TrimSpace(strings.TrimLeft(strings.TrimSpace(value), "#")))
 		if tag == "" {
 			continue
 		}

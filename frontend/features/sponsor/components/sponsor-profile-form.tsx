@@ -1,4 +1,5 @@
 "use client";
+import { parseSponsorTagDraft } from "@/features/sponsor/tags";
 
 import {
   useState,
@@ -79,8 +80,7 @@ export function SponsorProfileForm({
     const result = sponsorProfileSchema.safeParse({
       sponsorName,
       sponsorEmail,
-      phone,
-      tags: [...tags, tagDraft],
+      tags: [...tags, ...parseSponsorTagDraft(tagDraft)],
     });
 
     if (!result.success) {

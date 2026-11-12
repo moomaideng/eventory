@@ -1,11 +1,10 @@
 import { z } from "zod";
 import { optionalPhoneSchema } from "@/lib/schemas";
+import { normalizeSponsorTags } from "@/features/sponsor/tags";
 
 export const sponsorTagsSchema = z
   .array(z.string())
-  .transform((tags) => [
-    ...new Set(tags.map((tag) => tag.trim().toLowerCase()).filter(Boolean)),
-  ])
+  .transform(normalizeSponsorTags)
   .pipe(
     z
       .array(z.string().max(40, "Each tag must be 40 characters or fewer."))
