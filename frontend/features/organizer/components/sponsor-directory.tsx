@@ -91,8 +91,6 @@ export function SponsorDirectory() {
           search.trim() !== debouncedSearch
         }
         error={Boolean(error)}
-        onRetry={() => void refetch()}
-        sponsors={data?.items ?? []}
       />
 
       {authLoading || (authorizationHeader && isLoading) ? (
