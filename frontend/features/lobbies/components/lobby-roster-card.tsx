@@ -58,12 +58,14 @@ export function LobbyRosterCard({
               Minimum {lobby.tournament.minTeamSize}
             </CardDescription>
           </div>
-          <Badge variant={rosterReady ? "secondary" : "outline"}>
-            {rosterReady
-              ? "Ready to lock"
-              : missingAnswers > 0
-                ? `${missingAnswers} need answers`
-                : `${lobby.tournament.minTeamSize - members.length} more needed`}
+          <Badge variant={!isForming || rosterReady ? "secondary" : "outline"}>
+            {!isForming
+              ? "Roster locked"
+              : rosterReady
+                ? "Ready to lock"
+                : missingAnswers > 0
+                  ? `${missingAnswers} need answers`
+                  : `${lobby.tournament.minTeamSize - members.length} more needed`}
           </Badge>
         </div>
       </CardHeader>

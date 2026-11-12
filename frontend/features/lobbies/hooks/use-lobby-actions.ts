@@ -69,23 +69,30 @@ export function useLobbyActions({
     );
   }
 
-  function lockRoster() {
+  function submitRoster(openCheckout: boolean) {
     if (!authorizationHeader || !lobby) return;
     void runAction(
-      "lock",
+      openCheckout ? "pay" : "lock",
       apiClient.POST("/api/v1/lobbies/{id}/lock", {
         params: { path: { id: lobby.id } },
         headers: { Authorization: authorizationHeader },
       }),
-      (updatedLobby) => {
-        void refetch();
-        if (
-          updatedLobby?.status === "PAYMENT_PENDING" &&
-          updatedLobby.paymentId
-        )
-          router.push(`/payments/${updatedLobby.paymentId}/checkout`);
-      }
+      openCheckout
+        ? (updatedLobby) => {
+            void refetch();
+            if (updatedLobby?.status === "PAYMENT_PENDING" && updatedLobby.paymentId)
+              router.push(`/payments/${updatedLobby.paymentId}/checkout`);
+          }
+        : undefined
     );
+  }
+
+  function lockRoster() {
+    submitRoster(false);
+  }
+
+  function payRegistration() {
+    submitRoster(true);
   }
 
   function removeMember(memberId: string) {
@@ -116,6 +123,7 @@ export function useLobbyActions({
     pendingAction,
     regenerateInvite,
     lockRoster,
+    payRegistration,
     removeMember,
     disbandLobby,
   };

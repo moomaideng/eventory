@@ -6,6 +6,7 @@ import { useAuth } from "@/context/auth-context";
 import { apiClient } from "@/lib/api/client";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { RegistrationPaymentButton } from "@/features/payments/components/registration-payment-button";
 import { teamPaymentReferenceSchema } from "@/features/payments/schemas";
 import type { Payment } from "@/features/payments/utils";
 
@@ -53,6 +54,8 @@ export function TeamSubmissionResult({ payment }: { payment: Payment }) {
           ? isSolo
             ? "Registration submitted"
             : "Team application submitted"
+          : team?.status === "PAYMENT_PENDING"
+            ? "Payment required"
           : team?.status === "FORMING"
             ? isSolo
               ? "Registration not completed"
@@ -66,11 +69,16 @@ export function TeamSubmissionResult({ payment }: { payment: Payment }) {
           ? isSolo
             ? "Your registration is with the organizer for review."
             : "Your application is with the organizer. Open your team to see its approval status."
+          : team?.status === "PAYMENT_PENDING"
+            ? "Your payment was unsuccessful or expired. Your roster and answers are saved. Try payment again to complete registration."
           : team?.status === "FORMING"
             ? isSolo
               ? "Payment was unsuccessful or expired. Your registration was not submitted. Go back to the tournament to try again."
               : "Payment was unsuccessful or expired. Your team was not submitted. Return to the lobby to edit your roster or try again."
             : "Your payment result is saved. We are checking the team application; do not create another payment."}
+        {team && ["CANCELLED", "EXPIRED"].includes(payment.status) && ["FORMING", "PAYMENT_PENDING"].includes(team.status) && (
+          <RegistrationPaymentButton teamId={team.id}>Try payment again</RegistrationPaymentButton>
+        )}
         {submission.isError && (
           <Button
             variant="outline"

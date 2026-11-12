@@ -2,7 +2,6 @@
 
 import React from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Users } from "lucide-react";
 import { $api, apiClient } from "@/lib/api/client";
@@ -19,12 +18,11 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { PublicTiersSection } from "@/features/sponsorship";
-import { Spinner } from "@/components/ui/spinner";
+import { RegistrationPaymentButton } from "@/features/payments/components/registration-payment-button";
 import {
   formatRegistrationType,
   formatTournamentStatus,
   isRegistrationOpen,
-  problemMessage,
 } from "../utils";
 import { TournamentAboutCard } from "./tournament-about-card";
 import { TournamentDetailsSkeleton } from "./tournament-details-skeleton";
@@ -39,7 +37,6 @@ export function TournamentDetails({
   sponsorMode?: boolean;
 }) {
   const catalogPath = sponsorMode ? "/sponsor/tournaments" : "/tournaments";
-  const router = useRouter();
   const { authorizationHeader } = useAuth();
   const { data, error, isLoading } = $api.useQuery(
     "get",
@@ -51,7 +48,6 @@ export function TournamentDetails({
     data: myTeam,
     isFetching: isMyTeamFetching,
     isError: isMyTeamError,
-    refetch: refetchMyTeam,
   } = useQuery({
     queryKey: [
       "get",
@@ -73,40 +69,6 @@ export function TournamentDetails({
       return result.data;
     },
   });
-  const [isRetrying, setIsRetrying] = React.useState(false);
-  const [retryError, setRetryError] = React.useState("");
-
-  // Solo entries return to FORMING when a payment is cancelled or expires;
-  // locking again starts a new payment attempt with the saved answers.
-  async function retryRegistration(teamId: string) {
-    if (!authorizationHeader || isRetrying) return;
-    setIsRetrying(true);
-    setRetryError("");
-    try {
-      const { data: lobby, error: lockError } = await apiClient.POST(
-        "/api/v1/lobbies/{id}/lock",
-        {
-          params: { path: { id: teamId } },
-          headers: { Authorization: authorizationHeader },
-        }
-      );
-      if (lockError) {
-        setRetryError(
-          problemMessage(lockError, "Could not resubmit your registration.")
-        );
-        return;
-      }
-      if (lobby?.status === "PAYMENT_PENDING" && lobby.paymentId) {
-        router.push(`/payments/${lobby.paymentId}/checkout`);
-        return;
-      }
-      await refetchMyTeam();
-    } catch {
-      setRetryError("Network failure. Please retry shortly.");
-    } finally {
-      setIsRetrying(false);
-    }
-  }
 
   if (isLoading) return <TournamentDetailsSkeleton />;
 
@@ -247,19 +209,7 @@ export function TournamentDetails({
                       Please complete your entry fee payment to finalize your registration.
                     </AlertDescription>
                   </Alert>
-                  {myTeam.paymentId ? (
-                    <Button
-                      render={<Link href={`/payments/${myTeam.paymentId}/checkout`} />}
-                      nativeButton={false}
-                      className="self-start"
-                    >
-                      Complete payment
-                    </Button>
-                  ) : (
-                    <Button disabled className="self-start">
-                      Payment pending
-                    </Button>
-                  )}
+                  <RegistrationPaymentButton teamId={myTeam.id} />
                 </>
               ) : myTeam.status === "ACCEPTED" ? (
                 <>
@@ -294,21 +244,9 @@ export function TournamentDetails({
                       expired. Continue to submit it again.
                     </AlertDescription>
                   </Alert>
-                  {retryError ? (
-                    <Alert variant="destructive">
-                      <AlertDescription>{retryError}</AlertDescription>
-                    </Alert>
-                  ) : null}
-                  <Button
-                    className="self-start"
-                    disabled={isRetrying}
-                    onClick={() => void retryRegistration(myTeam.id)}
-                  >
-                    {isRetrying ? <Spinner data-icon="inline-start" /> : null}
-                    {tournament.entryFee > 0
-                      ? "Continue to payment"
-                      : "Submit registration"}
-                  </Button>
+                  <RegistrationPaymentButton teamId={myTeam.id}>
+                    {tournament.entryFee > 0 ? "Continue to payment" : "Submit registration"}
+                  </RegistrationPaymentButton>
                 </>
               ) : (
                 <Button disabled className="self-start">

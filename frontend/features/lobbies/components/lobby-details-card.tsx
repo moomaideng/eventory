@@ -3,6 +3,7 @@
 import React from "react";
 import {
   CalendarDays,
+  CreditCard,
   LockKeyhole,
   MapPin,
   ShieldAlert,
@@ -32,6 +33,7 @@ interface LobbyDetailsCardProps {
   confirmDisband: boolean;
   onSetConfirmDisband: (confirm: boolean) => void;
   onLockRoster: () => void;
+  onPayRegistration: () => void;
   onDisbandLobby: () => void;
 }
 
@@ -41,6 +43,7 @@ export function LobbyDetailsCard({
   confirmDisband,
   onSetConfirmDisband,
   onLockRoster,
+  onPayRegistration,
   onDisbandLobby,
 }: LobbyDetailsCardProps) {
   const [now, setNow] = React.useState(() => Date.now());
@@ -51,6 +54,7 @@ export function LobbyDetailsCard({
   const members = lobby.members ?? [];
   const isCaptain = lobby.viewerRole === "CAPTAIN";
   const isForming = lobby.status === "FORMING";
+  const isPaymentPending = lobby.status === "PAYMENT_PENDING";
   const rosterReady =
     members.length >= lobby.tournament.minTeamSize &&
     members.length <= lobby.tournament.maxTeamSize &&
@@ -89,26 +93,30 @@ export function LobbyDetailsCard({
                 : !registrationOpen
                   ? "Registration is closed."
                   : lobby.tournament.entryFee > 0
-                    ? "Your roster will be frozen while you pay the full team fee. Submission follows successful payment."
+                    ? "Lock your roster first, then select Pay to complete the team payment and submit."
                     : "Ready to submit. Locking sends your roster to the organizer for approval."}
             </p>
           )}
         </CardContent>
-        {isCaptain && isForming ? (
+        {isCaptain && (isForming || isPaymentPending) ? (
           <CardFooter>
             <Button
               className="w-full"
-              disabled={!rosterReady || !registrationOpen || !!pendingAction}
-              onClick={onLockRoster}
+              disabled={(isForming && !rosterReady) || !registrationOpen || !!pendingAction}
+              onClick={isForming ? onLockRoster : onPayRegistration}
             >
-              {pendingAction === "lock" ? (
+              {pendingAction === "lock" || pendingAction === "pay" ? (
                 <Spinner data-icon="inline-start" />
+              ) : isPaymentPending ? (
+                <CreditCard data-icon="inline-start" />
               ) : (
                 <LockKeyhole data-icon="inline-start" />
               )}
-              {lobby.tournament.entryFee > 0
-                ? "Lock roster & pay"
-                : "Lock roster & submit"}
+              {isPaymentPending
+                ? "Pay"
+                : lobby.tournament.entryFee > 0
+                  ? "Lock roster"
+                  : "Lock roster & submit"}
             </Button>
           </CardFooter>
         ) : null}
