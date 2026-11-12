@@ -2,34 +2,15 @@ package repositories
 
 import (
 	"context"
-	"os"
 	"testing"
 
-	"gorm.io/driver/postgres"
-	"gorm.io/gorm"
+	"github.com/moomaideng/eventory/internal/testutil"
 )
 
 // Temporary tables shadow the application tables on this transaction's connection.
 // No seed data is changed, even when running against a development database.
 func TestSponsorDirectoryFiltersPostgres(t *testing.T) {
-	dsn := os.Getenv("TEST_DATABASE_DSN")
-	if dsn == "" {
-		t.Skip("TEST_DATABASE_DSN is required for PostgreSQL query tests")
-	}
-	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	sqlDB, err := db.DB()
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer sqlDB.Close()
-	tx := db.Begin()
-	if tx.Error != nil {
-		t.Fatal(tx.Error)
-	}
-	defer tx.Rollback()
+	tx := testutil.PostgresTransaction(t)
 	for _, statement := range []string{
 		"CREATE TEMP TABLE accounts (id uuid PRIMARY KEY, status text) ON COMMIT DROP",
 		"CREATE TEMP TABLE sponsor_profiles (account_id uuid PRIMARY KEY, sponsor_name text, sponsor_email text, tags jsonb, created_at timestamptz, updated_at timestamptz) ON COMMIT DROP",

@@ -3,36 +3,17 @@ package repositories_test
 import (
 	"context"
 	"errors"
-	"os"
 	"testing"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/moomaideng/eventory/internal/testutil"
 	"github.com/moomaideng/eventory/services/tournament/internal/repositories"
 	"github.com/moomaideng/eventory/services/tournament/models"
-	"gorm.io/driver/postgres"
-	"gorm.io/gorm"
 )
 
 func TestOrganizerDashboardOwnershipPostgres(t *testing.T) {
-	dsn := os.Getenv("TEST_DATABASE_DSN")
-	if dsn == "" {
-		t.Skip("set TEST_DATABASE_DSN to run the PostgreSQL ownership integration test")
-	}
-	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	sqlDB, err := db.DB()
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer sqlDB.Close()
-	tx := db.Begin()
-	if tx.Error != nil {
-		t.Fatal(tx.Error)
-	}
-	defer tx.Rollback()
+	tx := testutil.PostgresTransaction(t)
 	schema := "dashboard_test_" + uuid.New().String()[:8]
 	if err := tx.Exec("CREATE SCHEMA " + schema).Error; err != nil {
 		t.Fatal(err)
