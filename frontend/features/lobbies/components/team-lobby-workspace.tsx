@@ -63,6 +63,7 @@ export function TeamLobbyWorkspace({ inviteCode }: { inviteCode: string }) {
     pendingAction,
     regenerateInvite,
     lockRoster,
+    payRegistration,
     removeMember,
     disbandLobby,
   } = useLobbyActions({
@@ -165,13 +166,8 @@ export function TeamLobbyWorkspace({ inviteCode }: { inviteCode: string }) {
           <AlertTitle>Roster locked · awaiting payment</AlertTitle>
           <AlertDescription>
             Your team is not in the organizer review list yet. Complete the full
-            team payment to submit. A failed, cancelled, or expired payment
-            unlocks the roster after verification.
-            {isCaptain && (
-              <Button disabled={!!pendingAction} onClick={lockRoster}>
-                Continue to payment
-              </Button>
-            )}
+            team payment to submit. If payment fails, is cancelled, or expires,
+            your roster and answers stay locked. Select Pay to try again.
           </AlertDescription>
         </Alert>
       )}
@@ -211,6 +207,7 @@ export function TeamLobbyWorkspace({ inviteCode }: { inviteCode: string }) {
             confirmDisband={confirmDisband}
             onSetConfirmDisband={setConfirmDisband}
             onLockRoster={lockRoster}
+            onPayRegistration={payRegistration}
             onDisbandLobby={disbandLobby}
           />
         </div>

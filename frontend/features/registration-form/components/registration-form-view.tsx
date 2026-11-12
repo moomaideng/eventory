@@ -23,6 +23,7 @@ import {
 } from "@/features/registration-form/schemas";
 import type { components } from "@/lib/api/schema";
 import { isRegistrationOpen } from "@/features/tournaments/utils";
+import { RegistrationPaymentButton } from "@/features/payments/components/registration-payment-button";
 
 type ApiFormField = components["schemas"]["FormField"];
 
@@ -260,10 +261,19 @@ export function RegistrationFormView({
       <div className="mx-auto w-full max-w-3xl px-4 py-8">
         <Card>
           <CardContent className="flex flex-col items-center gap-4 pt-6 text-center">
-            <h2 className="text-xl font-semibold">Already Registered</h2>
+            <h2 className="text-xl font-semibold">
+              {["FORMING", "PAYMENT_PENDING"].includes(myTeamQuery.data.status)
+                ? "Complete your registration"
+                : "Already Registered"}
+            </h2>
             <p className="text-muted-foreground">
-              You are already registered for this tournament.
+              {["FORMING", "PAYMENT_PENDING"].includes(myTeamQuery.data.status)
+                ? "Your answers are saved. Continue your existing registration without filling out the form again."
+                : "You are already registered for this tournament."}
             </p>
+            {["FORMING", "PAYMENT_PENDING"].includes(myTeamQuery.data.status) && (
+              <RegistrationPaymentButton teamId={myTeamQuery.data.id} />
+            )}
             <Button onClick={() => router.push(`/tournaments/${tournamentId}`)}>
               View Tournament Details
             </Button>
