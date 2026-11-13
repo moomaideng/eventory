@@ -63,6 +63,7 @@ All backend services (`services/tournament`, `services/account`, `services/payme
 - Keep files focused and readable.
 - Pass all required dependencies (Repositories, Ports, Services) through constructor functions (`New<Component>UseCase(...)`).
 - Never use `.With<Dependency>(...)` chaining to resolve circular dependencies between use cases. Merge the overlapping concepts into a single domain usecase instead.
+- Since this is a student project, never care about backward compatibility or migration unless requested otherwise.
 - Whenever routes, operations, path parameters, query parameters, request bodies, or response DTOs are added or modified:
   ```bash
   npm --prefix frontend run openapi:generate
@@ -93,4 +94,3 @@ For a clean, end-to-end CRUD reference adhering strictly to these layer boundari
   - Huma v2 route registrations, request/response DTO schemas with doc/validation tags, auth context extraction, and error translation.
 - **Unit Tests:** [`services/tournament/internal/usecases/tournament_staff_usecase_test.go`](services/tournament/internal/usecases/tournament_staff_usecase_test.go)
   - Table-driven unit tests using repository stubs and standard Go testing assertions.
-
