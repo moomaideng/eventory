@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/moomaideng/eventory/services/tournament/internal/forms"
@@ -21,7 +20,6 @@ var (
 	ErrDuplicateFieldID      = errors.New("duplicate field id in form")
 	ErrEmptyFieldID          = errors.New("field id cannot be empty")
 	ErrEmptyFieldLabel       = errors.New("field label cannot be empty")
-	ErrRegistrationClosed    = errors.New("tournament registration is not open")
 	ErrRegistrationFormLocked = errors.New("registration form cannot be modified after registration has started")
 	ErrUnrecognizedField     = forms.ErrUnrecognizedField
 	ErrDuplicateFieldAnswer  = forms.ErrDuplicateFieldAnswer
@@ -126,47 +124,6 @@ func (u *RegistrationFormUseCase) SaveForm(
 	}
 
 	return u.formRepo.UpsertForm(ctx, form)
-}
-
-func (u *RegistrationFormUseCase) SubmitResponse(
-	ctx context.Context,
-	accountID uuid.UUID,
-	tournamentID uuid.UUID,
-	answers []models.FieldAnswer,
-) (*models.FormResponse, error) {
-	tournament, err := u.tournamentRepo.GetByID(ctx, tournamentID)
-	if errors.Is(err, repositories.ErrTournamentNotFound) {
-		return nil, ErrTournamentNotFound
-	}
-	if err != nil {
-		return nil, err
-	}
-
-	if tournament.Status != models.TournamentStatusRegistration || tournament.IsRegistrationClosed(time.Now()) {
-		return nil, ErrRegistrationClosed
-	}
-
-	form, err := u.formRepo.GetFormByTournamentID(ctx, tournamentID)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := u.registry.ValidateFormAnswers(form.Fields, answers); err != nil {
-		return nil, err
-	}
-
-	resp := &models.FormResponse{
-		TournamentID: tournamentID,
-		AccountID:    accountID,
-		Answers:      answers,
-	}
-
-	if _, err := u.formRepo.GetResponseByAccount(ctx, tournamentID, accountID); err == nil {
-		return nil, ErrResponseAlreadyExists
-	} else if !errors.Is(err, repositories.ErrResponseNotFound) {
-		return nil, err
-	}
-	return u.formRepo.UpsertResponse(ctx, resp)
 }
 
 func (u *RegistrationFormUseCase) GetMyResponse(

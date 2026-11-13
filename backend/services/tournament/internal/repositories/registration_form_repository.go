@@ -54,9 +54,6 @@ func (r *registrationFormRepositoryImpl) EnsureIndexes(ctx context.Context) erro
 		return err
 	}
 
-	if err := r.migrateResponseKeys(ctx); err != nil {
-		return err
-	}
 	_, err = r.responsesCol.Indexes().CreateOne(ctx, mongo.IndexModel{
 		Keys:    bson.D{{Key: "tournament_id", Value: 1}, {Key: "account_id", Value: 1}},
 		Options: options.Index().SetUnique(true),

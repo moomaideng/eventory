@@ -52,18 +52,6 @@ type FormResponseItem struct {
 	Answers      []models.FieldAnswer `json:"answers"`
 }
 
-type SubmitFormResponseInput struct {
-	TournamentID uuid.UUID `path:"tournamentId" doc:"Tournament UUID"`
-	Body         struct {
-		Answers []models.FieldAnswer `json:"answers" doc:"Submitted answers"`
-	}
-}
-
-type SubmitFormResponseOutput struct {
-	Status int `default:"201"`
-	Body   FormResponseItem
-}
-
 type GetMyFormResponseInput struct {
 	TournamentID uuid.UUID `path:"tournamentId" doc:"Tournament UUID"`
 }
@@ -114,10 +102,6 @@ func registrationFormHTTPError(err error) error {
 		return huma.Error404NotFound("Registration form response not found", err)
 	case errors.Is(err, usecases.ErrNotTournamentOwner):
 		return huma.Error403Forbidden("Only the tournament organizer can perform this action", err)
-	case errors.Is(err, usecases.ErrResponseAlreadyExists):
-		return huma.Error409Conflict("Registration form response already submitted", err)
-	case errors.Is(err, usecases.ErrRegistrationClosed):
-		return huma.Error400BadRequest("Tournament registration is not open", err)
 	case errors.Is(err, usecases.ErrRegistrationFormLocked):
 		return huma.Error400BadRequest("Registration form cannot be modified after registration has started", err)
 	case errors.Is(err, usecases.ErrInvalidFormTitle),
