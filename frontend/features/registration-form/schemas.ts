@@ -20,10 +20,12 @@ export const formFieldOptionSchema = z.object({
 
 export type FormFieldOption = z.infer<typeof formFieldOptionSchema>;
 
-export const textConfigSchema = z.object({
-  minLength: z.coerce.number().int().min(0).optional(),
-  maxLength: z.coerce.number().int().min(0).optional(),
-});
+export const SHORT_TEXT_MIN_LENGTH = 0;
+export const SHORT_TEXT_MAX_LENGTH = 200;
+export const LONG_TEXT_MIN_LENGTH = 0;
+export const LONG_TEXT_MAX_LENGTH = 2000;
+
+export const textConfigSchema = z.object({});
 export type TextConfig = z.infer<typeof textConfigSchema>;
 
 export const numberConfigSchema = z.object({

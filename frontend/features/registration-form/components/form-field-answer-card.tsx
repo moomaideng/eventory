@@ -14,7 +14,11 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import type { AnswerValue } from "@/features/registration-form/utils";
-import type { FormField } from "@/features/registration-form/schemas";
+import {
+  LONG_TEXT_MAX_LENGTH,
+  SHORT_TEXT_MAX_LENGTH,
+  type FormField,
+} from "@/features/registration-form/schemas";
 
 export interface FormFieldAnswerCardProps {
   field: FormField;
@@ -43,7 +47,7 @@ function FieldInput({ field, value, invalid, onChange, onBlur }: FieldInputProps
         <Input
           id={inputId}
           value={text}
-          maxLength={field.config.maxLength}
+          maxLength={SHORT_TEXT_MAX_LENGTH}
           aria-invalid={invalid}
           onChange={(e) => onChange(e.target.value)}
           onBlur={onBlur}
@@ -55,7 +59,7 @@ function FieldInput({ field, value, invalid, onChange, onBlur }: FieldInputProps
         <Textarea
           id={inputId}
           value={text}
-          maxLength={field.config.maxLength}
+          maxLength={LONG_TEXT_MAX_LENGTH}
           rows={4}
           aria-invalid={invalid}
           onChange={(e) => onChange(e.target.value)}

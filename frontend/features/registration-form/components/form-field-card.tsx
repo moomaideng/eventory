@@ -332,49 +332,6 @@ export function FormFieldCard({
             </div>
           )}
 
-          {/* Type-Specific Options for SHORT_TEXT & LONG_TEXT */}
-          {(field.type === "SHORT_TEXT" || field.type === "LONG_TEXT") && (
-            <div className="grid grid-cols-2 gap-3 rounded-lg border border-border/70 bg-muted/20 p-4">
-              <Field>
-                <FieldLabel htmlFor={`min-len-${field.id}`}>Min Length</FieldLabel>
-                <Input
-                  id={`min-len-${field.id}`}
-                  type="number"
-                  min={0}
-                  value={field.config.minLength ?? ""}
-                  onChange={(e) =>
-                    onUpdate({
-                      ...field,
-                      config: {
-                        ...field.config,
-                        minLength: e.target.value === "" ? undefined : Number(e.target.value),
-                      },
-                    })
-                  }
-                  placeholder="Optional"
-                />
-              </Field>
-              <Field>
-                <FieldLabel htmlFor={`max-len-${field.id}`}>Max Length</FieldLabel>
-                <Input
-                  id={`max-len-${field.id}`}
-                  type="number"
-                  min={0}
-                  value={field.config.maxLength ?? ""}
-                  onChange={(e) =>
-                    onUpdate({
-                      ...field,
-                      config: {
-                        ...field.config,
-                        maxLength: e.target.value === "" ? undefined : Number(e.target.value),
-                      },
-                    })
-                  }
-                  placeholder="Optional"
-                />
-              </Field>
-            </div>
-          )}
         </FieldGroup>
       </CardContent>
     </Card>
