@@ -1,23 +1,22 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, X } from "lucide-react";
+import { X } from "lucide-react";
 import {
   Field,
   FieldDescription,
   FieldError,
   FieldGroup,
   FieldLabel,
-  FieldLegend,
-  FieldSet,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
   normalizeSponsorTags,
-  suggestedSponsorTags,
+  parseSponsorTagDraft,
 } from "@/features/sponsor/tags";
+import { sponsorTagsSchema } from "@/features/sponsor/schemas";
 
 export function SponsorTagsField({
   value,
@@ -38,105 +37,60 @@ export function SponsorTagsField({
 }) {
   const [addError, setAddError] = useState("");
   const selected = normalizeSponsorTags(value);
-  function remove(tag: string) {
-    onChange(selected.filter((item) => item !== tag));
-    setAddError("");
-  }
-  function addCustomTag() {
-    const tag = draft.trim().toLowerCase();
-    if (!tag) return;
-    if (tag.length > 40) {
-      setAddError("Each tag must be 40 characters or fewer.");
+  function add() {
+    const pending = parseSponsorTagDraft(draft);
+    if (!pending.length) return;
+    const result = sponsorTagsSchema.safeParse([...selected, ...pending]);
+    if (!result.success) {
+      setAddError(result.error.issues[0].message);
       return;
     }
-    if (selected.includes(tag)) {
-      setAddError("This tag is already selected.");
-      return;
-    }
-    if (selected.length >= 10) {
-      setAddError("Use up to 10 tags. Remove a tag to add another.");
-      return;
-    }
-    onChange([...selected, tag]);
+    onChange(result.data);
     onDraftChange("");
     setAddError("");
   }
   return (
-    <FieldSet disabled={disabled} aria-describedby={`${id}-help`}>
-      <FieldLegend>Tags</FieldLegend>
-      <FieldDescription id={`${id}-help`}>
-        Choose any that fit, or add your own. You can select up to 10 tags in
-        total.
-      </FieldDescription>
-      <FieldGroup className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-        {suggestedSponsorTags.map((label, index) => {
-          const tag = label.toLowerCase();
-          const checked = selected.includes(tag);
-          return (
-            <Field
-              key={tag}
-              orientation="horizontal"
-              data-disabled={disabled || (!checked && selected.length >= 10)}
-            >
-              <input
-                id={`${id}-option-${index}`}
-                type="checkbox"
-                className="accent-primary size-4 shrink-0"
-                checked={checked}
-                disabled={disabled || (!checked && selected.length >= 10)}
-                onChange={(event) =>
-                  event.target.checked
-                    ? onChange([...selected, tag])
-                    : remove(tag)
-                }
-              />
-              <FieldLabel htmlFor={`${id}-option-${index}`}>{label}</FieldLabel>
-            </Field>
-          );
-        })}
-      </FieldGroup>
-      <Field data-invalid={Boolean(addError || error)}>
-        <FieldLabel htmlFor={`${id}-custom`}>Add a custom tag</FieldLabel>
-        <div className="flex gap-2">
-          <Input
-            id={`${id}-custom`}
-            value={draft}
-            disabled={disabled}
-            placeholder="e.g. valorant"
-            aria-invalid={Boolean(addError)}
-            aria-describedby={`${id}-custom-help`}
-            onChange={(event) => {
-              onDraftChange(event.target.value);
-              setAddError("");
-            }}
-            onKeyDown={(event) => {
-              if (event.key === "Enter" && !event.nativeEvent.isComposing) {
-                event.preventDefault();
-                addCustomTag();
-              }
-            }}
-          />
-          <Button
-            type="button"
-            variant="outline"
-            disabled={disabled || !draft.trim()}
-            onClick={addCustomTag}
-          >
-            <Plus data-icon="inline-start" />
-            Add tag
-          </Button>
-        </div>
-        <FieldDescription id={`${id}-custom-help`}>
-          Type one tag, then click Add tag or press Enter. You can add more than
-          one. Up to 40 characters per tag.
+    <FieldGroup>
+      <Field data-invalid={Boolean(addError || error)} data-disabled={disabled}>
+        <FieldLabel htmlFor={id}>Tags</FieldLabel>
+        <FieldDescription id={id + "-help"}>
+          Add hashtags that describe your interests, like #gaming #valorant. Use
+          up to 10 tags, with up to 40 characters each.
         </FieldDescription>
-        {addError || error ? (
-          <FieldError>{addError || error}</FieldError>
-        ) : null}
+        <Input
+          id={id}
+          value={draft}
+          disabled={disabled}
+          placeholder="Type a hashtag, e.g. #gaming"
+          aria-invalid={Boolean(addError || error)}
+          aria-describedby={id + "-help " + id + "-instructions " + id + "-error"}
+          onChange={(event) => {
+            onDraftChange(event.target.value);
+            setAddError("");
+          }}
+          onKeyDown={(event) => {
+            if (event.nativeEvent.isComposing) return;
+            if (
+              event.key === "Enter" ||
+              event.key === " " ||
+              event.key === ","
+            ) {
+              event.preventDefault();
+              add();
+            }
+          }}
+          onBlur={add}
+        />
+        <FieldDescription id={id + "-instructions"}>
+          Type a tag, then press Space or Enter to add it below. You can paste
+          several hashtags at once. Any tags still in this box are included when
+          you save your profile.
+        </FieldDescription>
+        <FieldError id={id + "-error"}>{addError || error}</FieldError>
       </Field>
       <div className="flex flex-col gap-2" aria-live="polite">
         <p className="text-muted-foreground text-sm">
-          Selected tags ({selected.length}/10)
+          Your tags ({selected.length}/10)
         </p>
         <div className="flex flex-wrap gap-2">
           {selected.map((tag) => (
@@ -145,28 +99,27 @@ export function SponsorTagsField({
               variant="secondary"
               className="max-w-full gap-1 break-words whitespace-normal"
             >
-              {suggestedSponsorTags.find(
-                (label) => label.toLowerCase() === tag
-              ) ?? tag}
+              #{tag}
               <Button
                 type="button"
                 variant="ghost"
                 size="icon-xs"
                 aria-label={`Remove ${tag}`}
                 disabled={disabled}
-                onClick={() => remove(tag)}
+                onClick={() => {
+                  onChange(selected.filter((item) => item !== tag));
+                  setAddError("");
+                }}
               >
                 <X />
               </Button>
             </Badge>
           ))}
-          {!selected.length ? (
-            <p className="text-muted-foreground text-sm">
-              No tags selected yet.
-            </p>
-          ) : null}
+          {!selected.length && (
+            <p className="text-muted-foreground text-sm">No tags added yet.</p>
+          )}
         </div>
       </div>
-    </FieldSet>
+    </FieldGroup>
   );
 }

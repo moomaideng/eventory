@@ -127,10 +127,20 @@ func (m *mockAccountRepository) ListVisibleSponsorProfiles(_ context.Context, se
 		if account == nil || account.Status != models.AccountStatusActive || profile.SponsorEmail == "" {
 			continue
 		}
-		if search != "" && !strings.Contains(strings.ToLower(profile.SponsorName), strings.ToLower(search)) {
+		matchesSearch := strings.Contains(strings.ToLower(profile.SponsorName), strings.ToLower(search))
+		for _, tag := range profile.Tags {
+			matchesSearch = matchesSearch || strings.Contains(tag, strings.ToLower(search))
+		}
+		if search != "" && !matchesSearch {
 			continue
 		}
-		if category != "" && !slices.Contains(profile.Tags, strings.ToLower(category)) {
+		matchesTags := true
+		for _, tag := range strings.Split(category, ",") {
+			if tag != "" && !slices.Contains(profile.Tags, strings.ToLower(tag)) {
+				matchesTags = false
+			}
+		}
+		if !matchesTags {
 			continue
 		}
 		items = append(items, *profile)
@@ -191,6 +201,17 @@ func TestSponsorDirectoryListsProfilesAndRequiresOrganizer(t *testing.T) {
 	}
 	if len(page.Tags) != 2 {
 		t.Fatalf("expected two tag filters: %v", page.Tags)
+	}
+	page, err = uc.ListSponsorDirectory(ctx, organizerID, "#VALO", "#CHESS, valorant,CHESS", 1, 12)
+	if err != nil || page.Total != 1 {
+		t.Fatalf("hashtag search and normalized AND filters should match: %+v %v", page, err)
+	}
+	page, err = uc.ListSponsorDirectory(ctx, organizerID, "", "chess,volleyball", 1, 12)
+	if err != nil || page.Total != 0 || len(page.Tags) != 2 {
+		t.Fatalf("no AND matches must still return the full tag list: %+v %v", page, err)
+	}
+	if _, err := uc.ListSponsorDirectory(ctx, organizerID, "", strings.Repeat("a", 41), 1, 12); err != usecases.ErrInvalidSponsorDirectory {
+		t.Fatalf("invalid tag filter should be rejected: %v", err)
 	}
 	if _, err := uc.ListSponsorDirectory(ctx, sponsorID, "", "", 1, 12); err != usecases.ErrSponsorDirectoryForbidden {
 		t.Fatalf("expected organizer guard: %v", err)

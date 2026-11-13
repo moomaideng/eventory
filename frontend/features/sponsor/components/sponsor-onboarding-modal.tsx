@@ -1,4 +1,5 @@
 "use client";
+import { parseSponsorTagDraft } from "@/features/sponsor/tags";
 
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
@@ -71,7 +72,7 @@ function SponsorOnboardingForm({
     const validation = sponsorOnboardingSchema.safeParse({
       sponsorName,
       sponsorEmail,
-      tags: [...tags, tagDraft],
+      tags: [...tags, ...parseSponsorTagDraft(tagDraft)],
     });
 
     if (!validation.success) {

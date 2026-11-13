@@ -2427,9 +2427,9 @@ export interface operations {
     "list-sponsor-directory": {
         parameters: {
             query?: {
-                /** @description Search sponsor name */
+                /** @description Search sponsor names or tags by partial text */
                 search?: string;
-                /** @description Filter by an exact tag (case-insensitive) */
+                /** @description Comma-separated exact tags; sponsors must match every tag (up to 10) */
                 tag?: string;
                 page?: number;
                 pageSize?: number;

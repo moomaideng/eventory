@@ -473,13 +473,17 @@ func (u *AccountUseCase) ListSponsorDirectory(ctx context.Context, organizerID u
 	if pageSize > 50 {
 		pageSize = 50
 	}
-	search = strings.TrimSpace(search)
-	tag = strings.ToLower(strings.TrimSpace(tag))
-	if len(search) > 100 {
-		search = search[:100]
+	search = strings.TrimLeft(strings.TrimSpace(search), "#")
+	tag = strings.TrimSpace(tag)
+	if strings.TrimSpace(tag) != "" {
+		selected, normalizeErr := models.NormalizeSponsorTags(strings.Split(tag, ","))
+		if normalizeErr != nil {
+			return nil, ErrInvalidSponsorDirectory
+		}
+		tag = strings.Join(selected, ",")
 	}
-	if len(tag) > 40 {
-		tag = tag[:40]
+	if runes := []rune(search); len(runes) > 100 {
+		search = string(runes[:100])
 	}
 	items, total, err := u.accountRepo.ListVisibleSponsorProfiles(ctx, search, tag, page, pageSize)
 	if err != nil {

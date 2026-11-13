@@ -215,10 +215,12 @@ func (r *accountRepositoryImpl) ListVisibleSponsorProfiles(ctx context.Context, 
 	if search != "" {
 		// Escape LIKE wildcards so the search box treats input as plain text.
 		escaped := strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`).Replace(strings.ToLower(search))
-		query = query.Where(`LOWER(sponsor_profiles.sponsor_name) LIKE ? ESCAPE '\'`, "%"+escaped+"%")
+		query = query.Where(`(LOWER(sponsor_profiles.sponsor_name) LIKE ? ESCAPE '\' OR EXISTS (SELECT 1 FROM jsonb_array_elements_text(sponsor_profiles.tags) AS t(value) WHERE LOWER(t.value) LIKE ? ESCAPE '\'))`, "%"+escaped+"%", "%"+escaped+"%")
 	}
-	if tag != "" {
-		query = query.Where("jsonb_exists(sponsor_profiles.tags, ?)", strings.ToLower(tag))
+	for _, selected := range strings.Split(tag, ",") {
+		if selected = strings.TrimSpace(selected); selected != "" {
+			query = query.Where("jsonb_exists(sponsor_profiles.tags, ?)", strings.ToLower(selected))
+		}
 	}
 	var total int64
 	if err := query.Count(&total).Error; err != nil {
