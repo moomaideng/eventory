@@ -4,7 +4,7 @@ import React from "react";
 import Link from "next/link";
 import { ArrowLeft, ShieldAlert, UsersRound } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { $api, apiClient } from "@/lib/api/client";
 import { useAuth } from "@/context/auth-context";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -64,6 +64,31 @@ export function TeamLobbyCreate({ tournamentId }: { tournamentId: string }) {
     { params: { path: { tournamentId } } },
     { staleTime: 30_000 }
   );
+
+  const myTeamQuery = useQuery({
+    queryKey: [
+      "get",
+      "/api/v1/tournaments/{tournamentId}/my-team",
+      tournamentId,
+      authorizationHeader,
+    ],
+    enabled: Boolean(authorizationHeader),
+    retry: false,
+    staleTime: 0,
+    queryFn: async () => {
+      const result = await apiClient.GET(
+        "/api/v1/tournaments/{tournamentId}/my-team",
+        {
+          params: { path: { tournamentId } },
+          headers: { Authorization: authorizationHeader ?? "" },
+        }
+      );
+      if (result.response.status === 404) return null;
+      if (result.error || !result.data)
+        throw new Error("Failed to check registration status");
+      return result.data;
+    },
+  });
 
   async function createLobby(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -170,7 +195,22 @@ export function TeamLobbyCreate({ tournamentId }: { tournamentId: string }) {
 
       <TournamentSummaryCard tournament={tournament} />
 
-      {!supportsTeams || !registrationOpen ? (
+      {myTeamQuery.data?.status === "REJECTED" ? (
+        <Alert variant="destructive">
+          <ShieldAlert />
+          <AlertTitle>Application rejected</AlertTitle>
+          <AlertDescription>
+            Your team&apos;s application was not accepted for this tournament.
+          </AlertDescription>
+        </Alert>
+      ) : myTeamQuery.data ? (
+        <Alert>
+          <AlertTitle>Already in a team</AlertTitle>
+          <AlertDescription>
+            You already have an active team for this tournament.
+          </AlertDescription>
+        </Alert>
+      ) : !supportsTeams || !registrationOpen ? (
         <Alert variant="destructive">
           <ShieldAlert />
           <AlertTitle>Team registration is unavailable</AlertTitle>

@@ -84,6 +84,7 @@ func (r *teamLobbyRepository) FindActiveByTournamentAndAccount(ctx context.Conte
 			models.TournamentTeamStatusLocked,
 			models.TournamentTeamStatusPaymentPending,
 			models.TournamentTeamStatusAccepted,
+			models.TournamentTeamStatusRejected,
 		}))
 }
 
@@ -322,6 +323,7 @@ func accountHasActiveTournamentTeam(tx *gorm.DB, tournamentID, accountID uuid.UU
 			models.TournamentTeamStatusLocked,
 			models.TournamentTeamStatusPaymentPending,
 			models.TournamentTeamStatusAccepted,
+			models.TournamentTeamStatusRejected,
 		}).
 		Count(&count).Error
 	if err != nil {

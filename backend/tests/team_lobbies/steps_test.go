@@ -246,6 +246,10 @@ func (s *teamLobbyScenarioContext) theTeamLobbyCreationShouldFail() error {
 	return s.responseStatusShouldBe(http.StatusUnprocessableEntity)
 }
 
+func (s *teamLobbyScenarioContext) theCompetitorShouldBeBlockedFromReApplying() error {
+	return s.responseStatusShouldBe(http.StatusConflict)
+}
+
 func (s *teamLobbyScenarioContext) theOtherCompetitorShouldJoinTheTeamLobbySuccessfully() error {
 	return s.responseStatusShouldBe(http.StatusOK)
 }
@@ -335,6 +339,7 @@ func InitializeScenario(sc *godog.ScenarioContext) {
 	sc.Step(`^the competitor tries to join with an invalid invite code$`, s.theCompetitorTriesToJoinWithAnInvalidInviteCode)
 	sc.Step(`^the team lobby should be created successfully$`, s.theTeamLobbyShouldBeCreatedSuccessfully)
 	sc.Step(`^the team lobby creation should fail$`, s.theTeamLobbyCreationShouldFail)
+	sc.Step(`^the competitor should be blocked from re-applying$`, s.theCompetitorShouldBeBlockedFromReApplying)
 	sc.Step(`^the other competitor should join the team lobby successfully$`, s.theOtherCompetitorShouldJoinTheTeamLobbySuccessfully)
 	sc.Step(`^joining the team lobby should fail$`, s.joiningTheTeamLobbyShouldFail)
 	sc.Step(`^the competitor should be the lobby captain$`, s.theCompetitorShouldBeTheLobbyCaptain)

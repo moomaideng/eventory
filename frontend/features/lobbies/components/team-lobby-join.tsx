@@ -3,9 +3,9 @@
 import { useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft } from "lucide-react";
-import { $api } from "@/lib/api/client";
+import { $api, apiClient } from "@/lib/api/client";
 import { useAuth } from "@/context/auth-context";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -38,6 +38,30 @@ export function TeamLobbyJoin({ inviteCode }: { inviteCode: string }) {
     }
   );
   const alreadyJoined = Boolean(lobby && lobby.viewerRole !== "INVITEE");
+  const myTeamQuery = useQuery({
+    queryKey: [
+      "get",
+      "/api/v1/tournaments/{tournamentId}/my-team",
+      lobby?.tournament.id,
+      authorizationHeader,
+    ],
+    enabled: Boolean(authorizationHeader && lobby?.tournament.id && !alreadyJoined),
+    retry: false,
+    staleTime: 0,
+    queryFn: async () => {
+      const result = await apiClient.GET(
+        "/api/v1/tournaments/{tournamentId}/my-team",
+        {
+          params: { path: { tournamentId: lobby!.tournament.id } },
+          headers: { Authorization: authorizationHeader ?? "" },
+        }
+      );
+      if (result.response.status === 404) return null;
+      if (result.error || !result.data)
+        throw new Error("Failed to check registration status");
+      return result.data;
+    },
+  });
 
   useEffect(() => {
     if (alreadyJoined && !isFetching && !error) router.replace(lobbyPath);
@@ -72,7 +96,15 @@ export function TeamLobbyJoin({ inviteCode }: { inviteCode: string }) {
         <ArrowLeft data-icon="inline-start" />
         Back to lobby
       </Button>
-      {error || unavailable ? (
+      {myTeamQuery.data?.status === "REJECTED" ? (
+        <Alert variant="destructive">
+          <AlertTitle>Application rejected</AlertTitle>
+          <AlertDescription>
+            Your application was not accepted for this tournament, so you cannot
+            join another team.
+          </AlertDescription>
+        </Alert>
+      ) : error || unavailable ? (
         <Alert>
           <AlertTitle>Unable to join this team</AlertTitle>
           <AlertDescription>

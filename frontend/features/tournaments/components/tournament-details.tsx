@@ -109,12 +109,6 @@ export function TournamentDetails({
   const registrationType = formatRegistrationType(tournament.registrationMode);
   const isSolo = tournament.registrationMode === "SOLO";
   const isCrowdfunding = tournament.status === "CROWDFUNDING";
-  const canCreateTeam =
-    !isSolo &&
-    isRegistrationOpen(tournament) &&
-    !isMyTeamFetching &&
-    !isMyTeamError &&
-    !myTeam;
 
   return (
     <main className="container mx-auto flex w-full max-w-7xl flex-1 flex-col gap-8 px-4 py-10 sm:px-8">
@@ -155,16 +149,6 @@ export function TournamentDetails({
           <Megaphone data-icon="inline-start" />
           Announcements
         </Button>
-        {!sponsorMode && canCreateTeam ? (
-          <Button
-            render={<Link href={`/tournaments/${tournament.id}/team`} />}
-            nativeButton={false}
-            className="self-start"
-          >
-            <Users data-icon="inline-start" />
-            Create a team
-          </Button>
-        ) : null}
         {isCrowdfunding ? (
           <Alert>
             <AlertTitle>Funding stage</AlertTitle>
@@ -174,21 +158,44 @@ export function TournamentDetails({
             </AlertDescription>
           </Alert>
         ) : null}
-        {!sponsorMode && isSolo && !isCrowdfunding ? (
-          !isRegistrationOpen(tournament) ? (
+        {!sponsorMode && !isCrowdfunding ? (
+          myTeam?.status === "REJECTED" ? (
+            <Button disabled className="self-start">
+              Application rejected
+            </Button>
+          ) : myTeam?.status === "ACCEPTED" ? (
+            <Button disabled className="self-start">
+              Confirmed
+            </Button>
+          ) : myTeam?.status === "LOCKED" ? (
+            <Button disabled className="self-start">
+              Awaiting review
+            </Button>
+          ) : !isRegistrationOpen(tournament) ? (
             <Button disabled className="self-start">
               Registration closed
             </Button>
           ) : !authorizationHeader ? (
-            <Button
-              render={
-                <Link href={`/login?redirect=/tournaments/${tournament.id}`} />
-              }
-              nativeButton={false}
-              className="self-start"
-            >
-              Sign in to register
-            </Button>
+            isSolo ? (
+              <Button
+                render={
+                  <Link href={`/login?redirect=/tournaments/${tournament.id}`} />
+                }
+                nativeButton={false}
+                className="self-start"
+              >
+                Sign in to register
+              </Button>
+            ) : (
+              <Button
+                render={<Link href={`/tournaments/${tournament.id}/team`} />}
+                nativeButton={false}
+                className="self-start"
+              >
+                <Users data-icon="inline-start" />
+                Create a team
+              </Button>
+            )
           ) : isMyTeamFetching ? (
             <Button disabled className="self-start">
               Checking eligibility
@@ -198,83 +205,49 @@ export function TournamentDetails({
               Registration unavailable
             </Button>
           ) : myTeam ? (
-            <div className="flex max-w-xl flex-col gap-3">
-              {myTeam.status === "LOCKED" ? (
-                <>
-                  <Alert>
-                    <AlertTitle>Registration submitted</AlertTitle>
-                    <AlertDescription>
-                      Your registration has been submitted and is currently awaiting organizer review.
-                    </AlertDescription>
-                  </Alert>
-                  <Button disabled className="self-start">
-                    Awaiting review
-                  </Button>
-                </>
-              ) : myTeam.status === "PAYMENT_PENDING" ? (
-                <>
-                  <Alert>
-                    <AlertTitle>Payment pending</AlertTitle>
-                    <AlertDescription>
-                      Please complete your entry fee payment to finalize your registration.
-                    </AlertDescription>
-                  </Alert>
-                  <RegistrationPaymentButton teamId={myTeam.id} />
-                </>
-              ) : myTeam.status === "ACCEPTED" ? (
-                <>
-                  <Alert className="border-emerald-500/40 text-emerald-800 dark:text-emerald-200">
-                    <AlertTitle>Registration confirmed</AlertTitle>
-                    <AlertDescription>
-                      You are confirmed to participate in this tournament!
-                    </AlertDescription>
-                  </Alert>
-                  <Button disabled className="self-start">
-                    Confirmed
-                  </Button>
-                </>
-              ) : myTeam.status === "REJECTED" ? (
-                <>
-                  <Alert variant="destructive">
-                    <AlertTitle>Application rejected</AlertTitle>
-                    <AlertDescription>
-                      Your application was not accepted for this tournament.
-                    </AlertDescription>
-                  </Alert>
-                  <Button disabled className="self-start">
-                    Application rejected
-                  </Button>
-                </>
-              ) : myTeam.status === "FORMING" ? (
-                <>
-                  <Alert>
-                    <AlertTitle>Registration not completed</AlertTitle>
-                    <AlertDescription>
-                      Your entry was saved but the payment was cancelled or
-                      expired. Continue to submit it again.
-                    </AlertDescription>
-                  </Alert>
-                  <RegistrationPaymentButton teamId={myTeam.id}>
-                    {tournament.entryFee > 0 ? "Continue to payment" : "Submit registration"}
-                  </RegistrationPaymentButton>
-                </>
+            myTeam.status === "PAYMENT_PENDING" ? (
+              isSolo ? (
+                <RegistrationPaymentButton teamId={myTeam.id} />
               ) : (
                 <Button disabled className="self-start">
-                  Registration started
+                  Payment pending
                 </Button>
-              )}
-            </div>
+              )
+            ) : myTeam.status === "FORMING" ? (
+              isSolo ? (
+                <RegistrationPaymentButton teamId={myTeam.id}>
+                  {tournament.entryFee > 0 ? "Continue to payment" : "Submit registration"}
+                </RegistrationPaymentButton>
+              ) : (
+                <Button disabled className="self-start">
+                  Team forming
+                </Button>
+              )
+            ) : (
+              <Button disabled className="self-start">
+                Registration started
+              </Button>
+            )
           ) : spotsLeft <= 0 ? (
             <Button disabled className="self-start">
               Tournament full
             </Button>
-          ) : (
+          ) : isSolo ? (
             <Button
               render={<Link href={`/tournaments/${tournament.id}/form`} />}
               nativeButton={false}
               className="self-start"
             >
               Register as an individual
+            </Button>
+          ) : (
+            <Button
+              render={<Link href={`/tournaments/${tournament.id}/team`} />}
+              nativeButton={false}
+              className="self-start"
+            >
+              <Users data-icon="inline-start" />
+              Create a team
             </Button>
           )
         ) : null}

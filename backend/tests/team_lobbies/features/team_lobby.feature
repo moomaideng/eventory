@@ -25,25 +25,25 @@ Feature: Tournament team lobby creation and joining
     And the competitor should be the lobby captain
     And a valid invite code should be generated
 
-  @US4-1 @valid
-  Scenario: Reuse a team name after the organizer rejects its application
+  # =========================================================================
+  # 2. INVALID (NEGATIVE) SCENARIO
+  # =========================================================================
+
+  @US4-1 @invalid
+  Scenario: Reject team lobby creation after the organizer rejects a previous application
     Given a published team tournament exists with registration open
     And the competitor has signed in and completed onboarding
     And the competitor's previous team was rejected
     When the competitor submits a valid team name
-    Then the team lobby should be created successfully
+    Then the competitor should be blocked from re-applying
 
-  @US4-4 @valid @solo
-  Scenario: Register again after a solo application was rejected
+  @US4-4 @invalid @solo
+  Scenario: Reject solo registration after a solo application was rejected
     Given a published solo tournament exists with registration open
     And the competitor has signed in and completed onboarding
     And the competitor's previous solo application was rejected
     When the competitor registers solo again
-    Then the team lobby should be created successfully
-
-  # =========================================================================
-  # 2. INVALID (NEGATIVE) SCENARIO
-  # =========================================================================
+    Then the competitor should be blocked from re-applying
 
   @US4-1 @invalid
   Scenario: Reject lobby creation with an empty team name
