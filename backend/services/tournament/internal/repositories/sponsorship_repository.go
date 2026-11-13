@@ -137,15 +137,15 @@ func (tx *sponsorshipTransaction) SaveResult(pledge *models.SponsorshipPledge) (
 
 func (tx *sponsorshipTransaction) RefreshFunding(tournamentID uuid.UUID) error {
 	var totals struct {
-		RaisedAmount   int64
-		SupporterCount int
+		RaisedAmountMinor int64
+		SupporterCount    int
 	}
-	if err := tx.db.Model(&models.SponsorshipPledge{}).Select("(COALESCE(SUM(amount_minor), 0) / 100)::bigint AS raised_amount, COUNT(DISTINCT payer_account_id) AS supporter_count").
+	if err := tx.db.Model(&models.SponsorshipPledge{}).Select("COALESCE(SUM(amount_minor), 0)::bigint AS raised_amount_minor, COUNT(DISTINCT payer_account_id) AS supporter_count").
 		Where("tournament_id = ? AND status = ?", tournamentID, models.PledgeConfirmed).Scan(&totals).Error; err != nil {
 		return err
 	}
-	return tx.db.Clauses(clause.OnConflict{Columns: []clause.Column{{Name: "tournament_id"}}, DoUpdates: clause.AssignmentColumns([]string{"raised_amount", "supporter_count"})}).
-		Create(&models.TournamentFunding{TournamentID: tournamentID, RaisedAmount: totals.RaisedAmount, SupporterCount: totals.SupporterCount}).Error
+	return tx.db.Clauses(clause.OnConflict{Columns: []clause.Column{{Name: "tournament_id"}}, DoUpdates: clause.AssignmentColumns([]string{"raised_amount_minor", "supporter_count"})}).
+		Create(&models.TournamentFunding{TournamentID: tournamentID, RaisedAmountMinor: totals.RaisedAmountMinor, SupporterCount: totals.SupporterCount}).Error
 }
 
 func (tx *sponsorshipTransaction) Commit() error { return tx.db.Commit().Error }

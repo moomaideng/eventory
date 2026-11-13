@@ -16,9 +16,9 @@ Feature: Tournament discovery
     Examples:
       | query                                                                            | names                         | total |
       |                                                                                  | Free Cup, Morning Cup, Late Cup, Next Day Cup, Premium Cup | 5 |
-      | startFrom=2026-10-01&startTo=2026-10-01&minEntryFee=100&maxEntryFee=500              | Morning Cup, Late Cup         | 2     |
-      | startFrom=2026-10-01&startTo=2026-10-01&minEntryFee=500&maxEntryFee=500              | Late Cup                      | 1     |
-      | minEntryFee=0&maxEntryFee=0                                                       | Free Cup                      | 1     |
+      | startFrom=2026-10-01&startTo=2026-10-01&minEntryFeeMinor=100&maxEntryFeeMinor=500    | Morning Cup, Late Cup         | 2     |
+      | startFrom=2026-10-01&startTo=2026-10-01&minEntryFeeMinor=500&maxEntryFeeMinor=500    | Late Cup                      | 1     |
+      | minEntryFeeMinor=0&maxEntryFeeMinor=0                                             | Free Cup                      | 1     |
       | startFrom=2026-11-01&startTo=2026-11-30                                            |                               | 0     |
       | q=late&status=REGISTRATION                                                       | Late Cup                      | 1     |
       | sort=fee_desc&page=2&pageSize=2                                                   | Next Day Cup, Morning Cup     | 5     |
@@ -33,8 +33,8 @@ Feature: Tournament discovery
     Examples:
       | query                                                |
       | startFrom=2026-10-02&startTo=2026-10-01                 |
-      | minEntryFee=501&maxEntryFee=500                        |
-      | startFrom=2026-10-02&startTo=2026-10-01&minEntryFee=2&maxEntryFee=1 |
+      | minEntryFeeMinor=501&maxEntryFeeMinor=500                        |
+      | startFrom=2026-10-02&startTo=2026-10-01&minEntryFeeMinor=2&maxEntryFeeMinor=1 |
       | startFrom=not-a-date                                  |
 
   @us2_2

@@ -635,7 +635,7 @@ func TestLock_PublishesRegistrationSubmitted_ForFreeTournament(t *testing.T) {
 		RegistrationMode:     models.TournamentRegistrationModeTeam,
 		MinTeamSize:          1,
 		MaxTeamSize:          5,
-		EntryFee:             0,
+		EntryFeeMinor:        0,
 	}
 	team := &models.TournamentTeam{
 		ID:           teamID,
@@ -720,7 +720,7 @@ func TestRegisterSolo_PublishesRegistrationSubmitted(t *testing.T) {
 		RegistrationMode:     models.TournamentRegistrationModeSolo,
 		MinTeamSize:          1,
 		MaxTeamSize:          1,
-		EntryFee:             0,
+		EntryFeeMinor:        0,
 	}
 	repo := &teamLobbyRepositoryStub{
 		tournament: tournament,

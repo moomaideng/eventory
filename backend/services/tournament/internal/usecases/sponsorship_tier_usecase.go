@@ -7,6 +7,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/google/uuid"
+	"github.com/moomaideng/eventory/internal/money"
 	"github.com/moomaideng/eventory/services/tournament/internal/repositories"
 	"github.com/moomaideng/eventory/services/tournament/models"
 )
@@ -29,10 +30,10 @@ const (
 )
 
 type SponsorshipTierInput struct {
-	Name  string
-	Price int64
-	Slots int
-	Perks []string
+	Name       string
+	PriceMinor int64
+	Slots      int
+	Perks      []string
 }
 
 type SponsorshipTierUseCase struct {
@@ -189,7 +190,7 @@ func applyTierInput(tier *models.SponsorshipTier, input SponsorshipTierInput) er
 	if name == "" || utf8.RuneCountInString(name) > sponsorshipTierNameMaxLength {
 		return ErrInvalidSponsorshipTierName
 	}
-	if input.Price <= 0 {
+	if amt, err := money.FromMinor(input.PriceMinor, money.DefaultCurrency); err != nil || amt.AmountMinor == 0 {
 		return ErrInvalidSponsorshipTierPrice
 	}
 	if input.Slots <= 0 {
@@ -212,7 +213,7 @@ func applyTierInput(tier *models.SponsorshipTier, input SponsorshipTierInput) er
 	}
 
 	tier.Name = name
-	tier.Price = input.Price
+	tier.PriceMinor = input.PriceMinor
 	tier.Slots = input.Slots
 	tier.Perks = perks
 	return nil

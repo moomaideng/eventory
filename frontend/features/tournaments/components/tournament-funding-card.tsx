@@ -50,10 +50,10 @@ export function TournamentFundingCard({
       <CardContent className="flex flex-col gap-5">
         <div className="flex flex-col gap-1">
           <p className="text-3xl font-bold tracking-tight">
-            {formatMoney(funding.raisedAmount, funding.currency)}
+            {formatMoney(funding.raisedAmountMinor, funding.currency)}
           </p>
           <p className="text-muted-foreground text-sm">
-            raised of {formatMoney(funding.goalAmount, funding.currency)}
+            raised of {formatMoney(funding.goalAmountMinor, funding.currency)}
           </p>
         </div>
         <Progress value={progressValue}>
@@ -80,7 +80,7 @@ export function TournamentFundingCard({
               {campaignActive ? "Still needed" : "Goal shortfall"}
             </p>
             <p className="font-medium">
-              {formatMoney(funding.remainingAmount, funding.currency)}
+              {formatMoney(funding.remainingAmountMinor, funding.currency)}
             </p>
           </div>
         </div>

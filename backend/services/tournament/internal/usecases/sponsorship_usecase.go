@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/moomaideng/eventory/internal/money"
 	"github.com/moomaideng/eventory/services/tournament/internal/ports"
 	"github.com/moomaideng/eventory/services/tournament/internal/repositories"
 	"github.com/moomaideng/eventory/services/tournament/models"
@@ -102,7 +103,8 @@ func (u *SponsorshipUseCase) Start(ctx context.Context, input StartSponsorship) 
 	if reserved >= int64(tier.Slots) {
 		return nil, ErrTierSoldOut
 	}
-	if tier.Price <= 0 || tier.Price > 9007199254740991/100 || tournament.Currency != "THB" {
+	amt, err := money.FromMinor(tier.PriceMinor, tournament.Currency)
+	if err != nil || amt.AmountMinor == 0 {
 		return nil, ErrInvalidSponsorship
 	}
 	expires := now.Add(15 * time.Minute)
@@ -112,7 +114,7 @@ func (u *SponsorshipUseCase) Start(ctx context.Context, input StartSponsorship) 
 	pledge := &models.SponsorshipPledge{
 		ID: input.RequestID, TournamentID: tournament.ID, TierID: tier.ID, PayerAccountID: input.PayerID,
 		SponsorName: account.SponsorName, WebsiteURL: website, TierName: tier.Name,
-		AmountMinor: tier.Price * 100, Currency: tournament.Currency, Status: models.PledgePending, ExpiresAt: expires,
+		AmountMinor: amt.AmountMinor, Currency: amt.Currency, Status: models.PledgePending, ExpiresAt: expires,
 	}
 	if err := tx.Create(pledge, &models.SponsorshipLogo{PledgeID: pledge.ID, ContentType: contentType, Data: input.Logo}); err != nil {
 		return nil, mapSponsorshipError(err)

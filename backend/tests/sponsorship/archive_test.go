@@ -74,7 +74,7 @@ func TestSponsorshipArchive(t *testing.T) {
 			if err := app.DB.First(&tier, "id = ?", tierID).Error; err != nil || !tier.Archived {
 				t.Fatalf("package must stay stored and archived: %+v, %v", tier, err)
 			}
-			mustAPI(t, s.client, "PUT", path, map[string]any{"name": "Changed", "price": 1, "slots": 1, "perks": []string{"Logo"}}, s.owner, 404)
+			mustAPI(t, s.client, "PUT", path, map[string]any{"name": "Changed", "priceMinor": 1, "slots": 1, "perks": []string{"Logo"}}, s.owner, 404)
 			mustAPI(t, s.client, "DELETE", path, nil, s.owner, 404)
 			if err := app.DB.Model(&s.tournament).Update("status", models.TournamentStatusRegistration).Error; err != nil {
 				t.Fatal(err)

@@ -1,3 +1,4 @@
+import { formatMinorMoney } from "@/lib/money";
 import { extractProblemMessage } from "@/lib/schemas";
 import type { components } from "@/lib/api/schema";
 
@@ -12,13 +13,8 @@ export function formatDate(value: string) {
   return dateFormatter.format(new Date(value));
 }
 
-export function formatEntryFee(amount: number, currency: string) {
-  if (amount === 0) return "Free";
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency,
-    maximumFractionDigits: 0,
-  }).format(amount);
+export function formatEntryFee(amountMinor: number, currency: string) {
+  return formatMinorMoney(amountMinor, currency, "Free");
 }
 
 export function problemMessage(error: unknown, fallback: string) {

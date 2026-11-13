@@ -80,7 +80,7 @@ func splitList(raw string) []string {
 }
 
 func (s *tierScenario) create(user *apptest.TestUser, name string, price, slots int, perks string) error {
-	body := map[string]any{"name": name, "price": price, "slots": slots, "perks": splitList(perks)}
+	body := map[string]any{"name": name, "priceMinor": price, "slots": slots, "perks": splitList(perks)}
 	if err := s.do(http.MethodPost, s.tiersPath(), body, user); err != nil {
 		return err
 	}
@@ -119,7 +119,7 @@ func (s *tierScenario) given(name string, price int) error {
 }
 
 func (s *tierScenario) rename(from, to string) error {
-	body := map[string]any{"name": to, "price": 10000, "slots": 2, "perks": []string{"Logo on stream"}}
+	body := map[string]any{"name": to, "priceMinor": 10000, "slots": 2, "perks": []string{"Logo on stream"}}
 	s.tierIDs[to] = s.tierIDs[from]
 	return s.do(http.MethodPut, s.tiersPath()+"/"+s.tierIDs[from].String(), body, s.owner)
 }
@@ -197,7 +197,7 @@ func initializeScenario(sc *godog.ScenarioContext, app *apptest.App) {
 		s.other = other
 		return err
 	})
-	sc.Step(`^the organizer has a tier named "([^"]*)"$`, func(name string) error { return s.given(name, 10000) })
+	sc.Step(`^the organizer has a tier named "([^"]*)"$`, func(name string) error { return s.given(name, 1000000) })
 	sc.Step(`^the organizer has tiers "([^"]*)" costing (\d+) and "([^"]*)" costing (\d+)$`, func(a string, priceA int, b string, priceB int) error {
 		if err := s.given(a, priceA); err != nil {
 			return err

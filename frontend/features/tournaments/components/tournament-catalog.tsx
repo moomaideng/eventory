@@ -14,6 +14,7 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty";
+import { wholeToMinor } from "@/lib/money";
 import { PAGE_SIZE } from "../utils";
 import { tournamentFiltersSchema } from "../schemas";
 import { TournamentCard } from "./tournament-card";
@@ -62,7 +63,8 @@ export function TournamentCatalog({
           q: q || undefined,
           startFrom: startFrom || undefined,
           startTo: startTo || undefined,
-          maxEntryFee,
+          maxEntryFeeMinor:
+            maxEntryFee !== undefined ? wholeToMinor(maxEntryFee) : undefined,
           sort: "start_asc",
           page,
           pageSize: PAGE_SIZE,

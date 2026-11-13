@@ -216,7 +216,9 @@ export function TournamentDetails({
             ) : myTeam.status === "FORMING" ? (
               isSolo ? (
                 <RegistrationPaymentButton teamId={myTeam.id}>
-                  {tournament.entryFee > 0 ? "Continue to payment" : "Submit registration"}
+                  {tournament.entryFeeMinor > 0
+                    ? "Continue to payment"
+                    : "Submit registration"}
                 </RegistrationPaymentButton>
               ) : (
                 <Button disabled className="self-start">
@@ -324,7 +326,7 @@ export function TournamentDetails({
             </Card>
           ) : null}
 
-          {funding.goalAmount > 0 ? (
+          {funding.goalAmountMinor > 0 ? (
             <TournamentFundingCard
               funding={funding}
               status={tournament.status}

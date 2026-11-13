@@ -31,7 +31,7 @@ func TestSponsorshipCheckout(t *testing.T) {
 	if err := s.publishedTournament(); err != nil {
 		t.Fatal(err)
 	}
-	if err := s.given("Gold", 10000); err != nil {
+	if err := s.given("Gold", 1000000); err != nil {
 		t.Fatal(err)
 	}
 	if err := app.DB.Model(&models.SponsorshipTier{}).Where("id = ?", s.tierIDs["Gold"]).Update("slots", 1).Error; err != nil {
@@ -86,7 +86,7 @@ func TestSponsorshipCheckout(t *testing.T) {
 	if err := first.JSON(&pledge); err != nil || pledge.ID != winnerID || pledge.PaymentID == uuid.Nil || pledge.Status != "PENDING" {
 		t.Fatalf("checkout: %s, %v", first.Body, err)
 	}
-	mustAPI(t, s.client, "PUT", s.tiersPath()+"/"+s.tierIDs["Gold"].String(), map[string]any{"name": "Changed", "price": 1, "slots": 9, "perks": []string{"Changed"}}, s.owner, 409)
+	mustAPI(t, s.client, "PUT", s.tiersPath()+"/"+s.tierIDs["Gold"].String(), map[string]any{"name": "Changed", "priceMinor": 1, "slots": 9, "perks": []string{"Changed"}}, s.owner, 409)
 	mustAPI(t, s.client, "DELETE", s.tiersPath()+"/"+s.tierIDs["Gold"].String(), nil, s.owner, 409)
 	if retried := post(winner, winnerID, logo); retried.StatusCode != 200 {
 		t.Fatalf("retry: %s", retried.Body)
@@ -140,7 +140,7 @@ func TestSponsorshipCheckout(t *testing.T) {
 		}
 	}
 	var funding models.TournamentFunding
-	if err := app.DB.First(&funding, "tournament_id = ?", s.tournament.ID).Error; err != nil || funding.RaisedAmount != 10000 || funding.SupporterCount != 1 {
+	if err := app.DB.First(&funding, "tournament_id = ?", s.tournament.ID).Error; err != nil || funding.RaisedAmountMinor != 1000000 || funding.SupporterCount != 1 {
 		t.Fatalf("funding: %+v, %v", funding, err)
 	}
 	public = mustAPI(t, s.client, "GET", "/tournaments/"+s.tournament.ID.String()+"/sponsors", nil, nil, 200)
@@ -151,7 +151,7 @@ func TestSponsorshipCheckout(t *testing.T) {
 	if !bytes.Equal(storedLogo.Body, logo) || storedLogo.Header.Get("Content-Type") != "image/png" || storedLogo.Header.Get("X-Content-Type-Options") != "nosniff" {
 		t.Fatal("logo response mismatch")
 	}
-	mustAPI(t, s.client, "PUT", s.tiersPath()+"/"+s.tierIDs["Gold"].String(), map[string]any{"name": "Changed", "price": 1, "slots": 9, "perks": []string{"Changed"}}, s.owner, 409)
+	mustAPI(t, s.client, "PUT", s.tiersPath()+"/"+s.tierIDs["Gold"].String(), map[string]any{"name": "Changed", "priceMinor": 1, "slots": 9, "perks": []string{"Changed"}}, s.owner, 409)
 	mustAPI(t, s.client, "DELETE", s.tiersPath()+"/"+s.tierIDs["Gold"].String(), nil, s.owner, 409)
 
 	for _, result := range []string{"FAILED", "CANCELLED"} {
@@ -202,13 +202,13 @@ func TestSponsorshipCrowdfundingLaunch(t *testing.T) {
 	created := mustAPI(t, s.client, "POST", "/tournaments", map[string]any{
 		"name": "Crowdfunded Sponsor Cup", "description": "A funded tournament", "game": "Chess", "location": "Online",
 		"startAt": now.Add(72 * time.Hour), "endAt": now.Add(80 * time.Hour), "registrationDeadline": now.Add(48 * time.Hour),
-		"registrationMode": "SOLO", "entryFee": 0, "minTeamSize": 1, "maxTeamSize": 1, "capacity": 8,
-		"fundingGoal": 10000, "fundingDeadline": deadline,
+		"registrationMode": "SOLO", "entryFeeMinor": 0, "minTeamSize": 1, "maxTeamSize": 1, "capacity": 8,
+		"fundingGoalMinor": 1000000, "fundingDeadline": deadline,
 	}, owner, http.StatusCreated)
 	if err := created.JSON(&s.tournament); err != nil || s.tournament.Status != models.TournamentStatusDraft {
 		t.Fatalf("create draft tournament: %s, %v", created.Body, err)
 	}
-	if err := s.given("Gold", 10000); err != nil {
+	if err := s.given("Gold", 1000000); err != nil {
 		t.Fatal(err)
 	}
 	path := "/tournaments/" + s.tournament.ID.String()
@@ -239,7 +239,7 @@ func TestSponsorshipCrowdfundingLaunch(t *testing.T) {
 	if err := app.DB.First(&funding, "tournament_id = ?", s.tournament.ID).Error; err != nil {
 		t.Fatal(err)
 	}
-	if funding.GoalAmount != 10000 || funding.RaisedAmount != 10000 || funding.SupporterCount != 1 || funding.Deadline == nil || !funding.Deadline.Equal(deadline) {
+	if funding.GoalAmountMinor != 1000000 || funding.RaisedAmountMinor != 1000000 || funding.SupporterCount != 1 || funding.Deadline == nil || !funding.Deadline.Equal(deadline) {
 		t.Fatalf("payment or event edit changed the campaign terms or totals: %+v", funding)
 	}
 	mustAPI(t, s.client, "PATCH", path+"/status", launch, owner, http.StatusOK)

@@ -102,10 +102,10 @@ export function TournamentDetailsCard({
       } players per team`;
 
   const showFundingGroup =
-    status === "DRAFT" || status === "CROWDFUNDING" || funding.goalAmount > 0;
+    status === "DRAFT" || status === "CROWDFUNDING" || funding.goalAmountMinor > 0;
   const goal =
-    funding.goalAmount > 0 ? (
-      formatMoney(funding.goalAmount, funding.currency)
+    funding.goalAmountMinor > 0 ? (
+      formatMoney(funding.goalAmountMinor, funding.currency)
     ) : (
       <span className="text-muted-foreground">Not set</span>
     );
@@ -175,7 +175,7 @@ export function TournamentDetailsCard({
               )}
             </DetailItem>
             <DetailItem label="Entry fee">
-              {formatMoney(tournament.entryFee, tournament.currency, true)}
+              {formatMoney(tournament.entryFeeMinor, tournament.currency, true)}
             </DetailItem>
           </DetailGroup>
 
@@ -210,7 +210,7 @@ export function TournamentDetailsCard({
                   <DetailItem label="Raised">
                     <div className="flex flex-col gap-2">
                       <span>
-                        {formatMoney(funding.raisedAmount, funding.currency)}
+                        {formatMoney(funding.raisedAmountMinor, funding.currency)}
                         <span className="text-muted-foreground font-normal">
                           {" "}
                           · {formatPercentage(funding.percentage)}
@@ -231,8 +231,9 @@ export function TournamentDetailsCard({
                 </>
               ) : (
                 <DetailItem label="Result">
-                  Raised {formatMoney(funding.raisedAmount, funding.currency)}{" "}
-                  of {formatMoney(funding.goalAmount, funding.currency)} ·{" "}
+                  Raised{" "}
+                  {formatMoney(funding.raisedAmountMinor, funding.currency)} of{" "}
+                  {formatMoney(funding.goalAmountMinor, funding.currency)} ·{" "}
                   {funding.supporterCount}{" "}
                   {funding.supporterCount === 1 ? "supporter" : "supporters"}
                 </DetailItem>

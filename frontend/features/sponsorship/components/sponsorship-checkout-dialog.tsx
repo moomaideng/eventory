@@ -158,7 +158,7 @@ export function SponsorshipCheckoutDialog({
         <DialogHeader>
           <DialogTitle>Sponsor with {tier.name}</DialogTitle>
           <DialogDescription>
-            {sponsorName} · {formatMoney(tier.price, currency)}. Your brand
+            {sponsorName} · {formatMoney(tier.priceMinor, currency)}. Your brand
             appears after payment succeeds.
           </DialogDescription>
         </DialogHeader>

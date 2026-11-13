@@ -1,4 +1,5 @@
 import type { components } from "@/lib/api/schema";
+import { minorToWhole, wholeToMinor } from "@/lib/money";
 import type { DetailsSection } from "@/features/organizer/components/edit-tournament-dialog";
 import {
   editCrowdfundingSectionSchema,
@@ -75,7 +76,8 @@ export function isSectionEditable(section: DetailsSection, status: string) {
 
 export function showsCrowdfunding(summary: OrganizerSummary) {
   return (
-    summary.tournament.status === "DRAFT" || summary.funding.goalAmount > 0
+    summary.tournament.status === "DRAFT" ||
+    summary.funding.goalAmountMinor > 0
   );
 }
 
@@ -93,11 +95,14 @@ export function initialDetailsValues(
     minTeamSize: String(tournament.minTeamSize || 1),
     maxTeamSize: String(tournament.maxTeamSize || 1),
     capacity: String(tournament.capacity || ""),
-    entryFee: String(tournament.entryFee ?? 0),
+    entryFee: String(minorToWhole(tournament.entryFeeMinor ?? 0)),
     registrationDeadline: toLocalInput(tournament.registrationDeadline),
     startAt: toLocalInput(tournament.startAt),
     endAt: toLocalInput(tournament.endAt),
-    fundingGoal: funding.goalAmount > 0 ? String(funding.goalAmount) : "",
+    fundingGoal:
+      funding.goalAmountMinor > 0
+        ? String(minorToWhole(funding.goalAmountMinor))
+        : "",
     fundingDeadline: toLocalInput(funding.deadline),
   };
 }
@@ -182,7 +187,9 @@ export function buildDetailsSubmission(
         body.maxTeamSize = parsed.data.maxTeamSize;
       }
       if (changed.has("capacity")) body.capacity = parsed.data.capacity;
-      if (changed.has("entryFee")) body.entryFee = parsed.data.entryFee;
+      if (changed.has("entryFee")) {
+        body.entryFeeMinor = wholeToMinor(parsed.data.entryFee);
+      }
     }
   }
 
@@ -208,8 +215,9 @@ export function buildDetailsSubmission(
     const parsed = editCrowdfundingSectionSchema.safeParse(values);
     if (!parsed.success) collectIssues(errors, parsed.error.issues);
     else {
-      if (changed.has("fundingGoal"))
-        body.fundingGoal = parsed.data.fundingGoal;
+      if (changed.has("fundingGoal")) {
+        body.fundingGoalMinor = wholeToMinor(parsed.data.fundingGoal);
+      }
       if (changed.has("fundingDeadline")) {
         body.fundingDeadline = new Date(
           parsed.data.fundingDeadline

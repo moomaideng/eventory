@@ -37,7 +37,7 @@ func TestRosterSubmission(t *testing.T) {
 		if err := s.aCaptainHasCreatedAFormingTeamLobbyWithAValidInviteCode(); err != nil {
 			t.Fatal(err)
 		}
-		if err := app.DB.Model(s.tournament).Updates(map[string]any{"entry_fee": fee, "min_team_size": 1}).Error; err != nil {
+		if err := app.DB.Model(s.tournament).Updates(map[string]any{"entry_fee_minor": fee, "min_team_size": 1}).Error; err != nil {
 			t.Fatal(err)
 		}
 		return s
@@ -89,7 +89,7 @@ func TestRosterSubmission(t *testing.T) {
 		review(t, s, 1)
 	})
 	t.Run("paid submission freezes roster and reuses invoice", func(t *testing.T) {
-		s := fixture(t, 250)
+		s := fixture(t, 25000)
 		var wg sync.WaitGroup
 		results := make(chan *apptest.Response, 4)
 		for range 4 {
@@ -148,7 +148,7 @@ func TestRosterSubmission(t *testing.T) {
 	})
 	for _, result := range []string{"FAILED", "CANCELLED"} {
 		t.Run(result+" keeps the roster frozen and permits a new attempt", func(t *testing.T) {
-			s := fixture(t, 100)
+			s := fixture(t, 10000)
 			first := lock(t, s)
 			request(t, payments, http.MethodPost, "/"+first.PaymentID.String()+"/mock-result", map[string]string{"result": result}, s.captain, 200)
 			refresh(t, s, "PAYMENT_PENDING")
@@ -163,7 +163,7 @@ func TestRosterSubmission(t *testing.T) {
 		})
 	}
 	t.Run("one retry recovers a closed invoice before its event arrives", func(t *testing.T) {
-		s := fixture(t, 100)
+		s := fixture(t, 10000)
 		first := lock(t, s)
 		request(t, payments, http.MethodPost, "/"+first.PaymentID.String()+"/mock-result", map[string]string{"result": "FAILED"}, s.captain, 200)
 		// No refresh and no broker delivery: Lock must settle and retry in one call.
@@ -180,7 +180,7 @@ func TestRosterSubmission(t *testing.T) {
 		review(t, s, 1)
 	})
 	t.Run("solo failed payment can be retried without another registration", func(t *testing.T) {
-		s := fixture(t, 100)
+		s := fixture(t, 10000)
 		request(t, s.client, http.MethodDelete, "/lobbies/"+s.lobby.ID.String(), nil, s.captain, 204)
 		if err := app.DB.Model(s.tournament).Updates(map[string]any{"registration_mode": "SOLO", "max_team_size": 1}).Error; err != nil {
 			t.Fatal(err)
@@ -204,7 +204,7 @@ func TestRosterSubmission(t *testing.T) {
 		review(t, s, 1)
 	})
 	t.Run("expired attempt keeps the roster frozen and cannot be paid", func(t *testing.T) {
-		s := fixture(t, 100)
+		s := fixture(t, 10000)
 		first := lock(t, s)
 		expired := time.Now().UTC().Add(-time.Minute).Truncate(time.Microsecond)
 		if err := app.DB.Model(&paymentmodels.Invoice{}).Where("id = ?", first.PaymentID).Update("expires_at", expired).Error; err != nil {
