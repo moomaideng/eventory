@@ -14,15 +14,29 @@ export function TournamentAnnouncements({
 }: {
   tournamentId: string;
 }) {
-  const { data } = $api.useQuery(
-    "get",
-    "/api/v1/tournaments/{tournamentId}",
-    { params: { path: { tournamentId } } }
-  );
+  const { data } = $api.useQuery("get", "/api/v1/tournaments/{tournamentId}", {
+    params: { path: { tournamentId } },
+  });
   const tournament = data?.tournament;
 
   const { announcements, isLoading, isError, refetch } =
     useAnnouncements(tournamentId);
+
+  React.useEffect(() => {
+    // The feed loads asynchronously, after the browser's initial hash scroll.
+    const showSelected = () => {
+      const selected = announcements.find(
+        (item) => window.location.hash === `#announcement-${item.id}`
+      );
+      if (!selected) return;
+      const element = document.getElementById(`announcement-${selected.id}`);
+      element?.scrollIntoView({ block: "center" });
+      element?.focus({ preventScroll: true });
+    };
+    showSelected();
+    window.addEventListener("hashchange", showSelected);
+    return () => window.removeEventListener("hashchange", showSelected);
+  }, [announcements]);
 
   return (
     <div className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-6 px-4 py-8 sm:px-8">

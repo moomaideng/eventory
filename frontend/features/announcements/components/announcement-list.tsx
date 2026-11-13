@@ -78,17 +78,26 @@ export function AnnouncementList({
   return (
     <ul className="flex flex-col gap-3">
       {announcements.map((announcement) => (
-        <li key={announcement.id} id={`announcement-${announcement.id}`}>
+        <li
+          key={announcement.id}
+          id={`announcement-${announcement.id}`}
+          tabIndex={-1}
+          className="target:ring-primary focus:ring-primary scroll-mt-24 rounded-xl target:ring-2 focus:ring-2 focus:outline-none"
+        >
           <Card>
             <CardHeader>
-              <CardTitle>{announcement.title}</CardTitle>
+              <CardTitle className="wrap-anywhere">
+                {announcement.title}
+              </CardTitle>
               <CardDescription>
                 {announcement.authorName} ·{" "}
                 {formatTournamentDate(announcement.createdAt)}
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <p className="text-sm whitespace-pre-wrap">{announcement.body}</p>
+              <p className="text-sm wrap-anywhere whitespace-pre-wrap">
+                {announcement.body}
+              </p>
             </CardContent>
           </Card>
         </li>
