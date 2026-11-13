@@ -55,8 +55,10 @@ export function SponsorDirectory() {
     {
       enabled: Boolean(authorizationHeader),
       retry: false,
+      placeholderData: (previousData) => previousData,
     }
   );
+  const updating = isFetching || search.trim() !== debouncedSearch;
 
   return (
     <div className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-8 px-4 py-10 sm:px-8">
@@ -84,12 +86,7 @@ export function SponsorDirectory() {
         }}
         onClear={clearFilters}
         tags={data?.tags ?? undefined}
-        loading={
-          authLoading ||
-          isLoading ||
-          isFetching ||
-          search.trim() !== debouncedSearch
-        }
+        loading={authLoading || (isLoading && !data)}
         error={Boolean(error)}
       />
 
@@ -138,10 +135,13 @@ export function SponsorDirectory() {
             <EmptyMedia variant="icon">
               <Users />
             </EmptyMedia>
-            <EmptyTitle>No sponsors found</EmptyTitle>
+            <EmptyTitle>
+              {updating ? "Updating results…" : "No sponsors found"}
+            </EmptyTitle>
             <EmptyDescription>
-              Sponsors must match every selected tag and your search. Remove a
-              tag or try another name.
+              {updating
+                ? "Checking sponsors for your current search and tags."
+                : "Sponsors must match every selected tag and your search. Remove a tag or try another name."}
             </EmptyDescription>
           </EmptyHeader>
           {page > 1 || search || tags.length ? (
@@ -154,7 +154,7 @@ export function SponsorDirectory() {
         <>
           <p className="text-muted-foreground text-sm" aria-live="polite">
             {data.total} {data.total === 1 ? "sponsor" : "sponsors"} found
-            {isFetching ? " · Updating…" : ""}
+            {updating ? " · Updating…" : ""}
           </p>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {(data.items ?? []).map((sponsor) => (
@@ -193,7 +193,7 @@ export function SponsorDirectory() {
           <div className="flex items-center justify-end gap-3">
             <Button
               variant="outline"
-              disabled={page === 1 || isFetching}
+              disabled={page === 1 || updating}
               onClick={() => setPage(page - 1)}
             >
               Previous
@@ -204,7 +204,7 @@ export function SponsorDirectory() {
             </span>
             <Button
               variant="outline"
-              disabled={page * data.pageSize >= data.total || isFetching}
+              disabled={page * data.pageSize >= data.total || updating}
               onClick={() => setPage(page + 1)}
             >
               Next
