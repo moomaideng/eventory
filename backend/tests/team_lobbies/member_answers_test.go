@@ -148,17 +148,27 @@ func TestMemberRegistrationAnswers(t *testing.T) {
 	if persisted.Status != models.TournamentTeamStatusRejected || len(persisted.Members) != 2 {
 		t.Fatal("reject must apply to the whole team")
 	}
-	// Rejection is final for this team; a new application replaces account answers.
+	// Rejection is final for this team and its members; they cannot re-apply.
 	request(http.MethodPost, tourPath+"/entries/"+lobby.ID.String()+"/review", map[string]any{"decision": "ACCEPT"}, owner, 409)
-	request(http.MethodGet, tourPath+"/form/responses/me", nil, captain, 404)
-	request(http.MethodGet, tourPath+"/form/responses/me", nil, member, 404)
+	request(http.MethodGet, tourPath+"/form/responses/me", nil, captain, 200)
+	request(http.MethodGet, tourPath+"/form/responses/me", nil, member, 200)
 	request(http.MethodPost, tourPath+"/lobbies", map[string]any{"name": "Missing new answers"}, captain, 400)
-	reapplied := request(http.MethodPost, tourPath+"/lobbies", map[string]any{"name": "Second application", "answers": []models.FieldAnswer{{FieldID: "ign", Value: "New captain"}}}, captain, 201)
+	request(http.MethodPost, tourPath+"/lobbies", map[string]any{"name": "Second application", "answers": []models.FieldAnswer{{FieldID: "ign", Value: "New captain"}}}, captain, 409)
+	request(http.MethodPost, tourPath+"/lobbies", map[string]any{"name": "Member new team", "answers": []models.FieldAnswer{{FieldID: "ign", Value: "New member"}}}, member, 409)
+
+	// Fresh users exercise removing/rejoining and disbanding while FORMING.
+	captain2, member2 := apptest.NewTestUser(), apptest.NewTestUser()
+	for _, user := range []*apptest.TestUser{captain2, member2} {
+		if err := s.persistActiveAccount(user); err != nil {
+			t.Fatal(err)
+		}
+	}
+	second := request(http.MethodPost, tourPath+"/lobbies", map[string]any{"name": "Second application", "answers": []models.FieldAnswer{{FieldID: "ign", Value: "New captain"}}}, captain2, 201)
 	var newLobby handlers.TeamLobbyResponse
-	if err := reapplied.JSON(&newLobby); err != nil {
+	if err := second.JSON(&newLobby); err != nil {
 		t.Fatal(err)
 	}
-	joined := request(http.MethodPost, "/lobbies/"+*newLobby.InviteCode+"/join", answers("New member"), member, 200)
+	joined := request(http.MethodPost, "/lobbies/"+*newLobby.InviteCode+"/join", answers("New member"), member2, 200)
 	if err := joined.JSON(&newLobby); err != nil {
 		t.Fatal(err)
 	}
@@ -172,11 +182,11 @@ func TestMemberRegistrationAnswers(t *testing.T) {
 			t.Fatalf("wrong current response: %+v", current)
 		}
 	}
-	assertCurrent(captain, "New captain")
-	assertCurrent(member, "New member")
-	request(http.MethodPut, "/lobbies/"+newLobby.ID.String()+"/registration", answers("Edited"), member, 409)
+	assertCurrent(captain2, "New captain")
+	assertCurrent(member2, "New member")
+	request(http.MethodPut, "/lobbies/"+newLobby.ID.String()+"/registration", answers("Edited"), member2, 409)
 	var history []models.FormResponse
-	filter := bson.M{"tournament_id": s.tournament.ID, "account_id": member.ID}
+	filter := bson.M{"tournament_id": s.tournament.ID, "account_id": member2.ID}
 	cursor, err := collection.Find(ctx, filter)
 	if err != nil {
 		t.Fatal(err)
@@ -191,49 +201,47 @@ func TestMemberRegistrationAnswers(t *testing.T) {
 	// Removing and rejoining the SAME team is also a new membership/application.
 	var memberID uuid.UUID
 	for _, entry := range newLobby.Members {
-		if entry.AccountID == member.ID {
+		if entry.AccountID == member2.ID {
 			memberID = entry.ID
 		}
 	}
-	request(http.MethodDelete, "/lobbies/"+newLobby.ID.String()+"/members/"+memberID.String(), nil, captain, 200)
-	request(http.MethodGet, tourPath+"/form/responses/me", nil, member, 404)
-	request(http.MethodPost, "/lobbies/"+*newLobby.InviteCode+"/join", answers(nil), member, 400)
-	request(http.MethodPost, "/lobbies/"+*newLobby.InviteCode+"/join", answers("Rejoined member"), member, 200)
-	assertCurrent(member, "Rejoined member")
-	request(http.MethodPut, "/lobbies/"+newLobby.ID.String()+"/registration", answers("Edited again"), member, 409)
+	request(http.MethodDelete, "/lobbies/"+newLobby.ID.String()+"/members/"+memberID.String(), nil, captain2, 200)
+	request(http.MethodGet, tourPath+"/form/responses/me", nil, member2, 404)
+	request(http.MethodPost, "/lobbies/"+*newLobby.InviteCode+"/join", answers(nil), member2, 400)
+	request(http.MethodPost, "/lobbies/"+*newLobby.InviteCode+"/join", answers("Rejoined member"), member2, 200)
+	assertCurrent(member2, "Rejoined member")
+	request(http.MethodPut, "/lobbies/"+newLobby.ID.String()+"/registration", answers("Edited again"), member2, 409)
 
 	// Disbanding releases all members; registering again overwrites their answers.
-	request(http.MethodDelete, "/lobbies/"+newLobby.ID.String(), nil, captain, 204)
-	request(http.MethodGet, tourPath+"/form/responses/me", nil, captain, 404)
-	request(http.MethodGet, tourPath+"/form/responses/me", nil, member, 404)
-	third := request(http.MethodPost, tourPath+"/lobbies", map[string]any{"name": "Third application", "answers": []models.FieldAnswer{{FieldID: "ign", Value: "Third captain"}}}, captain, 201)
+	request(http.MethodDelete, "/lobbies/"+newLobby.ID.String(), nil, captain2, 204)
+	request(http.MethodGet, tourPath+"/form/responses/me", nil, captain2, 404)
+	request(http.MethodGet, tourPath+"/form/responses/me", nil, member2, 404)
+	third := request(http.MethodPost, tourPath+"/lobbies", map[string]any{"name": "Third application", "answers": []models.FieldAnswer{{FieldID: "ign", Value: "Third captain"}}}, captain2, 201)
 	var thirdLobby handlers.TeamLobbyResponse
 	if err := third.JSON(&thirdLobby); err != nil {
 		t.Fatal(err)
 	}
-	request(http.MethodPost, "/lobbies/"+*thirdLobby.InviteCode+"/join", answers("Other team member"), member, 200)
-	assertCurrent(captain, "Third captain")
-	assertCurrent(member, "Other team member")
+	request(http.MethodPost, "/lobbies/"+*thirdLobby.InviteCode+"/join", answers("Other team member"), member2, 200)
+	assertCurrent(captain2, "Third captain")
+	assertCurrent(member2, "Other team member")
 	total, err := collection.CountDocuments(ctx, filter)
 	if err != nil || total != 1 {
 		t.Fatalf("expected one response per tournament/account, count=%d err=%v", total, err)
 	}
-	// A solo reapplication also gets fresh answers after rejection.
-	request(http.MethodDelete, "/lobbies/"+thirdLobby.ID.String(), nil, captain, 204)
+	// Solo rejection is also permanent.
+	request(http.MethodDelete, "/lobbies/"+thirdLobby.ID.String(), nil, captain2, 204)
 	if err := app.DB.Model(&models.Tournament{}).Where("id = ?", s.tournament.ID).Updates(map[string]any{"registration_mode": "SOLO", "min_team_size": 1, "max_team_size": 1}).Error; err != nil {
 		t.Fatal(err)
 	}
-	solo := request(http.MethodPost, tourPath+"/solo-register", answers("Solo first"), captain, 201)
+	solo := request(http.MethodPost, tourPath+"/solo-register", answers("Solo first"), captain2, 201)
 	var soloLobby handlers.TeamLobbyResponse
 	if err := solo.JSON(&soloLobby); err != nil {
 		t.Fatal(err)
 	}
-	assertCurrent(captain, "Solo first")
-	request(http.MethodPost, tourPath+"/solo-register", answers("Solo edit"), captain, 409)
+	assertCurrent(captain2, "Solo first")
+	request(http.MethodPost, tourPath+"/solo-register", answers("Solo edit"), captain2, 409)
 	request(http.MethodPost, tourPath+"/entries/"+soloLobby.ID.String()+"/review", map[string]any{"decision": "REJECT", "reason": "Try a new application"}, owner, 200)
-	request(http.MethodGet, tourPath+"/form/responses/me", nil, captain, 404)
-	request(http.MethodPost, tourPath+"/solo-register", answers(nil), captain, 400)
-	request(http.MethodPost, tourPath+"/solo-register", answers("Solo second"), captain, 201)
-	assertCurrent(captain, "Solo second")
-
+	request(http.MethodGet, tourPath+"/form/responses/me", nil, captain2, 200)
+	request(http.MethodPost, tourPath+"/solo-register", answers(nil), captain2, 400)
+	request(http.MethodPost, tourPath+"/solo-register", answers("Solo second"), captain2, 409)
 }
