@@ -3,7 +3,8 @@
 import React from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Users } from "lucide-react";
+import { ArrowLeft, Megaphone, Users } from "lucide-react";
+import { AnnouncementPreview } from "@/features/announcements";
 import { $api, apiClient } from "@/lib/api/client";
 import { useAuth } from "@/context/auth-context";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -145,6 +146,15 @@ export function TournamentDetails({
             Hosted by {tournament.organizerName}
           </p>
         </div>
+        <Button
+          variant="outline"
+          className="self-start"
+          render={<Link href={`/tournaments/${tournament.id}/announcements`} />}
+          nativeButton={false}
+        >
+          <Megaphone data-icon="inline-start" />
+          Announcements
+        </Button>
         {!sponsorMode && canCreateTeam ? (
           <Button
             render={<Link href={`/tournaments/${tournament.id}/team`} />}
@@ -349,6 +359,7 @@ export function TournamentDetails({
           ) : null}
         </div>
       </div>
+      <AnnouncementPreview key={tournament.id} tournamentId={tournament.id} />
     </main>
   );
 }
