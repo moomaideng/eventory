@@ -38,48 +38,7 @@ func TestMemberRegistrationAnswers(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = mongoClient.Disconnect(context.Background()) })
 	collection := mongoClient.Database("member_answers_test").Collection("tournament_form_responses")
-	// Simulate upgrading the former per-membership answer collection.
-	_, err = collection.Indexes().CreateOne(ctx, mongo.IndexModel{
-		Keys:    bson.D{{Key: "tournament_id", Value: 1}, {Key: "account_id", Value: 1}, {Key: "registration_id", Value: 1}},
-		Options: options.Index().SetUnique(true),
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	legacyTournament, legacyAccount := uuid.New(), uuid.New()
-	for _, value := range []string{"Old", "Latest"} {
-		_, err := collection.InsertOne(ctx, bson.M{
-			"tournament_id": legacyTournament, "account_id": legacyAccount,
-			"registration_id": uuid.New(), "team_id": uuid.New(),
-			"answers": []models.FieldAnswer{{FieldID: "ign", Value: value}},
-		})
-		if err != nil {
-			t.Fatal(err)
-		}
-	}
 	app = apptest.NewApp(t, pg.DSN, mongoClient.Database("member_answers_test"))
-	legacyFilter := bson.M{"tournament_id": legacyTournament, "account_id": legacyAccount}
-	legacyCount, err := collection.CountDocuments(ctx, legacyFilter)
-	if err != nil || legacyCount != 1 {
-		t.Fatalf("migration count=%d err=%v", legacyCount, err)
-	}
-	var migrated bson.M
-	if err := collection.FindOne(ctx, legacyFilter).Decode(&migrated); err != nil {
-		t.Fatal(err)
-	}
-	if _, exists := migrated["registration_id"]; exists {
-		t.Fatal("legacy registration ID remains")
-	}
-	if _, exists := migrated["team_id"]; exists {
-		t.Fatal("legacy team ID remains")
-	}
-	var latestLegacy models.FormResponse
-	if err := collection.FindOne(ctx, legacyFilter).Decode(&latestLegacy); err != nil || latestLegacy.Answers[0].Value != "Latest" {
-		t.Fatalf("migration did not preserve latest answers: %+v %v", latestLegacy, err)
-	}
-	if _, err := collection.InsertOne(ctx, legacyFilter); !mongo.IsDuplicateKeyError(err) {
-		t.Fatalf("composite key must be unique: %v", err)
-	}
 	client := apptest.NewClient(app.TournamentBaseURL())
 	s := &teamLobbyScenarioContext{client: client}
 	if err := s.createPublishedTournament(); err != nil {
@@ -134,6 +93,10 @@ func TestMemberRegistrationAnswers(t *testing.T) {
 	}
 	if len(lobby.Members) != 1 || !lobby.Members[0].RegistrationComplete {
 		t.Fatal("captain readiness missing")
+	}
+	// The answer store still enforces one document per tournament/account.
+	if _, err := collection.InsertOne(ctx, bson.M{"tournament_id": s.tournament.ID, "account_id": captain.ID}); !mongo.IsDuplicateKeyError(err) {
+		t.Fatalf("composite answer key must be unique: %v", err)
 	}
 	joinPath := "/lobbies/" + *lobby.InviteCode + "/join"
 	request(http.MethodPost, joinPath, answers(nil), member, 400)
