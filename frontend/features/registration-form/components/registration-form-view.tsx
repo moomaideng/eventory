@@ -257,21 +257,29 @@ export function RegistrationFormView({
   }
 
   if (myTeamQuery.data && !isRedirecting) {
+    const isRejected = myTeamQuery.data.status === "REJECTED";
+    const isPending = ["FORMING", "PAYMENT_PENDING"].includes(
+      myTeamQuery.data.status
+    );
     return (
       <div className="mx-auto w-full max-w-3xl px-4 py-8">
         <Card>
           <CardContent className="flex flex-col items-center gap-4 pt-6 text-center">
             <h2 className="text-xl font-semibold">
-              {["FORMING", "PAYMENT_PENDING"].includes(myTeamQuery.data.status)
-                ? "Complete your registration"
-                : "Already Registered"}
+              {isRejected
+                ? "Application Rejected"
+                : isPending
+                  ? "Complete your registration"
+                  : "Already Registered"}
             </h2>
             <p className="text-muted-foreground">
-              {["FORMING", "PAYMENT_PENDING"].includes(myTeamQuery.data.status)
-                ? "Your answers are saved. Continue your existing registration without filling out the form again."
-                : "You are already registered for this tournament."}
+              {isRejected
+                ? "Your application was not accepted for this tournament."
+                : isPending
+                  ? "Your answers are saved. Continue your existing registration without filling out the form again."
+                  : "You are already registered for this tournament."}
             </p>
-            {["FORMING", "PAYMENT_PENDING"].includes(myTeamQuery.data.status) && (
+            {isPending && (
               <RegistrationPaymentButton teamId={myTeamQuery.data.id} />
             )}
             <Button onClick={() => router.push(`/tournaments/${tournamentId}`)}>

@@ -7,7 +7,6 @@ import { ArrowLeft, Check, ShieldAlert } from "lucide-react";
 import { $api } from "@/lib/api/client";
 import { useAuth } from "@/context/auth-context";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Empty,
@@ -17,7 +16,6 @@ import {
   EmptyTitle,
 } from "@/components/ui/empty";
 import { useLobbyActions } from "@/features/lobbies/hooks/use-lobby-actions";
-import { LobbyStatusBadge } from "@/features/lobbies/components/lobby-status-badge";
 import { LobbyWorkspaceSkeleton } from "@/features/lobbies/components/lobby-skeleton";
 import { LobbyRosterCard } from "@/features/lobbies/components/lobby-roster-card";
 import { LobbyInviteCard } from "@/features/lobbies/components/lobby-invite-card";
@@ -109,7 +107,6 @@ export function TeamLobbyWorkspace({ inviteCode }: { inviteCode: string }) {
     );
   }
 
-  const isCaptain = lobby.viewerRole === "CAPTAIN";
   const displayedError = actionError || copyError;
 
   return (
@@ -125,21 +122,14 @@ export function TeamLobbyWorkspace({ inviteCode }: { inviteCode: string }) {
         Tournament details
       </Button>
 
-      <div className="flex flex-col gap-3">
-        <div className="flex flex-wrap items-center gap-2">
-          <Badge variant="secondary">{lobby.tournament.game}</Badge>
-          <LobbyStatusBadge status={lobby.status} />
-          {isCaptain ? <Badge variant="outline">Captain</Badge> : null}
-        </div>
-        <div className="flex flex-col gap-2">
-          <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
-            {lobby.name}
-          </h1>
-          <p className="text-muted-foreground">
-            Teaming up for {lobby.tournament.name} · Hosted by{" "}
-            {lobby.tournament.organizerName}
-          </p>
-        </div>
+      <div className="flex flex-col gap-2">
+        <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
+          {lobby.name}
+        </h1>
+        <p className="text-muted-foreground">
+          Teaming up for {lobby.tournament.name} · Hosted by{" "}
+          {lobby.tournament.organizerName}
+        </p>
       </div>
 
       {displayedError ? (
@@ -147,6 +137,26 @@ export function TeamLobbyWorkspace({ inviteCode }: { inviteCode: string }) {
           <ShieldAlert />
           <AlertTitle>Action unavailable</AlertTitle>
           <AlertDescription>{displayedError}</AlertDescription>
+        </Alert>
+      ) : null}
+
+      {lobby.status === "ACCEPTED" ? (
+        <Alert>
+          <Check />
+          <AlertTitle>Registration accepted</AlertTitle>
+          <AlertDescription>
+            Your team is confirmed to participate in this tournament.
+          </AlertDescription>
+        </Alert>
+      ) : null}
+
+      {lobby.status === "REJECTED" ? (
+        <Alert variant="destructive">
+          <ShieldAlert />
+          <AlertTitle>Application rejected</AlertTitle>
+          <AlertDescription>
+            Your team&apos;s application was not accepted for this tournament.
+          </AlertDescription>
         </Alert>
       ) : null}
 
