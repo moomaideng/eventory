@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/moomaideng/eventory/internal/money"
 )
 
 const (
@@ -56,8 +57,8 @@ func (event PaymentConfirmed) Validate() error {
 	if event.Data.PaymentID == uuid.Nil || event.Data.PayerAccountID == uuid.Nil {
 		return errors.New("payment_id and payer_account_id are required")
 	}
-	if event.Data.AmountMinor <= 0 {
-		return errors.New("amount_minor must be positive")
+	if amt, err := money.FromMinor(event.Data.AmountMinor, money.CurrencyOrDefault(event.Data.Currency)); err != nil || amt.AmountMinor == 0 {
+		return errors.New("amount_minor must be positive and currency must be supported")
 	}
 	if event.Data.Recipient.AccountID == uuid.Nil {
 		return errors.New("recipient account_id is required")

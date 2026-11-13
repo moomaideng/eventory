@@ -25,7 +25,9 @@ export function TierCard({
     <Card>
       <CardHeader>
         <CardTitle className="wrap-anywhere">{tier.name}</CardTitle>
-        <CardDescription>{formatMoney(tier.price, currency)}</CardDescription>
+        <CardDescription>
+          {formatMoney(tier.priceMinor, currency)}
+        </CardDescription>
         <CardAction>
           <Badge variant="secondary">
             {tier.availableSlots} of {tier.slots} slots available

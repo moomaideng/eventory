@@ -291,7 +291,7 @@ func TestProcessPaymentConfirmed(t *testing.T) {
 	if noti.UserID != payerID || noti.Type != models.NotificationTypePaymentConfirmed {
 		t.Fatalf("unexpected in-app notification: %#v", noti)
 	}
-	if !strings.Contains(noti.Message, "1250.00 THB") {
+	if !strings.Contains(noti.Message, "THB 1,250.00") {
 		t.Fatalf("expected notification message to format amount in THB, got %q", noti.Message)
 	}
 }

@@ -3,9 +3,9 @@ package receiptpdf
 import (
 	_ "embed"
 	"fmt"
-	"strconv"
 	"strings"
 
+	"github.com/moomaideng/eventory/internal/money"
 	"github.com/moomaideng/eventory/services/payment/models"
 	"github.com/signintech/gopdf"
 )
@@ -127,9 +127,5 @@ func Generate(invoice *models.Invoice) ([]byte, error) {
 }
 
 func formatAmount(invoice *models.Invoice) string {
-	whole := strconv.FormatInt(invoice.AmountMinor/100, 10)
-	for i := len(whole) - 3; i > 0; i -= 3 {
-		whole = whole[:i] + "," + whole[i:]
-	}
-	return fmt.Sprintf("%s %s.%02d", invoice.Currency, whole, invoice.AmountMinor%100)
+	return money.Format(invoice.AmountMinor, invoice.Currency)
 }

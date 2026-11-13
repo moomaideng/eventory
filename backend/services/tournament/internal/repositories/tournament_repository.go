@@ -19,11 +19,11 @@ var (
 
 type TournamentFilters struct {
 	Query       string
-	StartFrom   *time.Time
-	StartTo     *time.Time
-	MinEntryFee *int64
-	MaxEntryFee *int64
-	Status      models.TournamentStatus
+	StartFrom        *time.Time
+	StartTo          *time.Time
+	MinEntryFeeMinor *int64
+	MaxEntryFeeMinor *int64
+	Status           models.TournamentStatus
 	Sort        string
 	Page        int
 	PageSize    int
@@ -77,11 +77,11 @@ func (r *tournamentRepositoryImpl) Search(
 	if filters.StartTo != nil {
 		query = query.Where("start_at <= ?", *filters.StartTo)
 	}
-	if filters.MinEntryFee != nil {
-		query = query.Where("entry_fee >= ?", *filters.MinEntryFee)
+	if filters.MinEntryFeeMinor != nil {
+		query = query.Where("entry_fee_minor >= ?", *filters.MinEntryFeeMinor)
 	}
-	if filters.MaxEntryFee != nil {
-		query = query.Where("entry_fee <= ?", *filters.MaxEntryFee)
+	if filters.MaxEntryFeeMinor != nil {
+		query = query.Where("entry_fee_minor <= ?", *filters.MaxEntryFeeMinor)
 	}
 	if filters.Status != "" {
 		query = query.Where("status = ?", filters.Status)
@@ -95,8 +95,8 @@ func (r *tournamentRepositoryImpl) Search(
 	orderBy := map[string]string{
 		"start_asc":  "(start_at <= '0001-01-01') ASC, start_at ASC, id ASC",
 		"start_desc": "(start_at <= '0001-01-01') ASC, start_at DESC, id ASC",
-		"fee_asc":    "entry_fee ASC, start_at ASC, id ASC",
-		"fee_desc":   "entry_fee DESC, start_at ASC, id ASC",
+		"fee_asc":    "entry_fee_minor ASC, start_at ASC, id ASC",
+		"fee_desc":   "entry_fee_minor DESC, start_at ASC, id ASC",
 	}[filters.Sort]
 	if orderBy == "" {
 		return nil, 0, fmt.Errorf("unsupported tournament sort %q", filters.Sort)
@@ -229,7 +229,7 @@ func (r *tournamentRepositoryImpl) Update(
 				"start_at":              tournament.StartsAt,
 				"end_at":                tournament.EndsAt,
 				"registration_deadline": tournament.RegistrationDeadline,
-				"entry_fee":             tournament.EntryFee,
+				"entry_fee_minor":       tournament.EntryFeeMinor,
 				"registration_mode":     tournament.RegistrationMode,
 				"min_team_size":         tournament.MinTeamSize,
 				"max_team_size":         tournament.MaxTeamSize,
@@ -251,8 +251,8 @@ func (r *tournamentRepositoryImpl) Update(
 				return err
 			}
 			return tx.Model(&existing).Updates(map[string]any{
-				"goal_amount": tournament.Funding.GoalAmount,
-				"deadline":    tournament.Funding.Deadline,
+				"goal_amount_minor": tournament.Funding.GoalAmountMinor,
+				"deadline":          tournament.Funding.Deadline,
 			}).Error
 		}
 		return nil
@@ -330,7 +330,7 @@ func (r *tournamentRepositoryImpl) CountActiveTiers(
 ) (int64, error) {
 	var count int64
 	err := r.db.WithContext(ctx).Model(&models.SponsorshipTier{}).
-		Where("tournament_id = ? AND archived = false AND price > 0 AND slots >= 1", tournamentID).
+		Where("tournament_id = ? AND archived = false AND price_minor > 0 AND slots >= 1", tournamentID).
 		Count(&count).Error
 	return count, err
 }

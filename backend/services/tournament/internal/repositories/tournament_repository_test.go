@@ -69,12 +69,12 @@ func TestOrganizerDashboardOwnershipPostgres(t *testing.T) {
 	repo := repositories.NewTournamentRepository(tx)
 	ctx := context.Background()
 	fundingDeadline := time.Now().Add(12 * time.Hour).Truncate(time.Microsecond)
-	funding := models.TournamentFunding{TournamentID: tournament.ID, GoalAmount: 1000, Deadline: &fundingDeadline}
+	funding := models.TournamentFunding{TournamentID: tournament.ID, GoalAmountMinor: 100000, Deadline: &fundingDeadline}
 	if err := tx.Create(&funding).Error; err != nil {
 		t.Fatal(err)
 	}
 	tournament.Funding = &funding
-	tournament.Funding.GoalAmount = 2500
+	tournament.Funding.GoalAmountMinor = 250000
 	if err := repo.Update(ctx, &tournament); err != nil {
 		t.Fatalf("updating tournament funding: %v", err)
 	}
@@ -82,7 +82,7 @@ func TestOrganizerDashboardOwnershipPostgres(t *testing.T) {
 	if err := tx.Where("tournament_id = ?", tournament.ID).First(&savedFunding).Error; err != nil {
 		t.Fatal(err)
 	}
-	if savedFunding.GoalAmount != 2500 || savedFunding.Deadline == nil || !savedFunding.Deadline.Equal(fundingDeadline) {
+	if savedFunding.GoalAmountMinor != 250000 || savedFunding.Deadline == nil || !savedFunding.Deadline.Equal(fundingDeadline) {
 		t.Fatalf("funding update was not persisted: %+v", savedFunding)
 	}
 	if err := repo.UpdateStatus(ctx, tournament.ID, models.TournamentStatusCrowdfunding, models.TournamentStatusRegistration); err != nil {

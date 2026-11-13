@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { MAX_WHOLE_MONEY } from "@/lib/money";
 
 /**
  * Validates a tournament UUID path parameter.
@@ -27,7 +28,12 @@ export const tournamentFiltersSchema = z.object({
   q: z.string().trim().max(100).optional().catch(undefined),
   startFrom: z.string().trim().optional().catch(undefined),
   startTo: z.string().trim().optional().catch(undefined),
-  maxEntryFee: z.coerce.number().min(0).optional().catch(undefined),
+  maxEntryFee: z.coerce
+    .number()
+    .min(0)
+    .max(MAX_WHOLE_MONEY)
+    .optional()
+    .catch(undefined),
   page: z.coerce.number().int().positive().default(1).catch(1),
 });
 

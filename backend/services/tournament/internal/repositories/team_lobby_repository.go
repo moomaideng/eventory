@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/moomaideng/eventory/internal/money"
 	"github.com/moomaideng/eventory/services/tournament/models"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -220,10 +221,11 @@ func (r *teamLobbyRepository) Lock(ctx context.Context, teamID uuid.UUID, expect
 		if len(team.Members) > tournament.MaxTeamSize {
 			return ErrTeamLobbyFull
 		}
-		if tournament.EntryFee < 0 || tournament.EntryFee > 9007199254740991/100 || tournament.Currency != "THB" {
+		fee, err := money.FromMinor(tournament.EntryFeeMinor, tournament.Currency)
+		if err != nil {
 			return ErrInvalidRegistrationFee
 		}
-		if tournament.EntryFee > 0 {
+		if fee.AmountMinor > 0 {
 			var payer uuid.UUID
 			for _, member := range team.Members {
 				if member.Role == models.TournamentTeamMemberRoleCaptain {
@@ -240,7 +242,7 @@ func (r *teamLobbyRepository) Lock(ctx context.Context, teamID uuid.UUID, expect
 			return tx.Model(&models.TournamentTeam{}).Where("id = ?", team.ID).Updates(map[string]any{
 				"status": models.TournamentTeamStatusPaymentPending, "locked_at": nil,
 				"payment_attempt_id": uuid.New(), "payment_id": nil, "payment_payer_id": payer,
-				"payment_amount_minor": tournament.EntryFee * 100, "payment_expires_at": expires,
+				"payment_amount_minor": fee.AmountMinor, "payment_expires_at": expires,
 			}).Error
 		}
 		return tx.Model(&models.TournamentTeam{}).Where("id = ?", team.ID).Updates(map[string]any{

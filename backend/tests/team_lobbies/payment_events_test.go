@@ -28,7 +28,7 @@ func TestPaymentResultSettlesRegistrationWithoutRefresh(t *testing.T) {
 		if err := s.aCaptainHasCreatedAFormingTeamLobbyWithAValidInviteCode(); err != nil {
 			t.Fatal(err)
 		}
-		if err := app.DB.Model(s.tournament).Updates(map[string]any{"entry_fee": 250, "min_team_size": 1}).Error; err != nil {
+		if err := app.DB.Model(s.tournament).Updates(map[string]any{"entry_fee_minor": 25000, "min_team_size": 1}).Error; err != nil {
 			t.Fatal(err)
 		}
 		resp, err := s.client.Do(http.MethodPost, "/lobbies/"+s.lobby.ID.String()+"/lock", nil, s.captain.AuthHeaders())

@@ -50,7 +50,7 @@ type Tournament struct {
 	StartsAt             time.Time                  `gorm:"column:start_at;not null;index:idx_tournaments_public_start,priority:2"`
 	EndsAt               time.Time                  `gorm:"column:end_at;not null"`
 	RegistrationDeadline time.Time                  `gorm:"not null"`
-	EntryFee             int64                      `gorm:"not null;default:0;index"`
+	EntryFeeMinor        int64                      `gorm:"not null;default:0;index"`
 	Currency             string                     `gorm:"type:char(3);not null;default:'THB'"`
 	RegistrationMode     TournamentRegistrationMode `gorm:"type:varchar(16);not null;default:'SOLO'"`
 	MinTeamSize          int                        `gorm:"not null;default:1"`
@@ -124,12 +124,12 @@ type TournamentTeamMember struct {
 }
 
 type TournamentFunding struct {
-	ID             uuid.UUID `gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
-	TournamentID   uuid.UUID `gorm:"type:uuid;not null;uniqueIndex"`
-	GoalAmount     int64     `gorm:"not null;default:0"`
-	Deadline       *time.Time
-	RaisedAmount   int64 `gorm:"not null;default:0"`
-	SupporterCount int   `gorm:"not null;default:0"`
-	CreatedAt      time.Time
-	UpdatedAt      time.Time
+	ID                uuid.UUID `gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
+	TournamentID      uuid.UUID `gorm:"type:uuid;not null;uniqueIndex"`
+	GoalAmountMinor   int64     `gorm:"not null;default:0"`
+	Deadline          *time.Time
+	RaisedAmountMinor int64 `gorm:"not null;default:0"`
+	SupporterCount    int   `gorm:"not null;default:0"`
+	CreatedAt         time.Time
+	UpdatedAt         time.Time
 }

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { AlertCircle } from "lucide-react";
 import { useAuth } from "@/context/auth-context";
+import { minorToWhole, wholeToMinor } from "@/lib/money";
 import { $api } from "@/lib/api/client";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -44,7 +45,7 @@ function toFormValues(tier: SponsorshipTier | null): SponsorshipTierFormInput {
   if (!tier) return EMPTY_FORM;
   return {
     name: tier.name,
-    price: String(tier.price),
+    price: String(minorToWhole(tier.priceMinor)),
     slots: String(tier.slots),
     perks: (tier.perks ?? []).join("\n"),
   };
@@ -98,19 +99,25 @@ export function TierFormDialog({
         onOpenChange(false);
       },
     };
+    const body = {
+      name: parsed.data.name,
+      priceMinor: wholeToMinor(parsed.data.price),
+      slots: parsed.data.slots,
+      perks: parsed.data.perks,
+    };
     const headers = { Authorization: authorizationHeader ?? "" };
     if (tier) {
       updateMutation.mutate(
         {
           params: { path: { tournamentId, tierId: tier.id } },
           headers,
-          body: parsed.data,
+          body,
         },
         options
       );
     } else {
       createMutation.mutate(
-        { params: { path: { tournamentId } }, headers, body: parsed.data },
+        { params: { path: { tournamentId } }, headers, body },
         options
       );
     }

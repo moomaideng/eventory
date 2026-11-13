@@ -27,7 +27,7 @@ func SeedTournaments(db *gorm.DB) error {
 			Game:        "Valorant", Location: "Online", StartsAt: now.AddDate(0, 0, 3).Add(12 * time.Hour),
 			EndsAt: now.AddDate(0, 0, 3).Add(20 * time.Hour), RegistrationDeadline: now.AddDate(0, 0, 2),
 			RegistrationMode: models.TournamentRegistrationModeTeam, MinTeamSize: 5, MaxTeamSize: 5,
-			EntryFee: 0, Currency: "THB", Capacity: 32,
+			EntryFeeMinor: 0, Currency: "THB", Capacity: 32,
 			Status: models.TournamentStatusRegistration,
 		},
 		{
@@ -38,7 +38,7 @@ func SeedTournaments(db *gorm.DB) error {
 			Game:        "Mobile Legends", Location: "Chulalongkorn University", StartsAt: now.AddDate(0, 0, 10).Add(9 * time.Hour),
 			EndsAt: now.AddDate(0, 0, 11).Add(18 * time.Hour), RegistrationDeadline: now.AddDate(0, 0, 7),
 			RegistrationMode: models.TournamentRegistrationModeTeam, MinTeamSize: 5, MaxTeamSize: 5,
-			EntryFee: 250, Currency: "THB", Capacity: 24,
+			EntryFeeMinor: 25000, Currency: "THB", Capacity: 24,
 			Status: models.TournamentStatusRegistration,
 		},
 		{
@@ -48,7 +48,7 @@ func SeedTournaments(db *gorm.DB) error {
 			Game:        "Tekken 8", Location: "Siam Paragon, Bangkok", StartsAt: now.AddDate(0, 0, 21).Add(6 * time.Hour),
 			EndsAt: now.AddDate(0, 0, 21).Add(14 * time.Hour), RegistrationDeadline: now.AddDate(0, 0, 17),
 			RegistrationMode: models.TournamentRegistrationModeSolo, MinTeamSize: 1, MaxTeamSize: 1,
-			EntryFee: 500, Currency: "THB", Capacity: 64,
+			EntryFeeMinor: 50000, Currency: "THB", Capacity: 64,
 			Status: models.TournamentStatusRegistration,
 		},
 		{
@@ -58,7 +58,7 @@ func SeedTournaments(db *gorm.DB) error {
 			Game:        "Chess", Location: "Maya Works Studio", StartsAt: now.AddDate(0, 0, 6).Add(7 * time.Hour),
 			EndsAt: now.AddDate(0, 0, 6).Add(12 * time.Hour), RegistrationDeadline: now.AddDate(0, 0, -1),
 			RegistrationMode: models.TournamentRegistrationModeSolo, MinTeamSize: 1, MaxTeamSize: 1,
-			EntryFee: 100, Currency: "THB", Capacity: 40,
+			EntryFeeMinor: 10000, Currency: "THB", Capacity: 40,
 			Status: models.TournamentStatusRegistration,
 		},
 		{
@@ -68,7 +68,7 @@ func SeedTournaments(db *gorm.DB) error {
 			Game:        "Counter-Strike 2", Location: "Queen Sirikit Convention Center", StartsAt: now.AddDate(0, 0, 45).Add(4 * time.Hour),
 			EndsAt: now.AddDate(0, 0, 47).Add(14 * time.Hour), RegistrationDeadline: now.AddDate(0, 0, 35),
 			RegistrationMode: models.TournamentRegistrationModeTeam, MinTeamSize: 5, MaxTeamSize: 5,
-			EntryFee: 1200, Currency: "THB", Capacity: 16,
+			EntryFeeMinor: 120000, Currency: "THB", Capacity: 16,
 			Status: models.TournamentStatusRegistration,
 		},
 		{
@@ -78,7 +78,7 @@ func SeedTournaments(db *gorm.DB) error {
 			Game:        "Apex Legends", Location: "Online", StartsAt: now.AddDate(0, 0, 14).Add(11 * time.Hour),
 			EndsAt: now.AddDate(0, 0, 14).Add(19 * time.Hour), RegistrationDeadline: now.AddDate(0, 0, 11),
 			RegistrationMode: models.TournamentRegistrationModeTeam, MinTeamSize: 1, MaxTeamSize: 3,
-			EntryFee: 300, Currency: "THB", Capacity: 24,
+			EntryFeeMinor: 30000, Currency: "THB", Capacity: 24,
 			Status: models.TournamentStatusRegistration,
 		},
 		{
@@ -88,7 +88,7 @@ func SeedTournaments(db *gorm.DB) error {
 			Game:        "Teamfight Tactics", Location: "Bangkok", StartsAt: now.AddDate(0, 0, 28).Add(10 * time.Hour),
 			EndsAt: now.AddDate(0, 0, 28).Add(17 * time.Hour), RegistrationDeadline: now.AddDate(0, 0, 24),
 			RegistrationMode: models.TournamentRegistrationModeSolo, MinTeamSize: 1, MaxTeamSize: 1,
-			EntryFee: 150, Currency: "THB", Capacity: 48,
+			EntryFeeMinor: 15000, Currency: "THB", Capacity: 48,
 			Status: models.TournamentStatusRegistration,
 		},
 	}
@@ -191,13 +191,13 @@ func SeedTournaments(db *gorm.DB) error {
 
 	// Totals start empty; only confirmed sponsorship pledges contribute funding.
 	funding := []models.TournamentFunding{
-		{ID: uuid.MustParse("55555555-0000-4000-8000-000000000001"), TournamentID: tournaments[0].ID, GoalAmount: 50000},
-		{ID: uuid.MustParse("55555555-0000-4000-8000-000000000002"), TournamentID: tournaments[1].ID, GoalAmount: 75000},
-		{ID: uuid.MustParse("55555555-0000-4000-8000-000000000003"), TournamentID: tournaments[2].ID, GoalAmount: 120000},
-		{ID: uuid.MustParse("55555555-0000-4000-8000-000000000004"), TournamentID: tournaments[3].ID, GoalAmount: 25000},
-		{ID: uuid.MustParse("55555555-0000-4000-8000-000000000005"), TournamentID: tournaments[4].ID, GoalAmount: 500000},
-		{ID: uuid.MustParse("55555555-0000-4000-8000-000000000006"), TournamentID: tournaments[5].ID, GoalAmount: 60000},
-		{ID: uuid.MustParse("55555555-0000-4000-8000-000000000007"), TournamentID: tournaments[6].ID, GoalAmount: 30000},
+		{ID: uuid.MustParse("55555555-0000-4000-8000-000000000001"), TournamentID: tournaments[0].ID, GoalAmountMinor: 5000000},
+		{ID: uuid.MustParse("55555555-0000-4000-8000-000000000002"), TournamentID: tournaments[1].ID, GoalAmountMinor: 7500000},
+		{ID: uuid.MustParse("55555555-0000-4000-8000-000000000003"), TournamentID: tournaments[2].ID, GoalAmountMinor: 12000000},
+		{ID: uuid.MustParse("55555555-0000-4000-8000-000000000004"), TournamentID: tournaments[3].ID, GoalAmountMinor: 2500000},
+		{ID: uuid.MustParse("55555555-0000-4000-8000-000000000005"), TournamentID: tournaments[4].ID, GoalAmountMinor: 50000000},
+		{ID: uuid.MustParse("55555555-0000-4000-8000-000000000006"), TournamentID: tournaments[5].ID, GoalAmountMinor: 6000000},
+		{ID: uuid.MustParse("55555555-0000-4000-8000-000000000007"), TournamentID: tournaments[6].ID, GoalAmountMinor: 3000000},
 	}
 
 	if err := db.Clauses(clause.OnConflict{

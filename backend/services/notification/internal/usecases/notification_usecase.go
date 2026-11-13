@@ -13,6 +13,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/moomaideng/eventory/internal/events"
+	"github.com/moomaideng/eventory/internal/money"
 	"github.com/moomaideng/eventory/services/notification/internal/repositories"
 	"github.com/moomaideng/eventory/services/notification/models"
 )
@@ -314,7 +315,7 @@ func (useCase *NotificationUseCase) ProcessPaymentConfirmed(ctx context.Context,
 			UserID:  event.Data.Recipient.AccountID,
 			Type:    models.NotificationTypePaymentConfirmed,
 			Title:   "Payment Confirmed",
-			Message: fmt.Sprintf("Your payment of %.2f THB for %s was confirmed.", float64(event.Data.AmountMinor)/100.0, desc),
+			Message: fmt.Sprintf("Your payment of %s for %s was confirmed.", money.Format(event.Data.AmountMinor, event.Data.Currency), desc),
 			Link:    fmt.Sprintf("/payments/%s/receipt", event.Data.PaymentID),
 		})
 	}

@@ -307,11 +307,11 @@ export interface paths {
          * @description Creates a new tournament for the authenticated organizer. Requires an active organizer profile.
          *
          *     ### Rules & Defaults:
-         *     - **Status & Visibility:** Defaults to `REGISTRATION`; valid fundingGoal and fundingDeadline start in `CROWDFUNDING`.
+         *     - **Status & Visibility:** Defaults to `REGISTRATION`; valid fundingGoalMinor and fundingDeadline start in `CROWDFUNDING`.
          *     - **Currency:** Defaulted to `THB`.
          *     - **Registration Mode:** If `SOLO`, `minTeamSize` and `maxTeamSize` are automatically set to `1`. If `TEAM`, requires `1 <= minTeamSize <= maxTeamSize`.
          *     - **Date Integrity (400):** Requires `registrationDeadline < startAt < endAt`.
-         *     - **Validation (400):** Requires non-empty `name`, `game`, `location`, `capacity >= 1`, and `entryFee >= 0`.
+         *     - **Validation (400):** Requires non-empty `name`, `game`, `location`, `capacity >= 1`, and `entryFeeMinor >= 0`.
          */
         post: operations["create-tournament"];
         delete?: never;
@@ -649,7 +649,7 @@ export interface paths {
          *     - **Roster Freezing (409 Conflict):** Once any team has locked or been accepted into the tournament (`lockedOrAcceptedCount > 0`), `registrationMode`, `minTeamSize`, and `maxTeamSize` cannot be altered.
          *     - **Date Integrity (400 Bad Request):** Merged dates must maintain `registrationDeadline < startAt < endAt`.
          *     - **Crowdfunding:** The owner may edit the goal and funding deadline only while the campaign is active; the funding deadline must remain before registration closes. Planned event dates and location can be updated during this stage.
-         *     - **Field Validation (400 Bad Request):** If provided, `name`, `game`, and `location` cannot be empty or whitespace; `entryFee` cannot be negative.
+         *     - **Field Validation (400 Bad Request):** If provided, `name`, `game`, and `location` cannot be empty or whitespace; `entryFeeMinor` cannot be negative.
          */
         patch: operations["update-tournament"];
         trace?: never;
@@ -1283,19 +1283,19 @@ export interface components {
             endAt?: string;
             /**
              * Format: int64
-             * @description Entry fee in whole currency units
+             * @description Entry fee in minor currency units (satang; 100 satang = 1 THB)
              */
-            entryFee?: number;
+            entryFeeMinor?: number;
             /**
              * Format: date-time
-             * @description Crowdfunding deadline before registrationDeadline; requires fundingGoal
+             * @description Crowdfunding deadline before registrationDeadline; requires fundingGoalMinor
              */
             fundingDeadline?: string;
             /**
              * Format: int64
-             * @description Crowdfunding goal in THB; requires fundingDeadline
+             * @description Crowdfunding goal in minor currency units (satang; 100 satang = 1 THB); requires fundingDeadline
              */
-            fundingGoal?: number;
+            fundingGoalMinor?: number;
             /** @description Game title */
             game: string;
             /** @description Location or 'Online' */
@@ -1729,9 +1729,9 @@ export interface components {
             perks: string[] | null;
             /**
              * Format: int64
-             * @description Price in whole currency units
+             * @description Price in minor currency units (satang; 100 satang = 1 THB)
              */
-            price: number;
+            priceMinor: number;
             /**
              * Format: int64
              * @description How many sponsors can buy this tier
@@ -1759,9 +1759,9 @@ export interface components {
             perks: string[] | null;
             /**
              * Format: int64
-             * @description Price in whole currency units
+             * @description Price in minor currency units (satang; 100 satang = 1 THB)
              */
-            price: number;
+            priceMinor: number;
             /**
              * Format: int64
              * @description How many sponsors can buy this tier
@@ -1895,9 +1895,9 @@ export interface components {
             deadline?: string;
             /**
              * Format: int64
-             * @description Funding goal in whole currency units
+             * @description Funding goal in minor currency units (satang; 100 satang = 1 THB)
              */
-            goalAmount: number;
+            goalAmountMinor: number;
             /**
              * Format: double
              * @description Percentage of the funding goal raised
@@ -1905,14 +1905,14 @@ export interface components {
             percentage: number;
             /**
              * Format: int64
-             * @description Amount raised in whole currency units
+             * @description Amount raised in minor currency units (satang; 100 satang = 1 THB)
              */
-            raisedAmount: number;
+            raisedAmountMinor: number;
             /**
              * Format: int64
-             * @description Amount remaining to reach the goal
+             * @description Amount remaining to reach the goal in minor currency units (satang)
              */
-            remainingAmount: number;
+            remainingAmountMinor: number;
             /** Format: int64 */
             supporterCount: number;
         };
@@ -1949,9 +1949,9 @@ export interface components {
             endAt?: string;
             /**
              * Format: int64
-             * @description Entry fee in whole currency units
+             * @description Entry fee in minor currency units (satang; 100 satang = 1 THB)
              */
-            entryFee: number;
+            entryFeeMinor: number;
             game: string;
             id: string;
             location: string;
@@ -2038,9 +2038,9 @@ export interface components {
             endAt?: string;
             /**
              * Format: int64
-             * @description New entry fee
+             * @description New entry fee in minor currency units (satang; 100 satang = 1 THB)
              */
-            entryFee?: number;
+            entryFeeMinor?: number;
             /**
              * Format: date-time
              * @description New crowdfunding deadline while the campaign is active
@@ -2048,9 +2048,9 @@ export interface components {
             fundingDeadline?: string;
             /**
              * Format: int64
-             * @description New crowdfunding goal while the campaign is active
+             * @description New crowdfunding goal in minor currency units (satang) while the campaign is active
              */
-            fundingGoal?: number;
+            fundingGoalMinor?: number;
             /** @description New game title */
             game?: string;
             /** @description New location */
@@ -2790,10 +2790,10 @@ export interface operations {
                 startFrom?: string;
                 /** @description Latest tournament start date (YYYY-MM-DD) */
                 startTo?: string;
-                /** @description Minimum entry fee; omit to disable */
-                minEntryFee?: number;
-                /** @description Maximum entry fee; omit to disable */
-                maxEntryFee?: number;
+                /** @description Minimum entry fee in minor units (satang); omit to disable */
+                minEntryFeeMinor?: number;
+                /** @description Maximum entry fee in minor units (satang); omit to disable */
+                maxEntryFeeMinor?: number;
                 status?: "DRAFT" | "CROWDFUNDING" | "REGISTRATION" | "ONGOING" | "COMPLETED";
                 sort?: "start_asc" | "start_desc" | "fee_asc" | "fee_desc";
                 page?: number;

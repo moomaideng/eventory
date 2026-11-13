@@ -7,6 +7,7 @@ import (
 	texttemplate "text/template"
 
 	"github.com/moomaideng/eventory/internal/events"
+	"github.com/moomaideng/eventory/internal/money"
 )
 
 const (
@@ -187,7 +188,7 @@ func RenderRegistrationRejectedEmail(event events.RegistrationReviewed, publicWe
 
 var paymentConfirmedTextTemplate = texttemplate.Must(texttemplate.New("payment-text").Parse(`Hello {{.DisplayName}},
 
-Your payment of {{.Amount}} THB for {{.Description}} has been confirmed.
+Your payment of {{.Amount}} for {{.Description}} has been confirmed.
 
 Eventory
 `))
@@ -196,19 +197,18 @@ var paymentConfirmedHTMLTemplate = htmltemplate.Must(htmltemplate.New("payment-h
 <html><body style="font-family:Arial,sans-serif;color:#1f2937;line-height:1.5">
 <h1 style="font-size:22px">Payment Confirmed</h1>
 <p>Hello {{.DisplayName}},</p>
-<p>Your payment of <strong>{{.Amount}} THB</strong> for <strong>{{.Description}}</strong> has been confirmed.</p>
+<p>Your payment of <strong>{{.Amount}}</strong> for <strong>{{.Description}}</strong> has been confirmed.</p>
 <p>Eventory</p>
 </body></html>`))
 
 func RenderPaymentConfirmedEmail(event events.PaymentConfirmed, _ string) (EmailMessage, error) {
-	amountStr := fmt.Sprintf("%.2f", float64(event.Data.AmountMinor)/100.0)
 	data := struct {
 		DisplayName string
 		Amount      string
 		Description string
 	}{
 		DisplayName: event.Data.Recipient.DisplayName,
-		Amount:      amountStr,
+		Amount:      money.Format(event.Data.AmountMinor, event.Data.Currency),
 		Description: event.Data.Description,
 	}
 	var textBody, htmlBody strings.Builder

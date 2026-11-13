@@ -8,6 +8,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/google/uuid"
+	"github.com/moomaideng/eventory/internal/money"
 	"github.com/moomaideng/eventory/services/payment/internal/repositories"
 	"github.com/moomaideng/eventory/services/payment/models"
 	"gorm.io/gorm"
@@ -35,7 +36,8 @@ func NewPaymentUseCase(repo repositories.PaymentRepository) *PaymentUseCase {
 }
 
 func (uc *PaymentUseCase) Create(ctx context.Context, input CreatePayment) (*models.Invoice, error) {
-	if input.PayerAccountID == uuid.Nil || input.AmountMinor <= 0 || input.AmountMinor > 9007199254740991 || input.Currency != "THB" {
+	amt, err := money.FromMinor(input.AmountMinor, input.Currency)
+	if input.PayerAccountID == uuid.Nil || err != nil || amt.AmountMinor == 0 {
 		return nil, ErrInvalid
 	}
 	for _, field := range []struct {
@@ -49,7 +51,7 @@ func (uc *PaymentUseCase) Create(ctx context.Context, input CreatePayment) (*mod
 	invoice := &models.Invoice{
 		ID: uuid.New(), PayerAccountID: input.PayerAccountID,
 		Source: input.Source, Reference: input.Reference, IdempotencyKey: input.IdempotencyKey, Description: input.Description,
-		AmountMinor: input.AmountMinor, Currency: input.Currency, ExpiresAt: input.ExpiresAt.UTC().Truncate(time.Microsecond), Provider: "MOCK",
+		AmountMinor: amt.AmountMinor, Currency: amt.Currency, ExpiresAt: input.ExpiresAt.UTC().Truncate(time.Microsecond), Provider: "MOCK",
 	}
 	// Exact retries still return the original invoice after its deadline passes.
 	existing, err := uc.repo.FindByKey(ctx, input.Source, input.IdempotencyKey)

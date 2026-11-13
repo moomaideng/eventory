@@ -96,7 +96,7 @@ export function TournamentAboutCard({
                   <p className="text-sm font-medium">Entry fee</p>
                   <p className="text-muted-foreground text-sm">
                     {formatMoney(
-                      tournament.entryFee,
+                      tournament.entryFeeMinor,
                       tournament.currency,
                       true
                     )}

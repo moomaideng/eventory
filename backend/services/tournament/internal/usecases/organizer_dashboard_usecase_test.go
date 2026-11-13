@@ -40,7 +40,7 @@ func TestOrganizerDashboardCountsConfirmedParticipantsAndEntryStates(t *testing.
 			{Status: models.TournamentTeamStatusAccepted, Members: []models.TournamentTeamMember{{AccountID: participant}}},
 			{Status: models.TournamentTeamStatusAccepted, Members: []models.TournamentTeamMember{{AccountID: participant}, {AccountID: otherParticipant}}},
 		},
-		Funding: &models.TournamentFunding{GoalAmount: 100, RaisedAmount: 150, SupporterCount: 3},
+		Funding: &models.TournamentFunding{GoalAmountMinor: 10000, RaisedAmountMinor: 15000, SupporterCount: 3},
 	}}
 	accountID := uuid.New()
 	result, err := usecases.NewTournamentUseCase(repo, newStubAccountService()).Get(context.Background(), accountID, uuid.New())
@@ -51,7 +51,7 @@ func TestOrganizerDashboardCountsConfirmedParticipantsAndEntryStates(t *testing.
 	if result.Metrics != want {
 		t.Fatalf("metrics = %+v, want %+v", result.Metrics, want)
 	}
-	if result.Funding.Percentage != 150 || result.Funding.RemainingAmount != 0 || result.Funding.SupporterCount != 3 {
+	if result.Funding.Percentage != 150 || result.Funding.RemainingAmountMinor != 0 || result.Funding.SupporterCount != 3 {
 		t.Fatalf("unexpected funding: %+v", result.Funding)
 	}
 	if len(result.Tournament.Teams) != 0 || result.Tournament.Funding != nil {
@@ -66,7 +66,7 @@ func TestOrganizerDashboardCountsConfirmedParticipantsAndEntryStates(t *testing.
 }
 
 func TestOrganizerDashboardEmptyAndZeroGoal(t *testing.T) {
-	for _, funding := range []*models.TournamentFunding{nil, {RaisedAmount: 50}} {
+	for _, funding := range []*models.TournamentFunding{nil, {RaisedAmountMinor: 5000}} {
 		repo := &dashboardRepositoryStub{tournament: models.Tournament{Capacity: 16, Funding: funding}}
 		result, err := usecases.NewTournamentUseCase(repo, newStubAccountService()).Get(context.Background(), uuid.New(), uuid.New())
 		if err != nil {

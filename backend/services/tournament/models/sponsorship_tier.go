@@ -16,8 +16,8 @@ type SponsorshipTier struct {
 	TournamentID uuid.UUID  `gorm:"type:uuid;not null;index;uniqueIndex:idx_sponsorship_tier_name,where:archived = false"`
 	Tournament   Tournament `gorm:"foreignKey:TournamentID;constraint:OnDelete:CASCADE;"`
 	Name         string     `gorm:"type:varchar(80);not null;uniqueIndex:idx_sponsorship_tier_name,where:archived = false"`
-	// Price is in whole currency units, matching Tournament.EntryFee and Currency.
-	Price          int64    `gorm:"not null;check:chk_sponsorship_tiers_price,price > 0"`
+	// PriceMinor is in minor currency units (satang for THB), matching Tournament.EntryFeeMinor.
+	PriceMinor     int64    `gorm:"not null;check:chk_sponsorship_tiers_price_minor,price_minor > 0"`
 	Slots          int      `gorm:"not null;check:chk_sponsorship_tiers_slots,slots > 0"`
 	Perks          []string `gorm:"type:jsonb;serializer:json;not null"`
 	Archived       bool     `gorm:"not null;default:false"`

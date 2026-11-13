@@ -102,7 +102,7 @@ func newTierFixture(status models.TournamentStatus) (*usecases.SponsorshipTierUs
 }
 
 func validTierInput() usecases.SponsorshipTierInput {
-	return usecases.SponsorshipTierInput{Name: "Gold", Price: 10000, Slots: 2, Perks: []string{"Logo on stream"}}
+	return usecases.SponsorshipTierInput{Name: "Gold", PriceMinor: 1000000, Slots: 2, Perks: []string{"Logo on stream"}}
 }
 
 func TestSponsorshipTierUseCase_Create(t *testing.T) {
@@ -113,7 +113,7 @@ func TestSponsorshipTierUseCase_Create(t *testing.T) {
 	}{
 		{name: "valid tier", mutate: func(*usecases.SponsorshipTierInput) {}},
 		{name: "blank name", mutate: func(in *usecases.SponsorshipTierInput) { in.Name = "   " }, wantErr: usecases.ErrInvalidSponsorshipTierName},
-		{name: "zero price", mutate: func(in *usecases.SponsorshipTierInput) { in.Price = 0 }, wantErr: usecases.ErrInvalidSponsorshipTierPrice},
+		{name: "zero price", mutate: func(in *usecases.SponsorshipTierInput) { in.PriceMinor = 0 }, wantErr: usecases.ErrInvalidSponsorshipTierPrice},
 		{name: "no slots", mutate: func(in *usecases.SponsorshipTierInput) { in.Slots = 0 }, wantErr: usecases.ErrInvalidSponsorshipTierSlots},
 		{name: "only blank perks", mutate: func(in *usecases.SponsorshipTierInput) { in.Perks = []string{" ", ""} }, wantErr: usecases.ErrInvalidSponsorshipTierPerks},
 		{name: "too many perks", mutate: func(in *usecases.SponsorshipTierInput) {

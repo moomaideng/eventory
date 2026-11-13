@@ -13,7 +13,8 @@ export const sponsorshipTierSchema = z.object({
   price: z.coerce
     .number({ message: "Enter a price." })
     .int("Price must be a whole number.")
-    .min(1, "Price must be greater than zero."),
+    .min(1, "Price must be greater than zero.")
+    .max(90_071_992_547_409, "Price exceeds the maximum supported amount."),
   slots: z.coerce
     .number({ message: "Enter the number of slots." })
     .int("Slots must be a whole number.")
