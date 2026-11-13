@@ -1,4 +1,9 @@
-import { formFieldSchema, type FormField } from "@/features/registration-form/schemas";
+import {
+  formFieldSchema,
+  LONG_TEXT_MAX_LENGTH,
+  SHORT_TEXT_MAX_LENGTH,
+  type FormField,
+} from "@/features/registration-form/schemas";
 import type { components } from "@/lib/api/schema";
 
 type RegistrationFormResponse = components["schemas"]["RegistrationFormResponse"];
@@ -44,11 +49,9 @@ export function validateAnswer(field: FormField, value: AnswerValue | undefined)
     case "LONG_TEXT": {
       const text = typeof value === "string" ? value.trim() : "";
       if (!text) return field.required ? REQUIRED_MESSAGE : null;
-      const { minLength, maxLength } = field.config;
-      if (minLength !== undefined && text.length < minLength) {
-        return `Must be at least ${minLength} characters`;
-      }
-      if (maxLength !== undefined && text.length > maxLength) {
+      const maxLength =
+        field.type === "SHORT_TEXT" ? SHORT_TEXT_MAX_LENGTH : LONG_TEXT_MAX_LENGTH;
+      if (text.length > maxLength) {
         return `Must be at most ${maxLength} characters`;
       }
       return null;

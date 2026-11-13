@@ -1,6 +1,8 @@
 package forms
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"math"
 	"strings"
@@ -9,12 +11,68 @@ import (
 	"github.com/moomaideng/eventory/services/tournament/models"
 )
 
+const (
+	DefaultShortTextMinLength = 0
+	DefaultShortTextMaxLength = 200
+	DefaultLongTextMinLength  = 0
+	DefaultLongTextMaxLength  = 2000
+)
+
+func validateEmptyTextConfig(cfg any) error {
+	if cfg == nil {
+		return nil
+	}
+	switch cfg.(type) {
+	case ShortTextConfig, *ShortTextConfig, LongTextConfig, *LongTextConfig:
+		return nil
+	}
+	data, err := json.Marshal(cfg)
+	if err != nil {
+		return fmt.Errorf("%w: %w", ErrInvalidFieldConfig, err)
+	}
+	var target struct{}
+	dec := json.NewDecoder(bytes.NewReader(data))
+	dec.DisallowUnknownFields()
+	if err := dec.Decode(&target); err != nil {
+		return fmt.Errorf("%w: %w", ErrInvalidFieldConfig, err)
+	}
+	return nil
+}
+
+func validateTextAnswer(field models.FormField, val any, minLen, maxLen int) error {
+	if val == nil {
+		if field.Required {
+			return ErrFieldRequired
+		}
+		return nil
+	}
+
+	strVal, ok := val.(string)
+	if !ok {
+		return fmt.Errorf("%w: expected string", ErrInvalidFieldValue)
+	}
+
+	if strings.TrimSpace(strVal) == "" {
+		if field.Required {
+			return ErrFieldRequired
+		}
+		return nil
+	}
+
+	length := utf8.RuneCountInString(strVal)
+	if length < minLen {
+		return fmt.Errorf("%w: text length (%d) is less than minimum (%d)", ErrInvalidFieldValue, length, minLen)
+	}
+	if length > maxLen {
+		return fmt.Errorf("%w: text length (%d) exceeds maximum (%d)", ErrInvalidFieldValue, length, maxLen)
+	}
+
+	return nil
+}
+
 // --- Short Text ---
 
-type ShortTextConfig struct {
-	MinLength *int `json:"minLength" bson:"min_length"`
-	MaxLength *int `json:"maxLength" bson:"max_length"`
-}
+type ShortTextConfig struct{}
 
 type ShortTextHandler struct{}
 
@@ -23,60 +81,16 @@ func (h *ShortTextHandler) Type() models.FieldType {
 }
 
 func (h *ShortTextHandler) ValidateConfig(field models.FormField) error {
-	cfg, err := decodeConfig[ShortTextConfig](field.Config)
-	if err != nil {
-		return fmt.Errorf("%w: %w", ErrInvalidFieldConfig, err)
-	}
-	if cfg.MinLength != nil && *cfg.MinLength < 0 {
-		return fmt.Errorf("%w: min_length cannot be negative", ErrInvalidFieldConfig)
-	}
-	if cfg.MaxLength != nil && *cfg.MaxLength < 0 {
-		return fmt.Errorf("%w: max_length cannot be negative", ErrInvalidFieldConfig)
-	}
-	if cfg.MinLength != nil && cfg.MaxLength != nil && *cfg.MinLength > *cfg.MaxLength {
-		return fmt.Errorf("%w: min_length cannot exceed max_length", ErrInvalidFieldConfig)
-	}
-	return nil
+	return validateEmptyTextConfig(field.Config)
 }
 
 func (h *ShortTextHandler) ValidateAnswer(field models.FormField, val any) error {
-	if val == nil {
-		if field.Required {
-			return ErrFieldRequired
-		}
-		return nil
-	}
-
-	strVal, ok := val.(string)
-	if !ok {
-		return fmt.Errorf("%w: expected string", ErrInvalidFieldValue)
-	}
-
-	if strings.TrimSpace(strVal) == "" {
-		if field.Required {
-			return ErrFieldRequired
-		}
-		return nil
-	}
-
-	cfg, _ := decodeConfig[ShortTextConfig](field.Config)
-	length := utf8.RuneCountInString(strVal)
-	if cfg.MinLength != nil && length < *cfg.MinLength {
-		return fmt.Errorf("%w: text length (%d) is less than minimum (%d)", ErrInvalidFieldValue, length, *cfg.MinLength)
-	}
-	if cfg.MaxLength != nil && length > *cfg.MaxLength {
-		return fmt.Errorf("%w: text length (%d) exceeds maximum (%d)", ErrInvalidFieldValue, length, *cfg.MaxLength)
-	}
-
-	return nil
+	return validateTextAnswer(field, val, DefaultShortTextMinLength, DefaultShortTextMaxLength)
 }
 
 // --- Long Text ---
 
-type LongTextConfig struct {
-	MinLength *int `json:"minLength" bson:"min_length"`
-	MaxLength *int `json:"maxLength" bson:"max_length"`
-}
+type LongTextConfig struct{}
 
 type LongTextHandler struct{}
 
@@ -85,52 +99,11 @@ func (h *LongTextHandler) Type() models.FieldType {
 }
 
 func (h *LongTextHandler) ValidateConfig(field models.FormField) error {
-	cfg, err := decodeConfig[LongTextConfig](field.Config)
-	if err != nil {
-		return fmt.Errorf("%w: %w", ErrInvalidFieldConfig, err)
-	}
-	if cfg.MinLength != nil && *cfg.MinLength < 0 {
-		return fmt.Errorf("%w: min_length cannot be negative", ErrInvalidFieldConfig)
-	}
-	if cfg.MaxLength != nil && *cfg.MaxLength < 0 {
-		return fmt.Errorf("%w: max_length cannot be negative", ErrInvalidFieldConfig)
-	}
-	if cfg.MinLength != nil && cfg.MaxLength != nil && *cfg.MinLength > *cfg.MaxLength {
-		return fmt.Errorf("%w: min_length cannot exceed max_length", ErrInvalidFieldConfig)
-	}
-	return nil
+	return validateEmptyTextConfig(field.Config)
 }
 
 func (h *LongTextHandler) ValidateAnswer(field models.FormField, val any) error {
-	if val == nil {
-		if field.Required {
-			return ErrFieldRequired
-		}
-		return nil
-	}
-
-	strVal, ok := val.(string)
-	if !ok {
-		return fmt.Errorf("%w: expected string", ErrInvalidFieldValue)
-	}
-
-	if strings.TrimSpace(strVal) == "" {
-		if field.Required {
-			return ErrFieldRequired
-		}
-		return nil
-	}
-
-	cfg, _ := decodeConfig[LongTextConfig](field.Config)
-	length := utf8.RuneCountInString(strVal)
-	if cfg.MinLength != nil && length < *cfg.MinLength {
-		return fmt.Errorf("%w: text length (%d) is less than minimum (%d)", ErrInvalidFieldValue, length, *cfg.MinLength)
-	}
-	if cfg.MaxLength != nil && length > *cfg.MaxLength {
-		return fmt.Errorf("%w: text length (%d) exceeds maximum (%d)", ErrInvalidFieldValue, length, *cfg.MaxLength)
-	}
-
-	return nil
+	return validateTextAnswer(field, val, DefaultLongTextMinLength, DefaultLongTextMaxLength)
 }
 
 // --- Number ---

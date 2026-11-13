@@ -1,6 +1,7 @@
 package forms
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/moomaideng/eventory/services/tournament/models"
@@ -26,44 +27,60 @@ func TestShortTextHandler(t *testing.T) {
 
 	t.Run("config validation", func(t *testing.T) {
 		assert.NoError(t, h.ValidateConfig(models.FormField{}))
+		assert.NoError(t, h.ValidateConfig(models.FormField{Config: ShortTextConfig{}}))
+		assert.NoError(t, h.ValidateConfig(models.FormField{Config: map[string]any{}}))
 
+		// Reject minLength / maxLength configuration
 		field := models.FormField{
-			Config: ShortTextConfig{MinLength: intPtr(-1)},
-		}
-		assert.ErrorIs(t, h.ValidateConfig(field), ErrInvalidFieldConfig)
-
-		field = models.FormField{
-			Config: ShortTextConfig{MinLength: intPtr(10), MaxLength: intPtr(5)},
-		}
-		assert.ErrorIs(t, h.ValidateConfig(field), ErrInvalidFieldConfig)
-
-		field = models.FormField{
-			Config: ShortTextConfig{MinLength: intPtr(2), MaxLength: intPtr(10)},
-		}
-		assert.NoError(t, h.ValidateConfig(field))
-
-		// raw map config (from JSON)
-		field = models.FormField{
 			Config: map[string]any{"minLength": 2, "maxLength": 10},
 		}
-		assert.NoError(t, h.ValidateConfig(field))
+		assert.ErrorIs(t, h.ValidateConfig(field), ErrInvalidFieldConfig)
 	})
 
 	t.Run("answer validation", func(t *testing.T) {
 		field := models.FormField{
 			Required: true,
-			Config:   ShortTextConfig{MinLength: intPtr(3), MaxLength: intPtr(8)},
+			Config:   ShortTextConfig{},
 		}
 
 		assert.ErrorIs(t, h.ValidateAnswer(field, nil), ErrFieldRequired)
 		assert.ErrorIs(t, h.ValidateAnswer(field, ""), ErrFieldRequired)
 		assert.ErrorIs(t, h.ValidateAnswer(field, 123), ErrInvalidFieldValue)
-		assert.ErrorIs(t, h.ValidateAnswer(field, "ab"), ErrInvalidFieldValue)
-		assert.ErrorIs(t, h.ValidateAnswer(field, "toolongvalue"), ErrInvalidFieldValue)
+		assert.NoError(t, h.ValidateAnswer(field, "a"))
 		assert.NoError(t, h.ValidateAnswer(field, "hello"))
+		assert.NoError(t, h.ValidateAnswer(field, strings.Repeat("a", DefaultShortTextMaxLength)))
+		assert.ErrorIs(t, h.ValidateAnswer(field, strings.Repeat("a", DefaultShortTextMaxLength+1)), ErrInvalidFieldValue)
 
-		// Unicode check
-		assert.NoError(t, h.ValidateAnswer(field, "สวัสดี")) // 6 runes
+		// Unicode check (rune count, not byte count)
+		assert.NoError(t, h.ValidateAnswer(field, strings.Repeat("ส", DefaultShortTextMaxLength)))
+	})
+}
+
+func TestLongTextHandler(t *testing.T) {
+	h := &LongTextHandler{}
+	assert.Equal(t, models.FieldTypeLongText, h.Type())
+
+	t.Run("config validation", func(t *testing.T) {
+		assert.NoError(t, h.ValidateConfig(models.FormField{}))
+		assert.NoError(t, h.ValidateConfig(models.FormField{Config: LongTextConfig{}}))
+		assert.NoError(t, h.ValidateConfig(models.FormField{Config: map[string]any{}}))
+
+		field := models.FormField{
+			Config: map[string]any{"minLength": 10},
+		}
+		assert.ErrorIs(t, h.ValidateConfig(field), ErrInvalidFieldConfig)
+	})
+
+	t.Run("answer validation", func(t *testing.T) {
+		field := models.FormField{
+			Required: false,
+			Config:   LongTextConfig{},
+		}
+
+		assert.NoError(t, h.ValidateAnswer(field, nil))
+		assert.NoError(t, h.ValidateAnswer(field, ""))
+		assert.NoError(t, h.ValidateAnswer(field, strings.Repeat("a", DefaultLongTextMaxLength)))
+		assert.ErrorIs(t, h.ValidateAnswer(field, strings.Repeat("a", DefaultLongTextMaxLength+1)), ErrInvalidFieldValue)
 	})
 }
 

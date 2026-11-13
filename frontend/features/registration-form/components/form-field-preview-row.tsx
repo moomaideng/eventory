@@ -1,7 +1,11 @@
 import React from "react";
 import { Badge } from "@/components/ui/badge";
 import { FIELD_TYPE_OPTIONS } from "@/features/registration-form/components/form-field-card";
-import type { FormField } from "@/features/registration-form/schemas";
+import {
+  LONG_TEXT_MAX_LENGTH,
+  SHORT_TEXT_MAX_LENGTH,
+  type FormField,
+} from "@/features/registration-form/schemas";
 
 function range(min: number | undefined, max: number | undefined, unit: string) {
   const suffix = unit ? ` ${unit}` : "";
@@ -15,8 +19,10 @@ function constraints(field: FormField): string[] {
   const rules: (string | null)[] = [];
   switch (field.type) {
     case "SHORT_TEXT":
+      rules.push(range(undefined, SHORT_TEXT_MAX_LENGTH, "characters"));
+      break;
     case "LONG_TEXT":
-      rules.push(range(field.config.minLength, field.config.maxLength, "characters"));
+      rules.push(range(undefined, LONG_TEXT_MAX_LENGTH, "characters"));
       break;
     case "NUMBER":
       rules.push(
