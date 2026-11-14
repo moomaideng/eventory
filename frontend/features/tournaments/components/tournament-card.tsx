@@ -23,6 +23,7 @@ import {
 import {
   formatEntryFee,
   formatRegistrationStatus,
+  formatTeamSize,
   formatTournamentDate,
   type Tournament,
 } from "../utils";
@@ -82,6 +83,16 @@ export function TournamentCard({
               <WalletCards className="text-muted-foreground mt-0.5 size-4 shrink-0" />
               <span>
                 {formatEntryFee(tournament.entryFeeMinor, tournament.currency)}
+              </span>
+            </div>
+            <div className="flex items-start gap-2">
+              <Users className="text-muted-foreground mt-0.5 size-4 shrink-0" />
+              <span>
+                {formatTeamSize(
+                  tournament.registrationMode,
+                  tournament.minTeamSize,
+                  tournament.maxTeamSize
+                )}
               </span>
             </div>
             <div className="flex items-start gap-2">

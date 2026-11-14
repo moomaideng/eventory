@@ -22,14 +22,22 @@ import { initials } from "../utils";
 
 type Team = components["schemas"]["TournamentTeamResponse"];
 
-export function TournamentRegisteredTeamsCard({ teams }: { teams: Team[] }) {
+export function TournamentRegisteredTeamsCard({
+  teams,
+  isSolo,
+}: {
+  teams: Team[];
+  isSolo: boolean;
+}) {
+  const itemLabel = isSolo ? "competitor" : "team";
+
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Registered teams</CardTitle>
+        <CardTitle>Registered {isSolo ? "competitors" : "teams"}</CardTitle>
         <CardDescription>
-          {teams.length} team{teams.length === 1 ? "" : "s"} currently listed for
-          this tournament.
+          {teams.length} {itemLabel}
+          {teams.length === 1 ? "" : "s"} currently listed for this tournament.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -39,9 +47,9 @@ export function TournamentRegisteredTeamsCard({ teams }: { teams: Team[] }) {
               <EmptyMedia variant="icon">
                 <Users />
               </EmptyMedia>
-              <EmptyTitle>No teams listed yet</EmptyTitle>
+              <EmptyTitle>No {itemLabel}s listed yet</EmptyTitle>
               <EmptyDescription>
-                Registered teams will appear here when they are confirmed.
+                Confirmed {itemLabel}s will appear here.
               </EmptyDescription>
             </EmptyHeader>
           </Empty>
@@ -58,8 +66,9 @@ export function TournamentRegisteredTeamsCard({ teams }: { teams: Team[] }) {
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-medium">{team.name}</p>
                   <p className="text-muted-foreground text-sm">
-                    {team.memberCount} member
-                    {team.memberCount === 1 ? "" : "s"}
+                    {isSolo
+                      ? "Confirmed competitor"
+                      : `${team.memberCount} member${team.memberCount === 1 ? "" : "s"}`}
                   </p>
                 </div>
               </div>

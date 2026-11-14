@@ -53,6 +53,16 @@ export function formatRegistrationType(value: string) {
   return "Solo registration";
 }
 
+export function formatTeamSize(
+  registrationMode: string,
+  minTeamSize: number,
+  maxTeamSize: number
+) {
+  if (registrationMode === "SOLO") return "1 competitor per entry";
+  if (minTeamSize === maxTeamSize) return `${maxTeamSize} players per team`;
+  return `${minTeamSize}–${maxTeamSize} players per team`;
+}
+
 export function formatTournamentStatus(
   value: string,
   registrationDeadline?: string | null

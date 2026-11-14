@@ -98,10 +98,10 @@ export function Invoice({
                   : invoice.status === "PAID"
                   ? "Your receipt is available below."
                   : invoice.status === "CANCELLED"
-                    ? "No payment was made. Return to the tournament or team lobby to start again."
+                    ? "No payment was made. Return to the tournament or team lobby to start a new checkout."
                     : invoice.status === "EXPIRED"
                       ? "This invoice can no longer be paid. Contact the requesting service for a new payment request."
-                      : "Complete payment before the deadline. Failed or cancelled payments can be retried."}
+                      : "Complete payment before the deadline. If it is cancelled, return to the tournament or team lobby to start a new checkout."}
               </AlertDescription>
             </Alert>
           </CardContent>

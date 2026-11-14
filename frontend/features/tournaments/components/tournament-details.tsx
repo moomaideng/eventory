@@ -301,7 +301,7 @@ export function TournamentDetails({
             registrationType={registrationType}
           />
           {!isCrowdfunding ? (
-            <TournamentRegisteredTeamsCard teams={teams} />
+            <TournamentRegisteredTeamsCard teams={teams} isSolo={isSolo} />
           ) : null}
         </div>
 
