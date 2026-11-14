@@ -4,9 +4,9 @@ import { createClient } from "@/lib/server";
 import { HeroActions } from "@/features/home/components/hero-actions";
 
 export const metadata: Metadata = {
-  title: "Eventory - Host, Compete, and Sponsor Tournaments",
+  title: "Eventory - Your All-in-One Home for Tournaments",
   description:
-    "A single unified identity for competitors, organizers, and sponsors. Manage brackets, crowdfund prize pools, and organize team lobbies effortlessly.",
+    "Whether you're organizing the bracket, competing for the win, or sponsoring the prize pool, Eventory covers everything a tournament takes.",
 };
 
 export default async function HomePage() {
@@ -35,12 +35,11 @@ export default async function HomePage() {
       {/* Clean Hero Title & Description */}
       <div className="flex w-full max-w-3xl flex-col items-center gap-4 text-center">
         <h1 className="text-foreground text-4xl font-extrabold tracking-tight sm:text-6xl">
-          Host, Compete, and Sponsor Tournaments.
+          Your All-in-One Home for Tournaments.
         </h1>
         <p className="text-muted-foreground mx-auto max-w-xl text-base sm:text-lg">
-          A single identity for competitors, organizers, and sponsors. Manage
-          brackets, crowdfund prize pools, and organize team lobbies
-          effortlessly.
+          Whether you&apos;re organizing the bracket, competing for the win, or
+          sponsoring the prize pool—Eventory&apos;s got you covered.
         </p>
       </div>
 

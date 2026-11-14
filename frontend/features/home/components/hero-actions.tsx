@@ -4,7 +4,7 @@ import React from "react";
 import Link from "next/link";
 import { useAuth } from "@/context/auth-context";
 import { Button } from "@/components/ui/button";
-import { PersonaGrid } from "@/features/hub/components/persona-card";
+import { PersonaGrid } from "@/features/home/components/persona-card";
 import { ArrowRight, Gamepad2 } from "lucide-react";
 
 export function HeroActions({
@@ -16,7 +16,20 @@ export function HeroActions({
   const isAuthenticated = Boolean(user) || (isLoading && serverAuthenticated);
 
   if (isAuthenticated) {
-    return <PersonaGrid handle={user?.handle} />;
+    return (
+      <section
+        aria-labelledby="landing-action-heading"
+        className="flex w-full max-w-4xl flex-col items-center gap-5"
+      >
+        <h2
+          id="landing-action-heading"
+          className="text-foreground text-center text-xl font-semibold tracking-tight sm:text-2xl"
+        >
+          What do you want to do?
+        </h2>
+        <PersonaGrid />
+      </section>
+    );
   }
 
   return (
