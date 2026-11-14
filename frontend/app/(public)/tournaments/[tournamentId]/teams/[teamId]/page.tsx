@@ -1,11 +1,7 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
 import { TeamLobbyWorkspace } from "@/features/lobbies/components/team-lobby-workspace";
-import {
-  lobbyInviteParamSchema,
-  teamIdParamSchema,
-} from "@/features/lobbies/schemas";
-import { tournamentIdParamSchema } from "@/features/tournaments/schemas";
+import { parseTeamLobbyRouteParams } from "@/features/lobbies/route-params";
+import { teamIdParamSchema } from "@/features/lobbies/schemas";
 
 export async function generateMetadata({
   params,
@@ -28,24 +24,6 @@ export default async function TeamLobbyPage({
   params: Promise<{ tournamentId: string; teamId: string }>;
   searchParams: Promise<{ invite?: string | string[] }>;
 }) {
-  const [{ tournamentId, teamId }, { invite }] = await Promise.all([
-    params,
-    searchParams,
-  ]);
-  const parsedTournament = tournamentIdParamSchema.safeParse(tournamentId);
-  const parsedTeam = teamIdParamSchema.safeParse(teamId);
-  if (!parsedTournament.success || !parsedTeam.success) {
-    notFound();
-  }
-
-  const parsedInvite =
-    typeof invite === "string" ? lobbyInviteParamSchema.safeParse(invite) : null;
-
-  return (
-    <TeamLobbyWorkspace
-      tournamentId={parsedTournament.data}
-      teamId={parsedTeam.data}
-      inviteCode={parsedInvite?.success ? parsedInvite.data : undefined}
-    />
-  );
+  const resolved = await parseTeamLobbyRouteParams(params, searchParams);
+  return <TeamLobbyWorkspace {...resolved} />;
 }

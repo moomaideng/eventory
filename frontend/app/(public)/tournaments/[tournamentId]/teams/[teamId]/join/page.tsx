@@ -1,11 +1,7 @@
 import type { Metadata } from "next";
-import { notFound, redirect } from "next/navigation";
+import { redirect } from "next/navigation";
 import { TeamLobbyJoin } from "@/features/lobbies/components/team-lobby-join";
-import {
-  lobbyInviteParamSchema,
-  teamIdParamSchema,
-} from "@/features/lobbies/schemas";
-import { tournamentIdParamSchema } from "@/features/tournaments/schemas";
+import { parseTeamLobbyRouteParams } from "@/features/lobbies/route-params";
 
 export const metadata: Metadata = {
   title: "Join team - Eventory",
@@ -18,29 +14,19 @@ export default async function JoinTeamPage({
   params: Promise<{ tournamentId: string; teamId: string }>;
   searchParams: Promise<{ invite?: string | string[] }>;
 }) {
-  const [{ tournamentId, teamId }, { invite }] = await Promise.all([
+  const { tournamentId, teamId, inviteCode } = await parseTeamLobbyRouteParams(
     params,
-    searchParams,
-  ]);
-  const parsedTournament = tournamentIdParamSchema.safeParse(tournamentId);
-  const parsedTeam = teamIdParamSchema.safeParse(teamId);
-  if (!parsedTournament.success || !parsedTeam.success) {
-    notFound();
-  }
-
-  const parsedInvite =
-    typeof invite === "string" ? lobbyInviteParamSchema.safeParse(invite) : null;
-  if (!parsedInvite?.success) {
-    redirect(
-      `/tournaments/${parsedTournament.data}/teams/${parsedTeam.data}`
-    );
+    searchParams
+  );
+  if (!inviteCode) {
+    redirect(`/tournaments/${tournamentId}/teams/${teamId}`);
   }
 
   return (
     <TeamLobbyJoin
-      tournamentId={parsedTournament.data}
-      teamId={parsedTeam.data}
-      inviteCode={parsedInvite.data}
+      tournamentId={tournamentId}
+      teamId={teamId}
+      inviteCode={inviteCode}
     />
   );
 }
