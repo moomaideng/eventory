@@ -32,7 +32,7 @@ func SeedTournaments(db *gorm.DB) error {
 
 	tournaments := []models.Tournament{
 		{ID: sponsorID, Name: "[DEMO · Sponsor] Checkout Playground", Description: notice + "Use this tournament to test sponsorship checkout, payments, and payment events.", Detail: "## Local demo\n\nUse **Dev Quick Login** to sponsor this Maya-owned tournament.", Game: "Sponsor demo", Location: "Local Dev Environment", StartsAt: now.AddDate(0, 0, 14).Add(10 * time.Hour), EndsAt: now.AddDate(0, 0, 15).Add(18 * time.Hour), RegistrationDeadline: now.AddDate(0, 0, 7), RegistrationMode: models.TournamentRegistrationModeSolo, MinTeamSize: 1, MaxTeamSize: 1, Capacity: 32, Currency: "THB", Status: models.TournamentStatusCrowdfunding, Crowdfunding: models.CrowdfundingInfo{GoalAmountMinor: 5000000, Deadline: &sponsorDeadline}},
-		{ID: setupID, Name: "[DEMO · Bracket] Setup Playground", Description: notice + "Use this tournament to define a bracket and seed accepted teams before it starts.", Detail: "## Local demo\n\nFour accepted teams are ready. Define and seed a Stage 1 bracket as Alex (Dev).", Game: "Bracket demo", Location: "Local Dev Environment", StartsAt: now.AddDate(0, 0, 10).Add(10 * time.Hour), EndsAt: now.AddDate(0, 0, 10).Add(18 * time.Hour), RegistrationDeadline: now.AddDate(0, 0, 7), RegistrationMode: models.TournamentRegistrationModeTeam, MinTeamSize: 1, MaxTeamSize: 3, Capacity: 8, Currency: "THB", Status: models.TournamentStatusRegistration},
+		{ID: setupID, Name: "[DEMO · Bracket] Setup Playground", Description: notice + "Use this tournament to define and seed a 16-team bracket before it starts.", Detail: "## Local demo\n\nSixteen accepted teams are ready. Define and seed a Stage 1 bracket as Alex (Dev).", Game: "Bracket demo", Location: "Local Dev Environment", StartsAt: now.AddDate(0, 0, 10).Add(10 * time.Hour), EndsAt: now.AddDate(0, 0, 10).Add(18 * time.Hour), RegistrationDeadline: now.AddDate(0, 0, 7), RegistrationMode: models.TournamentRegistrationModeTeam, MinTeamSize: 1, MaxTeamSize: 3, Capacity: 16, Currency: "THB", Status: models.TournamentStatusRegistration},
 		{ID: liveID, Name: "[DEMO · Bracket] Live Results", Description: notice + "Use this tournament to inspect a 16-team live bracket and record the remaining results.", Detail: "## Local demo\n\nRound of 16 is underway; two completed matches have already advanced to the quarterfinal.", Game: "Bracket demo", Location: "Local Dev Environment", StartsAt: now.AddDate(0, 0, -1).Add(10 * time.Hour), EndsAt: now.AddDate(0, 0, 1).Add(18 * time.Hour), RegistrationDeadline: now.AddDate(0, 0, -3), RegistrationMode: models.TournamentRegistrationModeTeam, MinTeamSize: 1, MaxTeamSize: 3, Capacity: 16, Currency: "THB", Status: models.TournamentStatusOngoing},
 		{ID: completedID, Name: "[DEMO · Bracket] Completed Archive", Description: notice + "Use this tournament to inspect a fully completed bracket and final standings.", Detail: "## Local demo\n\nEvery match is complete; the final has a winner.", Game: "Bracket demo", Location: "Local Dev Environment", StartsAt: now.AddDate(0, 0, -7).Add(10 * time.Hour), EndsAt: now.AddDate(0, 0, -6).Add(18 * time.Hour), RegistrationDeadline: now.AddDate(0, 0, -9), RegistrationMode: models.TournamentRegistrationModeTeam, MinTeamSize: 1, MaxTeamSize: 3, Capacity: 4, Currency: "THB", Status: models.TournamentStatusCompleted},
 		{ID: aliceTournamentID, Name: "[SAMPLE · Alice] Valorant Community Cup", Description: notice + "A small public listing owned by Alice Events.", Game: "Valorant", Location: "Local Dev Environment", StartsAt: now.AddDate(0, 0, 18).Add(12 * time.Hour), EndsAt: now.AddDate(0, 0, 18).Add(20 * time.Hour), RegistrationDeadline: now.AddDate(0, 0, 14), RegistrationMode: models.TournamentRegistrationModeTeam, MinTeamSize: 5, MaxTeamSize: 5, Capacity: 32, Currency: "THB", Status: models.TournamentStatusRegistration},
@@ -52,19 +52,37 @@ func SeedTournaments(db *gorm.DB) error {
 		return err
 	}
 
-	setupNames := []string{"Setup Tigers", "Setup Dragons", "Setup Wolves", "Setup Falcons"}
+	setupNames := []string{"Setup Tigers", "Setup Dragons", "Setup Wolves", "Setup Falcons", "Setup Comets", "Setup Ravens", "Setup Phoenix", "Setup Panthers", "Setup Sharks", "Setup Cobras", "Setup Bears", "Setup Owls", "Setup Lions", "Setup Foxes", "Setup Knights", "Setup Giants"}
 	liveNames := []string{"Apex Titans", "Neon Dragons", "Cyber Valkyrie", "Shadow Wolves", "Solar Flare", "Phantom Strike", "Echo Esports", "Vortex Gaming", "Quantum Pulse", "Ironclad Legion", "Crimson Vipers", "Astral Horizon", "Thunderbolt Gaming", "Frostbite Clan", "Midnight Stalkers", "Hyperion Rising"}
 	archiveNames := []string{"Archive Tigers", "Archive Dragons", "Archive Wolves", "Archive Falcons"}
-	teams := make([]models.TournamentTeam, 0, 24)
+	teams := make([]models.TournamentTeam, 0, 36)
 	addTeams := func(tournamentID uuid.UUID, names []string, firstID int) {
 		for index, name := range names {
 			teams = append(teams, models.TournamentTeam{ID: fixtureID(44444444, firstID+index), TournamentID: tournamentID, Name: name, Status: models.TournamentTeamStatusAccepted, LockedAt: &lockedAt})
 		}
 	}
-	addTeams(setupID, setupNames, 41)
+	addTeams(setupID, setupNames, 61)
+	liveTeamStart := len(teams)
 	addTeams(liveID, liveNames, 21)
+	archiveTeamStart := len(teams)
 	addTeams(completedID, archiveNames, 45)
 	if err := upsert(db, "id", &teams); err != nil {
+		return err
+	}
+
+	playerIDs := []uuid.UUID{id("00000000-0000-4000-8000-000000000010"), id("00000000-0000-4000-8000-000000000011"), id("00000000-0000-4000-8000-000000000012"), id("00000000-0000-4000-8000-000000000013"), id("00000000-0000-4000-8000-000000000014"), id("00000000-0000-4000-8000-000000000015")}
+	members := make([]models.TournamentTeamMember, 0, len(teams)*2)
+	for index, team := range teams {
+		for offset := 0; offset < 2; offset++ {
+			role := models.TournamentTeamMemberRoleMember
+			if offset == 0 {
+				role = models.TournamentTeamMemberRoleCaptain
+			}
+			accountID := playerIDs[(index*2+offset)%len(playerIDs)]
+			members = append(members, models.TournamentTeamMember{ID: uuid.NewSHA1(uuid.NameSpaceOID, []byte(team.ID.String()+":"+accountID.String())), TournamentTeamID: team.ID, AccountID: accountID, Role: role})
+		}
+	}
+	if err := upsert(db, "id", &members); err != nil {
 		return err
 	}
 
@@ -97,7 +115,7 @@ func SeedTournaments(db *gorm.DB) error {
 	score21, score12, score20, score02 := "2-1", "1-2", "2-0", "0-2"
 	entries := make([]models.MatchEntry, 0, 26)
 	for index, matchID := range roundOf16 {
-		first, second := teams[4+index*2].ID, teams[5+index*2].ID
+		first, second := teams[liveTeamStart+index*2].ID, teams[liveTeamStart+index*2+1].ID
 		entryID := 1 + index*2
 		if index < 2 {
 			entries = append(entries, models.MatchEntry{ID: fixtureID(88888888, entryID), MatchID: matchID, TeamID: first, FinalRank: &rank1, Score: &score21, Advances: true}, models.MatchEntry{ID: fixtureID(88888888, entryID+1), MatchID: matchID, TeamID: second, FinalRank: &rank2, Score: &score12})
@@ -105,8 +123,8 @@ func SeedTournaments(db *gorm.DB) error {
 			entries = append(entries, models.MatchEntry{ID: fixtureID(88888888, entryID), MatchID: matchID, TeamID: first}, models.MatchEntry{ID: fixtureID(88888888, entryID+1), MatchID: matchID, TeamID: second})
 		}
 	}
-	entries = append(entries, models.MatchEntry{ID: fixtureID(88888888, 17), MatchID: quarters[0], TeamID: teams[4].ID}, models.MatchEntry{ID: fixtureID(88888888, 18), MatchID: quarters[0], TeamID: teams[6].ID})
-	archiveTeams := teams[20:]
+	entries = append(entries, models.MatchEntry{ID: fixtureID(88888888, 17), MatchID: quarters[0], TeamID: teams[liveTeamStart].ID}, models.MatchEntry{ID: fixtureID(88888888, 18), MatchID: quarters[0], TeamID: teams[liveTeamStart+2].ID})
+	archiveTeams := teams[archiveTeamStart:]
 	entries = append(entries, models.MatchEntry{ID: fixtureID(88888888, 31), MatchID: archiveSemi1ID, TeamID: archiveTeams[0].ID, FinalRank: &rank1, Score: &score20, Advances: true}, models.MatchEntry{ID: fixtureID(88888888, 32), MatchID: archiveSemi1ID, TeamID: archiveTeams[1].ID, FinalRank: &rank2, Score: &score02}, models.MatchEntry{ID: fixtureID(88888888, 33), MatchID: archiveSemi2ID, TeamID: archiveTeams[2].ID, FinalRank: &rank1, Score: &score21, Advances: true}, models.MatchEntry{ID: fixtureID(88888888, 34), MatchID: archiveSemi2ID, TeamID: archiveTeams[3].ID, FinalRank: &rank2, Score: &score12}, models.MatchEntry{ID: fixtureID(88888888, 35), MatchID: archiveFinalID, TeamID: archiveTeams[0].ID, FinalRank: &rank1, Score: &score21}, models.MatchEntry{ID: fixtureID(88888888, 36), MatchID: archiveFinalID, TeamID: archiveTeams[2].ID, FinalRank: &rank2, Score: &score12})
 	return upsert(db, "id", &entries)
 }

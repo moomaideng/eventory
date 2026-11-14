@@ -3,7 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Users } from "lucide-react";
+import { ArrowLeft, GitBranch, Users } from "lucide-react";
 import { $api, apiClient } from "@/lib/api/client";
 import { useAuth } from "@/context/auth-context";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -108,6 +108,9 @@ export function TournamentDetails({
   const registrationType = formatRegistrationType(tournament.registrationMode);
   const isSolo = tournament.registrationMode === "SOLO";
   const isCrowdfunding = tournament.status === "CROWDFUNDING";
+  const hasPublicBracket = ["REGISTRATION", "ONGOING", "COMPLETED"].includes(
+    tournament.status
+  );
   const canCreateTeam =
     !isSolo &&
     isRegistrationOpen(tournament) &&
@@ -153,6 +156,17 @@ export function TournamentDetails({
           >
             <Users data-icon="inline-start" />
             Create a team
+          </Button>
+        ) : null}
+        {hasPublicBracket ? (
+          <Button
+            render={<Link href={`/tournaments/${tournament.id}/bracket`} />}
+            nativeButton={false}
+            variant="outline"
+            className="self-start"
+          >
+            <GitBranch data-icon="inline-start" />
+            View bracket
           </Button>
         ) : null}
         {isCrowdfunding ? (
