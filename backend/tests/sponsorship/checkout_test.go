@@ -188,7 +188,7 @@ func TestSponsorshipCheckout(t *testing.T) {
 	expiredID := uuid.New()
 	expiredPaymentID := uuid.New()
 	invoice := paymentmodels.Invoice{
-		ID: expiredPaymentID, PayerAccountID: sponsor.ID, Source: models.PaymentSourceSponsorship,
+		ID: expiredPaymentID, PayerAccountID: loser.ID, Source: models.PaymentSourceSponsorship,
 		Reference: expiredID.String(), IdempotencyKey: "sponsorship:" + expiredID.String(),
 		Description: "Expired sponsorship", AmountMinor: 10000, Currency: "THB", Provider: "MOCK",
 		ExpiresAt: time.Now().Add(-time.Minute).UTC().Truncate(time.Microsecond),
@@ -197,13 +197,13 @@ func TestSponsorshipCheckout(t *testing.T) {
 		t.Fatal(err)
 	}
 	expired := models.SponsorshipPledge{
-		ID: expiredID, TournamentID: s.tournament.ID, TierID: s.tierIDs["Expired"], PayerAccountID: sponsor.ID,
+		ID: expiredID, TournamentID: s.tournament.ID, TierID: s.tierIDs["Expired"], PayerAccountID: loser.ID,
 		AmountMinor: 10000, Currency: "THB", Status: models.PledgePending, PaymentID: &expiredPaymentID,
 	}
 	if err := app.DB.Omit("Tier").Create(&expired).Error; err != nil {
 		t.Fatal(err)
 	}
-	closed := mustAPI(t, s.client, "POST", "/tournaments/sponsorships/"+expiredID.String()+"/refresh", nil, sponsor, 200)
+	closed := mustAPI(t, s.client, "POST", "/tournaments/sponsorships/"+expiredID.String()+"/refresh", nil, loser, 200)
 	if !bytes.Contains(closed.Body, []byte(`"status":"EXPIRED"`)) {
 		t.Fatalf("expired recovery: %s", closed.Body)
 	}
