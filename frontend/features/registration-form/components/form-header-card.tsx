@@ -55,7 +55,7 @@ export function FormHeaderCard({
             </div>
           ) : (
             <div className="flex items-center gap-2 flex-1 min-w-0">
-              <h1
+              <h2
                 onClick={() => setIsEditingTitle(true)}
                 className="font-heading text-2xl md:text-2xl font-bold leading-normal tracking-tight cursor-pointer truncate hover:text-primary transition-colors text-foreground"
               >
@@ -64,7 +64,7 @@ export function FormHeaderCard({
                 ) : (
                   <span className="text-muted-foreground italic">Untitled form</span>
                 )}
-              </h1>
+              </h2>
               <Button
                 type="button"
                 variant="ghost"

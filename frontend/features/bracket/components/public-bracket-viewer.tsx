@@ -1,7 +1,8 @@
 "use client";
 
-import Link from "next/link";
-import { ArrowLeft, RefreshCw, Trophy } from "lucide-react";
+import { RefreshCw } from "lucide-react";
+import { $api } from "@/lib/api/client";
+import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { BracketTreeView } from "./bracket-tree-view";
@@ -13,42 +14,54 @@ interface PublicBracketViewerProps {
 
 export function PublicBracketViewer({ tournamentId }: PublicBracketViewerProps) {
   const { matches, isLoading, isFetching, refetch } = useBracket({ tournamentId });
+  const { data: tournamentData } = $api.useQuery(
+    "get",
+    "/api/v1/tournaments/{tournamentId}",
+    { params: { path: { tournamentId } } },
+    { staleTime: 30_000 }
+  );
+  const tournament = tournamentData?.tournament;
 
   return (
     <div className="flex min-w-0 flex-col gap-6">
-      <div className="mx-auto flex w-full max-w-7xl flex-wrap items-center justify-between gap-4 px-4 sm:px-8">
-        <div className="flex items-center gap-3">
-          <Button
-            variant="outline"
-            size="sm"
-            render={<Link href={`/tournaments/${tournamentId}`} />}
-            nativeButton={false}
-          >
-            <ArrowLeft data-icon="inline-start" />
-            Tournament Details
-          </Button>
-
-          <div className="flex items-center gap-2">
-            <Trophy className="size-5 text-primary" />
-            <h1 className="text-xl font-bold">Tournament Bracket</h1>
-            {matches.length > 0 ? (
-              <Badge variant="outline" className="font-mono text-xs">
-                {matches.length} {matches.length === 1 ? "match" : "matches"}
-              </Badge>
-            ) : null}
-          </div>
-        </div>
-
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => void refetch()}
-          disabled={isFetching}
-          className="gap-2 text-xs"
-        >
-          <RefreshCw className={`size-3.5 ${isFetching ? "animate-spin" : ""}`} />
-          Refresh
-        </Button>
+      <div className="mx-auto w-full max-w-7xl px-4 sm:px-8">
+        <PageHeader
+          breadcrumbs={[
+            { label: "Tournaments", href: "/tournaments" },
+            {
+              label: tournament?.name ?? "Tournament",
+              href: `/tournaments/${tournamentId}`,
+            },
+            { label: "Bracket" },
+          ]}
+          tags={
+            <>
+              {tournament?.game ? (
+                <Badge variant="secondary">{tournament.game}</Badge>
+              ) : null}
+              {matches.length > 0 ? (
+                <Badge variant="outline" className="font-mono">
+                  {matches.length} {matches.length === 1 ? "match" : "matches"}
+                </Badge>
+              ) : null}
+            </>
+          }
+          title="Tournament bracket"
+          actions={
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => void refetch()}
+              disabled={isFetching}
+            >
+              <RefreshCw
+                data-icon="inline-start"
+                className={isFetching ? "animate-spin" : undefined}
+              />
+              Refresh
+            </Button>
+          }
+        />
       </div>
 
       {isLoading ? (

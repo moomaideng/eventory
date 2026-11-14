@@ -1,11 +1,12 @@
 "use client";
 
 import React from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Check, ShieldAlert } from "lucide-react";
+import { Check, ShieldAlert } from "lucide-react";
 import { $api, apiClient } from "@/lib/api/client";
 import { useAuth } from "@/context/auth-context";
+import { PageHeader } from "@/components/page-header";
+import { LobbyStatusBadge } from "./lobby-status-badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
@@ -203,26 +204,19 @@ export function TeamLobbyWorkspace({
 
   return (
     <div className="container mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 px-4 py-12 sm:px-8">
-      <Button
-        variant="ghost"
-        size="sm"
-        render={<Link href={`/tournaments/${lobby.tournament.id}`} />}
-        nativeButton={false}
-        className="self-start"
-      >
-        <ArrowLeft data-icon="inline-start" />
-        Tournament details
-      </Button>
-
-      <div className="flex flex-col gap-2">
-        <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
-          {lobby.name}
-        </h1>
-        <p className="text-muted-foreground">
-          Teaming up for {lobby.tournament.name} · Hosted by{" "}
-          {lobby.tournament.organizerName}
-        </p>
-      </div>
+      <PageHeader
+        breadcrumbs={[
+          { label: "Tournaments", href: "/tournaments" },
+          {
+            label: lobby.tournament.name,
+            href: `/tournaments/${lobby.tournament.id}`,
+          },
+          { label: lobby.name },
+        ]}
+        tags={<LobbyStatusBadge status={lobby.status} />}
+        title={lobby.name}
+        description={`Teaming up for ${lobby.tournament.name} · Hosted by ${lobby.tournament.organizerName}`}
+      />
 
       {displayedError ? (
         <Alert variant="destructive">

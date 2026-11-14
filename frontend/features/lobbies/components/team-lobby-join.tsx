@@ -1,14 +1,12 @@
 "use client";
 
 import { useEffect } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft } from "lucide-react";
 import { $api, apiClient } from "@/lib/api/client";
 import { useAuth } from "@/context/auth-context";
+import { PageHeader } from "@/components/page-header";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
 import { LobbyWorkspaceSkeleton } from "@/features/lobbies/components/lobby-skeleton";
 import { MemberRegistrationForm } from "@/features/lobbies/components/member-registration-form";
 import { isRegistrationOpen } from "@/features/tournaments/utils";
@@ -122,46 +120,76 @@ export function TeamLobbyJoin({
 
   return (
     <div className="container mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-12 sm:px-8">
-      <Button
-        variant="ghost"
-        size="sm"
-        render={<Link href={lobbyPath} />}
-        nativeButton={false}
-        className="self-start"
-      >
-        <ArrowLeft data-icon="inline-start" />
-        Back to lobby
-      </Button>
       {myTeamQuery.data?.status === "REJECTED" ? (
-        <Alert variant="destructive">
-          <AlertTitle>Application rejected</AlertTitle>
-          <AlertDescription>
-            Your application was not accepted for this tournament, so you cannot
-            join another team.
-          </AlertDescription>
-        </Alert>
+        <>
+          <PageHeader
+            breadcrumbs={[
+              { label: "Tournaments", href: "/tournaments" },
+              ...(lobby
+                ? [
+                    {
+                      label: lobby.tournament.name,
+                      href: `/tournaments/${tournamentId}`,
+                    },
+                    { label: lobby.name, href: lobbyPath },
+                  ]
+                : []),
+              { label: "Join team" },
+            ]}
+            title="Unable to join this team"
+          />
+          <Alert variant="destructive">
+            <AlertTitle>Application rejected</AlertTitle>
+            <AlertDescription>
+              Your application was not accepted for this tournament, so you
+              cannot join another team.
+            </AlertDescription>
+          </Alert>
+        </>
       ) : error || unavailable ? (
-        <Alert>
-          <AlertTitle>Unable to join this team</AlertTitle>
-          <AlertDescription>
-            {error
-              ? "The lobby could not be loaded. Return to the lobby and try again."
-              : inviteMismatch
-                ? "This invite code is invalid or does not match this team."
-                : "This team is full or is no longer accepting new members."}
-          </AlertDescription>
-        </Alert>
+        <>
+          <PageHeader
+            breadcrumbs={[
+              { label: "Tournaments", href: "/tournaments" },
+              ...(lobby
+                ? [
+                    {
+                      label: lobby.tournament.name,
+                      href: `/tournaments/${tournamentId}`,
+                    },
+                    { label: lobby.name, href: lobbyPath },
+                  ]
+                : []),
+              { label: "Join team" },
+            ]}
+            title="Unable to join this team"
+          />
+          <Alert>
+            <AlertTitle>Unable to join this team</AlertTitle>
+            <AlertDescription>
+              {error
+                ? "The lobby could not be loaded. Return to the lobby and try again."
+                : inviteMismatch
+                  ? "This invite code is invalid or does not match this team."
+                  : "This team is full or is no longer accepting new members."}
+            </AlertDescription>
+          </Alert>
+        </>
       ) : (
         <>
-          <div className="flex flex-col gap-2">
-            <h1 className="text-3xl font-bold tracking-tight">
-              Join {lobby.name}
-            </h1>
-            <p className="text-muted-foreground">
-              Complete your registration for {lobby.tournament.name}. You will
-              return to the lobby after submitting.
-            </p>
-          </div>
+          <PageHeader
+            breadcrumbs={[
+              { label: "Tournaments", href: "/tournaments" },
+              {
+                label: lobby.tournament.name,
+                href: `/tournaments/${tournamentId}`,
+              },
+              { label: lobby.name, href: lobbyPath },
+              { label: "Join team" },
+            ]}
+            title={`Join ${lobby.name}`}
+            description={`Complete your registration for ${lobby.tournament.name}. You will return to the lobby after submitting.`}
+          />
           <MemberRegistrationForm
             lobby={lobby}
             inviteCode={normalizedInviteCode}

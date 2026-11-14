@@ -1,5 +1,4 @@
 import { notFound } from "next/navigation";
-import { CreditCard, FileText, ReceiptText } from "lucide-react";
 import { PaymentPageHeader } from "@/features/payments/components/payment-page-header";
 import { Invoice } from "@/features/payments/components/invoice";
 import { MockCheckout } from "@/features/payments/components/mock-checkout";
@@ -30,13 +29,6 @@ export default async function SponsorPaymentPage({
           view === "receipt"
             ? "View your payment confirmation or download the receipt as a PDF."
             : "Review your sponsorship payment and its deadline."
-        }
-        icon={
-          view === "checkout"
-            ? CreditCard
-            : view === "receipt"
-              ? ReceiptText
-              : FileText
         }
         invoiceId={view ? paymentId : undefined}
         sponsorMode

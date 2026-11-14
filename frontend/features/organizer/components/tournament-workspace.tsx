@@ -2,10 +2,11 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, ArrowUpRight, Trophy } from "lucide-react";
+import { ArrowUpRight } from "lucide-react";
 import { useIsFetching, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/context/auth-context";
 import { $api } from "@/lib/api/client";
+import { PageHeader } from "@/components/page-header";
 import { RegistrationFormBuilder } from "@/features/registration-form/components/registration-form-builder";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -65,22 +66,30 @@ export function TournamentWorkspace({
 
   return (
     <div className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-8 px-4 py-10 sm:px-8">
-      <div>
-        <Button
-          variant="outline"
-          size="sm"
-          render={<Link href="/organizer" />}
-          nativeButton={false}
-        >
-          <ArrowLeft data-icon="inline-start" />
-          My tournaments
-        </Button>
-      </div>
-
       {loading ? (
-        <DashboardLoading />
+        <>
+          <PageHeader
+            workspace="organizer"
+            breadcrumbs={[
+              { label: "My tournaments", href: "/organizer" },
+              { label: "Tournament" },
+            ]}
+            title="Loading tournament"
+          />
+          <DashboardLoading />
+        </>
       ) : error || !data ? (
-        <DashboardError onRetry={() => void refetch()} />
+        <>
+          <PageHeader
+            workspace="organizer"
+            breadcrumbs={[
+              { label: "My tournaments", href: "/organizer" },
+              { label: "Tournament" },
+            ]}
+            title="Tournament workspace"
+          />
+          <DashboardError onRetry={() => void refetch()} />
+        </>
       ) : (
         <div className="motion-safe:animate-in motion-safe:fade-in-0 flex min-w-0 flex-col gap-8 motion-safe:duration-300">
           {(() => {
@@ -103,9 +112,14 @@ export function TournamentWorkspace({
 
             return (
               <>
-                <header className="flex flex-col items-start justify-between gap-5 sm:flex-row sm:items-center">
-                  <div className="flex min-w-0 flex-1 flex-col gap-4">
-                    <div className="flex flex-wrap items-center gap-2">
+                <PageHeader
+                  workspace="organizer"
+                  breadcrumbs={[
+                    { label: "My tournaments", href: "/organizer" },
+                    { label: data.summary.tournament.name },
+                  ]}
+                  tags={
+                    <>
                       {data.summary.role ? (
                         <StaffRoleBadge role={data.summary.role} />
                       ) : null}
@@ -118,45 +132,35 @@ export function TournamentWorkspace({
                           data.summary.tournament.registrationDeadline
                         }
                       />
-                    </div>
-                    <div className="flex items-center gap-4">
-                      <div className="bg-primary/10 text-primary flex size-12 shrink-0 items-center justify-center rounded-lg">
-                        <Trophy aria-hidden="true" />
-                      </div>
-                      <div className="min-w-0">
-                        <h1 className="text-2xl font-bold wrap-anywhere sm:text-3xl">
-                          {data.summary.tournament.name}
-                        </h1>
-                        <p className="text-muted-foreground mt-1 text-sm wrap-anywhere">
-                          Hosted by {data.summary.tournament.organizerName}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex flex-wrap items-center gap-2">
-                    <RefreshDashboard
-                      fetching={isFetching || activeFetches > 0}
-                      // One refresh for the whole workspace: dashboard, bracket, lifecycle data.
-                      onRefresh={() => void queryClient.invalidateQueries()}
-                    />
-                    {!isOwner ? (
-                      <LeaveTournamentDialog
-                        tournamentId={tournamentId}
-                        tournamentName={data.summary.tournament.name}
+                    </>
+                  }
+                  title={data.summary.tournament.name}
+                  description={`Hosted by ${data.summary.tournament.organizerName}`}
+                  actions={
+                    <>
+                      <RefreshDashboard
+                        fetching={isFetching || activeFetches > 0}
+                        // One refresh for the whole workspace: dashboard, bracket, lifecycle data.
+                        onRefresh={() => void queryClient.invalidateQueries()}
                       />
-                    ) : null}
-                    {data.summary.tournament.status !== "DRAFT" ? (
-                      <Button
-                        render={<Link href={`/tournaments/${tournamentId}`} />}
-                        nativeButton={false}
-                      >
-                        Public page
-                        <ArrowUpRight data-icon="inline-end" />
-                      </Button>
-                    ) : null}
-                  </div>
-                </header>
+                      {!isOwner ? (
+                        <LeaveTournamentDialog
+                          tournamentId={tournamentId}
+                          tournamentName={data.summary.tournament.name}
+                        />
+                      ) : null}
+                      {data.summary.tournament.status !== "DRAFT" ? (
+                        <Button
+                          render={<Link href={`/tournaments/${tournamentId}`} />}
+                          nativeButton={false}
+                        >
+                          Public page
+                          <ArrowUpRight data-icon="inline-end" />
+                        </Button>
+                      ) : null}
+                    </>
+                  }
+                />
 
                 <Tabs
                   value={activeTab}

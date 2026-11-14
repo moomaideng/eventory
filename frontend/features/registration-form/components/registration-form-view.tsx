@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/context/auth-context";
 import { apiClient } from "@/lib/api/client";
+import { PageHeader } from "@/components/page-header";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -334,26 +335,22 @@ export function RegistrationFormView({
     <form
       noValidate
       onSubmit={handleSubmit}
-      className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-4 py-8"
+      className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-4 py-10"
     >
-      <Card className="border-border border-t-primary border-t-4 shadow-xs">
-        <CardContent className="flex flex-col gap-3 pt-6">
-          <div className="flex flex-wrap items-center gap-2">
-            <Badge variant="outline">Solo Registration</Badge>
-            <span className="text-muted-foreground text-sm font-medium">
-              {tournament.name}
-            </span>
-          </div>
-          <h1 className="font-heading text-foreground text-2xl leading-normal font-bold tracking-tight">
-            {data?.title ?? "Individual registration"}
-          </h1>
-          {data?.description && (
-            <p className="text-muted-foreground text-sm whitespace-pre-wrap">
-              {data.description}
-            </p>
-          )}
-        </CardContent>
-      </Card>
+      <PageHeader
+        breadcrumbs={[
+          { label: "Tournaments", href: "/tournaments" },
+          { label: tournament.name, href: `/tournaments/${tournamentId}` },
+          { label: "Registration" },
+        ]}
+        tags={<Badge variant="outline">Solo registration</Badge>}
+        title={data?.title ?? "Individual registration"}
+        description={
+          data?.description ? (
+            <span className="whitespace-pre-wrap">{data.description}</span>
+          ) : undefined
+        }
+      />
 
       <div className="flex flex-col gap-6">
         {fields.map((field, idx) => (

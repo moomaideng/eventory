@@ -5,13 +5,13 @@ import Link from "next/link";
 import {
   ArrowRight,
   CalendarDays,
-  LayoutDashboard,
   Plus,
   Trophy,
   Users,
 } from "lucide-react";
 import { useAuth } from "@/context/auth-context";
 import { $api } from "@/lib/api/client";
+import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -86,39 +86,33 @@ export function OrganizerTournaments() {
   const loading = authLoading || !authorizationHeader || isLoading;
   return (
     <div className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-8 px-4 py-10 sm:px-8">
-      <header className="flex items-start justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <div className="bg-primary/10 text-primary flex size-12 shrink-0 items-center justify-center rounded-lg">
-            <LayoutDashboard aria-hidden="true" />
-          </div>
-          <div className="flex min-w-0 flex-col gap-1">
-            <p className="text-muted-foreground text-xs font-medium uppercase">
-              Organizer workspace
-            </p>
-            <h1 className="text-2xl font-bold sm:text-3xl">My tournaments</h1>
-            {data && !loading ? (
-              <p className="text-muted-foreground text-sm">
-                {data.total} hosted{" "}
-                {data.total === 1 ? "tournament" : "tournaments"}
-              </p>
-            ) : null}
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button
-            render={<Link href="/organizer/tournaments/new" />}
-            nativeButton={false}
-            size="sm"
-          >
-            <Plus data-icon="inline-start" />
-            Host tournament
-          </Button>
-          <RefreshDashboard
-            fetching={isFetching}
-            onRefresh={() => void refetch()}
-          />
-        </div>
-      </header>
+      <PageHeader
+        workspace="organizer"
+        title="My tournaments"
+        description={
+          data && !loading
+            ? `${data.total} hosted ${
+                data.total === 1 ? "tournament" : "tournaments"
+              }`
+            : undefined
+        }
+        actions={
+          <>
+            <Button
+              render={<Link href="/organizer/tournaments/new" />}
+              nativeButton={false}
+              size="sm"
+            >
+              <Plus data-icon="inline-start" />
+              Host tournament
+            </Button>
+            <RefreshDashboard
+              fetching={isFetching}
+              onRefresh={() => void refetch()}
+            />
+          </>
+        }
+      />
 
       {loading ? (
         <DashboardLoading />
