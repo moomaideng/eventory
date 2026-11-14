@@ -68,10 +68,10 @@ To switch dev profiles in the UI:
 ### F. Bracket Setup, Live Matches & Completed Archive
 - **Bracket Setup & Start Gate (`[TEST · Bracket] Setup & Start Gate` — [`.../00000007`](http://localhost:3000/organizer/tournaments/33333333-0000-4000-8000-000000000007)):**
   - `16 ACCEPTED` teams, `0` unresolved entries, and a past `RegistrationDeadline`. Build stages, seed slots, schedule matches, and transition `REGISTRATION -> ONGOING`.
-- **Live Match Reporting & Swapping (`[TEST · Bracket] Live Match & Swap` — [`.../00000010`](http://localhost:3000/organizer/tournaments/33333333-0000-4000-8000-000000000010)):**
-  - Quarterfinals 1 & 2 are already completed and advanced into Semifinal 1; Quarterfinals 3 & 4 have future times so you can swap teams between unfinished matches, reschedule, record remaining scores, and finish the tournament (`ONGOING -> COMPLETED`).
+- **Live Match Reporting, Stage Skipping & Swapping (`[TEST · Bracket] Live Match & Swap` — [`.../00000010`](http://localhost:3000/organizer/tournaments/33333333-0000-4000-8000-000000000010)):**
+  - Uneven 9-team 3-stage bracket: `Play-In Pod A (3 -> 2)` is completed into Stage 2 `Upper Semifinal (3 -> 2)`, `Wildcard Duel (2 -> 1)` skipped Stage 2 directly into Stage 3 `Grand Final Pod (3 -> 1)`, and `Play-In Pod B (4 -> 1)` remains open to swap teams, reschedule, record scores, and finish the tournament (`ONGOING -> COMPLETED`).
 - **Completed Archive (`[TEST · Bracket] Completed Archive` — [`.../00000011`](http://localhost:3000/organizer/tournaments/33333333-0000-4000-8000-000000000011)):**
-  - All mutations (form, sponsorship, registrations, bracket) are locked once `COMPLETED`.
+  - Completed 6-team uneven stage-skipping archive (`Qualifying Pod 4 -> 2` -> `Main Semifinal 2 -> 1`, plus `Fast-Track Duel 2 -> 1` skipping Stage 2 directly into `Championship Final 2 -> 1`). All mutations are locked once `COMPLETED`.
 
 ### G. Permission Matrix (`ADMIN` & `REFEREE` Views)
 - **`[TEST · Permissions] Admin Role View`** ([`/organizer/tournaments/33333333-0000-4000-8000-000000000008`](http://localhost:3000/organizer/tournaments/33333333-0000-4000-8000-000000000008)) & **`ASEAN Dota 2 Invitational 2026`** ([`.../00000105`](http://localhost:3000/organizer/tournaments/33333333-0000-4000-8000-000000000105)):
@@ -126,8 +126,8 @@ If you sign in with a fresh account (never seeded with teams or extended profile
    - **Paid Solo + Mock Checkout:** Register on **`[TEST · Solo] Paid Entry & Form Playground`** (`...000006`), complete all 5 form types (`SHORT_TEXT`, `LONG_TEXT`, `NUMBER`, `SELECT_ONE`, `SELECT_MULTIPLE`), and test `SUCCEEDED`, `FAILED`, or `CANCELLED` in Mock Payment Checkout.
    - **Create a Team:** Start a new squad on `SEA Valorant Challengers Open` (`...000103`) or `[TEST · Review] Queue, Forms & Refunds` (`...000005`), invite friends by code, answer the intake form, and lock when complete.
 4. **Watch Live Brackets, Final Rankings & Announcements:**
-   - **`ASEAN Dota 2 Invitational 2026`** ([`/tournaments/33333333-0000-4000-8000-000000000105/bracket`](http://localhost:3000/tournaments/33333333-0000-4000-8000-000000000105/bracket)) — 16-team 4-stage bracket with Round of 16 complete and Quarterfinals 3 & 4 scheduled on `Main Stage A` / `Stream Booth 2`, plus 3 announcements.
-   - **`Thailand Mobile Legends Championship S4`** ([`/tournaments/33333333-0000-4000-8000-000000000106/bracket`](http://localhost:3000/tournaments/33333333-0000-4000-8000-000000000106/bracket)) — completed 8-team 3-stage bracket (`Siam Titans` 3–1 champion) with full rankings and announcements.
+   - **`ASEAN Dota 2 Invitational 2026`** ([`/tournaments/33333333-0000-4000-8000-000000000105/bracket`](http://localhost:3000/tournaments/33333333-0000-4000-8000-000000000105/bracket)) — 20-team multi-pod bracket (`5 -> 2` ×4 Groups feeding `4 -> 2` ×2 Playoff Heats and a `4 -> 1` Grand Final Pod; Groups A & B complete, Groups C & D upcoming), plus 3 announcements.
+   - **`Thailand Mobile Legends Championship S4`** ([`/tournaments/33333333-0000-4000-8000-000000000106/bracket`](http://localhost:3000/tournaments/33333333-0000-4000-8000-000000000106/bracket)) — completed standard 8-team 3-stage single-elimination bracket (`Siam Titans` 3–1 champion) with full rankings and announcements.
 5. **Fresh Account / Organizer / Sponsor Onboarding:**
    - Complete initial Account onboarding (`@handle` & display name), then opt into creating your own Organizer profile or Sponsor profile cleanly.
 

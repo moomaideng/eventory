@@ -317,17 +317,19 @@ func buildTeamsAndMembers(now time.Time) ([]models.TournamentTeam, []models.Tour
 	}
 
 	// -------------------------------------------------------------------------
-	// A10: [TEST · Bracket] Live Match & Swap (8 ACCEPTED teams)
+	// A10: [TEST · Bracket] Live Match & Swap (9 ACCEPTED teams)
 	// -------------------------------------------------------------------------
 	liveCaptains := []uuid.UUID{
 		seedids.KaitoID, seedids.PlengID, seedids.TonklaID, seedids.BeamID,
 		seedids.FahID, seedids.MekID, seedids.PlayerID(17), seedids.PlayerID(18),
+		seedids.PlayerID(19),
 	}
 	liveNames := []string{
 		"Paper Planes", "Mirage BKK", "Solaris Esports", "Omega Pulse",
 		"Viper Strike", "Banyan Crew", "Delta Surge", "Zenith X",
+		"Wildcard Fox",
 	}
-	for i := 0; i < 8; i++ {
+	for i := 0; i < 9; i++ {
 		addTeam(&teams, &members, models.TournamentTeam{
 			TournamentID: seedids.TournTestBracketLive,
 			ID:           fmt.Sprintf("TM10%04d", i+1),
@@ -339,11 +341,17 @@ func buildTeamsAndMembers(now time.Time) ([]models.TournamentTeam, []models.Tour
 	}
 
 	// -------------------------------------------------------------------------
-	// A11: [TEST · Bracket] Completed Archive (4 ACCEPTED teams)
+	// A11: [TEST · Bracket] Completed Archive (6 ACCEPTED teams)
 	// -------------------------------------------------------------------------
-	compNames := []string{"Champion Lions", "Silver Falcons", "Bronze Bears", "Fourth Foxes"}
-	compCaptains := []uuid.UUID{seedids.KaitoID, seedids.PlengID, seedids.TonklaID, seedids.BeamID}
-	for i := 0; i < 4; i++ {
+	compNames := []string{
+		"Champion Lions", "Silver Falcons", "Bronze Bears",
+		"Fourth Foxes", "FastTrack Hawks", "Sixth Owls",
+	}
+	compCaptains := []uuid.UUID{
+		seedids.KaitoID, seedids.PlengID, seedids.TonklaID,
+		seedids.BeamID, seedids.FahID, seedids.MekID,
+	}
+	for i := 0; i < 6; i++ {
 		addTeam(&teams, &members, models.TournamentTeam{
 			TournamentID: seedids.TournTestBracketCompleted,
 			ID:           fmt.Sprintf("TM11%04d", i+1),
@@ -428,26 +436,26 @@ func buildTeamsAndMembers(now time.Time) ([]models.TournamentTeam, []models.Tour
 	}
 
 	// -------------------------------------------------------------------------
-	// B5: ASEAN Dota 2 Invitational 2026 (16 ACCEPTED teams)
+	// B5: ASEAN Dota 2 Invitational 2026 (20 ACCEPTED teams)
 	// -------------------------------------------------------------------------
 	dotaNames := []string{
-		"Bangkok Guardians", "Manila Roshan", "SG Radiance", "KL Immortal",
-		"Jakarta Tigers", "Saigon Storm", "Mekong Dire", "Phnom Penh Five",
-		"Lanna Ancients", "Pattaya Tide", "Cebu Invokers", "Vientiane Void",
-		"Yangon Spirit", "BKK Highground", "SEA Phoenix", "TDP Carry",
+		"Bangkok Guardians", "Manila Roshan", "SG Radiance", "KL Immortal", "Jakarta Tigers",
+		"Saigon Storm", "Mekong Dire", "Phnom Penh Five", "Lanna Ancients", "Pattaya Tide",
+		"Cebu Invokers", "Vientiane Void", "Yangon Spirit", "BKK Highground", "SEA Phoenix",
+		"TDP Carry", "Brunei Guardians", "Johor Tempest", "Chiang Mai Rune", "Korat Wards",
 	}
 	dotaCaptains := []uuid.UUID{
 		seedids.KaitoID, seedids.PlengID, seedids.TonklaID, seedids.BeamID,
 		seedids.FahID, seedids.MekID,
 	}
-	for i := 0; i < 16; i++ {
+	for i := 0; i < 20; i++ {
 		var captain uuid.UUID
 		if i < len(dotaCaptains) {
 			captain = dotaCaptains[i]
 		} else {
 			captain = seedids.PlayerID(i - len(dotaCaptains) + 1)
 		}
-		mate := seedids.PlayerID(11 + i)
+		mate := seedids.PlayerID(15 + i)
 		addTeam(&teams, &members, models.TournamentTeam{
 			TournamentID: seedids.TournRealOngoingDota2,
 			ID:           fmt.Sprintf("TM15%04d", i+1),
@@ -703,97 +711,108 @@ func buildBrackets(now time.Time) ([]models.Match, []models.MatchEntry) {
 	)
 
 	// -------------------------------------------------------------------------
-	// A10: [TEST · Bracket] Live Match & Swap (8 teams, 3 stages)
+	// A10: [TEST · Bracket] Live Match & Swap (9 teams, 3 stages, uneven + stage skip)
+	// Stage 1: Play-In Pod A (3->2 -> Stg2), Play-In Pod B (4->1 -> Stg2), Wildcard Duel (2->1 -> Stg3 skip!)
+	// Stage 2: Upper Semifinal (3->2 -> Stg3)
+	// Stage 3: Grand Final (3->1)
 	// -------------------------------------------------------------------------
 	tA10 := seedids.TournTestBracketLive
 	matches = append(matches,
-		models.Match{ID: seedids.MatchID(11), TournamentID: tA10, Name: "Grand Final", Venue: "Main Stage", StageLevel: 3, TeamCount: 2, AdvancingCount: 1, ScheduledAt: ptrTime(now.Add(24 * time.Hour))},
-		models.Match{ID: seedids.MatchID(12), TournamentID: tA10, Name: "Semifinal 1", Venue: "Main Stage", StageLevel: 2, TeamCount: 2, AdvancingCount: 1, TargetMatchID: uuidPtr(seedids.MatchID(11)), ScheduledAt: ptrTime(now.Add(12 * time.Hour))},
-		models.Match{ID: seedids.MatchID(13), TournamentID: tA10, Name: "Semifinal 2", Venue: "Main Stage", StageLevel: 2, TeamCount: 2, AdvancingCount: 1, TargetMatchID: uuidPtr(seedids.MatchID(11)), ScheduledAt: ptrTime(now.Add(15 * time.Hour))},
-		models.Match{ID: seedids.MatchID(14), TournamentID: tA10, Name: "Quarterfinal 1", Venue: "Booth A", StageLevel: 1, TeamCount: 2, AdvancingCount: 1, TargetMatchID: uuidPtr(seedids.MatchID(12)), IsCompleted: true, ScheduledAt: ptrTime(now.Add(-8 * time.Hour))},
-		models.Match{ID: seedids.MatchID(15), TournamentID: tA10, Name: "Quarterfinal 2", Venue: "Booth B", StageLevel: 1, TeamCount: 2, AdvancingCount: 1, TargetMatchID: uuidPtr(seedids.MatchID(12)), IsCompleted: true, ScheduledAt: ptrTime(now.Add(-6 * time.Hour))},
-		models.Match{ID: seedids.MatchID(16), TournamentID: tA10, Name: "Quarterfinal 3", Venue: "Booth A", StageLevel: 1, TeamCount: 2, AdvancingCount: 1, TargetMatchID: uuidPtr(seedids.MatchID(13)), ScheduledAt: ptrTime(now.Add(3 * time.Hour))},
-		models.Match{ID: seedids.MatchID(17), TournamentID: tA10, Name: "Quarterfinal 4", Venue: "Booth B", StageLevel: 1, TeamCount: 2, AdvancingCount: 1, TargetMatchID: uuidPtr(seedids.MatchID(13)), ScheduledAt: ptrTime(now.Add(5 * time.Hour))},
+		models.Match{ID: seedids.MatchID(11), TournamentID: tA10, Name: "Grand Final Pod (3 -> 1)", Venue: "Main Stage", StageLevel: 3, TeamCount: 3, AdvancingCount: 1, ScheduledAt: ptrTime(now.Add(24 * time.Hour))},
+		models.Match{ID: seedids.MatchID(12), TournamentID: tA10, Name: "Upper Semifinal (3 -> 2)", Venue: "Main Stage", StageLevel: 2, TeamCount: 3, AdvancingCount: 2, TargetMatchID: uuidPtr(seedids.MatchID(11)), ScheduledAt: ptrTime(now.Add(12 * time.Hour))},
+		models.Match{ID: seedids.MatchID(13), TournamentID: tA10, Name: "Play-In Pod A (3 -> 2)", Venue: "Booth A", StageLevel: 1, TeamCount: 3, AdvancingCount: 2, TargetMatchID: uuidPtr(seedids.MatchID(12)), IsCompleted: true, ScheduledAt: ptrTime(now.Add(-8 * time.Hour))},
+		models.Match{ID: seedids.MatchID(14), TournamentID: tA10, Name: "Play-In Pod B (4 -> 1)", Venue: "Booth B", StageLevel: 1, TeamCount: 4, AdvancingCount: 1, TargetMatchID: uuidPtr(seedids.MatchID(12)), ScheduledAt: ptrTime(now.Add(4 * time.Hour))},
+		models.Match{ID: seedids.MatchID(15), TournamentID: tA10, Name: "Wildcard Duel (Skips Stage 2)", Venue: "Booth C", StageLevel: 1, TeamCount: 2, AdvancingCount: 1, TargetMatchID: uuidPtr(seedids.MatchID(11)), IsCompleted: true, ScheduledAt: ptrTime(now.Add(-6 * time.Hour))},
 	)
 	entries = append(entries,
-		newEntry(seedids.MatchID(14), tA10, "TM100001", strPtr("2"), true, nil),
-		newEntry(seedids.MatchID(14), tA10, "TM100002", strPtr("1"), false, nil),
-		newEntry(seedids.MatchID(15), tA10, "TM100003", strPtr("2"), true, nil),
-		newEntry(seedids.MatchID(15), tA10, "TM100004", strPtr("0"), false, nil),
+		// Completed Play-In Pod A (3 -> 2)
+		newEntry(seedids.MatchID(13), tA10, "TM100001", strPtr("18"), true, nil),
+		newEntry(seedids.MatchID(13), tA10, "TM100002", strPtr("14"), true, nil),
+		newEntry(seedids.MatchID(13), tA10, "TM100003", strPtr("6"), false, nil),
+		// Completed Wildcard Duel skipping Stage 2 directly into Grand Final
+		newEntry(seedids.MatchID(15), tA10, "TM100008", strPtr("2"), true, nil),
+		newEntry(seedids.MatchID(15), tA10, "TM100009", strPtr("0"), false, nil),
+		// Seeded advanced entries waiting in Stage 2 and Stage 3
 		newEntry(seedids.MatchID(12), tA10, "TM100001", nil, false, nil),
-		newEntry(seedids.MatchID(12), tA10, "TM100003", nil, false, nil),
-		newEntry(seedids.MatchID(16), tA10, "TM100005", nil, false, nil),
-		newEntry(seedids.MatchID(16), tA10, "TM100006", nil, false, nil),
-		newEntry(seedids.MatchID(17), tA10, "TM100007", nil, false, nil),
-		newEntry(seedids.MatchID(17), tA10, "TM100008", nil, false, nil),
+		newEntry(seedids.MatchID(12), tA10, "TM100002", nil, false, nil),
+		newEntry(seedids.MatchID(11), tA10, "TM100008", nil, false, nil),
+		// Unfinished 4-team Play-In Pod B (available for swaps/rescheduling/scoring)
+		newEntry(seedids.MatchID(14), tA10, "TM100004", nil, false, nil),
+		newEntry(seedids.MatchID(14), tA10, "TM100005", nil, false, nil),
+		newEntry(seedids.MatchID(14), tA10, "TM100006", nil, false, nil),
+		newEntry(seedids.MatchID(14), tA10, "TM100007", nil, false, nil),
 	)
 
 	// -------------------------------------------------------------------------
-	// A11: [TEST · Bracket] Completed Archive (4 teams, 2 stages)
+	// A11: [TEST · Bracket] Completed Archive (6 teams, 3 stages, uneven + stage skip)
+	// Stage 1: Qualifying Pod (4->2 -> Stg2), Fast-Track Duel (2->1 -> Stg3 skip!)
+	// Stage 2: Main Semifinal (2->1 -> Stg3)
+	// Stage 3: Championship Final (2->1)
 	// -------------------------------------------------------------------------
 	tA11 := seedids.TournTestBracketCompleted
 	matches = append(matches,
-		models.Match{ID: seedids.MatchID(21), TournamentID: tA11, Name: "Grand Final", Venue: "Arena", StageLevel: 2, TeamCount: 2, AdvancingCount: 1, IsCompleted: true, ScheduledAt: ptrTime(now.Add(-12 * 24 * time.Hour))},
-		models.Match{ID: seedids.MatchID(22), TournamentID: tA11, Name: "Semifinal 1", Venue: "Booth 1", StageLevel: 1, TeamCount: 2, AdvancingCount: 1, TargetMatchID: uuidPtr(seedids.MatchID(21)), IsCompleted: true, ScheduledAt: ptrTime(now.Add(-13 * 24 * time.Hour))},
-		models.Match{ID: seedids.MatchID(23), TournamentID: tA11, Name: "Semifinal 2", Venue: "Booth 2", StageLevel: 1, TeamCount: 2, AdvancingCount: 1, TargetMatchID: uuidPtr(seedids.MatchID(21)), IsCompleted: true, ScheduledAt: ptrTime(now.Add(-13 * 24 * time.Hour))},
+		models.Match{ID: seedids.MatchID(21), TournamentID: tA11, Name: "Championship Final (2 -> 1)", Venue: "Arena", StageLevel: 3, TeamCount: 2, AdvancingCount: 1, IsCompleted: true, ScheduledAt: ptrTime(now.Add(-12 * 24 * time.Hour))},
+		models.Match{ID: seedids.MatchID(22), TournamentID: tA11, Name: "Main Semifinal (2 -> 1)", Venue: "Stage B", StageLevel: 2, TeamCount: 2, AdvancingCount: 1, TargetMatchID: uuidPtr(seedids.MatchID(21)), IsCompleted: true, ScheduledAt: ptrTime(now.Add(-13 * 24 * time.Hour))},
+		models.Match{ID: seedids.MatchID(23), TournamentID: tA11, Name: "Qualifying Pod (4 -> 2)", Venue: "Booth 1", StageLevel: 1, TeamCount: 4, AdvancingCount: 2, TargetMatchID: uuidPtr(seedids.MatchID(22)), IsCompleted: true, ScheduledAt: ptrTime(now.Add(-14 * 24 * time.Hour))},
+		models.Match{ID: seedids.MatchID(24), TournamentID: tA11, Name: "Fast-Track Duel (Skips Stage 2)", Venue: "Booth 2", StageLevel: 1, TeamCount: 2, AdvancingCount: 1, TargetMatchID: uuidPtr(seedids.MatchID(21)), IsCompleted: true, ScheduledAt: ptrTime(now.Add(-14 * 24 * time.Hour))},
 	)
 	entries = append(entries,
+		newEntry(seedids.MatchID(23), tA11, "TM110001", strPtr("25"), true, nil),
+		newEntry(seedids.MatchID(23), tA11, "TM110002", strPtr("19"), true, nil),
+		newEntry(seedids.MatchID(23), tA11, "TM110003", strPtr("12"), false, intPtr(4)),
+		newEntry(seedids.MatchID(23), tA11, "TM110004", strPtr("7"), false, intPtr(5)),
+		newEntry(seedids.MatchID(24), tA11, "TM110005", strPtr("2"), true, nil),
+		newEntry(seedids.MatchID(24), tA11, "TM110006", strPtr("0"), false, intPtr(6)),
 		newEntry(seedids.MatchID(22), tA11, "TM110001", strPtr("2"), true, nil),
-		newEntry(seedids.MatchID(22), tA11, "TM110002", strPtr("0"), false, intPtr(3)),
-		newEntry(seedids.MatchID(23), tA11, "TM110003", strPtr("2"), true, nil),
-		newEntry(seedids.MatchID(23), tA11, "TM110004", strPtr("1"), false, intPtr(4)),
+		newEntry(seedids.MatchID(22), tA11, "TM110002", strPtr("1"), false, intPtr(3)),
 		newEntry(seedids.MatchID(21), tA11, "TM110001", strPtr("3"), false, intPtr(1)),
-		newEntry(seedids.MatchID(21), tA11, "TM110003", strPtr("1"), false, intPtr(2)),
+		newEntry(seedids.MatchID(21), tA11, "TM110005", strPtr("1"), false, intPtr(2)),
 	)
 
 	// -------------------------------------------------------------------------
-	// B5: ASEAN Dota 2 Invitational 2026 (16 teams, 4 stages)
-	// MatchID 31 (GF), 32-33 (SF), 34-37 (QF), 38-45 (Ro16)
+	// B5: ASEAN Dota 2 Invitational 2026 (20 teams, 3 stages: 4×[5->2] -> 2×[4->2] -> [4->1])
+	// MatchID 31 (GF 4->1), 32-33 (Heats 4->2), 34-37 (Groups A-D 5->2)
 	// -------------------------------------------------------------------------
 	tB5 := seedids.TournRealOngoingDota2
 	matches = append(matches,
-		models.Match{ID: seedids.MatchID(31), TournamentID: tB5, Name: "Grand Final (Bo5)", Venue: "Main Stage A", StageLevel: 4, TeamCount: 2, AdvancingCount: 1, ScheduledAt: ptrTime(now.Add(48 * time.Hour))},
-		models.Match{ID: seedids.MatchID(32), TournamentID: tB5, Name: "Semifinal 1", Venue: "Main Stage A", StageLevel: 3, TeamCount: 2, AdvancingCount: 1, TargetMatchID: uuidPtr(seedids.MatchID(31)), ScheduledAt: ptrTime(now.Add(24 * time.Hour))},
-		models.Match{ID: seedids.MatchID(33), TournamentID: tB5, Name: "Semifinal 2", Venue: "Main Stage A", StageLevel: 3, TeamCount: 2, AdvancingCount: 1, TargetMatchID: uuidPtr(seedids.MatchID(31)), ScheduledAt: ptrTime(now.Add(28 * time.Hour))},
-		models.Match{ID: seedids.MatchID(34), TournamentID: tB5, Name: "Quarterfinal 1", Venue: "Main Stage A", StageLevel: 2, TeamCount: 2, AdvancingCount: 1, TargetMatchID: uuidPtr(seedids.MatchID(32)), IsCompleted: true, ScheduledAt: ptrTime(now.Add(-10 * time.Hour))},
-		models.Match{ID: seedids.MatchID(35), TournamentID: tB5, Name: "Quarterfinal 2", Venue: "Stream Booth 2", StageLevel: 2, TeamCount: 2, AdvancingCount: 1, TargetMatchID: uuidPtr(seedids.MatchID(32)), IsCompleted: true, ScheduledAt: ptrTime(now.Add(-7 * time.Hour))},
-		models.Match{ID: seedids.MatchID(36), TournamentID: tB5, Name: "Quarterfinal 3", Venue: "Main Stage A", StageLevel: 2, TeamCount: 2, AdvancingCount: 1, TargetMatchID: uuidPtr(seedids.MatchID(33)), ScheduledAt: ptrTime(now.Add(4 * time.Hour))},
-		models.Match{ID: seedids.MatchID(37), TournamentID: tB5, Name: "Quarterfinal 4", Venue: "Stream Booth 2", StageLevel: 2, TeamCount: 2, AdvancingCount: 1, TargetMatchID: uuidPtr(seedids.MatchID(33)), ScheduledAt: ptrTime(now.Add(7 * time.Hour))},
+		models.Match{ID: seedids.MatchID(31), TournamentID: tB5, Name: "Grand Final Pod (4 -> 1)", Venue: "Main Stage A", StageLevel: 3, TeamCount: 4, AdvancingCount: 1, ScheduledAt: ptrTime(now.Add(48 * time.Hour))},
+		models.Match{ID: seedids.MatchID(32), TournamentID: tB5, Name: "Playoff Heat 1 (4 -> 2)", Venue: "Main Stage A", StageLevel: 2, TeamCount: 4, AdvancingCount: 2, TargetMatchID: uuidPtr(seedids.MatchID(31)), ScheduledAt: ptrTime(now.Add(20 * time.Hour))},
+		models.Match{ID: seedids.MatchID(33), TournamentID: tB5, Name: "Playoff Heat 2 (4 -> 2)", Venue: "Stream Booth 2", StageLevel: 2, TeamCount: 4, AdvancingCount: 2, TargetMatchID: uuidPtr(seedids.MatchID(31)), ScheduledAt: ptrTime(now.Add(24 * time.Hour))},
+		models.Match{ID: seedids.MatchID(34), TournamentID: tB5, Name: "Group A (5 -> 2)", Venue: "Main Stage A", StageLevel: 1, TeamCount: 5, AdvancingCount: 2, TargetMatchID: uuidPtr(seedids.MatchID(32)), IsCompleted: true, ScheduledAt: ptrTime(now.Add(-14 * time.Hour))},
+		models.Match{ID: seedids.MatchID(35), TournamentID: tB5, Name: "Group B (5 -> 2)", Venue: "Stream Booth 2", StageLevel: 1, TeamCount: 5, AdvancingCount: 2, TargetMatchID: uuidPtr(seedids.MatchID(32)), IsCompleted: true, ScheduledAt: ptrTime(now.Add(-10 * time.Hour))},
+		models.Match{ID: seedids.MatchID(36), TournamentID: tB5, Name: "Group C (5 -> 2)", Venue: "Main Stage A", StageLevel: 1, TeamCount: 5, AdvancingCount: 2, TargetMatchID: uuidPtr(seedids.MatchID(33)), ScheduledAt: ptrTime(now.Add(4 * time.Hour))},
+		models.Match{ID: seedids.MatchID(37), TournamentID: tB5, Name: "Group D (5 -> 2)", Venue: "Stream Booth 2", StageLevel: 1, TeamCount: 5, AdvancingCount: 2, TargetMatchID: uuidPtr(seedids.MatchID(33)), ScheduledAt: ptrTime(now.Add(7 * time.Hour))},
 	)
-	for i := 0; i < 8; i++ {
-		qfTarget := seedids.MatchID(34 + i/2)
-		matches = append(matches, models.Match{
-			ID:             seedids.MatchID(38 + i),
-			TournamentID:   tB5,
-			Name:           fmt.Sprintf("Round of 16 · Match %d", i+1),
-			Venue:          fmt.Sprintf("Pod %d", (i%2)+1),
-			StageLevel:     1,
-			TeamCount:      2,
-			AdvancingCount: 1,
-			TargetMatchID:  &qfTarget,
-			IsCompleted:    true,
-			ScheduledAt:    ptrTime(now.Add(-time.Duration(36-i*2) * time.Hour)),
-		})
-		t1 := fmt.Sprintf("TM15%04d", i*2+1)
-		t2 := fmt.Sprintf("TM15%04d", i*2+2)
-		entries = append(entries,
-			newEntry(seedids.MatchID(38+i), tB5, t1, strPtr("2"), true, nil),
-			newEntry(seedids.MatchID(38+i), tB5, t2, strPtr("0"), false, nil),
-		)
-	}
 	entries = append(entries,
-		// QF1 & QF2 completed, winners in SF1
-		newEntry(seedids.MatchID(34), tB5, "TM150001", strPtr("2"), true, nil),
-		newEntry(seedids.MatchID(34), tB5, "TM150003", strPtr("0"), false, nil),
-		newEntry(seedids.MatchID(35), tB5, "TM150005", strPtr("2"), true, nil),
-		newEntry(seedids.MatchID(35), tB5, "TM150007", strPtr("1"), false, nil),
+		// Completed Group A (5 -> 2)
+		newEntry(seedids.MatchID(34), tB5, "TM150001", strPtr("4-0"), true, nil),
+		newEntry(seedids.MatchID(34), tB5, "TM150002", strPtr("3-1"), true, nil),
+		newEntry(seedids.MatchID(34), tB5, "TM150003", strPtr("2-2"), false, nil),
+		newEntry(seedids.MatchID(34), tB5, "TM150004", strPtr("1-3"), false, nil),
+		newEntry(seedids.MatchID(34), tB5, "TM150005", strPtr("0-4"), false, nil),
+		// Completed Group B (5 -> 2)
+		newEntry(seedids.MatchID(35), tB5, "TM150006", strPtr("4-0"), true, nil),
+		newEntry(seedids.MatchID(35), tB5, "TM150007", strPtr("3-1"), true, nil),
+		newEntry(seedids.MatchID(35), tB5, "TM150008", strPtr("2-2"), false, nil),
+		newEntry(seedids.MatchID(35), tB5, "TM150009", strPtr("1-3"), false, nil),
+		newEntry(seedids.MatchID(35), tB5, "TM150010", strPtr("0-4"), false, nil),
+		// Top 4 seeded into Playoff Heat 1 (4 -> 2)
 		newEntry(seedids.MatchID(32), tB5, "TM150001", nil, false, nil),
-		newEntry(seedids.MatchID(32), tB5, "TM150005", nil, false, nil),
-		// QF3 & QF4 unfinished
-		newEntry(seedids.MatchID(36), tB5, "TM150009", nil, false, nil),
+		newEntry(seedids.MatchID(32), tB5, "TM150002", nil, false, nil),
+		newEntry(seedids.MatchID(32), tB5, "TM150006", nil, false, nil),
+		newEntry(seedids.MatchID(32), tB5, "TM150007", nil, false, nil),
+		// Unfinished Group C (5 -> 2)
 		newEntry(seedids.MatchID(36), tB5, "TM150011", nil, false, nil),
-		newEntry(seedids.MatchID(37), tB5, "TM150013", nil, false, nil),
-		newEntry(seedids.MatchID(37), tB5, "TM150015", nil, false, nil),
+		newEntry(seedids.MatchID(36), tB5, "TM150012", nil, false, nil),
+		newEntry(seedids.MatchID(36), tB5, "TM150013", nil, false, nil),
+		newEntry(seedids.MatchID(36), tB5, "TM150014", nil, false, nil),
+		newEntry(seedids.MatchID(36), tB5, "TM150015", nil, false, nil),
+		// Unfinished Group D (5 -> 2)
+		newEntry(seedids.MatchID(37), tB5, "TM150016", nil, false, nil),
+		newEntry(seedids.MatchID(37), tB5, "TM150017", nil, false, nil),
+		newEntry(seedids.MatchID(37), tB5, "TM150018", nil, false, nil),
+		newEntry(seedids.MatchID(37), tB5, "TM150019", nil, false, nil),
+		newEntry(seedids.MatchID(37), tB5, "TM150020", nil, false, nil),
 	)
 
 	// -------------------------------------------------------------------------
