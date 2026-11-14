@@ -34,8 +34,7 @@ class "EventoryAPI" as EventoryAPI <<Application>> {
 
 note bottom of EventoryAPI
   Each microservice also exposes
-  GET /health (: 204 | 500 | 503)
-  outside { basePath = "/api/v1" }.
+  GET /health outside { basePath = "/api/v1" }.
   Protected operations require
   Authorization: Bearer <JWT>.
 end note
@@ -45,37 +44,37 @@ end note
 ' ============================================================================
 package "Account Service" {
   class "Accounts" as Accounts <<Resource>> {
-    + POST
+    + POST()
   }
 
   class "Account" as AccountById <<Resource>> {
-    + GET
+    + GET()
   }
 
   class "MyAccount" as MyAccount <<Resource>> {
-    + GET
-    + PATCH
+    + GET()
+    + PATCH()
   }
 
   class "MyOrganizerProfile" as MyOrganizerProfile <<Resource>> {
-    + GET
-    + PUT
+    + GET()
+    + PUT()
   }
 
   class "MySponsorProfile" as MySponsorProfile <<Resource>> {
-    + GET
-    + PUT
+    + GET()
+    + PUT()
   }
 
   class "PublicOrganizerProfile" as PublicOrganizerProfile <<Resource>> {
-    + GET
+    + GET()
   }
 
   class "SponsorDirectory" as SponsorDirectory <<Resource>> {
-    + GET
+    + GET()
   }
 
-  class "AccountResponse" as Rep_AccountResponse <<Representation>> {
+  class "Account" as Rep_Account <<Representation>> {
     - id : string
     - email : string
     - handle : string
@@ -84,47 +83,15 @@ package "Account Service" {
     - createdAt : string
   }
 
-  class "UpdateAccountRequest" as Rep_UpdateAccountRequest <<Representation>> {
-    - handle : string
-    - displayName : string
-  }
-
-  class "UpsertOrganizerProfileRequest" as Rep_UpsertOrganizerProfileRequest <<Representation>> {
-    - organizerName : string
-    - organizerEmail : string
-    - phone : string
-    - privacyConsentAccepted : boolean
-  }
-
-  class "OrganizerProfileResponse" as Rep_OrganizerProfileResponse <<Representation>> {
+  class "OrganizerProfile" as Rep_OrganizerProfile <<Representation>> {
     - accountId : string
     - organizerName : string
     - organizerEmail : string
     - phone : string
     - privacyConsentedAt : string
-    - createdAt : string
-    - updatedAt : string
   }
 
-  class "PublicOrganizerProfileResponse" as Rep_PublicOrganizerProfileResponse <<Representation>> {
-    - accountId : string
-    - organizerName : string
-    - organizerEmail : string
-    - phone : string
-    - createdAt : string
-  }
-
-  class "UpsertSponsorProfileRequest" as Rep_UpsertSponsorProfileRequest <<Representation>> {
-    - sponsorName : string
-    - sponsorEmail : string
-    - phone : string
-    - websiteUrl : string
-    - logoUrl : string
-    - tags : string[]
-    - privacyConsentAccepted : boolean
-  }
-
-  class "SponsorProfileResponse" as Rep_SponsorProfileResponse <<Representation>> {
+  class "SponsorProfile" as Rep_SponsorProfile <<Representation>> {
     - accountId : string
     - sponsorName : string
     - sponsorEmail : string
@@ -132,17 +99,6 @@ package "Account Service" {
     - websiteUrl : string
     - logoUrl : string
     - tags : string[]
-    - privacyConsentedAt : string
-    - createdAt : string
-    - updatedAt : string
-  }
-
-  class "SponsorDirectoryOutputBody" as Rep_SponsorDirectoryOutputBody <<Representation>> {
-    - items : SponsorDirectoryItem[]
-    - tags : string[]
-    - page : integer
-    - pageSize : integer
-    - total : integer
   }
 }
 
@@ -154,46 +110,31 @@ Accounts .[#B45309].> SponsorDirectory : <<Path>> /sponsors
 MyAccount .[#B45309].> MyOrganizerProfile : <<Path>> /organizer-profile
 MyAccount .[#B45309].> MySponsorProfile : <<Path>> /sponsor-profile
 
-Accounts .[#BE185D].> Rep_AccountResponse : <<use>>
-AccountById .[#BE185D].> Rep_AccountResponse : <<use>>
-MyAccount .[#BE185D].> Rep_UpdateAccountRequest : <<use>>
-MyAccount .[#BE185D].> Rep_AccountResponse : <<use>>
-MyOrganizerProfile .[#BE185D].> Rep_UpsertOrganizerProfileRequest : <<use>>
-MyOrganizerProfile .[#BE185D].> Rep_OrganizerProfileResponse : <<use>>
-MySponsorProfile .[#BE185D].> Rep_UpsertSponsorProfileRequest : <<use>>
-MySponsorProfile .[#BE185D].> Rep_SponsorProfileResponse : <<use>>
-PublicOrganizerProfile .[#BE185D].> Rep_PublicOrganizerProfileResponse : <<use>>
-SponsorDirectory .[#BE185D].> Rep_SponsorDirectoryOutputBody : <<use>>
+Accounts .[#BE185D].> Rep_Account : <<use>>
+AccountById .[#BE185D].> Rep_Account : <<use>>
+MyAccount .[#BE185D].> Rep_Account : <<use>>
+MyOrganizerProfile .[#BE185D].> Rep_OrganizerProfile : <<use>>
+PublicOrganizerProfile .[#BE185D].> Rep_OrganizerProfile : <<use>>
+MySponsorProfile .[#BE185D].> Rep_SponsorProfile : <<use>>
+SponsorDirectory .[#BE185D].> Rep_SponsorProfile : <<use>>
 
 ' ============================================================================
 ' NOTIFICATION SERVICE
 ' ============================================================================
 package "Notification Service" {
   class "Notifications" as Notifications <<Resource>> {
-    + GET
+    + GET()
   }
 
   class "NotificationsReadAll" as NotificationsReadAll <<Resource>> {
-    + PATCH
+    + PATCH()
   }
 
   class "NotificationRead" as NotificationRead <<Resource>> {
-    + PATCH
+    + PATCH()
   }
 
-  class "NotificationListResponse" as Rep_NotificationListResponse <<Representation>> {
-    - items : NotificationItem[]
-    - page : integer
-    - pageSize : integer
-    - total : integer
-    - unreadCount : integer
-  }
-
-  class "NotificationCountOutputBody" as Rep_NotificationCountOutputBody <<Representation>> {
-    - updatedCount : integer
-  }
-
-  class "NotificationItem" as Rep_NotificationItem <<Representation>> {
+  class "Notification" as Rep_Notification <<Representation>> {
     - id : string
     - userId : string
     - type : string
@@ -210,78 +151,56 @@ EventoryAPI .[#B45309].> Notifications : <<Path>> /notifications
 Notifications .[#B45309].> NotificationsReadAll : <<Path>> /read-all
 Notifications .[#B45309].> NotificationRead : <<Path>> /{id}/read
 
-Notifications .[#BE185D].> Rep_NotificationListResponse : <<use>>
-NotificationsReadAll .[#BE185D].> Rep_NotificationCountOutputBody : <<use>>
-NotificationRead .[#BE185D].> Rep_NotificationItem : <<use>>
+Notifications .[#BE185D].> Rep_Notification : <<use>>
+NotificationsReadAll .[#BE185D].> Rep_Notification : <<use>>
+NotificationRead .[#BE185D].> Rep_Notification : <<use>>
 
 ' ============================================================================
 ' PAYMENT SERVICE
 ' ============================================================================
 package "Payment Service" {
   class "Payments" as Payments <<Resource>> {
-    + GET
+    + GET()
   }
 
   class "Payment" as Payment <<Resource>> {
-    + GET
+    + GET()
   }
 
   class "PaymentMockResult" as PaymentMockResult <<Resource>> {
-    + POST
+    + POST()
   }
 
   class "PaymentReceipt" as PaymentReceipt <<Resource>> {
-    + GET
+    + GET()
   }
 
   class "PaymentReceiptPDF" as PaymentReceiptPDF <<Resource>> {
-    + GET
+    + GET()
   }
 
-  class "PagePaymentResponse" as Rep_PagePaymentResponse <<Representation>> {
-    - items : PaymentResponse[]
-    - page : integer
-    - pageSize : integer
-    - total : integer
-  }
-
-  class "PaymentResponse" as Rep_PaymentResponse <<Representation>> {
+  class "Payment" as Rep_Payment <<Representation>> {
     - id : string
     - payerAccountId : string
     - source : string
     - provider : string
     - reference : string
-    - description : string
     - amountMinor : integer
     - currency : string
     - status : string
-    - checkoutPath : string
-    - invoicePath : string
     - expiresAt : string
     - paidAt : string
-    - refundedAt : string
-    - createdAt : string
   }
 
-  class "CompleteMockPaymentRequest" as Rep_CompleteMockPaymentRequest <<Representation>> {
-    - result : string
-  }
-
-  class "ReceiptResponse" as Rep_ReceiptResponse <<Representation>> {
+  class "Receipt" as Rep_Receipt <<Representation>> {
     - id : string
     - invoiceId : string
     - payerAccountId : string
     - source : string
-    - provider : string
     - reference : string
-    - description : string
     - amountMinor : integer
     - currency : string
     - paidAt : string
-  }
-
-  class "ReceiptPDFBinary" as Rep_ReceiptPDFBinary <<Representation>> {
-    - contentType : application/pdf
   }
 }
 
@@ -291,283 +210,185 @@ Payment .[#B45309].> PaymentMockResult : <<Path>> /mock-result
 Payment .[#B45309].> PaymentReceipt : <<Path>> /receipt
 Payment .[#B45309].> PaymentReceiptPDF : <<Path>> /receipt.pdf
 
-Payments .[#BE185D].> Rep_PagePaymentResponse : <<use>>
-Payment .[#BE185D].> Rep_PaymentResponse : <<use>>
-PaymentMockResult .[#BE185D].> Rep_CompleteMockPaymentRequest : <<use>>
-PaymentMockResult .[#BE185D].> Rep_PaymentResponse : <<use>>
-PaymentReceipt .[#BE185D].> Rep_ReceiptResponse : <<use>>
-PaymentReceiptPDF .[#BE185D].> Rep_ReceiptPDFBinary : <<use>>
+Payments .[#BE185D].> Rep_Payment : <<use>>
+Payment .[#BE185D].> Rep_Payment : <<use>>
+PaymentMockResult .[#BE185D].> Rep_Payment : <<use>>
+PaymentReceipt .[#BE185D].> Rep_Receipt : <<use>>
+PaymentReceiptPDF .[#BE185D].> Rep_Receipt : <<use>>
 
 ' ============================================================================
 ' TOURNAMENT SERVICE
 ' ============================================================================
 package "Tournament Service" {
   class "LobbyInvite" as LobbyInvite <<Resource>> {
-    + GET
+    + GET()
   }
 
   class "Tournaments" as Tournaments <<Resource>> {
-    + GET
-    + POST
+    + GET()
+    + POST()
   }
 
   class "MyTournaments" as MyTournaments <<Resource>> {
-    + GET
+    + GET()
   }
 
   class "MySponsorships" as MySponsorships <<Resource>> {
-    + GET
+    + GET()
   }
 
   class "SponsorshipRefresh" as SponsorshipRefresh <<Resource>> {
-    + POST
+    + POST()
   }
 
   class "Tournament" as Tournament <<Resource>> {
-    + GET
-    + PATCH
+    + GET()
+    + PATCH()
   }
 
   class "TournamentStatus" as TournamentStatus <<Resource>> {
-    + PATCH
+    + PATCH()
   }
 
   class "OrganizerDashboard" as OrganizerDashboard <<Resource>> {
-    + GET
+    + GET()
   }
 
   class "Announcements" as Announcements <<Resource>> {
-    + GET
-    + POST
+    + GET()
+    + POST()
   }
 
   class "TournamentStaff" as TournamentStaff <<Resource>> {
-    + GET
-    + POST
+    + GET()
+    + POST()
   }
 
   class "TournamentStaffMember" as TournamentStaffMember <<Resource>> {
-    + PATCH
-    + DELETE
+    + PATCH()
+    + DELETE()
   }
 
   class "RegistrationForm" as RegistrationForm <<Resource>> {
-    + GET
-    + PUT
+    + GET()
+    + PUT()
   }
 
   class "FormResponses" as FormResponses <<Resource>> {
-    + GET
+    + GET()
   }
 
   class "MyFormResponse" as MyFormResponse <<Resource>> {
-    + GET
+    + GET()
   }
 
   class "MyTournamentTeam" as MyTournamentTeam <<Resource>> {
-    + GET
+    + GET()
   }
 
   class "SoloRegister" as SoloRegister <<Resource>> {
-    + POST
+    + POST()
   }
 
   class "TournamentTeams" as TournamentTeams <<Resource>> {
-    + POST
+    + POST()
   }
 
   class "TeamLobby" as TeamLobby <<Resource>> {
-    + GET
-    + DELETE
+    + GET()
+    + DELETE()
   }
 
   class "TeamLobbyJoin" as TeamLobbyJoin <<Resource>> {
-    + POST
+    + POST()
   }
 
   class "TeamLobbyRegistration" as TeamLobbyRegistration <<Resource>> {
-    + PUT
+    + PUT()
   }
 
   class "TeamInviteRegenerate" as TeamInviteRegenerate <<Resource>> {
-    + POST
+    + POST()
   }
 
   class "TeamLobbyLock" as TeamLobbyLock <<Resource>> {
-    + POST
+    + POST()
   }
 
   class "TeamSubmissionRefresh" as TeamSubmissionRefresh <<Resource>> {
-    + POST
+    + POST()
   }
 
   class "TeamLobbyMember" as TeamLobbyMember <<Resource>> {
-    + DELETE
+    + DELETE()
   }
 
   class "EntryReview" as EntryReview <<Resource>> {
-    + POST
+    + POST()
   }
 
   class "Bracket" as Bracket <<Resource>> {
-    + GET
-    + POST
+    + GET()
+    + POST()
   }
 
   class "BracketSwap" as BracketSwap <<Resource>> {
-    + POST
+    + POST()
   }
 
   class "TournamentSeed" as TournamentSeed <<Resource>> {
-    + POST
+    + POST()
   }
 
   class "MatchResults" as MatchResults <<Resource>> {
-    + POST
+    + POST()
   }
 
   class "MatchSchedule" as MatchSchedule <<Resource>> {
-    + PUT
+    + PUT()
   }
 
   class "TournamentSponsors" as TournamentSponsors <<Resource>> {
-    + GET
+    + GET()
   }
 
   class "SponsorshipTiers" as SponsorshipTiers <<Resource>> {
-    + GET
-    + POST
+    + GET()
+    + POST()
   }
 
   class "ManageSponsorshipTiers" as ManageSponsorshipTiers <<Resource>> {
-    + GET
+    + GET()
   }
 
   class "SponsorshipTier" as SponsorshipTier <<Resource>> {
-    + PUT
-    + DELETE
+    + PUT()
+    + DELETE()
   }
 
   class "SponsorshipCheckout" as SponsorshipCheckout <<Resource>> {
-    + POST
+    + POST()
   }
 
-  ' --- Tournament Representations ---
-  class "InviteResolutionResponse" as Rep_InviteResolutionResponse <<Representation>> {
-    - tournamentId : string
-    - teamId : string
-  }
-
-  class "PageTournamentResponse" as Rep_PageTournamentResponse <<Representation>> {
-    - items : TournamentResponse[]
-    - page : integer
-    - pageSize : integer
-    - total : integer
-  }
-
-  class "CreateTournamentRequest" as Rep_CreateTournamentRequest <<Representation>> {
-    - name : string
-    - game : string
-    - description : string
-    - detail : string
-    - location : string
-    - registrationMode : string
-    - capacity : integer
-    - minTeamSize : integer
-    - maxTeamSize : integer
-    - entryFeeMinor : integer
-    - fundingGoalMinor : integer
-    - fundingDeadline : string
-    - registrationDeadline : string
-    - startAt : string
-    - endAt : string
-  }
-
-  class "UpdateTournamentRequest" as Rep_UpdateTournamentRequest <<Representation>> {
-    - name : string
-    - game : string
-    - description : string
-    - detail : string
-    - location : string
-    - registrationMode : string
-    - capacity : integer
-    - minTeamSize : integer
-    - maxTeamSize : integer
-    - entryFeeMinor : integer
-    - fundingGoalMinor : integer
-    - fundingDeadline : string
-    - registrationDeadline : string
-    - startAt : string
-    - endAt : string
-  }
-
-  class "TournamentResponse" as Rep_TournamentResponse <<Representation>> {
+  ' --- Domain Representations ---
+  class "Tournament" as Rep_Tournament <<Representation>> {
     - id : string
     - organizerId : string
-    - organizerName : string
     - name : string
     - game : string
-    - description : string
-    - detail : string
     - location : string
     - registrationMode : string
     - status : string
     - capacity : integer
-    - registeredCount : integer
     - minTeamSize : integer
     - maxTeamSize : integer
     - entryFeeMinor : integer
-    - currency : string
-    - registrationDeadline : string
+    - fundingGoalMinor : integer
     - startAt : string
     - endAt : string
   }
 
-  class "TournamentDetailsBody" as Rep_TournamentDetailsBody <<Representation>> {
-    - tournament : TournamentResponse
-    - funding : TournamentFundingResponse
-    - teams : TournamentTeamResponse[]
-  }
-
-  class "PageOrganizerTournamentSummary" as Rep_PageOrganizerTournamentSummary <<Representation>> {
-    - items : OrganizerTournamentSummary[]
-    - page : integer
-    - pageSize : integer
-    - total : integer
-  }
-
-  class "OverrideTournamentStatusInputBody" as Rep_OverrideTournamentStatusInputBody <<Representation>> {
-    - status : string
-    - force : boolean
-    - reason : string
-  }
-
-  class "OverrideTournamentStatusOutputBody" as Rep_OverrideTournamentStatusOutputBody <<Representation>> {
-    - tournamentId : string
-    - status : string
-  }
-
-  class "OrganizerDashboardOutputBody" as Rep_OrganizerDashboardOutputBody <<Representation>> {
-    - summary : OrganizerTournamentSummary
-    - entries : OrganizerDashboardEntry[]
-    - page : integer
-    - pageSize : integer
-    - total : integer
-  }
-
-  class "PageAnnouncementResponse" as Rep_PageAnnouncementResponse <<Representation>> {
-    - items : AnnouncementResponse[]
-    - page : integer
-    - pageSize : integer
-    - total : integer
-  }
-
-  class "CreateAnnouncementInputBody" as Rep_CreateAnnouncementInputBody <<Representation>> {
-    - title : string
-    - body : string
-  }
-
-  class "AnnouncementResponse" as Rep_AnnouncementResponse <<Representation>> {
+  class "Announcement" as Rep_Announcement <<Representation>> {
     - id : string
     - tournamentId : string
     - authorName : string
@@ -576,23 +397,7 @@ package "Tournament Service" {
     - createdAt : string
   }
 
-  class "PageTournamentStaffResponse" as Rep_PageTournamentStaffResponse <<Representation>> {
-    - items : TournamentStaffResponse[]
-    - page : integer
-    - pageSize : integer
-    - total : integer
-  }
-
-  class "InviteStaffRequest" as Rep_InviteStaffRequest <<Representation>> {
-    - handle : string
-    - role : string
-  }
-
-  class "UpdateStaffRoleRequest" as Rep_UpdateStaffRoleRequest <<Representation>> {
-    - role : string
-  }
-
-  class "TournamentStaffResponse" as Rep_TournamentStaffResponse <<Representation>> {
+  class "TournamentStaff" as Rep_TournamentStaff <<Representation>> {
     - tournamentId : string
     - accountId : string
     - handle : string
@@ -601,111 +406,44 @@ package "Tournament Service" {
     - createdAt : string
   }
 
-  class "RegistrationFormResponse" as Rep_RegistrationFormResponse <<Representation>> {
+  class "RegistrationForm" as Rep_RegistrationForm <<Representation>> {
     - id : string
     - tournamentId : string
     - title : string
     - description : string
     - fields : FormField[]
-    - createdAt : string
-    - updatedAt : string
   }
 
-  class "SaveRegistrationFormInputBody" as Rep_SaveRegistrationFormInputBody <<Representation>> {
-    - title : string
-    - description : string
-    - fields : FormField[]
-  }
-
-  class "PageFormResponseItem" as Rep_PageFormResponseItem <<Representation>> {
-    - items : FormResponseItem[]
-    - page : integer
-    - pageSize : integer
-    - total : integer
-  }
-
-  class "FormResponseItem" as Rep_FormResponseItem <<Representation>> {
+  class "FormResponse" as Rep_FormResponse <<Representation>> {
     - id : string
     - tournamentId : string
     - accountId : string
     - answers : FieldAnswer[]
   }
 
-  class "RegisterSoloRequest" as Rep_RegisterSoloRequest <<Representation>> {
-    - answers : FieldAnswer[]
-  }
-
-  class "CreateTeamLobbyRequest" as Rep_CreateTeamLobbyRequest <<Representation>> {
-    - name : string
-    - answers : FieldAnswer[]
-  }
-
-  class "JoinTeamLobbyRequest" as Rep_JoinTeamLobbyRequest <<Representation>> {
-    - inviteCode : string
-    - answers : FieldAnswer[]
-  }
-
-  class "TeamLobbyResponse" as Rep_TeamLobbyResponse <<Representation>> {
+  class "TeamLobby" as Rep_TeamLobby <<Representation>> {
     - id : string
-    - tournament : TournamentResponse
+    - tournamentId : string
     - captainId : string
-    - captainName : string
     - name : string
     - inviteCode : string
     - status : string
-    - members : TeamLobbyMemberResponse[]
-    - viewerRole : string
+    - members : TeamLobbyMember[]
     - paymentId : string
-    - paymentExpiresAt : string
     - createdAt : string
   }
 
-  class "TeamReviewInputBody" as Rep_TeamReviewInputBody <<Representation>> {
-    - decision : string
-    - reason : string
-  }
-
-  class "TeamReviewOutputBody" as Rep_TeamReviewOutputBody <<Representation>> {
+  class "TeamReview" as Rep_TeamReview <<Representation>> {
+    - id : string
     - tournamentId : string
     - entryId : string
+    - decision : string
+    - reason : string
     - status : string
-    - review : TeamReviewResponse
+    - reviewerId : string
   }
 
-  class "DefineBracketRequest" as Rep_DefineBracketRequest <<Representation>> {
-    - matches : DefineBracketMatchItem[]
-  }
-
-  class "BracketResponse" as Rep_BracketResponse <<Representation>> {
-    - matches : MatchResponse[]
-  }
-
-  class "SwapTeamsInputBody" as Rep_SwapTeamsInputBody <<Representation>> {
-    - first : SwapSlotItem
-    - second : SwapSlotItem
-  }
-
-  class "SeedTournamentRequest" as Rep_SeedTournamentRequest <<Representation>> {
-    - assignments : MatchSeedAssignmentItem[]
-  }
-
-  class "RecordMatchResultsRequest" as Rep_RecordMatchResultsRequest <<Representation>> {
-    - placements : TeamPlacementItem[]
-  }
-
-  class "RecordMatchResultsResponse" as Rep_RecordMatchResultsResponse <<Representation>> {
-    - matchId : string
-    - targetMatchId : string
-    - isCompleted : boolean
-    - advancingTeams : string[]
-  }
-
-  class "ScheduleMatchRequest" as Rep_ScheduleMatchRequest <<Representation>> {
-    - scheduledAt : string
-    - venue : string
-  }
-
-  class "MatchResponse" as Rep_MatchResponse <<Representation>> {
+  class "BracketMatch" as Rep_BracketMatch <<Representation>> {
     - id : string
     - tournamentId : string
     - name : string
@@ -716,33 +454,10 @@ package "Tournament Service" {
     - scheduledAt : string
     - venue : string
     - isCompleted : boolean
-    - entries : MatchEntryResponse[]
-    - createdAt : string
-    - updatedAt : string
+    - entries : MatchEntry[]
   }
 
-  class "PageSponsorResponse" as Rep_PageSponsorResponse <<Representation>> {
-    - items : SponsorResponse[]
-    - page : integer
-    - pageSize : integer
-    - total : integer
-  }
-
-  class "PageSponsorshipTierResponse" as Rep_PageSponsorshipTierResponse <<Representation>> {
-    - items : SponsorshipTierResponse[]
-    - page : integer
-    - pageSize : integer
-    - total : integer
-  }
-
-  class "SponsorshipTierBody" as Rep_SponsorshipTierBody <<Representation>> {
-    - name : string
-    - priceMinor : integer
-    - slots : integer
-    - perks : string[]
-  }
-
-  class "SponsorshipTierResponse" as Rep_SponsorshipTierResponse <<Representation>> {
+  class "SponsorshipTier" as Rep_SponsorshipTier <<Representation>> {
     - id : string
     - tournamentId : string
     - name : string
@@ -753,22 +468,15 @@ package "Tournament Service" {
     - locked : boolean
   }
 
-  class "StartSponsorshipInputBody" as Rep_StartSponsorshipInputBody <<Representation>> {
-    - requestId : string
-  }
-
-  class "SponsorshipResponse" as Rep_SponsorshipResponse <<Representation>> {
+  class "Sponsorship" as Rep_Sponsorship <<Representation>> {
     - id : string
     - tournamentId : string
+    - sponsorName : string
+    - tierName : string
+    - amountMinor : integer
+    - currency : string
     - status : string
     - paymentId : string
-  }
-
-  class "PageOwnedSponsorshipResponse" as Rep_PageOwnedSponsorshipResponse <<Representation>> {
-    - items : OwnedSponsorshipResponse[]
-    - page : integer
-    - pageSize : integer
-    - total : integer
   }
 }
 
@@ -816,65 +524,48 @@ SponsorshipTiers .[#B45309].> SponsorshipTier : <<Path>> /{tierId}
 SponsorshipTier .[#B45309].> SponsorshipCheckout : <<Path>> /checkout
 
 ' --- Tournament Representation Usages ---
-LobbyInvite .[#BE185D].> Rep_InviteResolutionResponse : <<use>>
-Tournaments .[#BE185D].> Rep_PageTournamentResponse : <<use>>
-Tournaments .[#BE185D].> Rep_CreateTournamentRequest : <<use>>
-Tournaments .[#BE185D].> Rep_TournamentResponse : <<use>>
-MyTournaments .[#BE185D].> Rep_PageOrganizerTournamentSummary : <<use>>
-MySponsorships .[#BE185D].> Rep_PageOwnedSponsorshipResponse : <<use>>
-SponsorshipRefresh .[#BE185D].> Rep_SponsorshipResponse : <<use>>
-Tournament .[#BE185D].> Rep_TournamentDetailsBody : <<use>>
-Tournament .[#BE185D].> Rep_UpdateTournamentRequest : <<use>>
-Tournament .[#BE185D].> Rep_TournamentResponse : <<use>>
-TournamentStatus .[#BE185D].> Rep_OverrideTournamentStatusInputBody : <<use>>
-TournamentStatus .[#BE185D].> Rep_OverrideTournamentStatusOutputBody : <<use>>
-OrganizerDashboard .[#BE185D].> Rep_OrganizerDashboardOutputBody : <<use>>
-Announcements .[#BE185D].> Rep_PageAnnouncementResponse : <<use>>
-Announcements .[#BE185D].> Rep_CreateAnnouncementInputBody : <<use>>
-Announcements .[#BE185D].> Rep_AnnouncementResponse : <<use>>
-TournamentStaff .[#BE185D].> Rep_PageTournamentStaffResponse : <<use>>
-TournamentStaff .[#BE185D].> Rep_InviteStaffRequest : <<use>>
-TournamentStaff .[#BE185D].> Rep_TournamentStaffResponse : <<use>>
-TournamentStaffMember .[#BE185D].> Rep_UpdateStaffRoleRequest : <<use>>
-TournamentStaffMember .[#BE185D].> Rep_TournamentStaffResponse : <<use>>
-RegistrationForm .[#BE185D].> Rep_RegistrationFormResponse : <<use>>
-RegistrationForm .[#BE185D].> Rep_SaveRegistrationFormInputBody : <<use>>
-FormResponses .[#BE185D].> Rep_PageFormResponseItem : <<use>>
-MyFormResponse .[#BE185D].> Rep_FormResponseItem : <<use>>
-MyTournamentTeam .[#BE185D].> Rep_TeamLobbyResponse : <<use>>
-SoloRegister .[#BE185D].> Rep_RegisterSoloRequest : <<use>>
-SoloRegister .[#BE185D].> Rep_TeamLobbyResponse : <<use>>
-TournamentTeams .[#BE185D].> Rep_CreateTeamLobbyRequest : <<use>>
-TournamentTeams .[#BE185D].> Rep_TeamLobbyResponse : <<use>>
-TeamLobby .[#BE185D].> Rep_TeamLobbyResponse : <<use>>
-TeamLobbyJoin .[#BE185D].> Rep_JoinTeamLobbyRequest : <<use>>
-TeamLobbyJoin .[#BE185D].> Rep_TeamLobbyResponse : <<use>>
-TeamLobbyRegistration .[#BE185D].> Rep_RegisterSoloRequest : <<use>>
-TeamLobbyRegistration .[#BE185D].> Rep_TeamLobbyResponse : <<use>>
-TeamInviteRegenerate .[#BE185D].> Rep_TeamLobbyResponse : <<use>>
-TeamLobbyLock .[#BE185D].> Rep_TeamLobbyResponse : <<use>>
-TeamSubmissionRefresh .[#BE185D].> Rep_TeamLobbyResponse : <<use>>
-TeamLobbyMember .[#BE185D].> Rep_TeamLobbyResponse : <<use>>
-EntryReview .[#BE185D].> Rep_TeamReviewInputBody : <<use>>
-EntryReview .[#BE185D].> Rep_TeamReviewOutputBody : <<use>>
-Bracket .[#BE185D].> Rep_BracketResponse : <<use>>
-Bracket .[#BE185D].> Rep_DefineBracketRequest : <<use>>
-BracketSwap .[#BE185D].> Rep_SwapTeamsInputBody : <<use>>
-BracketSwap .[#BE185D].> Rep_BracketResponse : <<use>>
-TournamentSeed .[#BE185D].> Rep_SeedTournamentRequest : <<use>>
-TournamentSeed .[#BE185D].> Rep_BracketResponse : <<use>>
-MatchResults .[#BE185D].> Rep_RecordMatchResultsRequest : <<use>>
-MatchResults .[#BE185D].> Rep_RecordMatchResultsResponse : <<use>>
-MatchSchedule .[#BE185D].> Rep_ScheduleMatchRequest : <<use>>
-MatchSchedule .[#BE185D].> Rep_MatchResponse : <<use>>
-TournamentSponsors .[#BE185D].> Rep_PageSponsorResponse : <<use>>
-SponsorshipTiers .[#BE185D].> Rep_PageSponsorshipTierResponse : <<use>>
-SponsorshipTiers .[#BE185D].> Rep_SponsorshipTierBody : <<use>>
-SponsorshipTiers .[#BE185D].> Rep_SponsorshipTierResponse : <<use>>
-ManageSponsorshipTiers .[#BE185D].> Rep_PageSponsorshipTierResponse : <<use>>
-SponsorshipTier .[#BE185D].> Rep_SponsorshipTierBody : <<use>>
-SponsorshipTier .[#BE185D].> Rep_SponsorshipTierResponse : <<use>>
-SponsorshipCheckout .[#BE185D].> Rep_StartSponsorshipInputBody : <<use>>
-SponsorshipCheckout .[#BE185D].> Rep_SponsorshipResponse : <<use>>
+LobbyInvite .[#BE185D].> Rep_TeamLobby : <<use>>
+Tournaments .[#BE185D].> Rep_Tournament : <<use>>
+MyTournaments .[#BE185D].> Rep_Tournament : <<use>>
+Tournament .[#BE185D].> Rep_Tournament : <<use>>
+TournamentStatus .[#BE185D].> Rep_Tournament : <<use>>
+OrganizerDashboard .[#BE185D].> Rep_Tournament : <<use>>
+OrganizerDashboard .[#BE185D].> Rep_TeamLobby : <<use>>
+
+Announcements .[#BE185D].> Rep_Announcement : <<use>>
+TournamentStaff .[#BE185D].> Rep_TournamentStaff : <<use>>
+TournamentStaffMember .[#BE185D].> Rep_TournamentStaff : <<use>>
+
+RegistrationForm .[#BE185D].> Rep_RegistrationForm : <<use>>
+FormResponses .[#BE185D].> Rep_FormResponse : <<use>>
+MyFormResponse .[#BE185D].> Rep_FormResponse : <<use>>
+
+MyTournamentTeam .[#BE185D].> Rep_TeamLobby : <<use>>
+SoloRegister .[#BE185D].> Rep_TeamLobby : <<use>>
+TournamentTeams .[#BE185D].> Rep_TeamLobby : <<use>>
+TeamLobby .[#BE185D].> Rep_TeamLobby : <<use>>
+TeamLobbyJoin .[#BE185D].> Rep_TeamLobby : <<use>>
+TeamLobbyRegistration .[#BE185D].> Rep_TeamLobby : <<use>>
+TeamInviteRegenerate .[#BE185D].> Rep_TeamLobby : <<use>>
+TeamLobbyLock .[#BE185D].> Rep_TeamLobby : <<use>>
+TeamSubmissionRefresh .[#BE185D].> Rep_TeamLobby : <<use>>
+TeamLobbyMember .[#BE185D].> Rep_TeamLobby : <<use>>
+
+EntryReview .[#BE185D].> Rep_TeamReview : <<use>>
+
+Bracket .[#BE185D].> Rep_BracketMatch : <<use>>
+BracketSwap .[#BE185D].> Rep_BracketMatch : <<use>>
+TournamentSeed .[#BE185D].> Rep_BracketMatch : <<use>>
+MatchResults .[#BE185D].> Rep_BracketMatch : <<use>>
+MatchSchedule .[#BE185D].> Rep_BracketMatch : <<use>>
+
+SponsorshipTiers .[#BE185D].> Rep_SponsorshipTier : <<use>>
+ManageSponsorshipTiers .[#BE185D].> Rep_SponsorshipTier : <<use>>
+SponsorshipTier .[#BE185D].> Rep_SponsorshipTier : <<use>>
+
+MySponsorships .[#BE185D].> Rep_Sponsorship : <<use>>
+SponsorshipRefresh .[#BE185D].> Rep_Sponsorship : <<use>>
+TournamentSponsors .[#BE185D].> Rep_Sponsorship : <<use>>
+SponsorshipCheckout .[#BE185D].> Rep_Sponsorship : <<use>>
 
 @enduml
