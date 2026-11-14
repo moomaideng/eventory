@@ -1,12 +1,12 @@
 "use client";
 
 import React from "react";
-import Link from "next/link";
-import { ArrowLeft, ShieldAlert, UsersRound } from "lucide-react";
+import { ShieldAlert, UsersRound } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { $api, apiClient } from "@/lib/api/client";
 import { useAuth } from "@/context/auth-context";
+import { PageHeader } from "@/components/page-header";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -167,31 +167,16 @@ export function TeamLobbyCreate({ tournamentId }: { tournamentId: string }) {
 
   return (
     <div className="container mx-auto flex w-full max-w-4xl flex-1 flex-col gap-6 px-4 py-12 sm:px-8">
-      <Button
-        variant="ghost"
-        size="sm"
-        render={<Link href={`/tournaments/${tournamentId}`} />}
-        nativeButton={false}
-        className="self-start"
-      >
-        <ArrowLeft data-icon="inline-start" />
-        Tournament details
-      </Button>
-
-      <div className="flex flex-col gap-3">
-        <Badge variant="secondary" className="w-fit">
-          Team registration
-        </Badge>
-        <div className="flex flex-col gap-2">
-          <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
-            Create your team
-          </h1>
-          <p className="text-muted-foreground max-w-2xl">
-            Start a roster for {tournament.name}, then share a secure invite
-            code with your teammates.
-          </p>
-        </div>
-      </div>
+      <PageHeader
+        breadcrumbs={[
+          { label: "Tournaments", href: "/tournaments" },
+          { label: tournament.name, href: `/tournaments/${tournamentId}` },
+          { label: "Create your team" },
+        ]}
+        tags={<Badge variant="secondary">Team registration</Badge>}
+        title="Create your team"
+        description={`Start a roster for ${tournament.name}, then share a secure invite code with your teammates.`}
+      />
 
       <TournamentSummaryCard tournament={tournament} />
 

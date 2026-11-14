@@ -1,5 +1,4 @@
 import { notFound } from "next/navigation";
-import { ReceiptText } from "lucide-react";
 import { PaymentPageHeader } from "@/features/payments/components/payment-page-header";
 import { Receipt } from "@/features/payments/components/receipt";
 import { paymentIdSchema } from "@/features/payments/schemas";
@@ -19,7 +18,6 @@ export default async function ReceiptPage({
       <PaymentPageHeader
         title="Receipt"
         description="View your payment confirmation or download the receipt as a PDF."
-        icon={ReceiptText}
         invoiceId={parsed.data}
       />
       <Receipt paymentId={parsed.data} />

@@ -1,9 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import Link from "next/link";
-import { ArrowLeft, Trophy } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { PageHeader } from "@/components/page-header";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useOrganizerProfile } from "../hooks/use-organizer-profile";
 import { HostTournamentForm } from "./host-tournament-form";
@@ -24,10 +22,9 @@ export function HostTournamentWorkspace() {
   if (isLoading) {
     return (
       <div className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-8 px-4 py-10 sm:px-8">
-        <Skeleton className="h-9 w-36 rounded-md" />
-        <div className="flex flex-col gap-2">
-          <Skeleton className="h-8 w-64" />
-          <Skeleton className="h-4 w-96" />
+        <div className="flex flex-col gap-3">
+          <Skeleton className="h-3 w-48" />
+          <Skeleton className="h-9 w-64" />
         </div>
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-12">
           <div className="lg:col-span-7">
@@ -43,33 +40,14 @@ export function HostTournamentWorkspace() {
 
   return (
     <div className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-8 px-4 py-10 sm:px-8">
-      {/* Top Header & Breadcrumb */}
-      <div className="flex flex-col gap-4">
-        <Button
-          variant="ghost"
-          size="sm"
-          render={<Link href="/organizer" />}
-          nativeButton={false}
-          className="text-muted-foreground hover:text-foreground self-start"
-        >
-          <ArrowLeft data-icon="inline-start" />
-          My Tournaments
-        </Button>
-
-        <div className="flex items-center gap-4">
-          <div className="bg-primary/10 text-primary flex size-12 shrink-0 items-center justify-center rounded-lg">
-            <Trophy aria-hidden="true" />
-          </div>
-          <div className="flex flex-col">
-            <p className="text-muted-foreground text-xs font-semibold tracking-wider uppercase">
-              Organizer Workspace
-            </p>
-            <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
-              Host a Tournament
-            </h1>
-          </div>
-        </div>
-      </div>
+      <PageHeader
+        workspace="organizer"
+        breadcrumbs={[
+          { label: "My tournaments", href: "/organizer" },
+          { label: "Host a tournament" },
+        ]}
+        title="Host a tournament"
+      />
 
       {/* Main Form & Preview Workspace */}
       <div className="grid grid-cols-1 items-start gap-8 lg:grid-cols-12">

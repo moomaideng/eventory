@@ -3,10 +3,11 @@
 import React from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, GitBranch, Megaphone, Users } from "lucide-react";
+import { GitBranch, Megaphone, Users } from "lucide-react";
 import { AnnouncementPreview } from "@/features/announcements";
 import { $api, apiClient } from "@/lib/api/client";
 import { useAuth } from "@/context/auth-context";
+import { PageHeader } from "@/components/page-header";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -76,6 +77,14 @@ export function TournamentDetails({
   if (error || !data) {
     return (
       <div className="container mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-12 sm:px-8">
+        <PageHeader
+          workspace={sponsorMode ? "sponsor" : undefined}
+          breadcrumbs={[
+            { label: "Tournaments", href: catalogPath },
+            { label: "Unavailable" },
+          ]}
+          title="Tournament unavailable"
+        />
         <Alert variant="destructive">
           <AlertTitle>Tournament unavailable</AlertTitle>
           <AlertDescription>
@@ -83,15 +92,6 @@ export function TournamentDetails({
             temporarily unavailable.
           </AlertDescription>
         </Alert>
-        <Button
-          render={<Link href={catalogPath} />}
-          nativeButton={false}
-          variant="outline"
-          className="self-start"
-        >
-          <ArrowLeft data-icon="inline-start" />
-          Back to tournaments
-        </Button>
       </div>
     );
   }
@@ -115,54 +115,53 @@ export function TournamentDetails({
 
   return (
     <main className="container mx-auto flex w-full max-w-7xl flex-1 flex-col gap-8 px-4 py-10 sm:px-8">
-      <Button
-        render={<Link href={catalogPath} />}
-        nativeButton={false}
-        variant="ghost"
-        className="self-start"
-      >
-        <ArrowLeft data-icon="inline-start" />
-        All tournaments
-      </Button>
+      <PageHeader
+        workspace={sponsorMode ? "sponsor" : undefined}
+        breadcrumbs={[
+          { label: "Tournaments", href: catalogPath },
+          { label: tournament.name },
+        ]}
+        tags={
+          <>
+            <Badge>{tournament.game}</Badge>
+            <Badge variant="outline" className="capitalize">
+              {status}
+            </Badge>
+            {!isCrowdfunding ? (
+              <Badge variant="outline">{registrationType}</Badge>
+            ) : null}
+          </>
+        }
+        title={tournament.name}
+        description={`Hosted by ${tournament.organizerName}`}
+        actions={
+          <>
+            <Button
+              variant="outline"
+              render={
+                <Link href={`/tournaments/${tournament.id}/announcements`} />
+              }
+              nativeButton={false}
+            >
+              <Megaphone data-icon="inline-start" />
+              Announcements
+            </Button>
+            {hasPublicBracket ? (
+              <Button
+                render={<Link href={`/tournaments/${tournament.id}/bracket`} />}
+                nativeButton={false}
+                variant="outline"
+              >
+                <GitBranch data-icon="inline-start" />
+                View bracket
+              </Button>
+            ) : null}
+          </>
+        }
+      />
 
-      <header className="flex flex-col gap-4">
-        <div className="flex flex-wrap gap-2">
-          <Badge>{tournament.game}</Badge>
-          <Badge variant="outline" className="capitalize">
-            {status}
-          </Badge>
-          {!isCrowdfunding ? (
-            <Badge variant="outline">{registrationType}</Badge>
-          ) : null}
-        </div>
-        <div className="flex flex-col gap-2">
-          <h1 className="max-w-4xl text-3xl font-bold tracking-tight sm:text-5xl">
-            {tournament.name}
-          </h1>
-          <p className="text-muted-foreground text-base">
-            Hosted by {tournament.organizerName}
-          </p>
-        </div>
-        <Button
-          variant="outline"
-          className="self-start"
-          render={<Link href={`/tournaments/${tournament.id}/announcements`} />}
-          nativeButton={false}
-        >
-          <Megaphone data-icon="inline-start" />
-          Announcements
-        </Button>
-        {hasPublicBracket ? (
-          <Button
-            render={<Link href={`/tournaments/${tournament.id}/bracket`} />}
-            nativeButton={false}
-            variant="outline"
-            className="self-start"
-          >
-            <GitBranch data-icon="inline-start" />
-            View bracket
-          </Button>
-        ) : null}
+      {(isCrowdfunding || (!sponsorMode && !isCrowdfunding)) && (
+        <div className="flex flex-col gap-4">
         {isCrowdfunding ? (
           <Alert>
             <AlertTitle>Funding stage</AlertTitle>
@@ -273,7 +272,8 @@ export function TournamentDetails({
             </Button>
           )
         ) : null}
-      </header>
+        </div>
+      )}
 
       <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
         <div className="flex flex-col gap-6">

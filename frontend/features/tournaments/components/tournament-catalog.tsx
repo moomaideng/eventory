@@ -4,6 +4,7 @@ import React from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, ArrowRight, Trophy } from "lucide-react";
 import { $api } from "@/lib/api/client";
+import { PageHeader } from "@/components/page-header";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
@@ -127,18 +128,19 @@ export function TournamentCatalog({
 
   return (
     <div className="container mx-auto flex w-full max-w-7xl flex-1 flex-col gap-8 px-4 py-12 sm:px-8">
-      <div className="flex flex-col gap-2">
-        <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
-          {sponsorMode
+      <PageHeader
+        workspace={sponsorMode ? "sponsor" : undefined}
+        title={
+          sponsorMode
             ? "Find tournaments to sponsor"
-            : "Find your next tournament"}
-        </h1>
-        <p className="text-muted-foreground max-w-2xl">
-          {sponsorMode
+            : "Find your next tournament"
+        }
+        description={
+          sponsorMode
             ? "Browse tournaments, view their sponsorship packages, and choose where to showcase your brand."
-            : "Search published competitions and narrow the list to events that fit your schedule and budget."}
-        </p>
-      </div>
+            : "Search published competitions and narrow the list to events that fit your schedule and budget."
+        }
+      />
 
       <TournamentFiltersCard
         key={searchParams.toString()}

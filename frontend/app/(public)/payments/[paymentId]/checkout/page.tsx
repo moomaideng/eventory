@@ -1,5 +1,4 @@
 import { notFound } from "next/navigation";
-import { CreditCard } from "lucide-react";
 import { PaymentPageHeader } from "@/features/payments/components/payment-page-header";
 import { MockCheckout } from "@/features/payments/components/mock-checkout";
 import { paymentIdSchema } from "@/features/payments/schemas";
@@ -19,7 +18,6 @@ export default async function CheckoutPage({
       <PaymentPageHeader
         title="Checkout"
         description="Review your invoice and complete payment before the deadline."
-        icon={CreditCard}
         invoiceId={parsed.data}
       />
       <MockCheckout paymentId={parsed.data} />

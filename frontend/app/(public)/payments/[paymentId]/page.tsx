@@ -1,5 +1,4 @@
 import { notFound } from "next/navigation";
-import { FileText } from "lucide-react";
 import { PaymentPageHeader } from "@/features/payments/components/payment-page-header";
 import { Invoice } from "@/features/payments/components/invoice";
 import { paymentIdSchema } from "@/features/payments/schemas";
@@ -19,7 +18,6 @@ export default async function InvoicePage({
       <PaymentPageHeader
         title="Invoice"
         description="Review the payment request, amount and deadline before checkout."
-        icon={FileText}
       />
       <Invoice paymentId={parsed.data} />
     </div>

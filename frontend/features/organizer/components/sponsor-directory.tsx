@@ -6,6 +6,7 @@ import { Mail, Users } from "lucide-react";
 import { useAuth } from "@/context/auth-context";
 import { $api } from "@/lib/api/client";
 import { Button } from "@/components/ui/button";
+import { PageHeader } from "@/components/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Empty,
@@ -62,15 +63,11 @@ export function SponsorDirectory() {
 
   return (
     <div className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-8 px-4 py-10 sm:px-8">
-      <header className="space-y-2">
-        <p className="text-muted-foreground text-xs font-medium uppercase">
-          Organizer workspace
-        </p>
-        <h1 className="text-2xl font-bold sm:text-3xl">Sponsor directory</h1>
-        <p className="text-muted-foreground text-sm">
-          Find sponsor profiles and contact them about your tournament.
-        </p>
-      </header>
+      <PageHeader
+        workspace="organizer"
+        title="Sponsor directory"
+        description="Find sponsor profiles and contact them about your tournament."
+      />
 
       <SponsorDirectoryFilters
         search={search}

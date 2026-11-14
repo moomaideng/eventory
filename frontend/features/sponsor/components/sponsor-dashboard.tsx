@@ -5,6 +5,7 @@ import { useState } from "react";
 import { ArrowRight } from "lucide-react";
 import { useAuth } from "@/context/auth-context";
 import { $api } from "@/lib/api/client";
+import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -53,23 +54,19 @@ export function SponsorDashboard() {
 
   return (
     <div className="sponsorship-surface mx-auto flex w-full max-w-5xl flex-1 flex-col gap-12 px-4 py-10 sm:px-8 sm:py-14">
-      <header className="flex flex-col items-start gap-6 sm:flex-row sm:items-end sm:justify-between">
-        <div className="flex max-w-xl flex-col gap-3">
-          <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
-            Sponsor dashboard
-          </h1>
-          <p className="text-muted-foreground text-base leading-relaxed">
-            Keep track of your sponsorship packages and the tournaments you
-            support.
-          </p>
-        </div>
-        <Button
-          render={<Link href="/sponsor/tournaments" />}
-          nativeButton={false}
-        >
-          Find tournaments to sponsor <ArrowRight data-icon="inline-end" />
-        </Button>
-      </header>
+      <PageHeader
+        workspace="sponsor"
+        title="Sponsor dashboard"
+        description="Keep track of your sponsorship packages and the tournaments you support."
+        actions={
+          <Button
+            render={<Link href="/sponsor/tournaments" />}
+            nativeButton={false}
+          >
+            Find tournaments to sponsor <ArrowRight data-icon="inline-end" />
+          </Button>
+        }
+      />
 
       <section
         aria-labelledby="sponsorships-heading"
