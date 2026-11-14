@@ -1,6 +1,6 @@
 import React from "react";
 import Link from "next/link";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, Home } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export interface PageBreadcrumbItem {
@@ -11,7 +11,7 @@ export interface PageBreadcrumbItem {
 export interface PageHeaderProps {
   /** Workspace root shown leftmost in the hierarchy trail ("ORGANIZER" or "SPONSOR"). */
   workspace?: "organizer" | "sponsor";
-  /** Hierarchy trail items after the workspace root. */
+  /** Hierarchy trail items ending with the current page. */
   breadcrumbs?: PageBreadcrumbItem[];
   /** Optional tags/badges rendered between the hierarchy and heading. */
   tags?: React.ReactNode;
@@ -24,9 +24,13 @@ export interface PageHeaderProps {
   className?: string;
 }
 
+interface InternalBreadcrumbItem extends PageBreadcrumbItem {
+  iconOnly?: boolean;
+}
+
 const WORKSPACE_ROOT: Record<
   NonNullable<PageHeaderProps["workspace"]>,
-  PageBreadcrumbItem
+  InternalBreadcrumbItem
 > = {
   organizer: { label: "Organizer", href: "/organizer" },
   sponsor: { label: "Sponsor", href: "/sponsor" },
@@ -44,7 +48,10 @@ export function PageHeader({
   actions,
   className,
 }: PageHeaderProps) {
-  const trail: PageBreadcrumbItem[] = [];
+  const trail: InternalBreadcrumbItem[] = [];
+  if (workspace || breadcrumbs?.length) {
+    trail.push({ label: "Home", href: "/", iconOnly: true });
+  }
   if (workspace) {
     trail.push(WORKSPACE_ROOT[workspace]);
   }
@@ -59,8 +66,12 @@ export function PageHeader({
           <ol className="flex flex-wrap items-center gap-1.5">
             {trail.map((item, index) => {
               const isLast = index === trail.length - 1;
-              const isSoleWorkspaceRoot = trail.length === 1 && Boolean(workspace);
               const showLink = Boolean(item.href) && !isLast;
+              const content = item.iconOnly ? (
+                <Home aria-hidden="true" className="size-3 shrink-0" />
+              ) : (
+                item.label
+              );
 
               return (
                 <React.Fragment key={`${item.label}-${index}`}>
@@ -73,25 +84,25 @@ export function PageHeader({
                     {showLink && item.href ? (
                       <Link
                         href={item.href}
+                        aria-label={item.iconOnly ? item.label : undefined}
+                        title={item.iconOnly ? item.label : undefined}
                         className={cn(
                           breadcrumbTextClass,
-                          "text-muted-foreground hover:text-foreground max-w-48 truncate transition-colors sm:max-w-xs"
+                          "text-muted-foreground hover:text-foreground inline-flex max-w-48 items-center truncate transition-colors sm:max-w-xs"
                         )}
                       >
-                        {item.label}
+                        {content}
                       </Link>
                     ) : (
                       <span
                         aria-current={isLast ? "page" : undefined}
                         className={cn(
                           breadcrumbTextClass,
-                          "max-w-48 truncate sm:max-w-xs",
-                          isLast && !isSoleWorkspaceRoot
-                            ? "text-foreground"
-                            : "text-muted-foreground"
+                          "inline-flex max-w-48 items-center truncate sm:max-w-xs",
+                          isLast ? "text-foreground" : "text-muted-foreground"
                         )}
                       >
-                        {item.label}
+                        {content}
                       </span>
                     )}
                   </li>

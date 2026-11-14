@@ -7,6 +7,7 @@ export default function PaymentsPage() {
   return (
     <div className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-8 px-4 py-10 sm:px-8">
       <PageHeader
+        breadcrumbs={[{ label: "My payments" }]}
         title="My payments"
         description="Track your invoices and open a row to view its details."
       />

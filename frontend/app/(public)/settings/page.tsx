@@ -13,6 +13,7 @@ export default function SettingsPage() {
   return (
     <div className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-8 px-4 py-10 sm:px-8">
       <PageHeader
+        breadcrumbs={[{ label: "Profile settings" }]}
         title="Profile settings"
         description="Manage your account, and your organizer and sponsor profiles."
       />

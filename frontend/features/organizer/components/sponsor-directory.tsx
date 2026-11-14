@@ -65,6 +65,7 @@ export function SponsorDirectory() {
     <div className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-8 px-4 py-10 sm:px-8">
       <PageHeader
         workspace="organizer"
+        breadcrumbs={[{ label: "Sponsor directory" }]}
         title="Sponsor directory"
         description="Find sponsor profiles and contact them about your tournament."
       />

@@ -56,6 +56,7 @@ export function SponsorDashboard() {
     <div className="sponsorship-surface mx-auto flex w-full max-w-7xl flex-1 flex-col gap-10 px-4 py-10 sm:px-8">
       <PageHeader
         workspace="sponsor"
+        breadcrumbs={[{ label: "Sponsor dashboard" }]}
         title="Sponsor dashboard"
         description="Keep track of your sponsorship packages and the tournaments you support."
         actions={

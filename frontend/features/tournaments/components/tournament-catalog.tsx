@@ -130,6 +130,9 @@ export function TournamentCatalog({
     <div className="container mx-auto flex w-full max-w-7xl flex-1 flex-col gap-8 px-4 py-10 sm:px-8">
       <PageHeader
         workspace={sponsorMode ? "sponsor" : undefined}
+        breadcrumbs={[
+          { label: sponsorMode ? "Find tournaments" : "Tournaments" },
+        ]}
         title={
           sponsorMode
             ? "Find tournaments to sponsor"
