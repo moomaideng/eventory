@@ -1,3 +1,4 @@
+import { formatMinorMoney } from "@/lib/money";
 import { extractProblemMessage } from "@/lib/schemas";
 import type { components } from "@/lib/api/schema";
 
@@ -11,8 +12,6 @@ const tournamentDateFormatter = new Intl.DateTimeFormat("en-GB", {
   timeZone: "Asia/Bangkok",
 });
 
-const currencyFormatters = new Map<string, Intl.NumberFormat>();
-
 export function formatTournamentDate(value?: string | null) {
   if (!value) return "Date not set";
   return tournamentDateFormatter.format(new Date(value));
@@ -25,27 +24,20 @@ export function formatDateRange(startAt?: string | null, endAt?: string | null) 
   return `${formatTournamentDate(startAt)} – ${formatTournamentDate(endAt)}`;
 }
 
-export function formatMoney(amount: number, currency: string, freeLabel = false) {
-  if (freeLabel && amount === 0) return "Free entry";
-  const safeCurrency = currency?.trim() || "THB";
-  let formatter = currencyFormatters.get(safeCurrency);
-  if (!formatter) {
-    try {
-      formatter = new Intl.NumberFormat("en-US", {
-        style: "currency",
-        currency: safeCurrency,
-        maximumFractionDigits: 0,
-      });
-      currencyFormatters.set(safeCurrency, formatter);
-    } catch {
-      return `${amount.toLocaleString("en-US")} ${currency}`;
-    }
-  }
-  return formatter.format(amount);
+export function formatMoney(
+  amountMinor: number,
+  currency: string,
+  freeLabel = false
+) {
+  return formatMinorMoney(
+    amountMinor,
+    currency,
+    freeLabel ? "Free entry" : undefined
+  );
 }
 
-export function formatEntryFee(entryFee: number, currency: string) {
-  return formatMoney(entryFee, currency, true);
+export function formatEntryFee(entryFeeMinor: number, currency: string) {
+  return formatMoney(entryFeeMinor, currency, true);
 }
 
 const percentageFormatter = new Intl.NumberFormat("en-US", {
@@ -59,6 +51,16 @@ export function formatPercentage(value: number) {
 export function formatRegistrationType(value: string) {
   if (value === "TEAM") return "Team registration";
   return "Solo registration";
+}
+
+export function formatTeamSize(
+  registrationMode: string,
+  minTeamSize: number,
+  maxTeamSize: number
+) {
+  if (registrationMode === "SOLO") return "1 competitor per entry";
+  if (minTeamSize === maxTeamSize) return `${maxTeamSize} players per team`;
+  return `${minTeamSize}–${maxTeamSize} players per team`;
 }
 
 export function formatTournamentStatus(

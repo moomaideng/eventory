@@ -89,7 +89,7 @@ function TournamentStats({
   const stats: Stat[] = [];
   const fundingStat: Stat = {
     label: "Funding raised",
-    value: `${formatMoney(funding.raisedAmount, funding.currency)} / ${formatMoney(funding.goalAmount, funding.currency)}`,
+    value: `${formatMoney(funding.raisedAmountMinor, funding.currency)} / ${formatMoney(funding.goalAmountMinor, funding.currency)}`,
     detail: `${funding.supporterCount} supporter${funding.supporterCount === 1 ? "" : "s"}`,
   };
 
@@ -123,7 +123,7 @@ function TournamentStats({
         }
       );
     }
-    if (funding.goalAmount > 0) stats.push(fundingStat);
+    if (funding.goalAmountMinor > 0) stats.push(fundingStat);
   }
   if (status !== "COMPLETED") {
     stats.push({

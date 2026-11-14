@@ -75,17 +75,17 @@ export function crowdfundingRequirements(
   const { tournament, funding } = summary;
   const fundingDeadline = time(funding.deadline);
   const registrationDeadline = time(tournament.registrationDeadline);
-  const sellableTiers = tiers?.filter((t) => t.price > 0 && t.slots >= 1).length;
+  const sellableTiers = tiers?.filter((t) => t.priceMinor > 0 && t.slots >= 1).length;
 
   const items: Requirement[] = [
     {
       id: "funding-goal",
       label: "Funding goal set",
       detail:
-        funding.goalAmount > 0
-          ? formatMoney(funding.goalAmount, funding.currency)
+        funding.goalAmountMinor > 0
+          ? formatMoney(funding.goalAmountMinor, funding.currency)
           : "No goal set yet",
-      state: check(funding.goalAmount > 0),
+      state: check(funding.goalAmountMinor > 0),
       fix: fixField("fundingGoal"),
     },
     {
@@ -134,7 +134,7 @@ function registrationRulesProblem(
   if (t.capacity < 1) {
     return { message: "Capacity must be at least 1", field: "capacity" };
   }
-  if (t.entryFee < 0) {
+  if (t.entryFeeMinor < 0) {
     return { message: "Entry fee can't be negative", field: "entryFee" };
   }
   if (t.registrationMode === "SOLO") {
@@ -224,7 +224,7 @@ export function registrationRequirements(
       label: "Registration rules",
       detail:
         rulesProblem?.message ??
-        `${plural(t.capacity, t.registrationMode === "SOLO" ? "player" : "team")} · ${formatMoney(t.entryFee, t.currency, true)}`,
+        `${plural(t.capacity, t.registrationMode === "SOLO" ? "player" : "team")} · ${formatMoney(t.entryFeeMinor, t.currency, true)}`,
       state: check(rulesProblem === null),
       fix: fixField(rulesProblem?.field ?? "capacity"),
     },
@@ -253,13 +253,13 @@ export function registrationRequirements(
         fix: fixField("registrationDeadline"),
       });
     }
-    const reached = funding.raisedAmount >= funding.goalAmount;
+    const reached = funding.raisedAmountMinor >= funding.goalAmountMinor;
     items.push({
       id: "funding-goal-reached",
       label: "Funding goal reached",
       detail: reached
-        ? `${formatMoney(funding.raisedAmount, funding.currency)} raised`
-        : `${formatMoney(funding.raisedAmount, funding.currency)} of ${formatMoney(funding.goalAmount, funding.currency)}${force ? " · opening early" : ""}`,
+        ? `${formatMoney(funding.raisedAmountMinor, funding.currency)} raised`
+        : `${formatMoney(funding.raisedAmountMinor, funding.currency)} of ${formatMoney(funding.goalAmountMinor, funding.currency)}${force ? " · opening early" : ""}`,
       state: check(reached || force),
     });
   }
@@ -308,10 +308,13 @@ export function startRequirements(
   const items: Requirement[] = [
     {
       id: "deadline-passed",
-      label: "Registration deadline passed",
+      label:
+        deadline !== null && deadline <= now
+          ? "Registration closed"
+          : "Wait for registration to close",
       detail: t.registrationDeadline
         ? `${deadline !== null && deadline <= now ? "Closed" : "Closes"} ${when(t.registrationDeadline, now)}`
-        : "Not set",
+        : "Set a registration deadline before starting",
       state: check(deadline !== null && deadline <= now),
     },
     {

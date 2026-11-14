@@ -69,7 +69,7 @@ export function LobbyDetailsCard({
           <CardDescription>
             Team entry fee:{" "}
             {formatEntryFee(
-              lobby.tournament.entryFee,
+              lobby.tournament.entryFeeMinor,
               lobby.tournament.currency
             )}
           </CardDescription>
@@ -92,7 +92,7 @@ export function LobbyDetailsCard({
                 ? `Roster needs ${lobby.tournament.minTeamSize}–${lobby.tournament.maxTeamSize} members and complete registration answers from everyone.`
                 : !registrationOpen
                   ? "Registration is closed."
-                  : lobby.tournament.entryFee > 0
+                  : lobby.tournament.entryFeeMinor > 0
                     ? "Lock your roster first, then select Pay to complete the team payment and submit."
                     : "Ready to submit. Locking sends your roster to the organizer for approval."}
             </p>
@@ -114,7 +114,7 @@ export function LobbyDetailsCard({
               )}
               {isPaymentPending
                 ? "Pay"
-                : lobby.tournament.entryFee > 0
+                : lobby.tournament.entryFeeMinor > 0
                   ? "Lock roster"
                   : "Lock roster & submit"}
             </Button>

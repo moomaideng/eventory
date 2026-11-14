@@ -37,18 +37,32 @@ import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { SponsorTagsField } from "./sponsor-tags-field";
 import { sponsorProfileSchema, type SponsorProfileInput } from "../schemas";
+import { validateSponsorLogo } from "../logo-upload";
 
 type FieldErrors = Partial<
-  Record<"sponsorName" | "sponsorEmail" | "phone" | "tags", string>
+  Record<
+    | "sponsorName"
+    | "sponsorEmail"
+    | "phone"
+    | "websiteUrl"
+    | "logoUrl"
+    | "tags",
+    string
+  >
 >;
 
 interface SponsorProfileFormProps {
   initialName: string;
   initialEmail: string;
   initialPhone: string;
+  initialWebsiteUrl: string;
+  initialLogoUrl: string;
   initialTags: string[];
   onCancel: () => void;
-  onConfirmSave: (data: SponsorProfileInput) => Promise<boolean>;
+  onConfirmSave: (
+    data: SponsorProfileInput,
+    logoFile: File | null,
+  ) => Promise<boolean>;
   isSaving: boolean;
   saveError: string;
 }
@@ -57,6 +71,8 @@ export function SponsorProfileForm({
   initialName,
   initialEmail,
   initialPhone,
+  initialWebsiteUrl,
+  initialLogoUrl,
   initialTags,
   onCancel,
   onConfirmSave,
@@ -66,12 +82,15 @@ export function SponsorProfileForm({
   const [sponsorName, setSponsorName] = useState(initialName);
   const [sponsorEmail, setSponsorEmail] = useState(initialEmail);
   const [phone, setPhone] = useState(initialPhone);
+  const [websiteUrl, setWebsiteUrl] = useState(initialWebsiteUrl);
+  const logoUrl = initialLogoUrl;
+  const [logoFile, setLogoFile] = useState<File | null>(null);
   const [tags, setTags] = useState(initialTags);
   const [tagDraft, setTagDraft] = useState("");
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [dialogOpen, setDialogOpen] = useState(false);
   const [pendingData, setPendingData] = useState<SponsorProfileInput | null>(
-    null
+    null,
   );
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -80,6 +99,9 @@ export function SponsorProfileForm({
     const result = sponsorProfileSchema.safeParse({
       sponsorName,
       sponsorEmail,
+      phone,
+      websiteUrl,
+      logoUrl,
       tags: [...tags, ...parseSponsorTagDraft(tagDraft)],
     });
 
@@ -89,6 +111,8 @@ export function SponsorProfileForm({
         sponsorName: flat.sponsorName?.[0],
         sponsorEmail: flat.sponsorEmail?.[0],
         phone: flat.phone?.[0],
+        websiteUrl: flat.websiteUrl?.[0],
+        logoUrl: flat.logoUrl?.[0],
         tags: flat.tags?.[0],
       });
       return;
@@ -105,7 +129,7 @@ export function SponsorProfileForm({
     // the error message (and retry) stay visible.
     event.preventDefault();
     if (!pendingData) return;
-    const ok = await onConfirmSave(pendingData);
+    const ok = await onConfirmSave(pendingData, logoFile);
     if (ok) {
       setDialogOpen(false);
       setPendingData(null);
@@ -187,6 +211,73 @@ export function SponsorProfileForm({
               <FieldDescription>Optional.</FieldDescription>
               {fieldErrors.phone ? (
                 <FieldError>{fieldErrors.phone}</FieldError>
+              ) : null}
+            </Field>
+
+            <Field data-invalid={Boolean(fieldErrors.websiteUrl)}>
+              <FieldLabel htmlFor="sponsor-website-url">
+                Brand website
+              </FieldLabel>
+              <Input
+                id="sponsor-website-url"
+                type="url"
+                value={websiteUrl}
+                onChange={(event) => {
+                  setWebsiteUrl(event.target.value);
+                  setFieldErrors((prev) => ({
+                    ...prev,
+                    websiteUrl: undefined,
+                  }));
+                }}
+                placeholder="https://your-brand.com"
+                maxLength={2048}
+                autoCorrect="off"
+                autoCapitalize="none"
+                spellCheck={false}
+                aria-invalid={Boolean(fieldErrors.websiteUrl)}
+                aria-describedby={
+                  fieldErrors.websiteUrl
+                    ? "sponsor-website-error"
+                    : "sponsor-website-hint"
+                }
+              />
+              <FieldDescription id="sponsor-website-hint">
+                Required before sponsoring a tournament. Your logo links here.
+              </FieldDescription>
+              {fieldErrors.websiteUrl ? (
+                <FieldError id="sponsor-website-error">
+                  {fieldErrors.websiteUrl}
+                </FieldError>
+              ) : null}
+            </Field>
+
+            <Field data-invalid={Boolean(fieldErrors.logoUrl)}>
+              <FieldLabel htmlFor="sponsor-logo">Brand logo</FieldLabel>
+              <Input
+                id="sponsor-logo"
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                onChange={(event) => {
+                  const file = event.target.files?.[0] ?? null;
+                  const error = file ? validateSponsorLogo(file) : undefined;
+                  setLogoFile(error ? null : file);
+                  setFieldErrors((prev) => ({ ...prev, logoUrl: error }));
+                }}
+                aria-invalid={Boolean(fieldErrors.logoUrl)}
+                aria-describedby={
+                  fieldErrors.logoUrl
+                    ? "sponsor-logo-error"
+                    : "sponsor-logo-hint"
+                }
+              />
+              <FieldDescription id="sponsor-logo-hint">
+                PNG, JPEG, or WebP up to 5 MB. A new upload replaces your
+                current logo.
+              </FieldDescription>
+              {fieldErrors.logoUrl ? (
+                <FieldError id="sponsor-logo-error">
+                  {fieldErrors.logoUrl}
+                </FieldError>
               ) : null}
             </Field>
 

@@ -15,8 +15,8 @@ export function PublicBracketViewer({ tournamentId }: PublicBracketViewerProps) 
   const { matches, isLoading, isFetching, refetch } = useBracket({ tournamentId });
 
   return (
-    <div className="flex flex-col gap-6">
-      <div className="flex items-center justify-between flex-wrap gap-4">
+    <div className="flex min-w-0 flex-col gap-6">
+      <div className="mx-auto flex w-full max-w-7xl flex-wrap items-center justify-between gap-4 px-4 sm:px-8">
         <div className="flex items-center gap-3">
           <Button
             variant="outline"
@@ -57,7 +57,7 @@ export function PublicBracketViewer({ tournamentId }: PublicBracketViewerProps) 
           <p className="text-xs">Loading tournament bracket...</p>
         </div>
       ) : (
-        <div className="rounded-xl border border-border/80 bg-card p-6 shadow-xs">
+        <div className="w-full border-y border-border/80 bg-card px-4 py-6 shadow-xs sm:px-8">
           <BracketTreeView matches={matches} canEdit={false} />
         </div>
       )}

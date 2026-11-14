@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { ArrowUpRight } from "lucide-react";
-import { $api, apiBaseUrl } from "@/lib/api/client";
+import { $api } from "@/lib/api/client";
 
 export function PublicSponsorsSection({
   tournamentId,
@@ -39,7 +39,7 @@ export function PublicSponsorsSection({
               className="border-border hover:bg-muted focus-visible:ring-ring flex items-center gap-4 rounded-xl border p-4 outline-none focus-visible:ring-2"
             >
               <Image
-                src={`${apiBaseUrl || "http://localhost:8080"}${sponsor.logoPath}`}
+                src={sponsor.logoUrl}
                 alt={`${sponsor.sponsorName} logo`}
                 width={96}
                 height={64}

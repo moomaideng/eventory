@@ -18,10 +18,19 @@ import {
   FieldLabel,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface TournamentFiltersCardProps {
   searchKey: string;
   defaultQ: string;
+  defaultStatus: string;
   defaultStartFrom: string;
   defaultStartTo: string;
   defaultMaxEntryFee: string;
@@ -32,6 +41,7 @@ interface TournamentFiltersCardProps {
 export function TournamentFiltersCard({
   searchKey,
   defaultQ,
+  defaultStatus,
   defaultStartFrom,
   defaultStartTo,
   defaultMaxEntryFee,
@@ -40,6 +50,7 @@ export function TournamentFiltersCard({
 }: TournamentFiltersCardProps) {
   const [startFrom, setStartFrom] = useState(defaultStartFrom);
   const [startTo, setStartTo] = useState(defaultStartTo);
+  const [status, setStatus] = useState(defaultStatus);
   const [prevSearchKey, setPrevSearchKey] = useState(searchKey);
   const formRef = useRef<HTMLFormElement>(null);
 
@@ -47,6 +58,7 @@ export function TournamentFiltersCard({
     setPrevSearchKey(searchKey);
     setStartFrom(defaultStartFrom);
     setStartTo(defaultStartTo);
+    setStatus(defaultStatus);
   }
 
   const isInvalidDateRange = Boolean(
@@ -64,6 +76,7 @@ export function TournamentFiltersCard({
   function handleClear() {
     setStartFrom("");
     setStartTo("");
+    setStatus("");
     formRef.current?.reset();
     onClearFilters();
   }
@@ -94,6 +107,27 @@ export function TournamentFiltersCard({
                 placeholder="Name, game, or keyword"
                 maxLength={100}
               />
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="tournament-status">Status</FieldLabel>
+              <input name="status" type="hidden" value={status} />
+              <Select
+                value={status}
+                onValueChange={(value) => setStatus((value as string) ?? "")}
+              >
+                <SelectTrigger id="tournament-status" className="w-full">
+                  <SelectValue placeholder="All active states" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    <SelectItem value="">All active states</SelectItem>
+                    <SelectItem value="CROWDFUNDING">Crowdfunding</SelectItem>
+                    <SelectItem value="REGISTRATION">Registration</SelectItem>
+                    <SelectItem value="ONGOING">Ongoing</SelectItem>
+                    <SelectItem value="COMPLETED">Completed</SelectItem>
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
             </Field>
             <Field data-invalid={isInvalidDateRange || undefined}>
               <FieldLabel htmlFor="start-from">From</FieldLabel>

@@ -14,6 +14,7 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty";
+import { wholeToMinor } from "@/lib/money";
 import { PAGE_SIZE } from "../utils";
 import { tournamentFiltersSchema } from "../schemas";
 import { TournamentCard } from "./tournament-card";
@@ -31,6 +32,7 @@ export function TournamentCatalog({
 
   const parsedFilters = tournamentFiltersSchema.safeParse({
     q: searchParams.get("q") ?? undefined,
+    status: searchParams.get("status") ?? undefined,
     startFrom: searchParams.get("startFrom") ?? undefined,
     startTo: searchParams.get("startTo") ?? undefined,
     maxEntryFee: searchParams.get("maxEntryFee") ?? undefined,
@@ -41,6 +43,7 @@ export function TournamentCatalog({
     page = 1,
     maxEntryFee,
     q,
+    status,
     startFrom,
     startTo,
   } = parsedFilters.success
@@ -49,6 +52,7 @@ export function TournamentCatalog({
         page: 1,
         maxEntryFee: undefined,
         q: undefined,
+        status: undefined,
         startFrom: undefined,
         startTo: undefined,
       };
@@ -60,9 +64,11 @@ export function TournamentCatalog({
       params: {
         query: {
           q: q || undefined,
+          status,
           startFrom: startFrom || undefined,
           startTo: startTo || undefined,
-          maxEntryFee,
+          maxEntryFeeMinor:
+            maxEntryFee !== undefined ? wholeToMinor(maxEntryFee) : undefined,
           sort: "start_asc",
           page,
           pageSize: PAGE_SIZE,
@@ -82,6 +88,7 @@ export function TournamentCatalog({
     const formData = new FormData(event.currentTarget);
     const parsed = tournamentFiltersSchema.safeParse({
       q: formData.get("q") || undefined,
+      status: formData.get("status") || undefined,
       startFrom: formData.get("startFrom") || undefined,
       startTo: formData.get("startTo") || undefined,
       maxEntryFee: formData.get("maxEntryFee") || undefined,
@@ -89,12 +96,13 @@ export function TournamentCatalog({
     if (!parsed.success) {
       return;
     }
-    const { q, startFrom, startTo, maxEntryFee } = parsed.data;
+    const { q, status, startFrom, startTo, maxEntryFee } = parsed.data;
     if (startFrom && startTo && startFrom > startTo) {
       return;
     }
     const next = new URLSearchParams();
     if (q) next.set("q", q);
+    if (status) next.set("status", status);
     if (startFrom) next.set("startFrom", startFrom);
     if (startTo) next.set("startTo", startTo);
     if (maxEntryFee !== undefined) {
@@ -136,6 +144,7 @@ export function TournamentCatalog({
         key={searchParams.toString()}
         searchKey={searchParams.toString()}
         defaultQ={searchParams.get("q") ?? ""}
+        defaultStatus={searchParams.get("status") ?? ""}
         defaultStartFrom={searchParams.get("startFrom") ?? ""}
         defaultStartTo={searchParams.get("startTo") ?? ""}
         defaultMaxEntryFee={searchParams.get("maxEntryFee") ?? ""}

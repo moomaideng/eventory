@@ -153,7 +153,7 @@ export function MockCheckout({
                   ? "The full amount was refunded after your registration was rejected."
                   : payment.status === "PAID"
                   ? "Your payment has been recorded. View your receipt below."
-                  : "This invoice is closed and can no longer be paid. No payment was made."}
+                  : "This payment attempt is closed. No payment was made; return to the tournament or team lobby to start a new checkout."}
               </AlertDescription>
             </Alert>
           )}

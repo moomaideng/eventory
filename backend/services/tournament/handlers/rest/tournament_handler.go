@@ -26,13 +26,13 @@ type CreateTournamentRequest struct {
 	StartAt              *time.Time `json:"startAt,omitempty" doc:"Tournament start timestamp (RFC 3339)"`
 	EndAt                *time.Time `json:"endAt,omitempty" doc:"Tournament end timestamp (RFC 3339)"`
 	RegistrationDeadline *time.Time `json:"registrationDeadline,omitempty" doc:"Registration deadline timestamp (RFC 3339)"`
-	EntryFee             *int64     `json:"entryFee,omitempty" minimum:"0" doc:"Entry fee in whole currency units"`
+	EntryFeeMinor        *int64     `json:"entryFeeMinor,omitempty" minimum:"0" maximum:"9007199254740991" doc:"Entry fee in minor currency units (satang; 100 satang = 1 THB)"`
 	RegistrationMode     *string    `json:"registrationMode,omitempty" enum:"SOLO,TEAM" doc:"Registration mode: SOLO or TEAM"`
 	MinTeamSize          *int       `json:"minTeamSize,omitempty" minimum:"1" doc:"Minimum team size (coerced to 1 for SOLO)"`
 	MaxTeamSize          *int       `json:"maxTeamSize,omitempty" minimum:"1" doc:"Maximum team size (coerced to 1 for SOLO)"`
 	Capacity             *int       `json:"capacity,omitempty" minimum:"1" doc:"Maximum participant or team capacity"`
-	FundingGoal          *int64     `json:"fundingGoal,omitempty" minimum:"1" doc:"Crowdfunding goal in THB; requires fundingDeadline"`
-	FundingDeadline      *time.Time `json:"fundingDeadline,omitempty" doc:"Crowdfunding deadline before registrationDeadline; requires fundingGoal"`
+	FundingGoalMinor     *int64     `json:"fundingGoalMinor,omitempty" minimum:"1" maximum:"9007199254740991" doc:"Crowdfunding goal in minor currency units (satang; 100 satang = 1 THB); requires fundingDeadline"`
+	FundingDeadline      *time.Time `json:"fundingDeadline,omitempty" doc:"Crowdfunding deadline before registrationDeadline; requires fundingGoalMinor"`
 }
 
 type CreateTournamentInput struct {
@@ -53,12 +53,12 @@ type UpdateTournamentRequest struct {
 	StartAt              *time.Time `json:"startAt,omitempty" doc:"New start timestamp"`
 	EndAt                *time.Time `json:"endAt,omitempty" doc:"New end timestamp"`
 	RegistrationDeadline *time.Time `json:"registrationDeadline,omitempty" doc:"New registration deadline timestamp"`
-	EntryFee             *int64     `json:"entryFee,omitempty" minimum:"0" doc:"New entry fee"`
+	EntryFeeMinor        *int64     `json:"entryFeeMinor,omitempty" minimum:"0" maximum:"9007199254740991" doc:"New entry fee in minor currency units (satang; 100 satang = 1 THB)"`
 	RegistrationMode     *string    `json:"registrationMode,omitempty" enum:"SOLO,TEAM" doc:"New registration mode"`
 	MinTeamSize          *int       `json:"minTeamSize,omitempty" minimum:"1" doc:"New minimum team size"`
 	MaxTeamSize          *int       `json:"maxTeamSize,omitempty" minimum:"1" doc:"New maximum team size"`
 	Capacity             *int       `json:"capacity,omitempty" minimum:"1" doc:"New capacity"`
-	FundingGoal          *int64     `json:"fundingGoal,omitempty" minimum:"1" doc:"New crowdfunding goal while the campaign is active"`
+	FundingGoalMinor     *int64     `json:"fundingGoalMinor,omitempty" minimum:"1" maximum:"9007199254740991" doc:"New crowdfunding goal in minor currency units (satang) while the campaign is active"`
 	FundingDeadline      *time.Time `json:"fundingDeadline,omitempty" doc:"New crowdfunding deadline while the campaign is active"`
 }
 
@@ -78,7 +78,7 @@ type TournamentResponse struct {
 	StartAt              *time.Time `json:"startAt,omitempty"`
 	EndAt                *time.Time `json:"endAt,omitempty"`
 	RegistrationDeadline *time.Time `json:"registrationDeadline,omitempty"`
-	EntryFee             int64      `json:"entryFee" doc:"Entry fee in whole currency units"`
+	EntryFeeMinor        int64      `json:"entryFeeMinor" doc:"Entry fee in minor currency units (satang; 100 satang = 1 THB)"`
 	Currency             string     `json:"currency"`
 	RegistrationMode     string     `json:"registrationMode" enum:"SOLO,TEAM"`
 	MinTeamSize          int        `json:"minTeamSize"`
@@ -92,8 +92,8 @@ type SearchTournamentsInput struct {
 	Q           string `query:"q" maxLength:"100" doc:"Case-insensitive name, game, or description search"`
 	StartFrom   string `query:"startFrom" doc:"Earliest tournament start date (YYYY-MM-DD)"`
 	StartTo     string `query:"startTo" doc:"Latest tournament start date (YYYY-MM-DD)"`
-	MinEntryFee int64  `query:"minEntryFee" default:"-1" minimum:"-1" doc:"Minimum entry fee; omit to disable"`
-	MaxEntryFee int64  `query:"maxEntryFee" default:"-1" minimum:"-1" doc:"Maximum entry fee; omit to disable"`
+	MinEntryFeeMinor int64 `query:"minEntryFeeMinor" default:"-1" minimum:"-1" doc:"Minimum entry fee in minor units (satang); omit to disable"`
+	MaxEntryFeeMinor int64 `query:"maxEntryFeeMinor" default:"-1" minimum:"-1" doc:"Maximum entry fee in minor units (satang); omit to disable"`
 	Status      string `query:"status" enum:"DRAFT,CROWDFUNDING,REGISTRATION,ONGOING,COMPLETED"`
 	Sort        string `query:"sort" default:"start_asc" enum:"start_asc,start_desc,fee_asc,fee_desc"`
 	Page        int    `query:"page" default:"1" minimum:"1"`
@@ -118,13 +118,13 @@ type TournamentTeamResponse struct {
 }
 
 type TournamentFundingResponse struct {
-	GoalAmount      int64      `json:"goalAmount" doc:"Funding goal in whole currency units"`
-	Deadline        *time.Time `json:"deadline,omitempty" doc:"Crowdfunding deadline when this tournament is crowdfunding"`
-	RaisedAmount    int64      `json:"raisedAmount" doc:"Amount raised in whole currency units"`
-	RemainingAmount int64      `json:"remainingAmount" doc:"Amount remaining to reach the goal"`
-	SupporterCount  int        `json:"supporterCount"`
-	Percentage      float64    `json:"percentage" doc:"Percentage of the funding goal raised"`
-	Currency        string     `json:"currency"`
+	GoalAmountMinor      int64      `json:"goalAmountMinor" doc:"Funding goal in minor currency units (satang; 100 satang = 1 THB)"`
+	Deadline             *time.Time `json:"deadline,omitempty" doc:"Crowdfunding deadline when this tournament is crowdfunding"`
+	RaisedAmountMinor    int64      `json:"raisedAmountMinor" doc:"Amount raised in minor currency units (satang; 100 satang = 1 THB)"`
+	RemainingAmountMinor int64      `json:"remainingAmountMinor" doc:"Amount remaining to reach the goal in minor currency units (satang)"`
+	SupporterCount       int        `json:"supporterCount"`
+	Percentage           float64    `json:"percentage" doc:"Percentage of the funding goal raised"`
+	Currency             string     `json:"currency"`
 }
 
 type TournamentDetailsBody struct {
@@ -156,7 +156,7 @@ func RegisterTournamentRoutes(
 	}, func(ctx context.Context, input *SearchTournamentsInput) (*SearchTournamentsOutput, error) {
 		result, err := tournamentUseCase.Search(ctx, usecases.SearchTournamentsInput{
 			Query: input.Q, StartFrom: input.StartFrom, StartTo: input.StartTo,
-			MinEntryFee: optionalFee(input.MinEntryFee), MaxEntryFee: optionalFee(input.MaxEntryFee),
+			MinEntryFeeMinor: optionalFee(input.MinEntryFeeMinor), MaxEntryFeeMinor: optionalFee(input.MaxEntryFeeMinor),
 			Status: input.Status, Sort: input.Sort, Page: input.Page, PageSize: input.PageSize,
 		})
 		if err != nil {
@@ -208,13 +208,13 @@ func RegisterTournamentRoutes(
 			Tournament: toTournamentResponse(result.Tournament, result.OrganizerName, result.RegisteredCount),
 			Teams:      teams,
 			Funding: TournamentFundingResponse{
-				GoalAmount:      result.Funding.GoalAmount,
-				Deadline:        result.Funding.Deadline,
-				RaisedAmount:    result.Funding.RaisedAmount,
-				RemainingAmount: result.Funding.RemainingAmount,
-				SupporterCount:  result.Funding.SupporterCount,
-				Percentage:      result.Funding.Percentage,
-				Currency:        result.Tournament.Currency,
+				GoalAmountMinor:      result.Funding.GoalAmountMinor,
+				Deadline:             result.Funding.Deadline,
+				RaisedAmountMinor:    result.Funding.RaisedAmountMinor,
+				RemainingAmountMinor: result.Funding.RemainingAmountMinor,
+				SupporterCount:       result.Funding.SupporterCount,
+				Percentage:           result.Funding.Percentage,
+				Currency:             result.Tournament.Currency,
 			},
 		}}, nil
 	})
@@ -226,11 +226,11 @@ func RegisterTournamentRoutes(
 		Summary:     "Create tournament",
 		Description: "Creates a new tournament for the authenticated organizer. Requires an active organizer profile.\n\n" +
 			"### Rules & Defaults:\n" +
-			"- **Status & Visibility:** Defaults to `REGISTRATION`; valid fundingGoal and fundingDeadline start in `CROWDFUNDING`.\n" +
+			"- **Status & Visibility:** Defaults to `REGISTRATION`; valid fundingGoalMinor and fundingDeadline start in `CROWDFUNDING`.\n" +
 			"- **Currency:** Defaulted to `THB`.\n" +
 			"- **Registration Mode:** If `SOLO`, `minTeamSize` and `maxTeamSize` are automatically set to `1`. If `TEAM`, requires `1 <= minTeamSize <= maxTeamSize`.\n" +
 			"- **Date Integrity (400):** Requires `registrationDeadline < startAt < endAt`.\n" +
-			"- **Validation (400):** Requires non-empty `name`, `game`, `location`, `capacity >= 1`, and `entryFee >= 0`.",
+			"- **Validation (400):** Requires non-empty `name`, `game`, `location`, `capacity >= 1`, and `entryFeeMinor >= 0`.",
 		DefaultStatus: http.StatusCreated,
 		Tags:          []string{"Tournaments"},
 		Middlewares:   huma.Middlewares{auth, organizer},
@@ -250,12 +250,12 @@ func RegisterTournamentRoutes(
 			StartsAt:             input.Body.StartAt,
 			EndsAt:               input.Body.EndAt,
 			RegistrationDeadline: input.Body.RegistrationDeadline,
-			EntryFee:             input.Body.EntryFee,
+			EntryFeeMinor:        input.Body.EntryFeeMinor,
 			RegistrationMode:     input.Body.RegistrationMode,
 			MinTeamSize:          input.Body.MinTeamSize,
 			MaxTeamSize:          input.Body.MaxTeamSize,
 			Capacity:             input.Body.Capacity,
-			FundingGoal:          input.Body.FundingGoal,
+			FundingGoalMinor:     input.Body.FundingGoalMinor,
 			FundingDeadline:      input.Body.FundingDeadline,
 		})
 		if err != nil {
@@ -281,7 +281,7 @@ func RegisterTournamentRoutes(
 			"- **Roster Freezing (409 Conflict):** Once any team has locked or been accepted into the tournament (`lockedOrAcceptedCount > 0`), `registrationMode`, `minTeamSize`, and `maxTeamSize` cannot be altered.\n" +
 			"- **Date Integrity (400 Bad Request):** Merged dates must maintain `registrationDeadline < startAt < endAt`.\n" +
 			"- **Crowdfunding:** The owner may edit the goal and funding deadline only while the campaign is active; the funding deadline must remain before registration closes. Planned event dates and location can be updated during this stage.\n" +
-			"- **Field Validation (400 Bad Request):** If provided, `name`, `game`, and `location` cannot be empty or whitespace; `entryFee` cannot be negative.",
+			"- **Field Validation (400 Bad Request):** If provided, `name`, `game`, and `location` cannot be empty or whitespace; `entryFeeMinor` cannot be negative.",
 		Tags:        []string{"Tournaments"},
 		Middlewares: huma.Middlewares{auth, organizer},
 		Security:    []map[string][]string{{"bearer": {}}},
@@ -300,12 +300,12 @@ func RegisterTournamentRoutes(
 			StartsAt:             input.Body.StartAt,
 			EndsAt:               input.Body.EndAt,
 			RegistrationDeadline: input.Body.RegistrationDeadline,
-			EntryFee:             input.Body.EntryFee,
+			EntryFeeMinor:        input.Body.EntryFeeMinor,
 			RegistrationMode:     input.Body.RegistrationMode,
 			MinTeamSize:          input.Body.MinTeamSize,
 			MaxTeamSize:          input.Body.MaxTeamSize,
 			Capacity:             input.Body.Capacity,
-			FundingGoal:          input.Body.FundingGoal,
+			FundingGoalMinor:     input.Body.FundingGoalMinor,
 			FundingDeadline:      input.Body.FundingDeadline,
 		})
 		if err != nil {
@@ -377,7 +377,7 @@ func toTournamentResponse(tournament models.Tournament, organizerName string, re
 		OrganizerName: organizerName,
 		StartAt:       startAt, EndAt: endAt,
 		RegistrationDeadline: regDeadline,
-		EntryFee:             tournament.EntryFee, Currency: tournament.Currency,
+		EntryFeeMinor:        tournament.EntryFeeMinor, Currency: tournament.Currency,
 		RegistrationMode: string(tournament.RegistrationMode),
 		MinTeamSize:      tournament.MinTeamSize, MaxTeamSize: tournament.MaxTeamSize,
 		Capacity: tournament.Capacity, RegisteredCount: registeredCount,

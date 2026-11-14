@@ -31,6 +31,7 @@ import {
   sponsorOnboardingSchema,
   type SponsorOnboardingValues,
 } from "../schemas";
+import { uploadSponsorLogo, validateSponsorLogo } from "../logo-upload";
 
 import { SponsorTagsField } from "./sponsor-tags-field";
 
@@ -39,7 +40,7 @@ type FieldErrors = Partial<Record<keyof SponsorOnboardingValues, string>>;
 interface SponsorOnboardingFormProps {
   user: UserProfile;
   upsertProfile: (
-    input: SponsorOnboardingValues
+    input: SponsorOnboardingValues,
   ) => Promise<{ data?: SponsorProfile; error?: string }>;
   onSuccess?: (profile: SponsorProfile) => void;
   onCancel?: () => void;
@@ -59,6 +60,9 @@ function SponsorOnboardingForm({
 
   const [sponsorName, setSponsorName] = useState(user.displayName || "");
   const [sponsorEmail, setSponsorEmail] = useState(user.email || "");
+  const [websiteUrl, setWebsiteUrl] = useState("");
+  const logoUrl = "";
+  const [logoFile, setLogoFile] = useState<File | null>(null);
   const [tags, setTags] = useState<string[]>([]);
   const [tagDraft, setTagDraft] = useState("");
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
@@ -72,6 +76,8 @@ function SponsorOnboardingForm({
     const validation = sponsorOnboardingSchema.safeParse({
       sponsorName,
       sponsorEmail,
+      websiteUrl,
+      logoUrl,
       tags: [...tags, ...parseSponsorTagDraft(tagDraft)],
     });
 
@@ -91,15 +97,20 @@ function SponsorOnboardingForm({
     setIsSubmitting(true);
 
     try {
+      const uploadedLogoUrl = logoFile
+        ? await uploadSponsorLogo(user.id, logoFile)
+        : validation.data.logoUrl;
       const { data, error } = await upsertProfile({
         sponsorName: validation.data.sponsorName,
         sponsorEmail: validation.data.sponsorEmail,
+        websiteUrl: validation.data.websiteUrl,
+        logoUrl: uploadedLogoUrl,
         tags: validation.data.tags,
       });
 
       if (error || !data) {
         setApiError(
-          error || "Failed to set up sponsor profile. Please try again."
+          error || "Failed to set up sponsor profile. Please try again.",
         );
         setIsSubmitting(false);
         return;
@@ -110,7 +121,7 @@ function SponsorOnboardingForm({
       setApiError(
         err instanceof Error
           ? err.message
-          : "Unexpected error occurred during sponsor onboarding."
+          : "Unexpected error occurred during sponsor onboarding.",
       );
     } finally {
       setIsSubmitting(false);
@@ -227,6 +238,63 @@ function SponsorOnboardingForm({
             </FieldDescription>
             {fieldErrors.sponsorEmail && (
               <FieldError>{fieldErrors.sponsorEmail}</FieldError>
+            )}
+          </Field>
+
+          <Field data-invalid={Boolean(fieldErrors.websiteUrl)}>
+            <FieldLabel htmlFor="onboarding-sponsor-website">
+              Brand Website (Optional)
+            </FieldLabel>
+            <Input
+              id="onboarding-sponsor-website"
+              type="url"
+              value={websiteUrl}
+              onChange={(e) => {
+                setWebsiteUrl(e.target.value);
+                if (fieldErrors.websiteUrl) {
+                  setFieldErrors((prev) => ({
+                    ...prev,
+                    websiteUrl: undefined,
+                  }));
+                }
+                if (apiError) setApiError("");
+              }}
+              placeholder="https://your-brand.com"
+              maxLength={2048}
+              autoCorrect="off"
+              autoCapitalize="none"
+              spellCheck={false}
+              disabled={isSubmitting}
+              aria-invalid={Boolean(fieldErrors.websiteUrl)}
+            />
+            {fieldErrors.websiteUrl && (
+              <FieldError>{fieldErrors.websiteUrl}</FieldError>
+            )}
+          </Field>
+
+          <Field data-invalid={Boolean(fieldErrors.logoUrl)}>
+            <FieldLabel htmlFor="onboarding-sponsor-logo">
+              Brand logo (Optional)
+            </FieldLabel>
+            <Input
+              id="onboarding-sponsor-logo"
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              onChange={(e) => {
+                const file = e.target.files?.[0] ?? null;
+                const error = file ? validateSponsorLogo(file) : undefined;
+                setLogoFile(error ? null : file);
+                setFieldErrors((prev) => ({ ...prev, logoUrl: error }));
+                if (apiError) setApiError("");
+              }}
+              disabled={isSubmitting}
+              aria-invalid={Boolean(fieldErrors.logoUrl)}
+            />
+            <FieldDescription>
+              PNG, JPEG, or WebP up to 5 MB. You can replace it later.
+            </FieldDescription>
+            {fieldErrors.logoUrl && (
+              <FieldError>{fieldErrors.logoUrl}</FieldError>
             )}
           </Field>
           <SponsorTagsField

@@ -76,10 +76,10 @@ func TestTeamRegistration_JoinValidatesBeforeAddingMember(t *testing.T) {
 }
 
 func TestTeamRegistration_IncompleteMemberBlocksFreeAndPaidSubmission(t *testing.T) {
-	for _, fee := range []int64{0, 250} {
+	for _, fee := range []int64{0, 25000} {
 		t.Run(time.Duration(fee).String(), func(t *testing.T) {
 			u, repo, _, captain, member := teamAnswerFixture()
-			repo.team.Tournament.EntryFee = fee
+			repo.team.Tournament.EntryFeeMinor = fee
 			_, err := u.Lock(context.Background(), repo.team.ID, captain)
 			if !errors.Is(err, usecases.ErrMemberAnswersIncomplete) || repo.locked {
 				t.Fatalf("Lock error=%v, locked=%v", err, repo.locked)

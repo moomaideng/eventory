@@ -63,27 +63,23 @@ func TestOrganizerDashboardOwnershipPostgres(t *testing.T) {
 		StartsAt: time.Now(), EndsAt: time.Now().Add(time.Hour), RegistrationDeadline: time.Now(),
 		Capacity: 8, Status: models.TournamentStatusCrowdfunding,
 	}
+	fundingDeadline := time.Now().Add(12 * time.Hour).Truncate(time.Microsecond)
+	tournament.Crowdfunding = models.CrowdfundingInfo{GoalAmountMinor: 100000, Deadline: &fundingDeadline}
 	if err := tx.Create(&tournament).Error; err != nil {
 		t.Fatal(err)
 	}
 	repo := repositories.NewTournamentRepository(tx)
 	ctx := context.Background()
-	fundingDeadline := time.Now().Add(12 * time.Hour).Truncate(time.Microsecond)
-	funding := models.TournamentFunding{TournamentID: tournament.ID, GoalAmount: 1000, Deadline: &fundingDeadline}
-	if err := tx.Create(&funding).Error; err != nil {
-		t.Fatal(err)
-	}
-	tournament.Funding = &funding
-	tournament.Funding.GoalAmount = 2500
+	tournament.Crowdfunding.GoalAmountMinor = 250000
 	if err := repo.Update(ctx, &tournament); err != nil {
 		t.Fatalf("updating tournament funding: %v", err)
 	}
-	var savedFunding models.TournamentFunding
-	if err := tx.Where("tournament_id = ?", tournament.ID).First(&savedFunding).Error; err != nil {
+	var saved models.Tournament
+	if err := tx.First(&saved, "id = ?", tournament.ID).Error; err != nil {
 		t.Fatal(err)
 	}
-	if savedFunding.GoalAmount != 2500 || savedFunding.Deadline == nil || !savedFunding.Deadline.Equal(fundingDeadline) {
-		t.Fatalf("funding update was not persisted: %+v", savedFunding)
+	if saved.Crowdfunding.GoalAmountMinor != 250000 || saved.Crowdfunding.Deadline == nil || !saved.Crowdfunding.Deadline.Equal(fundingDeadline) {
+		t.Fatalf("funding update was not persisted: %+v", saved.Crowdfunding)
 	}
 	if err := repo.UpdateStatus(ctx, tournament.ID, models.TournamentStatusCrowdfunding, models.TournamentStatusRegistration); err != nil {
 		t.Fatalf("status update failed: %v", err)

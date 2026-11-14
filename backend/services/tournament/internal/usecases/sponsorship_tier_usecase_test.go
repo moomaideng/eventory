@@ -23,13 +23,14 @@ func newMockTierRepo() *mockTierRepo {
 	return &mockTierRepo{tiers: make(map[uuid.UUID]*models.SponsorshipTier), reserved: make(map[uuid.UUID]int64)}
 }
 
-func (m *mockTierRepo) List(_ context.Context, tournamentID uuid.UUID) ([]models.SponsorshipTier, error) {
-	var list []models.SponsorshipTier
+func (m *mockTierRepo) List(_ context.Context, tournamentID uuid.UUID) ([]repositories.SponsorshipTierRow, error) {
+	var list []repositories.SponsorshipTierRow
 	for _, tier := range m.tiers {
-		if tier.TournamentID == tournamentID && !tier.Archived {
-			copy := *tier
-			copy.ReservedSlots = int(m.reserved[tier.ID])
-			list = append(list, copy)
+		if tier.TournamentID == tournamentID {
+			list = append(list, repositories.SponsorshipTierRow{
+				SponsorshipTier: *tier,
+				ReservedSlots:   int(m.reserved[tier.ID]),
+			})
 		}
 	}
 	return list, nil
@@ -46,7 +47,7 @@ func (m *mockTierRepo) Get(_ context.Context, tournamentID, tierID uuid.UUID) (*
 
 func (m *mockTierRepo) Create(_ context.Context, tier *models.SponsorshipTier) error {
 	for _, existing := range m.tiers {
-		if existing.TournamentID == tier.TournamentID && existing.Name == tier.Name && !existing.Archived {
+		if existing.TournamentID == tier.TournamentID && existing.Name == tier.Name {
 			return repositories.ErrSponsorshipTierNameDuplicate
 		}
 	}
@@ -74,6 +75,10 @@ func (tx *mockTierTransaction) Reserved(tierID uuid.UUID) (int64, error) {
 	return tx.repo.reserved[tierID], nil
 }
 
+func (tx *mockTierTransaction) HasPledges(tierID uuid.UUID) (bool, error) {
+	return tx.repo.reserved[tierID] > 0, nil
+}
+
 func (tx *mockTierTransaction) Commit() error { tx.repo.commits++; return nil }
 func (tx *mockTierTransaction) Rollback()     { tx.repo.rollbacks++ }
 
@@ -83,8 +88,8 @@ func (tx *mockTierTransaction) UpdateTier(tier *models.SponsorshipTier) error {
 	return nil
 }
 
-func (tx *mockTierTransaction) ArchiveTier(tierID uuid.UUID) error {
-	tx.repo.tiers[tierID].Archived = true
+func (tx *mockTierTransaction) DeleteTier(tierID uuid.UUID) error {
+	delete(tx.repo.tiers, tierID)
 	return nil
 }
 
@@ -102,7 +107,7 @@ func newTierFixture(status models.TournamentStatus) (*usecases.SponsorshipTierUs
 }
 
 func validTierInput() usecases.SponsorshipTierInput {
-	return usecases.SponsorshipTierInput{Name: "Gold", Price: 10000, Slots: 2, Perks: []string{"Logo on stream"}}
+	return usecases.SponsorshipTierInput{Name: "Gold", PriceMinor: 1000000, Slots: 2, Perks: []string{"Logo on stream"}}
 }
 
 func TestSponsorshipTierUseCase_Create(t *testing.T) {
@@ -113,7 +118,7 @@ func TestSponsorshipTierUseCase_Create(t *testing.T) {
 	}{
 		{name: "valid tier", mutate: func(*usecases.SponsorshipTierInput) {}},
 		{name: "blank name", mutate: func(in *usecases.SponsorshipTierInput) { in.Name = "   " }, wantErr: usecases.ErrInvalidSponsorshipTierName},
-		{name: "zero price", mutate: func(in *usecases.SponsorshipTierInput) { in.Price = 0 }, wantErr: usecases.ErrInvalidSponsorshipTierPrice},
+		{name: "zero price", mutate: func(in *usecases.SponsorshipTierInput) { in.PriceMinor = 0 }, wantErr: usecases.ErrInvalidSponsorshipTierPrice},
 		{name: "no slots", mutate: func(in *usecases.SponsorshipTierInput) { in.Slots = 0 }, wantErr: usecases.ErrInvalidSponsorshipTierSlots},
 		{name: "only blank perks", mutate: func(in *usecases.SponsorshipTierInput) { in.Perks = []string{" ", ""} }, wantErr: usecases.ErrInvalidSponsorshipTierPerks},
 		{name: "too many perks", mutate: func(in *usecases.SponsorshipTierInput) {
@@ -206,18 +211,18 @@ func TestSponsorshipTierUseCase_UpdateAndDelete(t *testing.T) {
 		if err := uc.Delete(context.Background(), ownerID, tournamentID, tier.ID); err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if len(repo.tiers) != 1 || !repo.tiers[tier.ID].Archived {
-			t.Fatal("expected the archived tier to remain stored")
+		if len(repo.tiers) != 0 {
+			t.Fatal("expected the deleted tier to be removed")
 		}
 		listed, err := uc.ListForOwner(context.Background(), ownerID, tournamentID)
 		if err != nil || len(listed) != 0 {
-			t.Fatalf("archived tier still listed: %+v, %v", listed, err)
+			t.Fatalf("deleted tier still listed: %+v, %v", listed, err)
 		}
 		if _, err := uc.Update(context.Background(), ownerID, tournamentID, tier.ID, input); !errors.Is(err, usecases.ErrSponsorshipTierNotFound) {
-			t.Fatalf("archived tier should not be editable: %v", err)
+			t.Fatalf("deleted tier should not be editable: %v", err)
 		}
 		if err := uc.Delete(context.Background(), ownerID, tournamentID, tier.ID); !errors.Is(err, usecases.ErrSponsorshipTierNotFound) {
-			t.Fatalf("archived tier should not be removable again: %v", err)
+			t.Fatalf("deleted tier should not be removable again: %v", err)
 		}
 	})
 

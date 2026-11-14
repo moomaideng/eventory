@@ -162,9 +162,9 @@ func toOrganizerSummary(result usecases.OrganizerTournamentSummary, accountID uu
 			ConfirmedParticipants: m.ConfirmedParticipants, AvailableSpots: m.AvailableSpots,
 		},
 		Funding: TournamentFundingResponse{
-			GoalAmount: result.Funding.GoalAmount, RaisedAmount: result.Funding.RaisedAmount,
-			Deadline:        result.Funding.Deadline,
-			RemainingAmount: result.Funding.RemainingAmount, SupporterCount: result.Funding.SupporterCount,
+			GoalAmountMinor: result.Funding.GoalAmountMinor, RaisedAmountMinor: result.Funding.RaisedAmountMinor,
+			Deadline:             result.Funding.Deadline,
+			RemainingAmountMinor: result.Funding.RemainingAmountMinor, SupporterCount: result.Funding.SupporterCount,
 			Percentage: result.Funding.Percentage, Currency: result.Tournament.Currency,
 		},
 	}

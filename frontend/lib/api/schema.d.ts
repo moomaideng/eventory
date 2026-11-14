@@ -307,11 +307,11 @@ export interface paths {
          * @description Creates a new tournament for the authenticated organizer. Requires an active organizer profile.
          *
          *     ### Rules & Defaults:
-         *     - **Status & Visibility:** Defaults to `REGISTRATION`; valid fundingGoal and fundingDeadline start in `CROWDFUNDING`.
+         *     - **Status & Visibility:** Defaults to `REGISTRATION`; valid fundingGoalMinor and fundingDeadline start in `CROWDFUNDING`.
          *     - **Currency:** Defaulted to `THB`.
          *     - **Registration Mode:** If `SOLO`, `minTeamSize` and `maxTeamSize` are automatically set to `1`. If `TEAM`, requires `1 <= minTeamSize <= maxTeamSize`.
          *     - **Date Integrity (400):** Requires `registrationDeadline < startAt < endAt`.
-         *     - **Validation (400):** Requires non-empty `name`, `game`, `location`, `capacity >= 1`, and `entryFee >= 0`.
+         *     - **Validation (400):** Requires non-empty `name`, `game`, `location`, `capacity >= 1`, and `entryFeeMinor >= 0`.
          */
         post: operations["create-tournament"];
         delete?: never;
@@ -344,25 +344,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List the signed-in account's sponsorships */
+        /** List sponsorships owned by the caller */
         get: operations["list-my-sponsorships"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/tournaments/sponsorships/{id}/logo": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get a confirmed sponsor's logo */
-        get: operations["get-sponsor-logo"];
         put?: never;
         post?: never;
         delete?: never;
@@ -649,7 +632,7 @@ export interface paths {
          *     - **Roster Freezing (409 Conflict):** Once any team has locked or been accepted into the tournament (`lockedOrAcceptedCount > 0`), `registrationMode`, `minTeamSize`, and `maxTeamSize` cannot be altered.
          *     - **Date Integrity (400 Bad Request):** Merged dates must maintain `registrationDeadline < startAt < endAt`.
          *     - **Crowdfunding:** The owner may edit the goal and funding deadline only while the campaign is active; the funding deadline must remain before registration closes. Planned event dates and location can be updated during this stage.
-         *     - **Field Validation (400 Bad Request):** If provided, `name`, `game`, and `location` cannot be empty or whitespace; `entryFee` cannot be negative.
+         *     - **Field Validation (400 Bad Request):** If provided, `name`, `game`, and `location` cannot be empty or whitespace; `entryFeeMinor` cannot be negative.
          */
         patch: operations["update-tournament"];
         trace?: never;
@@ -869,8 +852,8 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Reserve a sponsorship slot with brand assets and start checkout */
-        post: operations["start-sponsorship-checkout"];
+        /** Start or resume a sponsorship checkout */
+        post: operations["start-sponsorship"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1153,6 +1136,8 @@ export interface components {
              * @description Timestamp of profile creation
              */
             createdAt: string;
+            /** @description Public sponsor logo image URL */
+            logoUrl: string;
             /** @description Contact phone number for sponsor */
             phone?: string;
             /** @description Contact email for sponsorship communications */
@@ -1166,6 +1151,8 @@ export interface components {
              * @description Timestamp of last profile update
              */
             updatedAt: string;
+            /** @description Official sponsor website URL */
+            websiteUrl: string;
         };
         UpdateAccountRequest: {
             /**
@@ -1200,6 +1187,8 @@ export interface components {
              * @example https://example.com/schemas/UpsertSponsorProfileRequest.json
              */
             readonly $schema?: string;
+            /** @description Public sponsor logo image URL */
+            logoUrl?: string;
             /** @description Contact phone number for sponsor */
             phone?: string;
             /**
@@ -1211,6 +1200,8 @@ export interface components {
             sponsorName: string;
             /** @description Free-form sponsor tags, each up to 40 characters */
             tags: string[] | null;
+            /** @description Official sponsor website URL */
+            websiteUrl?: string;
         };
         AnnouncementResponse: {
             /**
@@ -1283,19 +1274,19 @@ export interface components {
             endAt?: string;
             /**
              * Format: int64
-             * @description Entry fee in whole currency units
+             * @description Entry fee in minor currency units (satang; 100 satang = 1 THB)
              */
-            entryFee?: number;
+            entryFeeMinor?: number;
             /**
              * Format: date-time
-             * @description Crowdfunding deadline before registrationDeadline; requires fundingGoal
+             * @description Crowdfunding deadline before registrationDeadline; requires fundingGoalMinor
              */
             fundingDeadline?: string;
             /**
              * Format: int64
-             * @description Crowdfunding goal in THB; requires fundingDeadline
+             * @description Crowdfunding goal in minor currency units (satang; 100 satang = 1 THB); requires fundingDeadline
              */
-            fundingGoal?: number;
+            fundingGoalMinor?: number;
             /** @description Game title */
             game: string;
             /** @description Location or 'Online' */
@@ -1405,6 +1396,21 @@ export interface components {
              * @enum {string}
              */
             role: "ADMIN" | "REFEREE";
+        };
+        "List-my-sponsorshipsResponse": {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/List-my-sponsorshipsResponse.json
+             */
+            readonly $schema?: string;
+            items: components["schemas"]["OwnedSponsorshipResponse"][] | null;
+            /** Format: int64 */
+            limit: number;
+            /** Format: int64 */
+            page: number;
+            /** Format: int64 */
+            total: number;
         };
         "List-tournament-sponsorsResponse": {
             /**
@@ -1582,11 +1588,12 @@ export interface components {
             tournamentId: string;
         };
         OwnedSponsorshipResponse: {
-            /** Format: int64 */
+            /**
+             * Format: int64
+             * @description Pledge amount in minor currency units (satang; 100 satang = 1 THB)
+             */
             amountMinor: number;
             currency: string;
-            /** Format: date-time */
-            expiresAt: string;
             id: string;
             paymentId?: string;
             /** @enum {string} */
@@ -1594,17 +1601,6 @@ export interface components {
             tierName: string;
             tournamentId: string;
             tournamentName: string;
-        };
-        OwnedSponsorshipsOutputBody: {
-            /**
-             * Format: uri
-             * @description A URL to the JSON Schema for this object.
-             * @example https://example.com/schemas/OwnedSponsorshipsOutputBody.json
-             */
-            readonly $schema?: string;
-            items: components["schemas"]["OwnedSponsorshipResponse"][] | null;
-            /** Format: int64 */
-            total: number;
         };
         RecordMatchResultsRequest: {
             /**
@@ -1696,7 +1692,7 @@ export interface components {
         };
         SponsorResponse: {
             id: string;
-            logoPath: string;
+            logoUrl: string;
             sponsorName: string;
             tierName: string;
             websiteUrl: string;
@@ -1708,8 +1704,6 @@ export interface components {
              * @example https://example.com/schemas/SponsorshipResponse.json
              */
             readonly $schema?: string;
-            /** Format: date-time */
-            expiresAt: string;
             id: string;
             paymentId?: string;
             /** @enum {string} */
@@ -1729,9 +1723,9 @@ export interface components {
             perks: string[] | null;
             /**
              * Format: int64
-             * @description Price in whole currency units
+             * @description Price in minor currency units (satang; 100 satang = 1 THB)
              */
-            price: number;
+            priceMinor: number;
             /**
              * Format: int64
              * @description How many sponsors can buy this tier
@@ -1750,8 +1744,6 @@ export interface components {
              * @description Slots remaining after pending and confirmed checkouts
              */
             availableSlots: number;
-            /** Format: date-time */
-            createdAt: string;
             id: string;
             /** @description A pending or confirmed checkout prevents editing or deletion */
             locked: boolean;
@@ -1759,17 +1751,24 @@ export interface components {
             perks: string[] | null;
             /**
              * Format: int64
-             * @description Price in whole currency units
+             * @description Price in minor currency units (satang; 100 satang = 1 THB)
              */
-            price: number;
+            priceMinor: number;
             /**
              * Format: int64
              * @description How many sponsors can buy this tier
              */
             slots: number;
             tournamentId: string;
-            /** Format: date-time */
-            updatedAt: string;
+        };
+        StartSponsorshipInputBody: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/StartSponsorshipInputBody.json
+             */
+            readonly $schema?: string;
+            requestId: string;
         };
         SwapSlotItem: {
             /** @description Match the team is currently in */
@@ -1895,9 +1894,9 @@ export interface components {
             deadline?: string;
             /**
              * Format: int64
-             * @description Funding goal in whole currency units
+             * @description Funding goal in minor currency units (satang; 100 satang = 1 THB)
              */
-            goalAmount: number;
+            goalAmountMinor: number;
             /**
              * Format: double
              * @description Percentage of the funding goal raised
@@ -1905,14 +1904,14 @@ export interface components {
             percentage: number;
             /**
              * Format: int64
-             * @description Amount raised in whole currency units
+             * @description Amount raised in minor currency units (satang; 100 satang = 1 THB)
              */
-            raisedAmount: number;
+            raisedAmountMinor: number;
             /**
              * Format: int64
-             * @description Amount remaining to reach the goal
+             * @description Amount remaining to reach the goal in minor currency units (satang)
              */
-            remainingAmount: number;
+            remainingAmountMinor: number;
             /** Format: int64 */
             supporterCount: number;
         };
@@ -1949,9 +1948,9 @@ export interface components {
             endAt?: string;
             /**
              * Format: int64
-             * @description Entry fee in whole currency units
+             * @description Entry fee in minor currency units (satang; 100 satang = 1 THB)
              */
-            entryFee: number;
+            entryFeeMinor: number;
             game: string;
             id: string;
             location: string;
@@ -2038,9 +2037,9 @@ export interface components {
             endAt?: string;
             /**
              * Format: int64
-             * @description New entry fee
+             * @description New entry fee in minor currency units (satang; 100 satang = 1 THB)
              */
-            entryFee?: number;
+            entryFeeMinor?: number;
             /**
              * Format: date-time
              * @description New crowdfunding deadline while the campaign is active
@@ -2048,9 +2047,9 @@ export interface components {
             fundingDeadline?: string;
             /**
              * Format: int64
-             * @description New crowdfunding goal while the campaign is active
+             * @description New crowdfunding goal in minor currency units (satang) while the campaign is active
              */
-            fundingGoal?: number;
+            fundingGoalMinor?: number;
             /** @description New game title */
             game?: string;
             /** @description New location */
@@ -2427,9 +2426,9 @@ export interface operations {
     "list-sponsor-directory": {
         parameters: {
             query?: {
-                /** @description Search sponsor names or tags by partial text */
+                /** @description Search sponsor name */
                 search?: string;
-                /** @description Comma-separated exact tags; sponsors must match every tag (up to 10) */
+                /** @description Filter by an exact tag (case-insensitive) */
                 tag?: string;
                 page?: number;
                 pageSize?: number;
@@ -2790,10 +2789,10 @@ export interface operations {
                 startFrom?: string;
                 /** @description Latest tournament start date (YYYY-MM-DD) */
                 startTo?: string;
-                /** @description Minimum entry fee; omit to disable */
-                minEntryFee?: number;
-                /** @description Maximum entry fee; omit to disable */
-                maxEntryFee?: number;
+                /** @description Minimum entry fee in minor units (satang); omit to disable */
+                minEntryFeeMinor?: number;
+                /** @description Maximum entry fee in minor units (satang); omit to disable */
+                maxEntryFeeMinor?: number;
                 status?: "DRAFT" | "CROWDFUNDING" | "REGISTRATION" | "ONGOING" | "COMPLETED";
                 sort?: "start_asc" | "start_desc" | "fee_asc" | "fee_desc";
                 page?: number;
@@ -2908,42 +2907,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["OwnedSponsorshipsOutputBody"];
-                };
-            };
-            /** @description Error */
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["ErrorModel"];
-                };
-            };
-        };
-    };
-    "get-sponsor-logo": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Sponsor logo */
-            200: {
-                headers: {
-                    "Cache-Control"?: string;
-                    "Content-Type"?: string;
-                    "X-Content-Type-Options"?: string;
-                    [name: string]: unknown;
-                };
-                content: {
-                    "image/jpeg": string;
-                    "image/png": string;
+                    "application/json": components["schemas"]["List-my-sponsorshipsResponse"];
                 };
             };
             /** @description Error */
@@ -4021,7 +3985,7 @@ export interface operations {
             };
         };
     };
-    "start-sponsorship-checkout": {
+    "start-sponsorship": {
         parameters: {
             query?: never;
             header?: never;
@@ -4031,14 +3995,9 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: {
+        requestBody: {
             content: {
-                "multipart/form-data": {
-                    /** Format: binary */
-                    logo: string;
-                    requestId: string;
-                    websiteUrl: string;
-                };
+                "application/json": components["schemas"]["StartSponsorshipInputBody"];
             };
         };
         responses: {

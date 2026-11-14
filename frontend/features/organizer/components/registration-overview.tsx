@@ -127,7 +127,7 @@ export function RegistrationOverview({ summary }: { summary: OrganizerSummary })
   ];
 
   const progressValue = Math.min(Math.max(funding.percentage, 0), 100);
-  const hasFunding = funding.goalAmount > 0;
+  const hasFunding = funding.goalAmountMinor > 0;
 
   return (
     <div className="flex flex-col gap-6">
@@ -175,10 +175,10 @@ export function RegistrationOverview({ summary }: { summary: OrganizerSummary })
                 Raised Amount
               </span>
               <span className="text-2xl font-bold tracking-tight">
-                {formatMoney(funding.raisedAmount, funding.currency)}
+                {formatMoney(funding.raisedAmountMinor, funding.currency)}
               </span>
               <span className="text-muted-foreground text-xs">
-                Goal: {formatMoney(funding.goalAmount, funding.currency)}
+                Goal: {formatMoney(funding.goalAmountMinor, funding.currency)}
               </span>
             </div>
 
@@ -189,7 +189,7 @@ export function RegistrationOverview({ summary }: { summary: OrganizerSummary })
               </div>
               <Progress value={progressValue} className="h-2" />
               <span className="text-muted-foreground text-xs">
-                {formatMoney(funding.remainingAmount, funding.currency)} remaining to reach goal
+                {formatMoney(funding.remainingAmountMinor, funding.currency)} remaining to reach goal
               </span>
             </div>
 

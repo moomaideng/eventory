@@ -78,7 +78,7 @@ func (s *discoveryScenario) fixtures() error {
 			Name: row.name,
 			Description: "Rules: best of three; no cheating.", Game: "Valorant", Location: "Online",
 			StartsAt: starts, EndsAt: starts.Add(2 * time.Hour), RegistrationDeadline: starts.Add(-24 * time.Hour),
-			EntryFee: row.fee, Currency: "THB", Capacity: 16, RegistrationMode: models.TournamentRegistrationModeTeam,
+			EntryFeeMinor: row.fee, Currency: "THB", Capacity: 16, RegistrationMode: models.TournamentRegistrationModeTeam,
 			MinTeamSize: 2, MaxTeamSize: 5, Status: models.TournamentStatusRegistration,
 		}
 		if !row.published {
@@ -180,8 +180,30 @@ func (s *discoveryScenario) teams(name string) error {
 }
 
 func (s *discoveryScenario) funding(name string, goal, raised int) error {
-	funding := models.TournamentFunding{ID: uuid.New(), TournamentID: s.tournaments[name].ID, GoalAmount: int64(goal), RaisedAmount: int64(raised), SupporterCount: 4}
-	return s.app.DB.Create(&funding).Error
+	t := s.tournaments[name]
+	if err := s.app.DB.Model(&t).Update("crowdfunding_goal_amount_minor", int64(goal)).Error; err != nil {
+		return err
+	}
+	tier := models.SponsorshipTier{
+		ID: uuid.New(), TournamentID: t.ID, Name: "Backer", PriceMinor: int64(raised), Slots: 4, Perks: []string{"Logo"},
+	}
+	if err := s.app.DB.Create(&tier).Error; err != nil {
+		return err
+	}
+	base := int64(raised) / 4
+	rem := int64(raised) % 4
+	pledges := make([]models.SponsorshipPledge, 4)
+	for i := range pledges {
+		amt := base
+		if i == 0 {
+			amt += rem
+		}
+		pledges[i] = models.SponsorshipPledge{
+			ID: uuid.New(), TournamentID: t.ID, TierID: tier.ID, PayerAccountID: uuid.New(),
+			AmountMinor: amt, Currency: "THB", Status: models.PledgeConfirmed,
+		}
+	}
+	return s.app.DB.Create(&pledges).Error
 }
 
 func (s *discoveryScenario) publicDetails(name string) error {
@@ -193,7 +215,7 @@ func (s *discoveryScenario) publicDetails(name string) error {
 	got := body.Tournament
 	if got.ID != want.ID || got.Name != want.Name || got.Description != want.Description || got.Game != want.Game || got.Location != want.Location || got.OrganizerName != s.organizerName ||
 		!got.StartAt.Equal(want.StartsAt) || !got.EndAt.Equal(want.EndsAt) || !got.RegistrationDeadline.Equal(want.RegistrationDeadline) ||
-		got.EntryFee != want.EntryFee || got.Currency != want.Currency || got.Capacity != want.Capacity || got.Status != string(want.Status) ||
+		got.EntryFeeMinor != want.EntryFeeMinor || got.Currency != want.Currency || got.Capacity != want.Capacity || got.Status != string(want.Status) ||
 		got.RegistrationMode != string(want.RegistrationMode) || got.MinTeamSize != want.MinTeamSize || got.MaxTeamSize != want.MaxTeamSize {
 		return fmt.Errorf("public details do not match stored tournament: %+v", got)
 	}
@@ -217,7 +239,7 @@ func (s *discoveryScenario) fundingStats(goal, raised, remaining int, percentage
 		return err
 	}
 	f := body.Funding
-	if f.GoalAmount != int64(goal) || f.RaisedAmount != int64(raised) || f.RemainingAmount != int64(remaining) || math.Abs(f.Percentage-percentage) > 0.0001 || f.SupporterCount != 4 || f.Currency != "THB" {
+	if f.GoalAmountMinor != int64(goal) || f.RaisedAmountMinor != int64(raised) || f.RemainingAmountMinor != int64(remaining) || math.Abs(f.Percentage-percentage) > 0.0001 || f.SupporterCount != 4 || f.Currency != "THB" {
 		return fmt.Errorf("unexpected funding statistics: %+v", f)
 	}
 	return nil

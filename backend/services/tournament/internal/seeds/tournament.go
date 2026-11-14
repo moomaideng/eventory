@@ -1,6 +1,7 @@
 package seeds
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -12,279 +13,149 @@ import (
 func SeedTournaments(db *gorm.DB) error {
 	now := time.Now().UTC().Truncate(24 * time.Hour)
 	lockedAt := now.Add(-24 * time.Hour)
-	aliceAccountID := uuid.MustParse("00000000-0000-4000-8000-000000000001")
-	devAccountID := uuid.MustParse("99999999-0000-4000-8000-000000000001")
-	mayaAccountID := uuid.MustParse("00000000-0000-4000-8000-000000000003")
+	sponsorDeadline := now.AddDate(0, 0, 3)
+	id := func(value string) uuid.UUID { return uuid.MustParse(value) }
+	fixtureID := func(prefix, suffix int) uuid.UUID {
+		return id(fmt.Sprintf("%08d-0000-4000-8000-%012d", prefix, suffix))
+	}
 
-	// Alice keeps the original sample tournaments while Alex has two dedicated
-	// dev-owned tournaments for exercising the organizer dashboard.
+	const notice = "Local seed fixture only — not a real tournament. "
+	alexID := id("99999999-0000-4000-8000-000000000001")
+	aliceID := id("00000000-0000-4000-8000-000000000001")
+	somchaiID := id("00000000-0000-4000-8000-000000000002")
+	mayaID := id("00000000-0000-4000-8000-000000000003")
+	sponsorID := fixtureID(33333333, 1)
+	setupID := fixtureID(33333333, 6)
+	liveID := fixtureID(33333333, 7)
+	completedID := fixtureID(33333333, 8)
+	aliceTournamentID := fixtureID(33333333, 2)
+	mayaTournamentID := fixtureID(33333333, 3)
+
 	tournaments := []models.Tournament{
-		{
-			ID:          uuid.MustParse("33333333-0000-4000-8000-000000000001"),
-			Name:        "Bangkok Valorant Open",
-			Description: "A free community tournament for new and experienced Valorant teams.",
-			Detail:      "## Tournament Format & Rules\n\n- **Mode:** 5v5 Standard Competitive\n- **Bracket:** Single Elimination (Bo3), Finals (Bo5)\n- **Maps:** Bind, Haven, Ascent, Split, Lotus\n\n### Schedule & Check-in\nTeams must check in on Discord 30 minutes before their scheduled match time. Late teams will forfeit after a 15-minute grace period.",
-			Game:        "Valorant", Location: "Online", StartsAt: now.AddDate(0, 0, 3).Add(12 * time.Hour),
-			EndsAt: now.AddDate(0, 0, 3).Add(20 * time.Hour), RegistrationDeadline: now.AddDate(0, 0, 2),
-			RegistrationMode: models.TournamentRegistrationModeTeam, MinTeamSize: 5, MaxTeamSize: 5,
-			EntryFee: 0, Currency: "THB", Capacity: 32,
-			Status: models.TournamentStatusRegistration,
-		},
-		{
-			ID:          uuid.MustParse("33333333-0000-4000-8000-000000000002"),
-			Name:        "Chula Mobile Legends Cup",
-			Description: "A weekend Mobile Legends competition for university squads.",
-			Detail:      "## Rules & Guidelines\n\n- **Device:** Mobile devices only (emulators prohibited)\n- **Tournament Mode:** Custom Draft Pick\n\n### Prizes\n1. **1st Place:** 10,000 THB + Trophy\n2. **2nd Place:** 5,000 THB\n3. **3rd Place:** 2,500 THB",
-			Game:        "Mobile Legends", Location: "Chulalongkorn University", StartsAt: now.AddDate(0, 0, 10).Add(9 * time.Hour),
-			EndsAt: now.AddDate(0, 0, 11).Add(18 * time.Hour), RegistrationDeadline: now.AddDate(0, 0, 7),
-			RegistrationMode: models.TournamentRegistrationModeTeam, MinTeamSize: 5, MaxTeamSize: 5,
-			EntryFee: 250, Currency: "THB", Capacity: 24,
-			Status: models.TournamentStatusRegistration,
-		},
-		{
-			ID:          uuid.MustParse("33333333-0000-4000-8000-000000000003"),
-			Name:        "SEA Tekken Challenger",
-			Description: "An offline fighting-game bracket for challengers across Southeast Asia.",
-			Game:        "Tekken 8", Location: "Siam Paragon, Bangkok", StartsAt: now.AddDate(0, 0, 21).Add(6 * time.Hour),
-			EndsAt: now.AddDate(0, 0, 21).Add(14 * time.Hour), RegistrationDeadline: now.AddDate(0, 0, 17),
-			RegistrationMode: models.TournamentRegistrationModeSolo, MinTeamSize: 1, MaxTeamSize: 1,
-			EntryFee: 500, Currency: "THB", Capacity: 64,
-			Status: models.TournamentStatusRegistration,
-		},
-		{
-			ID:          uuid.MustParse("33333333-0000-4000-8000-000000000004"),
-			Name:        "Weekend Chess Blitz",
-			Description: "Fast-paced Swiss-system chess for players of every rating.",
-			Game:        "Chess", Location: "Maya Works Studio", StartsAt: now.AddDate(0, 0, 6).Add(7 * time.Hour),
-			EndsAt: now.AddDate(0, 0, 6).Add(12 * time.Hour), RegistrationDeadline: now.AddDate(0, 0, -1),
-			RegistrationMode: models.TournamentRegistrationModeSolo, MinTeamSize: 1, MaxTeamSize: 1,
-			EntryFee: 100, Currency: "THB", Capacity: 40,
-			Status: models.TournamentStatusRegistration,
-		},
-		{
-			ID:          uuid.MustParse("33333333-0000-4000-8000-000000000005"),
-			Name:        "Eventory Invitational",
-			Description: "A premium multi-day invitational featuring Thailand's top esports teams.",
-			Game:        "Counter-Strike 2", Location: "Queen Sirikit Convention Center", StartsAt: now.AddDate(0, 0, 45).Add(4 * time.Hour),
-			EndsAt: now.AddDate(0, 0, 47).Add(14 * time.Hour), RegistrationDeadline: now.AddDate(0, 0, 35),
-			RegistrationMode: models.TournamentRegistrationModeTeam, MinTeamSize: 5, MaxTeamSize: 5,
-			EntryFee: 1200, Currency: "THB", Capacity: 16,
-			Status: models.TournamentStatusRegistration,
-		},
-		{
-			ID:          uuid.MustParse("33333333-0000-4000-8000-000000000006"),
-			Name:        "Dev Arena Clash",
-			Description: "A local development tournament for testing team registration and organizer workflows.",
-			Game:        "Apex Legends", Location: "Online", StartsAt: now.AddDate(0, 0, 14).Add(11 * time.Hour),
-			EndsAt: now.AddDate(0, 0, 14).Add(19 * time.Hour), RegistrationDeadline: now.AddDate(0, 0, 11),
-			RegistrationMode: models.TournamentRegistrationModeTeam, MinTeamSize: 1, MaxTeamSize: 3,
-			EntryFee: 300, Currency: "THB", Capacity: 24,
-			Status: models.TournamentStatusRegistration,
-		},
-		{
-			ID:          uuid.MustParse("33333333-0000-4000-8000-000000000007"),
-			Name:        "Alex's Strategy Cup",
-			Description: "A development sample for an upcoming solo or duo strategy tournament.",
-			Game:        "Teamfight Tactics", Location: "Bangkok", StartsAt: now.AddDate(0, 0, 28).Add(10 * time.Hour),
-			EndsAt: now.AddDate(0, 0, 28).Add(17 * time.Hour), RegistrationDeadline: now.AddDate(0, 0, 24),
-			RegistrationMode: models.TournamentRegistrationModeSolo, MinTeamSize: 1, MaxTeamSize: 1,
-			EntryFee: 150, Currency: "THB", Capacity: 48,
-			Status: models.TournamentStatusRegistration,
-		},
+		{ID: sponsorID, Name: "[DEMO · Sponsor] Checkout Playground", Description: notice + "Use this tournament to test sponsorship checkout, payments, and payment events.", Detail: "## Local demo\n\nUse **Dev Quick Login** to sponsor this Maya-owned tournament.", Game: "Sponsor demo", Location: "Local Dev Environment", StartsAt: now.AddDate(0, 0, 14).Add(10 * time.Hour), EndsAt: now.AddDate(0, 0, 15).Add(18 * time.Hour), RegistrationDeadline: now.AddDate(0, 0, 7), RegistrationMode: models.TournamentRegistrationModeSolo, MinTeamSize: 1, MaxTeamSize: 1, Capacity: 32, Currency: "THB", Status: models.TournamentStatusCrowdfunding, Crowdfunding: models.CrowdfundingInfo{GoalAmountMinor: 5000000, Deadline: &sponsorDeadline}},
+		{ID: setupID, Name: "[DEMO · Bracket] Setup Playground", Description: notice + "Use this tournament to define and seed a 16-team bracket before it starts.", Detail: "## Local demo\n\nSixteen accepted teams are ready. Define and seed a Stage 1 bracket as Alex (Dev).", Game: "Bracket demo", Location: "Local Dev Environment", StartsAt: now.AddDate(0, 0, 10).Add(10 * time.Hour), EndsAt: now.AddDate(0, 0, 10).Add(18 * time.Hour), RegistrationDeadline: now.AddDate(0, 0, 7), RegistrationMode: models.TournamentRegistrationModeTeam, MinTeamSize: 1, MaxTeamSize: 3, Capacity: 16, Currency: "THB", Status: models.TournamentStatusRegistration},
+		{ID: liveID, Name: "[DEMO · Bracket] Live Results", Description: notice + "Use this tournament to inspect a 16-team live bracket and record the remaining results.", Detail: "## Local demo\n\nRound of 16 is underway; two completed matches have already advanced to the quarterfinal.", Game: "Bracket demo", Location: "Local Dev Environment", StartsAt: now.AddDate(0, 0, -1).Add(10 * time.Hour), EndsAt: now.AddDate(0, 0, 1).Add(18 * time.Hour), RegistrationDeadline: now.AddDate(0, 0, -3), RegistrationMode: models.TournamentRegistrationModeTeam, MinTeamSize: 1, MaxTeamSize: 3, Capacity: 16, Currency: "THB", Status: models.TournamentStatusOngoing},
+		{ID: completedID, Name: "[DEMO · Bracket] Completed Archive", Description: notice + "Use this tournament to inspect a fully completed bracket and final standings.", Detail: "## Local demo\n\nEvery match is complete; the final has a winner.", Game: "Bracket demo", Location: "Local Dev Environment", StartsAt: now.AddDate(0, 0, -7).Add(10 * time.Hour), EndsAt: now.AddDate(0, 0, -6).Add(18 * time.Hour), RegistrationDeadline: now.AddDate(0, 0, -9), RegistrationMode: models.TournamentRegistrationModeTeam, MinTeamSize: 1, MaxTeamSize: 3, Capacity: 4, Currency: "THB", Status: models.TournamentStatusCompleted},
+		{ID: aliceTournamentID, Name: "[SAMPLE · Alice] Valorant Community Cup", Description: notice + "A small public listing owned by Alice Events.", Game: "Valorant", Location: "Local Dev Environment", StartsAt: now.AddDate(0, 0, 18).Add(12 * time.Hour), EndsAt: now.AddDate(0, 0, 18).Add(20 * time.Hour), RegistrationDeadline: now.AddDate(0, 0, 14), RegistrationMode: models.TournamentRegistrationModeTeam, MinTeamSize: 5, MaxTeamSize: 5, Capacity: 32, Currency: "THB", Status: models.TournamentStatusRegistration},
+		{ID: mayaTournamentID, Name: "[SAMPLE · Maya] Mobile Legends Weekend", Description: notice + "A small public listing owned by Maya Works.", Game: "Mobile Legends", Location: "Local Dev Environment", StartsAt: now.AddDate(0, 0, 24).Add(9 * time.Hour), EndsAt: now.AddDate(0, 0, 25).Add(18 * time.Hour), RegistrationDeadline: now.AddDate(0, 0, 20), RegistrationMode: models.TournamentRegistrationModeTeam, MinTeamSize: 5, MaxTeamSize: 5, Capacity: 24, Currency: "THB", Status: models.TournamentStatusRegistration},
 	}
-
-	if err := db.Clauses(clause.OnConflict{
-		Columns:   []clause.Column{{Name: "id"}},
-		UpdateAll: true,
-	}).Create(&tournaments).Error; err != nil {
+	if err := upsert(db, "id", &tournaments); err != nil {
 		return err
 	}
 
-	staff := []models.TournamentStaff{
-		{TournamentID: tournaments[0].ID, AccountID: aliceAccountID, Role: models.TournamentStaffRoleOwner},
-		{TournamentID: tournaments[1].ID, AccountID: mayaAccountID, Role: models.TournamentStaffRoleOwner},
-		{TournamentID: tournaments[2].ID, AccountID: aliceAccountID, Role: models.TournamentStaffRoleOwner},
-		{TournamentID: tournaments[3].ID, AccountID: mayaAccountID, Role: models.TournamentStaffRoleOwner},
-		{TournamentID: tournaments[4].ID, AccountID: aliceAccountID, Role: models.TournamentStaffRoleOwner},
-		{TournamentID: tournaments[5].ID, AccountID: devAccountID, Role: models.TournamentStaffRoleOwner},
-		{TournamentID: tournaments[6].ID, AccountID: devAccountID, Role: models.TournamentStaffRoleOwner},
-	}
-	if err := db.Clauses(clause.OnConflict{
-		Columns:   []clause.Column{{Name: "tournament_id"}, {Name: "account_id"}},
-		UpdateAll: true,
-	}).Create(&staff).Error; err != nil {
+	staff := []models.TournamentStaff{{TournamentID: sponsorID, AccountID: mayaID, Role: models.TournamentStaffRoleOwner}, {TournamentID: setupID, AccountID: alexID, Role: models.TournamentStaffRoleOwner}, {TournamentID: liveID, AccountID: alexID, Role: models.TournamentStaffRoleOwner}, {TournamentID: completedID, AccountID: alexID, Role: models.TournamentStaffRoleOwner}, {TournamentID: aliceTournamentID, AccountID: aliceID, Role: models.TournamentStaffRoleOwner}, {TournamentID: mayaTournamentID, AccountID: mayaID, Role: models.TournamentStaffRoleOwner}}
+	if err := db.Clauses(clause.OnConflict{Columns: []clause.Column{{Name: "tournament_id"}, {Name: "account_id"}}, UpdateAll: true}).Create(&staff).Error; err != nil {
 		return err
 	}
 
-	teams := []models.TournamentTeam{
-		{ID: uuid.MustParse("44444444-0000-4000-8000-000000000001"), TournamentID: tournaments[0].ID, Name: "Neon Tigers", InviteCode: nil, Status: models.TournamentTeamStatusAccepted, LockedAt: &lockedAt},
-		{ID: uuid.MustParse("44444444-0000-4000-8000-000000000002"), TournamentID: tournaments[0].ID, Name: "Bangkok Byte", InviteCode: nil, Status: models.TournamentTeamStatusAccepted, LockedAt: &lockedAt},
-		{ID: uuid.MustParse("44444444-0000-4000-8000-000000000003"), TournamentID: tournaments[0].ID, Name: "Siam Sentinels", InviteCode: nil, Status: models.TournamentTeamStatusAccepted, LockedAt: &lockedAt},
-		{ID: uuid.MustParse("44444444-0000-4000-8000-000000000004"), TournamentID: tournaments[1].ID, Name: "Chula Phoenix", InviteCode: nil, Status: models.TournamentTeamStatusAccepted, LockedAt: &lockedAt},
-		{ID: uuid.MustParse("44444444-0000-4000-8000-000000000005"), TournamentID: tournaments[1].ID, Name: "River Guardians", InviteCode: nil, Status: models.TournamentTeamStatusAccepted, LockedAt: &lockedAt},
-		{ID: uuid.MustParse("44444444-0000-4000-8000-000000000006"), TournamentID: tournaments[1].ID, Name: "Lotus Legends", InviteCode: nil, Status: models.TournamentTeamStatusAccepted, LockedAt: &lockedAt},
-		{ID: uuid.MustParse("44444444-0000-4000-8000-000000000007"), TournamentID: tournaments[2].ID, Name: "Iron Fist BKK", InviteCode: nil, Status: models.TournamentTeamStatusAccepted, LockedAt: &lockedAt},
-		{ID: uuid.MustParse("44444444-0000-4000-8000-000000000008"), TournamentID: tournaments[2].ID, Name: "Manila Punishers", InviteCode: nil, Status: models.TournamentTeamStatusAccepted, LockedAt: &lockedAt},
-		{ID: uuid.MustParse("44444444-0000-4000-8000-000000000009"), TournamentID: tournaments[2].ID, Name: "Jakarta Kings", InviteCode: nil, Status: models.TournamentTeamStatusAccepted, LockedAt: &lockedAt},
-		{ID: uuid.MustParse("44444444-0000-4000-8000-000000000010"), TournamentID: tournaments[3].ID, Name: "Knight Owls", InviteCode: nil, Status: models.TournamentTeamStatusAccepted, LockedAt: &lockedAt},
-		{ID: uuid.MustParse("44444444-0000-4000-8000-000000000011"), TournamentID: tournaments[3].ID, Name: "Queen's Gambit Club", InviteCode: nil, Status: models.TournamentTeamStatusAccepted, LockedAt: &lockedAt},
-		{ID: uuid.MustParse("44444444-0000-4000-8000-000000000012"), TournamentID: tournaments[4].ID, Name: "Eventory Elite", InviteCode: nil, Status: models.TournamentTeamStatusAccepted, LockedAt: &lockedAt},
-		{ID: uuid.MustParse("44444444-0000-4000-8000-000000000013"), TournamentID: tournaments[4].ID, Name: "Northern Stars", InviteCode: nil, Status: models.TournamentTeamStatusAccepted, LockedAt: &lockedAt},
-		{ID: uuid.MustParse("44444444-0000-4000-8000-000000000014"), TournamentID: tournaments[4].ID, Name: "Crimson Circuit", InviteCode: nil, Status: models.TournamentTeamStatusAccepted, LockedAt: &lockedAt},
-
-		// Dev Arena Clash (tournaments[5]) teams - 16 Accepted, 2 Rejected
-		{ID: uuid.MustParse("44444444-0000-4000-8000-000000000021"), TournamentID: tournaments[5].ID, Name: "Apex Titans", InviteCode: nil, Status: models.TournamentTeamStatusAccepted, LockedAt: &lockedAt},
-		{ID: uuid.MustParse("44444444-0000-4000-8000-000000000022"), TournamentID: tournaments[5].ID, Name: "Neon Dragons", InviteCode: nil, Status: models.TournamentTeamStatusAccepted, LockedAt: &lockedAt},
-		{ID: uuid.MustParse("44444444-0000-4000-8000-000000000023"), TournamentID: tournaments[5].ID, Name: "Cyber Valkyrie", InviteCode: nil, Status: models.TournamentTeamStatusAccepted, LockedAt: &lockedAt},
-		{ID: uuid.MustParse("44444444-0000-4000-8000-000000000024"), TournamentID: tournaments[5].ID, Name: "Shadow Wolves", InviteCode: nil, Status: models.TournamentTeamStatusAccepted, LockedAt: &lockedAt},
-		{ID: uuid.MustParse("44444444-0000-4000-8000-000000000025"), TournamentID: tournaments[5].ID, Name: "Solar Flare", InviteCode: nil, Status: models.TournamentTeamStatusAccepted, LockedAt: &lockedAt},
-		{ID: uuid.MustParse("44444444-0000-4000-8000-000000000026"), TournamentID: tournaments[5].ID, Name: "Phantom Strike", InviteCode: nil, Status: models.TournamentTeamStatusAccepted, LockedAt: &lockedAt},
-		{ID: uuid.MustParse("44444444-0000-4000-8000-000000000027"), TournamentID: tournaments[5].ID, Name: "Echo Esports", InviteCode: nil, Status: models.TournamentTeamStatusAccepted, LockedAt: &lockedAt},
-		{ID: uuid.MustParse("44444444-0000-4000-8000-000000000028"), TournamentID: tournaments[5].ID, Name: "Vortex Gaming", InviteCode: nil, Status: models.TournamentTeamStatusAccepted, LockedAt: &lockedAt},
-		{ID: uuid.MustParse("44444444-0000-4000-8000-000000000029"), TournamentID: tournaments[5].ID, Name: "Quantum Pulse", InviteCode: nil, Status: models.TournamentTeamStatusAccepted, LockedAt: &lockedAt},
-		{ID: uuid.MustParse("44444444-0000-4000-8000-000000000030"), TournamentID: tournaments[5].ID, Name: "Ironclad Legion", InviteCode: nil, Status: models.TournamentTeamStatusAccepted, LockedAt: &lockedAt},
-		{ID: uuid.MustParse("44444444-0000-4000-8000-000000000031"), TournamentID: tournaments[5].ID, Name: "Crimson Vipers", InviteCode: nil, Status: models.TournamentTeamStatusAccepted, LockedAt: &lockedAt},
-		{ID: uuid.MustParse("44444444-0000-4000-8000-000000000032"), TournamentID: tournaments[5].ID, Name: "Astral Horizon", InviteCode: nil, Status: models.TournamentTeamStatusAccepted, LockedAt: &lockedAt},
-		{ID: uuid.MustParse("44444444-0000-4000-8000-000000000033"), TournamentID: tournaments[5].ID, Name: "Thunderbolt Gaming", InviteCode: nil, Status: models.TournamentTeamStatusAccepted, LockedAt: &lockedAt},
-		{ID: uuid.MustParse("44444444-0000-4000-8000-000000000034"), TournamentID: tournaments[5].ID, Name: "Frostbite Clan", InviteCode: nil, Status: models.TournamentTeamStatusAccepted, LockedAt: &lockedAt},
-		{ID: uuid.MustParse("44444444-0000-4000-8000-000000000035"), TournamentID: tournaments[5].ID, Name: "Midnight Stalkers", InviteCode: nil, Status: models.TournamentTeamStatusAccepted, LockedAt: &lockedAt},
-		{ID: uuid.MustParse("44444444-0000-4000-8000-000000000036"), TournamentID: tournaments[5].ID, Name: "Hyperion Rising", InviteCode: nil, Status: models.TournamentTeamStatusAccepted, LockedAt: &lockedAt},
-		{ID: uuid.MustParse("44444444-0000-4000-8000-000000000037"), TournamentID: tournaments[5].ID, Name: "Disqualified Squad", InviteCode: nil, Status: models.TournamentTeamStatusRejected, LockedAt: &lockedAt},
-		{ID: uuid.MustParse("44444444-0000-4000-8000-000000000038"), TournamentID: tournaments[5].ID, Name: "Late Entry Crew", InviteCode: nil, Status: models.TournamentTeamStatusRejected, LockedAt: &lockedAt},
-	}
-	if err := db.Clauses(clause.OnConflict{
-		Columns: []clause.Column{{Name: "id"}}, UpdateAll: true,
-	}).Create(&teams).Error; err != nil {
+	tiers := []models.SponsorshipTier{{ID: fixtureID(55555555, 1), TournamentID: sponsorID, Name: "Bronze", PriceMinor: 100000, Slots: 10, Perks: []string{"Logo on tournament page"}}, {ID: fixtureID(55555555, 2), TournamentID: sponsorID, Name: "Silver", PriceMinor: 500000, Slots: 3, Perks: []string{"Logo on tournament page", "Social media mention"}}, {ID: fixtureID(55555555, 3), TournamentID: sponsorID, Name: "Gold", PriceMinor: 1500000, Slots: 1, Perks: []string{"Featured logo", "Social media mention", "Opening announcement"}}}
+	if err := upsert(db, "id", &tiers); err != nil {
 		return err
 	}
 
-	playerIDs := []uuid.UUID{
-		uuid.MustParse("00000000-0000-4000-8000-000000000010"),
-		uuid.MustParse("00000000-0000-4000-8000-000000000011"),
-		uuid.MustParse("00000000-0000-4000-8000-000000000012"),
-		uuid.MustParse("00000000-0000-4000-8000-000000000013"),
-		uuid.MustParse("00000000-0000-4000-8000-000000000014"),
-		uuid.MustParse("00000000-0000-4000-8000-000000000015"),
+	// This mirrors the paid sponsorship invoice seeded by the payment service.
+	// It gives the crowdfunding fixture a real confirmed supporter without
+	// creating an active pledge that would block Dev Quick Login from testing checkout.
+	pledges := []models.SponsorshipPledge{{
+		ID: fixtureID(66666666, 1), TournamentID: sponsorID, TierID: fixtureID(55555555, 1),
+		PayerAccountID: somchaiID, AmountMinor: 100000, Currency: "THB", Status: models.PledgeConfirmed,
+		PaymentID: ptrUUID(fixtureID(66666666, 2)),
+	}}
+	if err := upsert(db, "id", &pledges); err != nil {
+		return err
+	}
+
+	setupNames := []string{"Setup Tigers", "Setup Dragons", "Setup Wolves", "Setup Falcons", "Setup Comets", "Setup Ravens", "Setup Phoenix", "Setup Panthers", "Setup Sharks", "Setup Cobras", "Setup Bears", "Setup Owls", "Setup Lions", "Setup Foxes", "Setup Knights", "Setup Giants"}
+	liveNames := []string{"Apex Titans", "Neon Dragons", "Cyber Valkyrie", "Shadow Wolves", "Solar Flare", "Phantom Strike", "Echo Esports", "Vortex Gaming", "Quantum Pulse", "Ironclad Legion", "Crimson Vipers", "Astral Horizon", "Thunderbolt Gaming", "Frostbite Clan", "Midnight Stalkers", "Hyperion Rising"}
+	archiveNames := []string{"Archive Tigers", "Archive Dragons", "Archive Wolves", "Archive Falcons"}
+	teams := make([]models.TournamentTeam, 0, 36)
+	addTeams := func(tournamentID uuid.UUID, names []string, firstID int) {
+		for index, name := range names {
+			teams = append(teams, models.TournamentTeam{ID: fixtureID(44444444, firstID+index), TournamentID: tournamentID, Name: name, Status: models.TournamentTeamStatusAccepted, LockedAt: &lockedAt})
+		}
+	}
+	addTeams(setupID, setupNames, 61)
+	liveTeamStart := len(teams)
+	addTeams(liveID, liveNames, 21)
+	archiveTeamStart := len(teams)
+	addTeams(completedID, archiveNames, 45)
+	teamIDs := make([]uuid.UUID, 0, len(teams))
+	for _, team := range teams {
+		teamIDs = append(teamIDs, team.ID)
+	}
+	// Team members are fixture detail rather than user-created data. Clear them
+	// before re-seeding so a changed roster cannot leave stale memberships behind.
+	if err := db.Where("tournament_team_id IN ?", teamIDs).Delete(&models.TournamentTeamMember{}).Error; err != nil {
+		return err
+	}
+	if err := upsert(db, "id", &teams); err != nil {
+		return err
+	}
+
+	playerIDs := make([]uuid.UUID, 32)
+	for index := range playerIDs {
+		playerIDs[index] = id(fmt.Sprintf("00000000-0000-4000-8000-%012d", 101+index))
 	}
 	members := make([]models.TournamentTeamMember, 0, len(teams)*2)
 	for index, team := range teams {
-		pairStart := (index % 3) * 2
-		for memberOffset := 0; memberOffset < 2; memberOffset++ {
-			accountID := playerIDs[pairStart+memberOffset]
+		for offset := 0; offset < 2; offset++ {
 			role := models.TournamentTeamMemberRoleMember
-			if memberOffset == 0 {
+			if offset == 0 {
 				role = models.TournamentTeamMemberRoleCaptain
 			}
-			members = append(members, models.TournamentTeamMember{
-				ID:               uuid.NewSHA1(uuid.NameSpaceOID, []byte(team.ID.String()+":"+accountID.String())),
-				TournamentTeamID: team.ID,
-				AccountID:        accountID,
-				Role:             role,
-			})
+			accountID := playerIDs[(index*2+offset)%len(playerIDs)]
+			members = append(members, models.TournamentTeamMember{ID: uuid.NewSHA1(uuid.NameSpaceOID, []byte(team.ID.String()+":"+accountID.String())), TournamentTeamID: team.ID, AccountID: accountID, Role: role})
 		}
 	}
-	if err := db.Clauses(clause.OnConflict{
-		Columns: []clause.Column{{Name: "id"}}, UpdateAll: true,
-	}).Create(&members).Error; err != nil {
+	if err := upsert(db, "id", &members); err != nil {
 		return err
 	}
 
-	// Totals start empty; only confirmed sponsorship pledges contribute funding.
-	funding := []models.TournamentFunding{
-		{ID: uuid.MustParse("55555555-0000-4000-8000-000000000001"), TournamentID: tournaments[0].ID, GoalAmount: 50000},
-		{ID: uuid.MustParse("55555555-0000-4000-8000-000000000002"), TournamentID: tournaments[1].ID, GoalAmount: 75000},
-		{ID: uuid.MustParse("55555555-0000-4000-8000-000000000003"), TournamentID: tournaments[2].ID, GoalAmount: 120000},
-		{ID: uuid.MustParse("55555555-0000-4000-8000-000000000004"), TournamentID: tournaments[3].ID, GoalAmount: 25000},
-		{ID: uuid.MustParse("55555555-0000-4000-8000-000000000005"), TournamentID: tournaments[4].ID, GoalAmount: 500000},
-		{ID: uuid.MustParse("55555555-0000-4000-8000-000000000006"), TournamentID: tournaments[5].ID, GoalAmount: 60000},
-		{ID: uuid.MustParse("55555555-0000-4000-8000-000000000007"), TournamentID: tournaments[6].ID, GoalAmount: 30000},
+	finalID := fixtureID(77777777, 1)
+	semis := []uuid.UUID{fixtureID(77777777, 2), fixtureID(77777777, 3)}
+	quarters := []uuid.UUID{fixtureID(77777777, 4), fixtureID(77777777, 5), fixtureID(77777777, 6), fixtureID(77777777, 7)}
+	roundOf16 := []uuid.UUID{fixtureID(77777777, 8), fixtureID(77777777, 9), fixtureID(77777777, 10), fixtureID(77777777, 11), fixtureID(77777777, 12), fixtureID(77777777, 13), fixtureID(77777777, 14), fixtureID(77777777, 15)}
+	matches := []models.Match{{ID: finalID, TournamentID: liveID, Name: "Championship Final", Venue: "Main Arena", StageLevel: 4, TeamCount: 2}}
+	for index, matchID := range semis {
+		matches = append(matches, models.Match{ID: matchID, TournamentID: liveID, Name: fmt.Sprintf("Semifinal %d", index+1), Venue: "Main Arena", StageLevel: 3, TeamCount: 2, AdvancingCount: 1, TargetMatchID: &finalID})
+	}
+	for index, matchID := range quarters {
+		target := semis[index/2]
+		matches = append(matches, models.Match{ID: matchID, TournamentID: liveID, Name: fmt.Sprintf("Quarterfinal %d", index+1), Venue: fmt.Sprintf("Station %d", index+1), StageLevel: 2, TeamCount: 2, AdvancingCount: 1, TargetMatchID: &target})
+	}
+	for index, matchID := range roundOf16 {
+		target := quarters[index/2]
+		matches = append(matches, models.Match{ID: matchID, TournamentID: liveID, Name: fmt.Sprintf("Round of 16 · Match %d", index+1), Venue: fmt.Sprintf("Station %d", index+1), StageLevel: 1, TeamCount: 2, AdvancingCount: 1, TargetMatchID: &target, IsCompleted: index < 2})
 	}
 
-	if err := db.Clauses(clause.OnConflict{
-		Columns: []clause.Column{{Name: "id"}}, UpdateAll: true,
-	}).Create(&funding).Error; err != nil {
+	archiveFinalID := fixtureID(77777777, 31)
+	archiveSemi1ID := fixtureID(77777777, 32)
+	archiveSemi2ID := fixtureID(77777777, 33)
+	matches = append(matches, models.Match{ID: archiveFinalID, TournamentID: completedID, Name: "Archive Final", Venue: "Local Dev Arena", StageLevel: 2, TeamCount: 2, IsCompleted: true}, models.Match{ID: archiveSemi1ID, TournamentID: completedID, Name: "Archive Semifinal 1", Venue: "Local Dev Arena", StageLevel: 1, TeamCount: 2, AdvancingCount: 1, TargetMatchID: &archiveFinalID, IsCompleted: true}, models.Match{ID: archiveSemi2ID, TournamentID: completedID, Name: "Archive Semifinal 2", Venue: "Local Dev Arena", StageLevel: 1, TeamCount: 2, AdvancingCount: 1, TargetMatchID: &archiveFinalID, IsCompleted: true})
+	if err := upsert(db, "id", &matches); err != nil {
 		return err
 	}
 
-	// Seed realistic tournament bracket DAG & live match progression for Dev Arena Clash (tournaments[5])
-	devTournamentID := tournaments[5].ID
-	finalID := uuid.MustParse("77777777-0000-4000-8000-000000000001")
-	semi1ID := uuid.MustParse("77777777-0000-4000-8000-000000000002")
-	semi2ID := uuid.MustParse("77777777-0000-4000-8000-000000000003")
-	qf1ID := uuid.MustParse("77777777-0000-4000-8000-000000000004")
-	qf2ID := uuid.MustParse("77777777-0000-4000-8000-000000000005")
-	qf3ID := uuid.MustParse("77777777-0000-4000-8000-000000000006")
-	qf4ID := uuid.MustParse("77777777-0000-4000-8000-000000000007")
-	r16_1 := uuid.MustParse("77777777-0000-4000-8000-000000000008")
-	r16_2 := uuid.MustParse("77777777-0000-4000-8000-000000000009")
-	r16_3 := uuid.MustParse("77777777-0000-4000-8000-000000000010")
-	r16_4 := uuid.MustParse("77777777-0000-4000-8000-000000000011")
-	r16_5 := uuid.MustParse("77777777-0000-4000-8000-000000000012")
-	r16_6 := uuid.MustParse("77777777-0000-4000-8000-000000000013")
-	r16_7 := uuid.MustParse("77777777-0000-4000-8000-000000000014")
-	r16_8 := uuid.MustParse("77777777-0000-4000-8000-000000000015")
-
-	matches := []models.Match{
-		// Stage 4: Championship
-		{ID: finalID, TournamentID: devTournamentID, Name: "Championship Final", Venue: "Main Arena Stage", StageLevel: 4, TeamCount: 2, AdvancingCount: 0, TargetMatchID: nil, IsCompleted: false},
-		// Stage 3: Semifinals
-		{ID: semi1ID, TournamentID: devTournamentID, Name: "Semifinal A", Venue: "Main Arena A", StageLevel: 3, TeamCount: 2, AdvancingCount: 1, TargetMatchID: &finalID, IsCompleted: false},
-		{ID: semi2ID, TournamentID: devTournamentID, Name: "Semifinal B", Venue: "Main Arena B", StageLevel: 3, TeamCount: 2, AdvancingCount: 1, TargetMatchID: &finalID, IsCompleted: false},
-		// Stage 2: Quarterfinals
-		{ID: qf1ID, TournamentID: devTournamentID, Name: "Quarterfinal 1", Venue: "Station 1", StageLevel: 2, TeamCount: 2, AdvancingCount: 1, TargetMatchID: &semi1ID, IsCompleted: false},
-		{ID: qf2ID, TournamentID: devTournamentID, Name: "Quarterfinal 2", Venue: "Station 2", StageLevel: 2, TeamCount: 2, AdvancingCount: 1, TargetMatchID: &semi1ID, IsCompleted: false},
-		{ID: qf3ID, TournamentID: devTournamentID, Name: "Quarterfinal 3", Venue: "Station 3", StageLevel: 2, TeamCount: 2, AdvancingCount: 1, TargetMatchID: &semi2ID, IsCompleted: false},
-		{ID: qf4ID, TournamentID: devTournamentID, Name: "Quarterfinal 4", Venue: "Station 4", StageLevel: 2, TeamCount: 2, AdvancingCount: 1, TargetMatchID: &semi2ID, IsCompleted: false},
-		// Stage 1: Round of 16 (8 matches x 2 teams = 16 total capacity matching the 16 accepted teams)
-		{ID: r16_1, TournamentID: devTournamentID, Name: "Round 1 - Heat 1", Venue: "Station 1", StageLevel: 1, TeamCount: 2, AdvancingCount: 1, TargetMatchID: &qf1ID, IsCompleted: true},
-		{ID: r16_2, TournamentID: devTournamentID, Name: "Round 1 - Heat 2", Venue: "Station 2", StageLevel: 1, TeamCount: 2, AdvancingCount: 1, TargetMatchID: &qf1ID, IsCompleted: true},
-		{ID: r16_3, TournamentID: devTournamentID, Name: "Round 1 - Heat 3", Venue: "Station 3", StageLevel: 1, TeamCount: 2, AdvancingCount: 1, TargetMatchID: &qf2ID, IsCompleted: false},
-		{ID: r16_4, TournamentID: devTournamentID, Name: "Round 1 - Heat 4", Venue: "Station 4", StageLevel: 1, TeamCount: 2, AdvancingCount: 1, TargetMatchID: &qf2ID, IsCompleted: false},
-		{ID: r16_5, TournamentID: devTournamentID, Name: "Round 1 - Heat 5", Venue: "Station 5", StageLevel: 1, TeamCount: 2, AdvancingCount: 1, TargetMatchID: &qf3ID, IsCompleted: false},
-		{ID: r16_6, TournamentID: devTournamentID, Name: "Round 1 - Heat 6", Venue: "Station 6", StageLevel: 1, TeamCount: 2, AdvancingCount: 1, TargetMatchID: &qf3ID, IsCompleted: false},
-		{ID: r16_7, TournamentID: devTournamentID, Name: "Round 1 - Heat 7", Venue: "Station 7", StageLevel: 1, TeamCount: 2, AdvancingCount: 1, TargetMatchID: &qf4ID, IsCompleted: false},
-		{ID: r16_8, TournamentID: devTournamentID, Name: "Round 1 - Heat 8", Venue: "Station 8", StageLevel: 1, TeamCount: 2, AdvancingCount: 1, TargetMatchID: &qf4ID, IsCompleted: false},
+	rank1, rank2 := 1, 2
+	score21, score12, score20, score02 := "2-1", "1-2", "2-0", "0-2"
+	entries := make([]models.MatchEntry, 0, 26)
+	for index, matchID := range roundOf16 {
+		first, second := teams[liveTeamStart+index*2].ID, teams[liveTeamStart+index*2+1].ID
+		entryID := 1 + index*2
+		if index < 2 {
+			entries = append(entries, models.MatchEntry{ID: fixtureID(88888888, entryID), MatchID: matchID, TeamID: first, FinalRank: &rank1, Score: &score21, Advances: true}, models.MatchEntry{ID: fixtureID(88888888, entryID+1), MatchID: matchID, TeamID: second, FinalRank: &rank2, Score: &score12})
+		} else {
+			entries = append(entries, models.MatchEntry{ID: fixtureID(88888888, entryID), MatchID: matchID, TeamID: first}, models.MatchEntry{ID: fixtureID(88888888, entryID+1), MatchID: matchID, TeamID: second})
+		}
 	}
+	entries = append(entries, models.MatchEntry{ID: fixtureID(88888888, 17), MatchID: quarters[0], TeamID: teams[liveTeamStart].ID}, models.MatchEntry{ID: fixtureID(88888888, 18), MatchID: quarters[0], TeamID: teams[liveTeamStart+2].ID})
+	archiveTeams := teams[archiveTeamStart:]
+	entries = append(entries, models.MatchEntry{ID: fixtureID(88888888, 31), MatchID: archiveSemi1ID, TeamID: archiveTeams[0].ID, FinalRank: &rank1, Score: &score20, Advances: true}, models.MatchEntry{ID: fixtureID(88888888, 32), MatchID: archiveSemi1ID, TeamID: archiveTeams[1].ID, FinalRank: &rank2, Score: &score02}, models.MatchEntry{ID: fixtureID(88888888, 33), MatchID: archiveSemi2ID, TeamID: archiveTeams[2].ID, FinalRank: &rank1, Score: &score21, Advances: true}, models.MatchEntry{ID: fixtureID(88888888, 34), MatchID: archiveSemi2ID, TeamID: archiveTeams[3].ID, FinalRank: &rank2, Score: &score12}, models.MatchEntry{ID: fixtureID(88888888, 35), MatchID: archiveFinalID, TeamID: archiveTeams[0].ID, FinalRank: &rank1, Score: &score21}, models.MatchEntry{ID: fixtureID(88888888, 36), MatchID: archiveFinalID, TeamID: archiveTeams[2].ID, FinalRank: &rank2, Score: &score12})
+	return upsert(db, "id", &entries)
+}
 
-	if err := db.Clauses(clause.OnConflict{
-		Columns: []clause.Column{{Name: "id"}}, UpdateAll: true,
-	}).Create(&matches).Error; err != nil {
-		return err
-	}
+func ptrUUID(value uuid.UUID) *uuid.UUID { return &value }
 
-	rank1 := 1
-	rank2 := 2
-	score21 := "2-1"
-	score12 := "1-2"
-	score20 := "2-0"
-	score02 := "0-2"
-
-	matchEntries := []models.MatchEntry{
-		// Match 1.1 (completed)
-		{ID: uuid.MustParse("88888888-0000-4000-8000-000000000001"), MatchID: r16_1, TeamID: uuid.MustParse("44444444-0000-4000-8000-000000000021"), FinalRank: &rank1, Score: &score21, Advances: true},
-		{ID: uuid.MustParse("88888888-0000-4000-8000-000000000002"), MatchID: r16_1, TeamID: uuid.MustParse("44444444-0000-4000-8000-000000000022"), FinalRank: &rank2, Score: &score12, Advances: false},
-		// Match 1.2 (completed)
-		{ID: uuid.MustParse("88888888-0000-4000-8000-000000000003"), MatchID: r16_2, TeamID: uuid.MustParse("44444444-0000-4000-8000-000000000023"), FinalRank: &rank1, Score: &score20, Advances: true},
-		{ID: uuid.MustParse("88888888-0000-4000-8000-000000000004"), MatchID: r16_2, TeamID: uuid.MustParse("44444444-0000-4000-8000-000000000024"), FinalRank: &rank2, Score: &score02, Advances: false},
-		// Advanced into Quarterfinal 1
-		{ID: uuid.MustParse("88888888-0000-4000-8000-000000000005"), MatchID: qf1ID, TeamID: uuid.MustParse("44444444-0000-4000-8000-000000000021"), Advances: false},
-		{ID: uuid.MustParse("88888888-0000-4000-8000-000000000006"), MatchID: qf1ID, TeamID: uuid.MustParse("44444444-0000-4000-8000-000000000023"), Advances: false},
-		// Remaining Stage 1 matches (pending)
-		{ID: uuid.MustParse("88888888-0000-4000-8000-000000000007"), MatchID: r16_3, TeamID: uuid.MustParse("44444444-0000-4000-8000-000000000025"), Advances: false},
-		{ID: uuid.MustParse("88888888-0000-4000-8000-000000000008"), MatchID: r16_3, TeamID: uuid.MustParse("44444444-0000-4000-8000-000000000026"), Advances: false},
-		{ID: uuid.MustParse("88888888-0000-4000-8000-000000000009"), MatchID: r16_4, TeamID: uuid.MustParse("44444444-0000-4000-8000-000000000027"), Advances: false},
-		{ID: uuid.MustParse("88888888-0000-4000-8000-000000000010"), MatchID: r16_4, TeamID: uuid.MustParse("44444444-0000-4000-8000-000000000028"), Advances: false},
-		{ID: uuid.MustParse("88888888-0000-4000-8000-000000000011"), MatchID: r16_5, TeamID: uuid.MustParse("44444444-0000-4000-8000-000000000029"), Advances: false},
-		{ID: uuid.MustParse("88888888-0000-4000-8000-000000000012"), MatchID: r16_5, TeamID: uuid.MustParse("44444444-0000-4000-8000-000000000030"), Advances: false},
-		{ID: uuid.MustParse("88888888-0000-4000-8000-000000000013"), MatchID: r16_6, TeamID: uuid.MustParse("44444444-0000-4000-8000-000000000031"), Advances: false},
-		{ID: uuid.MustParse("88888888-0000-4000-8000-000000000014"), MatchID: r16_6, TeamID: uuid.MustParse("44444444-0000-4000-8000-000000000032"), Advances: false},
-		{ID: uuid.MustParse("88888888-0000-4000-8000-000000000015"), MatchID: r16_7, TeamID: uuid.MustParse("44444444-0000-4000-8000-000000000033"), Advances: false},
-		{ID: uuid.MustParse("88888888-0000-4000-8000-000000000016"), MatchID: r16_7, TeamID: uuid.MustParse("44444444-0000-4000-8000-000000000034"), Advances: false},
-		{ID: uuid.MustParse("88888888-0000-4000-8000-000000000017"), MatchID: r16_8, TeamID: uuid.MustParse("44444444-0000-4000-8000-000000000035"), Advances: false},
-		{ID: uuid.MustParse("88888888-0000-4000-8000-000000000018"), MatchID: r16_8, TeamID: uuid.MustParse("44444444-0000-4000-8000-000000000036"), Advances: false},
-	}
-
-	return db.Clauses(clause.OnConflict{
-		Columns: []clause.Column{{Name: "id"}}, UpdateAll: true,
-	}).Create(&matchEntries).Error
+func upsert(db *gorm.DB, column string, value any) error {
+	return db.Clauses(clause.OnConflict{Columns: []clause.Column{{Name: column}}, UpdateAll: true}).Create(value).Error
 }

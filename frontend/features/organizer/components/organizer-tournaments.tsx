@@ -266,7 +266,10 @@ export function OrganizerTournaments() {
                           {metrics.confirmedParticipants} participants
                         </span>
                         <span className="font-medium">
-                          {formatMoney(funding.raisedAmount, funding.currency)}{" "}
+                          {formatMoney(
+                            funding.raisedAmountMinor,
+                            funding.currency
+                          )}{" "}
                           raised
                         </span>
                       </div>

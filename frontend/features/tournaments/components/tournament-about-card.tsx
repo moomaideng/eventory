@@ -15,6 +15,7 @@ import {
   formatDateRange,
   formatMoney,
   formatRegistrationStatus,
+  formatTeamSize,
   isRegistrationOpen,
   type Tournament,
 } from "../utils";
@@ -96,7 +97,7 @@ export function TournamentAboutCard({
                   <p className="text-sm font-medium">Entry fee</p>
                   <p className="text-muted-foreground text-sm">
                     {formatMoney(
-                      tournament.entryFee,
+                      tournament.entryFeeMinor,
                       tournament.currency,
                       true
                     )}
@@ -118,6 +119,19 @@ export function TournamentAboutCard({
                   <p className="text-sm font-medium">Registration type</p>
                   <p className="text-muted-foreground text-sm">
                     {registrationType}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3">
+                <Users className="text-muted-foreground mt-0.5 size-5 shrink-0" />
+                <div className="flex flex-col gap-1">
+                  <p className="text-sm font-medium">Entry size</p>
+                  <p className="text-muted-foreground text-sm">
+                    {formatTeamSize(
+                      tournament.registrationMode,
+                      tournament.minTeamSize,
+                      tournament.maxTeamSize
+                    )}
                   </p>
                 </div>
               </div>

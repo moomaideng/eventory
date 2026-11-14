@@ -7,6 +7,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/google/uuid"
+	"github.com/moomaideng/eventory/internal/money"
 	"github.com/moomaideng/eventory/services/tournament/internal/repositories"
 	"github.com/moomaideng/eventory/services/tournament/models"
 )
@@ -14,7 +15,7 @@ import (
 var (
 	ErrSponsorshipTierNotFound      = errors.New("sponsorship tier not found")
 	ErrSponsorshipTierNameDuplicate = errors.New("a tier with this name already exists in this tournament")
-	ErrSponsorshipTierInUse         = errors.New("this package has a pending or confirmed sponsorship and cannot be changed")
+	ErrSponsorshipTierInUse         = errors.New("this package has a sponsorship pledge and cannot be changed")
 	ErrInvalidSponsorshipTierName   = errors.New("tier name is required and must be at most 80 characters")
 	ErrInvalidSponsorshipTierPrice  = errors.New("tier price must be greater than zero")
 	ErrInvalidSponsorshipTierSlots  = errors.New("tier must have at least one slot")
@@ -24,15 +25,21 @@ var (
 
 const (
 	sponsorshipTierNameMaxLength = 80
-	sponsorshipTierMaxPerks      = 10
 	sponsorshipTierPerkMaxLength = 200
+	sponsorshipTierMaxPerks      = 10
 )
 
 type SponsorshipTierInput struct {
-	Name  string
-	Price int64
-	Slots int
-	Perks []string
+	Name       string
+	PriceMinor int64
+	Slots      int
+	Perks      []string
+}
+
+type SponsorshipTierView struct {
+	models.SponsorshipTier
+	AvailableSlots int
+	Locked         bool
 }
 
 type SponsorshipTierUseCase struct {
@@ -47,17 +54,14 @@ func NewSponsorshipTierUseCase(
 	return &SponsorshipTierUseCase{tiers: tiers, tournaments: tournaments}
 }
 
-// ListPublic returns the tiers sponsors can see on a published tournament.
-func (u *SponsorshipTierUseCase) ListPublic(ctx context.Context, tournamentID uuid.UUID) ([]models.SponsorshipTier, error) {
+func (u *SponsorshipTierUseCase) ListPublic(ctx context.Context, tournamentID uuid.UUID) ([]SponsorshipTierView, error) {
 	if _, err := u.tournaments.GetPublishedByID(ctx, tournamentID); err != nil {
 		return nil, mapTierError(err)
 	}
 	return u.listTiers(ctx, tournamentID)
 }
 
-// ListForOwner returns an owned tournament's tiers, published or not, so the
-// organizer can manage them before the tournament goes public.
-func (u *SponsorshipTierUseCase) ListForOwner(ctx context.Context, accountID, tournamentID uuid.UUID) ([]models.SponsorshipTier, error) {
+func (u *SponsorshipTierUseCase) ListForOwner(ctx context.Context, accountID, tournamentID uuid.UUID) ([]SponsorshipTierView, error) {
 	tournament, err := u.tournaments.GetByID(ctx, tournamentID)
 	if err != nil {
 		return nil, mapTierError(err)
@@ -68,23 +72,27 @@ func (u *SponsorshipTierUseCase) ListForOwner(ctx context.Context, accountID, to
 	return u.listTiers(ctx, tournamentID)
 }
 
-func (u *SponsorshipTierUseCase) listTiers(ctx context.Context, tournamentID uuid.UUID) ([]models.SponsorshipTier, error) {
-	tiers, err := u.tiers.List(ctx, tournamentID)
+func (u *SponsorshipTierUseCase) listTiers(ctx context.Context, tournamentID uuid.UUID) ([]SponsorshipTierView, error) {
+	rows, err := u.tiers.List(ctx, tournamentID)
 	if err != nil {
 		return nil, mapTierError(err)
 	}
-	for i := range tiers {
-		tiers[i].AvailableSlots = max(tiers[i].Slots-tiers[i].ReservedSlots, 0)
-		tiers[i].Locked = tiers[i].ReservedSlots > 0
+	views := make([]SponsorshipTierView, len(rows))
+	for i, row := range rows {
+		views[i] = SponsorshipTierView{
+			SponsorshipTier: row.SponsorshipTier,
+			AvailableSlots:  max(row.Slots-row.ReservedSlots, 0),
+			Locked:          row.ReservedSlots > 0,
+		}
 	}
-	return tiers, nil
+	return views, nil
 }
 
 func (u *SponsorshipTierUseCase) Create(
 	ctx context.Context,
 	accountID, tournamentID uuid.UUID,
 	input SponsorshipTierInput,
-) (*models.SponsorshipTier, error) {
+) (*SponsorshipTierView, error) {
 	if err := u.requireEditable(ctx, accountID, tournamentID); err != nil {
 		return nil, err
 	}
@@ -95,15 +103,14 @@ func (u *SponsorshipTierUseCase) Create(
 	if err := u.tiers.Create(ctx, tier); err != nil {
 		return nil, mapTierError(err)
 	}
-	tier.AvailableSlots = tier.Slots
-	return tier, nil
+	return &SponsorshipTierView{SponsorshipTier: *tier, AvailableSlots: tier.Slots}, nil
 }
 
 func (u *SponsorshipTierUseCase) Update(
 	ctx context.Context,
 	accountID, tournamentID, tierID uuid.UUID,
 	input SponsorshipTierInput,
-) (*models.SponsorshipTier, error) {
+) (*SponsorshipTierView, error) {
 	tx, err := u.tiers.Begin(ctx)
 	if err != nil {
 		return nil, mapTierError(err)
@@ -122,11 +129,9 @@ func (u *SponsorshipTierUseCase) Update(
 	if err := tx.Commit(); err != nil {
 		return nil, mapTierError(err)
 	}
-	tier.AvailableSlots = tier.Slots
-	return tier, nil
+	return &SponsorshipTierView{SponsorshipTier: *tier, AvailableSlots: tier.Slots}, nil
 }
 
-// Delete archives a tier so invoices and closed checkouts keep their purchase context.
 func (u *SponsorshipTierUseCase) Delete(ctx context.Context, accountID, tournamentID, tierID uuid.UUID) error {
 	tx, err := u.tiers.Begin(ctx)
 	if err != nil {
@@ -136,7 +141,12 @@ func (u *SponsorshipTierUseCase) Delete(ctx context.Context, accountID, tourname
 	if _, err := u.lockEditableTier(tx, accountID, tournamentID, tierID); err != nil {
 		return mapTierError(err)
 	}
-	if err := tx.ArchiveTier(tierID); err != nil {
+	if hasPledges, err := tx.HasPledges(tierID); err != nil {
+		return mapTierError(err)
+	} else if hasPledges {
+		return ErrSponsorshipTierInUse
+	}
+	if err := tx.DeleteTier(tierID); err != nil {
 		return mapTierError(err)
 	}
 	return mapTierError(tx.Commit())
@@ -149,9 +159,6 @@ func (u *SponsorshipTierUseCase) lockEditableTier(tx repositories.SponsorshipTie
 	}
 	if err := checkTierEditable(tournament, accountID); err != nil {
 		return nil, err
-	}
-	if tier.Archived {
-		return nil, ErrSponsorshipTierNotFound
 	}
 	reserved, err := tx.Reserved(tierID)
 	if err != nil {
@@ -189,7 +196,7 @@ func applyTierInput(tier *models.SponsorshipTier, input SponsorshipTierInput) er
 	if name == "" || utf8.RuneCountInString(name) > sponsorshipTierNameMaxLength {
 		return ErrInvalidSponsorshipTierName
 	}
-	if input.Price <= 0 {
+	if amt, err := money.FromMinor(input.PriceMinor, money.DefaultCurrency); err != nil || amt.AmountMinor == 0 {
 		return ErrInvalidSponsorshipTierPrice
 	}
 	if input.Slots <= 0 {
@@ -212,7 +219,7 @@ func applyTierInput(tier *models.SponsorshipTier, input SponsorshipTierInput) er
 	}
 
 	tier.Name = name
-	tier.Price = input.Price
+	tier.PriceMinor = input.PriceMinor
 	tier.Slots = input.Slots
 	tier.Perks = perks
 	return nil

@@ -12,6 +12,25 @@ export const sponsorTagsSchema = z
       .max(10, "Use up to 10 tags.")
   );
 
+const optionalHttpUrlSchema = (label: string) =>
+  z
+    .string()
+    .trim()
+    .max(2048, `${label} must be 2048 characters or fewer.`)
+    .refine((value) => {
+      if (value === "") return true;
+      try {
+        const parsed = new URL(value);
+        return (
+          (parsed.protocol === "http:" || parsed.protocol === "https:") &&
+          Boolean(parsed.hostname)
+        );
+      } catch {
+        return false;
+      }
+    }, `Enter a valid http:// or https:// ${label.toLowerCase()}.`)
+    .transform((value) => (value === "" ? undefined : value));
+
 export const sponsorOnboardingSchema = z.object({
   sponsorName: z
     .string()
@@ -24,6 +43,8 @@ export const sponsorOnboardingSchema = z.object({
     .email("Enter a valid contact email.")
     .max(255),
   phone: optionalPhoneSchema.optional(),
+  websiteUrl: optionalHttpUrlSchema("Brand website URL").optional(),
+  logoUrl: optionalHttpUrlSchema("Logo image URL").optional(),
   tags: sponsorTagsSchema,
 });
 export const sponsorProfileSchema = sponsorOnboardingSchema;

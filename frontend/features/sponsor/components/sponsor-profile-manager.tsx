@@ -21,6 +21,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { extractProblemMessage } from "@/lib/schemas";
+import { uploadSponsorLogo } from "../logo-upload";
 import type { SponsorProfileInput } from "../schemas";
 import { SponsorProfileForm } from "./sponsor-profile-form";
 import { SponsorProfileView } from "./sponsor-profile-view";
@@ -29,11 +30,13 @@ interface SponsorProfileData {
   sponsorName: string;
   sponsorEmail?: string | null;
   phone?: string | null;
+  websiteUrl?: string | null;
+  logoUrl?: string | null;
   tags?: string[] | null;
 }
 
 export function SponsorProfileManager() {
-  const { isLoading: isAuthLoading, authorizationHeader } = useAuth();
+  const { isLoading: isAuthLoading, authorizationHeader, user } = useAuth();
   const [mode, setMode] = useState<"view" | "edit">("view");
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
@@ -51,10 +54,13 @@ export function SponsorProfileManager() {
         ? { Authorization: authorizationHeader }
         : {},
     },
-    { enabled: Boolean(authorizationHeader), retry: false, staleTime: 0 }
+    { enabled: Boolean(authorizationHeader), retry: false, staleTime: 0 },
   );
 
-  async function handleConfirmSave(data: SponsorProfileInput) {
+  async function handleConfirmSave(
+    data: SponsorProfileInput,
+    logoFile: File | null,
+  ) {
     if (!authorizationHeader) {
       setSaveError("Sign in before saving your sponsor profile.");
       return false;
@@ -63,6 +69,14 @@ export function SponsorProfileManager() {
     setSaveError("");
     setIsSaving(true);
     try {
+      let logoUrl = data.logoUrl;
+      if (logoFile) {
+        const uploadUserID = user?.id;
+        if (!uploadUserID) {
+          throw new Error("Sign in before uploading a logo.");
+        }
+        logoUrl = await uploadSponsorLogo(uploadUserID, logoFile);
+      }
       const { data: putData, error: putError } = await apiClient.PUT(
         "/api/v1/accounts/me/sponsor-profile",
         {
@@ -71,17 +85,19 @@ export function SponsorProfileManager() {
             sponsorName: data.sponsorName,
             sponsorEmail: data.sponsorEmail,
             phone: data.phone,
+            websiteUrl: data.websiteUrl,
+            logoUrl,
             tags: data.tags,
           },
-        }
+        },
       );
 
       if (putError || !putData) {
         setSaveError(
           extractProblemMessage(
             putError,
-            "We could not save your sponsor profile."
-          )
+            "We could not save your sponsor profile.",
+          ),
         );
         return false;
       }
@@ -89,9 +105,11 @@ export function SponsorProfileManager() {
       setOverride(putData);
       setMode("view");
       return true;
-    } catch {
+    } catch (error) {
       setSaveError(
-        "Connection error. Please check your network and try again."
+        error instanceof Error
+          ? error.message
+          : "Connection error. Please check your network and try again.",
       );
       return false;
     } finally {
@@ -133,6 +151,8 @@ export function SponsorProfileManager() {
         initialName={current?.sponsorName ?? ""}
         initialEmail={current?.sponsorEmail ?? ""}
         initialPhone={current?.phone ?? ""}
+        initialWebsiteUrl={current?.websiteUrl ?? ""}
+        initialLogoUrl={current?.logoUrl ?? ""}
         initialTags={current?.tags ?? []}
         onCancel={() => setMode("view")}
         onConfirmSave={handleConfirmSave}
@@ -167,6 +187,8 @@ export function SponsorProfileManager() {
       sponsorName={current.sponsorName}
       sponsorEmail={current.sponsorEmail}
       phone={current.phone}
+      websiteUrl={current.websiteUrl}
+      logoUrl={current.logoUrl}
       tags={current.tags ?? []}
       onEdit={() => setMode("edit")}
     />

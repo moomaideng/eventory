@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/context/auth-context";
-import { apiBaseUrl } from "@/lib/api/client";
+import { apiClient } from "@/lib/api/client";
 import { extractProblemMessage } from "@/lib/schemas";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -17,19 +18,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  Field,
-  FieldDescription,
-  FieldError,
-  FieldGroup,
-  FieldLabel,
-} from "@/components/ui/field";
-import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
-import {
-  sponsorshipBrandSchema,
-  sponsorshipCheckoutSchema,
-} from "@/features/sponsorship/schemas";
+import { sponsorshipCheckoutSchema } from "@/features/sponsorship/schemas";
 import {
   checkoutErrorFallback,
   type SponsorshipTier,
@@ -41,70 +31,48 @@ export function SponsorshipCheckoutDialog({
   tier,
   currency,
   sponsorName,
+  websiteUrl,
+  logoUrl,
   onClose,
 }: {
   tournamentId: string;
   tier: SponsorshipTier;
   currency: string;
   sponsorName: string;
+  websiteUrl: string;
+  logoUrl: string;
   onClose: () => void;
 }) {
   const { authorizationHeader } = useAuth();
   const router = useRouter();
   const queryClient = useQueryClient();
-  const [websiteUrl, setWebsiteUrl] = useState("");
-  const [logo, setLogo] = useState<File>();
-  const [preview, setPreview] = useState("");
-  const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitError, setSubmitError] = useState("");
   const [busy, setBusy] = useState(false);
   const [requestId, setRequestId] = useState(() => crypto.randomUUID());
 
-  useEffect(() => {
-    return () => {
-      if (preview) URL.revokeObjectURL(preview);
-    };
-  }, [preview]);
+  const hasBrandAssets = Boolean(websiteUrl.trim() && logoUrl.trim());
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (busy || !authorizationHeader) return;
-    const parsed = sponsorshipBrandSchema.safeParse({ websiteUrl, logo });
-    if (!parsed.success) {
-      setErrors(
-        Object.fromEntries(
-          parsed.error.issues.map((issue) => [
-            String(issue.path[0]),
-            issue.message,
-          ])
-        )
-      );
-      return;
-    }
-    setErrors({});
+    if (busy || !authorizationHeader || !hasBrandAssets) return;
     setSubmitError("");
     setBusy(true);
-    const body = new FormData();
-    body.set("requestId", requestId);
-    body.set("websiteUrl", parsed.data.websiteUrl);
-    body.set("logo", parsed.data.logo);
     try {
-      const response = await fetch(
-        `${apiBaseUrl || "http://localhost:8080"}/api/v1/tournaments/${tournamentId}/sponsorship-tiers/${tier.id}/checkout`,
+      const { data, error, response } = await apiClient.POST(
+        "/api/v1/tournaments/{tournamentId}/sponsorship-tiers/{tierId}/checkout",
         {
-          method: "POST",
+          params: { path: { tournamentId, tierId: tier.id } },
           headers: { Authorization: authorizationHeader },
-          body,
+          body: { requestId },
         }
       );
-      const result: unknown = await response.json().catch(() => null);
-      if (!response.ok) {
+      if (error || !data) {
         setSubmitError(
-          extractProblemMessage(result, checkoutErrorFallback(response.status))
+          extractProblemMessage(error, checkoutErrorFallback(response.status))
         );
         return;
       }
-      const checkout = sponsorshipCheckoutSchema.safeParse(result);
+      const checkout = sponsorshipCheckoutSchema.safeParse(data);
       if (!checkout.success) {
         setSubmitError(
           "Unable to read checkout status. Retry to resume your payment."
@@ -158,70 +126,51 @@ export function SponsorshipCheckoutDialog({
         <DialogHeader>
           <DialogTitle>Sponsor with {tier.name}</DialogTitle>
           <DialogDescription>
-            {sponsorName} · {formatMoney(tier.price, currency)}. Your brand
-            appears after payment succeeds.
+            {sponsorName} · {formatMoney(tier.priceMinor, currency)}. Your
+            profile brand and logo appear on the tournament page after payment
+            succeeds.
           </DialogDescription>
         </DialogHeader>
-        <form onSubmit={submit} noValidate className="flex flex-col gap-6">
-          <FieldGroup>
-            <Field data-invalid={Boolean(errors.websiteUrl)}>
-              <FieldLabel htmlFor="sponsor-website">Brand website</FieldLabel>
-              <Input
-                id="sponsor-website"
-                type="url"
-                value={websiteUrl}
-                onChange={(event) => setWebsiteUrl(event.target.value)}
-                placeholder="https://your-brand.com"
-                aria-invalid={Boolean(errors.websiteUrl)}
-                disabled={busy}
+        <form onSubmit={submit} noValidate className="flex flex-col gap-5">
+          {hasBrandAssets ? (
+            <div className="border-border bg-muted/30 flex items-center gap-4 rounded-lg border p-3">
+              <Image
+                src={logoUrl}
+                alt={`${sponsorName} logo`}
+                width={96}
+                height={64}
+                unoptimized
+                className="bg-background h-16 w-24 shrink-0 rounded-md object-contain p-1"
               />
-              <FieldDescription>
-                Your logo will link to this website.
-              </FieldDescription>
-              {errors.websiteUrl && (
-                <FieldError>{errors.websiteUrl}</FieldError>
-              )}
-            </Field>
-            <Field data-invalid={Boolean(errors.logo)}>
-              <FieldLabel htmlFor="sponsor-logo">Brand logo</FieldLabel>
-              <Input
-                id="sponsor-logo"
-                type="file"
-                accept="image/png,image/jpeg"
-                onChange={(event) => {
-                  const file = event.target.files?.[0];
-                  setLogo(file);
-                  setPreview(
-                    file &&
-                      ["image/png", "image/jpeg"].includes(file.type) &&
-                      file.size <= 1024 * 1024
-                      ? URL.createObjectURL(file)
-                      : ""
-                  );
-                }}
-                aria-invalid={Boolean(errors.logo)}
-                disabled={busy}
-              />
-              <FieldDescription>
-                PNG or JPEG, up to 1 MB and 4096 × 4096 pixels.
-              </FieldDescription>
-              {errors.logo && <FieldError>{errors.logo}</FieldError>}
-              {preview && (
-                <Image
-                  src={preview}
-                  alt="Selected brand logo preview"
-                  width={160}
-                  height={96}
-                  unoptimized
-                  className="bg-background mt-2 h-24 w-40 rounded-md border object-contain p-2"
-                />
-              )}
-            </Field>
-          </FieldGroup>
+              <div className="min-w-0 flex-1 text-sm">
+                <p className="font-semibold wrap-anywhere">{sponsorName}</p>
+                <p className="text-muted-foreground truncate">{websiteUrl}</p>
+              </div>
+            </div>
+          ) : (
+            <Alert variant="destructive">
+              <AlertTitle>Brand profile incomplete</AlertTitle>
+              <AlertDescription className="flex flex-col gap-3">
+                <span>
+                  Add your brand website and logo image URL in Sponsor Profile
+                  settings before checking out.
+                </span>
+                <div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    render={<Link href="/settings" />}
+                    nativeButton={false}
+                  >
+                    Open Sponsor Profile
+                  </Button>
+                </div>
+              </AlertDescription>
+            </Alert>
+          )}
           <p className="text-muted-foreground text-sm">
-            Complete payment within 15 minutes. Verification outages may keep
-            the slot reserved longer. Resume interrupted checkout from My
-            payments.
+            Complete payment within 15 minutes. Resume interrupted checkout from
+            My payments.
           </p>
           {submitError && (
             <Alert variant="destructive">
@@ -238,7 +187,7 @@ export function SponsorshipCheckoutDialog({
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={busy}>
+            <Button type="submit" disabled={busy || !hasBrandAssets}>
               {busy && <Spinner data-icon="inline-start" />}Continue to payment
             </Button>
           </DialogFooter>

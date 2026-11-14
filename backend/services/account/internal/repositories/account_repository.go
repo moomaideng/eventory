@@ -23,6 +23,7 @@ type AccountRepository interface {
 	FindOrganizerProfilesByIDs(ctx context.Context, ids []uuid.UUID) ([]models.OrganizerProfile, error)
 	UpsertOrganizerProfile(ctx context.Context, profile *models.OrganizerProfile) (*models.OrganizerProfile, error)
 	FindSponsorProfileByAccountID(ctx context.Context, accountID uuid.UUID) (*models.SponsorProfile, error)
+	FindSponsorProfilesByIDs(ctx context.Context, ids []uuid.UUID) ([]models.SponsorProfile, error)
 	UpsertSponsorProfile(ctx context.Context, profile *models.SponsorProfile) (*models.SponsorProfile, error)
 	ListVisibleSponsorProfiles(ctx context.Context, search, tag string, page, pageSize int) ([]models.SponsorProfile, int64, error)
 	ListSponsorTags(ctx context.Context) ([]string, error)
@@ -57,7 +58,7 @@ func (r *accountRepositoryImpl) FindByIDs(ctx context.Context, ids []uuid.UUID) 
 		return nil, nil
 	}
 	var accounts []models.Account
-	if err := r.db.WithContext(ctx).Preload("SponsorProfile").Where("id IN ?", ids).Find(&accounts).Error; err != nil {
+	if err := r.db.WithContext(ctx).Where("id IN ?", ids).Find(&accounts).Error; err != nil {
 		return nil, err
 	}
 	return accounts, nil
@@ -112,13 +113,22 @@ func (r *accountRepositoryImpl) FindOrganizerProfileByAccountID(ctx context.Cont
 	return &profile, nil
 }
 
-// FindOrganizerProfilesByIDs retrieves organizer profiles matching the given profile UUIDs (account IDs).
+// FindOrganizerProfilesByIDs retrieves organizer profiles matching the given account IDs.
 func (r *accountRepositoryImpl) FindOrganizerProfilesByIDs(ctx context.Context, ids []uuid.UUID) ([]models.OrganizerProfile, error) {
+	return findByAccountIDs[models.OrganizerProfile](ctx, r.db, ids)
+}
+
+// FindSponsorProfilesByIDs retrieves sponsor profiles matching the given account IDs.
+func (r *accountRepositoryImpl) FindSponsorProfilesByIDs(ctx context.Context, ids []uuid.UUID) ([]models.SponsorProfile, error) {
+	return findByAccountIDs[models.SponsorProfile](ctx, r.db, ids)
+}
+
+func findByAccountIDs[T any](ctx context.Context, db *gorm.DB, ids []uuid.UUID) ([]T, error) {
 	if len(ids) == 0 {
 		return nil, nil
 	}
-	var profiles []models.OrganizerProfile
-	if err := r.db.WithContext(ctx).Where("account_id IN ?", ids).Find(&profiles).Error; err != nil {
+	var profiles []T
+	if err := db.WithContext(ctx).Where("account_id IN ?", ids).Find(&profiles).Error; err != nil {
 		return nil, err
 	}
 	return profiles, nil
@@ -184,6 +194,8 @@ func (r *accountRepositoryImpl) UpsertSponsorProfile(ctx context.Context, profil
 					fallback.SponsorName = profile.SponsorName
 					fallback.SponsorEmail = profile.SponsorEmail
 					fallback.Phone = profile.Phone
+					fallback.WebsiteURL = profile.WebsiteURL
+					fallback.LogoURL = profile.LogoURL
 					fallback.Tags = profile.Tags
 					if err := r.db.WithContext(ctx).Save(&fallback).Error; err != nil {
 						return nil, err
@@ -200,6 +212,8 @@ func (r *accountRepositoryImpl) UpsertSponsorProfile(ctx context.Context, profil
 	existing.SponsorName = profile.SponsorName
 	existing.SponsorEmail = profile.SponsorEmail
 	existing.Phone = profile.Phone
+	existing.WebsiteURL = profile.WebsiteURL
+	existing.LogoURL = profile.LogoURL
 	existing.Tags = profile.Tags
 	if err := r.db.WithContext(ctx).Save(&existing).Error; err != nil {
 		return nil, err

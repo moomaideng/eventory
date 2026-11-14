@@ -63,7 +63,7 @@ All backend services (`services/tournament`, `services/account`, `services/payme
 - Keep files focused and readable.
 - Pass all required dependencies (Repositories, Ports, Services) through constructor functions (`New<Component>UseCase(...)`).
 - Never use `.With<Dependency>(...)` chaining to resolve circular dependencies between use cases. Merge the overlapping concepts into a single domain usecase instead.
-- Since this is a student project, never care about backward compatibility or migration unless requested otherwise.
+- **No Legacy Migration or Backward-Compatibility Shims:** This is a student project in early active development. When changing DB models, gRPC contracts, or REST DTOs, update them cleanly rather than keeping deprecated fields, dual-read fallbacks, or custom SQL backfill scripts—the database is reset and GORM `AutoMigrate` manages schema creation.
 - Whenever routes, operations, path parameters, query parameters, request bodies, or response DTOs are added or modified:
   ```bash
   npm --prefix frontend run openapi:generate

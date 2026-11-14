@@ -27,8 +27,7 @@ type Account struct {
 	Handle        string                 `protobuf:"bytes,2,opt,name=handle,proto3" json:"handle,omitempty"`
 	DisplayName   string                 `protobuf:"bytes,3,opt,name=display_name,json=displayName,proto3" json:"display_name,omitempty"`
 	Status        string                 `protobuf:"bytes,4,opt,name=status,proto3" json:"status,omitempty"`
-	SponsorName   string                 `protobuf:"bytes,5,opt,name=sponsor_name,json=sponsorName,proto3" json:"sponsor_name,omitempty"`
-	Email         string                 `protobuf:"bytes,6,opt,name=email,proto3" json:"email,omitempty"`
+	Email         string                 `protobuf:"bytes,5,opt,name=email,proto3" json:"email,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -87,13 +86,6 @@ func (x *Account) GetDisplayName() string {
 func (x *Account) GetStatus() string {
 	if x != nil {
 		return x.Status
-	}
-	return ""
-}
-
-func (x *Account) GetSponsorName() string {
-	if x != nil {
-		return x.SponsorName
 	}
 	return ""
 }
@@ -157,6 +149,74 @@ func (x *OrganizerProfile) GetOrganizerName() string {
 	return ""
 }
 
+type SponsorProfile struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	AccountId     string                 `protobuf:"bytes,1,opt,name=account_id,json=accountId,proto3" json:"account_id,omitempty"`
+	SponsorName   string                 `protobuf:"bytes,2,opt,name=sponsor_name,json=sponsorName,proto3" json:"sponsor_name,omitempty"`
+	WebsiteUrl    string                 `protobuf:"bytes,3,opt,name=website_url,json=websiteUrl,proto3" json:"website_url,omitempty"`
+	LogoUrl       string                 `protobuf:"bytes,4,opt,name=logo_url,json=logoUrl,proto3" json:"logo_url,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SponsorProfile) Reset() {
+	*x = SponsorProfile{}
+	mi := &file_account_v1_account_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SponsorProfile) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SponsorProfile) ProtoMessage() {}
+
+func (x *SponsorProfile) ProtoReflect() protoreflect.Message {
+	mi := &file_account_v1_account_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SponsorProfile.ProtoReflect.Descriptor instead.
+func (*SponsorProfile) Descriptor() ([]byte, []int) {
+	return file_account_v1_account_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *SponsorProfile) GetAccountId() string {
+	if x != nil {
+		return x.AccountId
+	}
+	return ""
+}
+
+func (x *SponsorProfile) GetSponsorName() string {
+	if x != nil {
+		return x.SponsorName
+	}
+	return ""
+}
+
+func (x *SponsorProfile) GetWebsiteUrl() string {
+	if x != nil {
+		return x.WebsiteUrl
+	}
+	return ""
+}
+
+func (x *SponsorProfile) GetLogoUrl() string {
+	if x != nil {
+		return x.LogoUrl
+	}
+	return ""
+}
+
 type BatchGetAccountsRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	AccountIds    []string               `protobuf:"bytes,1,rep,name=account_ids,json=accountIds,proto3" json:"account_ids,omitempty"`
@@ -166,7 +226,7 @@ type BatchGetAccountsRequest struct {
 
 func (x *BatchGetAccountsRequest) Reset() {
 	*x = BatchGetAccountsRequest{}
-	mi := &file_account_v1_account_proto_msgTypes[2]
+	mi := &file_account_v1_account_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -178,7 +238,7 @@ func (x *BatchGetAccountsRequest) String() string {
 func (*BatchGetAccountsRequest) ProtoMessage() {}
 
 func (x *BatchGetAccountsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_account_v1_account_proto_msgTypes[2]
+	mi := &file_account_v1_account_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -191,7 +251,7 @@ func (x *BatchGetAccountsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use BatchGetAccountsRequest.ProtoReflect.Descriptor instead.
 func (*BatchGetAccountsRequest) Descriptor() ([]byte, []int) {
-	return file_account_v1_account_proto_rawDescGZIP(), []int{2}
+	return file_account_v1_account_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *BatchGetAccountsRequest) GetAccountIds() []string {
@@ -211,7 +271,7 @@ type BatchGetAccountsResponse struct {
 
 func (x *BatchGetAccountsResponse) Reset() {
 	*x = BatchGetAccountsResponse{}
-	mi := &file_account_v1_account_proto_msgTypes[3]
+	mi := &file_account_v1_account_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -223,7 +283,7 @@ func (x *BatchGetAccountsResponse) String() string {
 func (*BatchGetAccountsResponse) ProtoMessage() {}
 
 func (x *BatchGetAccountsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_account_v1_account_proto_msgTypes[3]
+	mi := &file_account_v1_account_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -236,7 +296,7 @@ func (x *BatchGetAccountsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use BatchGetAccountsResponse.ProtoReflect.Descriptor instead.
 func (*BatchGetAccountsResponse) Descriptor() ([]byte, []int) {
-	return file_account_v1_account_proto_rawDescGZIP(), []int{3}
+	return file_account_v1_account_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *BatchGetAccountsResponse) GetAccounts() []*Account {
@@ -262,7 +322,7 @@ type BatchGetOrganizerProfilesRequest struct {
 
 func (x *BatchGetOrganizerProfilesRequest) Reset() {
 	*x = BatchGetOrganizerProfilesRequest{}
-	mi := &file_account_v1_account_proto_msgTypes[4]
+	mi := &file_account_v1_account_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -274,7 +334,7 @@ func (x *BatchGetOrganizerProfilesRequest) String() string {
 func (*BatchGetOrganizerProfilesRequest) ProtoMessage() {}
 
 func (x *BatchGetOrganizerProfilesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_account_v1_account_proto_msgTypes[4]
+	mi := &file_account_v1_account_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -287,7 +347,7 @@ func (x *BatchGetOrganizerProfilesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use BatchGetOrganizerProfilesRequest.ProtoReflect.Descriptor instead.
 func (*BatchGetOrganizerProfilesRequest) Descriptor() ([]byte, []int) {
-	return file_account_v1_account_proto_rawDescGZIP(), []int{4}
+	return file_account_v1_account_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *BatchGetOrganizerProfilesRequest) GetOrganizerProfileIds() []string {
@@ -307,7 +367,7 @@ type BatchGetOrganizerProfilesResponse struct {
 
 func (x *BatchGetOrganizerProfilesResponse) Reset() {
 	*x = BatchGetOrganizerProfilesResponse{}
-	mi := &file_account_v1_account_proto_msgTypes[5]
+	mi := &file_account_v1_account_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -319,7 +379,7 @@ func (x *BatchGetOrganizerProfilesResponse) String() string {
 func (*BatchGetOrganizerProfilesResponse) ProtoMessage() {}
 
 func (x *BatchGetOrganizerProfilesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_account_v1_account_proto_msgTypes[5]
+	mi := &file_account_v1_account_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -332,7 +392,7 @@ func (x *BatchGetOrganizerProfilesResponse) ProtoReflect() protoreflect.Message 
 
 // Deprecated: Use BatchGetOrganizerProfilesResponse.ProtoReflect.Descriptor instead.
 func (*BatchGetOrganizerProfilesResponse) Descriptor() ([]byte, []int) {
-	return file_account_v1_account_proto_rawDescGZIP(), []int{5}
+	return file_account_v1_account_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *BatchGetOrganizerProfilesResponse) GetProfiles() []*OrganizerProfile {
@@ -358,7 +418,7 @@ type GetOrganizerProfileByAccountIDRequest struct {
 
 func (x *GetOrganizerProfileByAccountIDRequest) Reset() {
 	*x = GetOrganizerProfileByAccountIDRequest{}
-	mi := &file_account_v1_account_proto_msgTypes[6]
+	mi := &file_account_v1_account_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -370,7 +430,7 @@ func (x *GetOrganizerProfileByAccountIDRequest) String() string {
 func (*GetOrganizerProfileByAccountIDRequest) ProtoMessage() {}
 
 func (x *GetOrganizerProfileByAccountIDRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_account_v1_account_proto_msgTypes[6]
+	mi := &file_account_v1_account_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -383,7 +443,7 @@ func (x *GetOrganizerProfileByAccountIDRequest) ProtoReflect() protoreflect.Mess
 
 // Deprecated: Use GetOrganizerProfileByAccountIDRequest.ProtoReflect.Descriptor instead.
 func (*GetOrganizerProfileByAccountIDRequest) Descriptor() ([]byte, []int) {
-	return file_account_v1_account_proto_rawDescGZIP(), []int{6}
+	return file_account_v1_account_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *GetOrganizerProfileByAccountIDRequest) GetAccountId() string {
@@ -402,7 +462,7 @@ type GetOrganizerProfileByAccountIDResponse struct {
 
 func (x *GetOrganizerProfileByAccountIDResponse) Reset() {
 	*x = GetOrganizerProfileByAccountIDResponse{}
-	mi := &file_account_v1_account_proto_msgTypes[7]
+	mi := &file_account_v1_account_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -414,7 +474,7 @@ func (x *GetOrganizerProfileByAccountIDResponse) String() string {
 func (*GetOrganizerProfileByAccountIDResponse) ProtoMessage() {}
 
 func (x *GetOrganizerProfileByAccountIDResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_account_v1_account_proto_msgTypes[7]
+	mi := &file_account_v1_account_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -427,10 +487,194 @@ func (x *GetOrganizerProfileByAccountIDResponse) ProtoReflect() protoreflect.Mes
 
 // Deprecated: Use GetOrganizerProfileByAccountIDResponse.ProtoReflect.Descriptor instead.
 func (*GetOrganizerProfileByAccountIDResponse) Descriptor() ([]byte, []int) {
-	return file_account_v1_account_proto_rawDescGZIP(), []int{7}
+	return file_account_v1_account_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *GetOrganizerProfileByAccountIDResponse) GetProfile() *OrganizerProfile {
+	if x != nil {
+		return x.Profile
+	}
+	return nil
+}
+
+type BatchGetSponsorProfilesRequest struct {
+	state             protoimpl.MessageState `protogen:"open.v1"`
+	SponsorProfileIds []string               `protobuf:"bytes,1,rep,name=sponsor_profile_ids,json=sponsorProfileIds,proto3" json:"sponsor_profile_ids,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
+}
+
+func (x *BatchGetSponsorProfilesRequest) Reset() {
+	*x = BatchGetSponsorProfilesRequest{}
+	mi := &file_account_v1_account_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *BatchGetSponsorProfilesRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*BatchGetSponsorProfilesRequest) ProtoMessage() {}
+
+func (x *BatchGetSponsorProfilesRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_account_v1_account_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use BatchGetSponsorProfilesRequest.ProtoReflect.Descriptor instead.
+func (*BatchGetSponsorProfilesRequest) Descriptor() ([]byte, []int) {
+	return file_account_v1_account_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *BatchGetSponsorProfilesRequest) GetSponsorProfileIds() []string {
+	if x != nil {
+		return x.SponsorProfileIds
+	}
+	return nil
+}
+
+type BatchGetSponsorProfilesResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Profiles      []*SponsorProfile      `protobuf:"bytes,1,rep,name=profiles,proto3" json:"profiles,omitempty"`
+	NotFoundIds   []string               `protobuf:"bytes,2,rep,name=not_found_ids,json=notFoundIds,proto3" json:"not_found_ids,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *BatchGetSponsorProfilesResponse) Reset() {
+	*x = BatchGetSponsorProfilesResponse{}
+	mi := &file_account_v1_account_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *BatchGetSponsorProfilesResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*BatchGetSponsorProfilesResponse) ProtoMessage() {}
+
+func (x *BatchGetSponsorProfilesResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_account_v1_account_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use BatchGetSponsorProfilesResponse.ProtoReflect.Descriptor instead.
+func (*BatchGetSponsorProfilesResponse) Descriptor() ([]byte, []int) {
+	return file_account_v1_account_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *BatchGetSponsorProfilesResponse) GetProfiles() []*SponsorProfile {
+	if x != nil {
+		return x.Profiles
+	}
+	return nil
+}
+
+func (x *BatchGetSponsorProfilesResponse) GetNotFoundIds() []string {
+	if x != nil {
+		return x.NotFoundIds
+	}
+	return nil
+}
+
+type GetSponsorProfileByAccountIDRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	AccountId     string                 `protobuf:"bytes,1,opt,name=account_id,json=accountId,proto3" json:"account_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetSponsorProfileByAccountIDRequest) Reset() {
+	*x = GetSponsorProfileByAccountIDRequest{}
+	mi := &file_account_v1_account_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetSponsorProfileByAccountIDRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetSponsorProfileByAccountIDRequest) ProtoMessage() {}
+
+func (x *GetSponsorProfileByAccountIDRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_account_v1_account_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetSponsorProfileByAccountIDRequest.ProtoReflect.Descriptor instead.
+func (*GetSponsorProfileByAccountIDRequest) Descriptor() ([]byte, []int) {
+	return file_account_v1_account_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *GetSponsorProfileByAccountIDRequest) GetAccountId() string {
+	if x != nil {
+		return x.AccountId
+	}
+	return ""
+}
+
+type GetSponsorProfileByAccountIDResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Profile       *SponsorProfile        `protobuf:"bytes,1,opt,name=profile,proto3" json:"profile,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetSponsorProfileByAccountIDResponse) Reset() {
+	*x = GetSponsorProfileByAccountIDResponse{}
+	mi := &file_account_v1_account_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetSponsorProfileByAccountIDResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetSponsorProfileByAccountIDResponse) ProtoMessage() {}
+
+func (x *GetSponsorProfileByAccountIDResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_account_v1_account_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetSponsorProfileByAccountIDResponse.ProtoReflect.Descriptor instead.
+func (*GetSponsorProfileByAccountIDResponse) Descriptor() ([]byte, []int) {
+	return file_account_v1_account_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *GetSponsorProfileByAccountIDResponse) GetProfile() *SponsorProfile {
 	if x != nil {
 		return x.Profile
 	}
@@ -446,7 +690,7 @@ type GetAccountByHandleRequest struct {
 
 func (x *GetAccountByHandleRequest) Reset() {
 	*x = GetAccountByHandleRequest{}
-	mi := &file_account_v1_account_proto_msgTypes[8]
+	mi := &file_account_v1_account_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -458,7 +702,7 @@ func (x *GetAccountByHandleRequest) String() string {
 func (*GetAccountByHandleRequest) ProtoMessage() {}
 
 func (x *GetAccountByHandleRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_account_v1_account_proto_msgTypes[8]
+	mi := &file_account_v1_account_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -471,7 +715,7 @@ func (x *GetAccountByHandleRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetAccountByHandleRequest.ProtoReflect.Descriptor instead.
 func (*GetAccountByHandleRequest) Descriptor() ([]byte, []int) {
-	return file_account_v1_account_proto_rawDescGZIP(), []int{8}
+	return file_account_v1_account_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *GetAccountByHandleRequest) GetHandle() string {
@@ -490,7 +734,7 @@ type GetAccountByHandleResponse struct {
 
 func (x *GetAccountByHandleResponse) Reset() {
 	*x = GetAccountByHandleResponse{}
-	mi := &file_account_v1_account_proto_msgTypes[9]
+	mi := &file_account_v1_account_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -502,7 +746,7 @@ func (x *GetAccountByHandleResponse) String() string {
 func (*GetAccountByHandleResponse) ProtoMessage() {}
 
 func (x *GetAccountByHandleResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_account_v1_account_proto_msgTypes[9]
+	mi := &file_account_v1_account_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -515,7 +759,7 @@ func (x *GetAccountByHandleResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetAccountByHandleResponse.ProtoReflect.Descriptor instead.
 func (*GetAccountByHandleResponse) Descriptor() ([]byte, []int) {
-	return file_account_v1_account_proto_rawDescGZIP(), []int{9}
+	return file_account_v1_account_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *GetAccountByHandleResponse) GetAccount() *Account {
@@ -530,18 +774,24 @@ var File_account_v1_account_proto protoreflect.FileDescriptor
 const file_account_v1_account_proto_rawDesc = "" +
 	"\n" +
 	"\x18account/v1/account.proto\x12\n" +
-	"account.v1\"\xa5\x01\n" +
+	"account.v1\"\x82\x01\n" +
 	"\aAccount\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x16\n" +
 	"\x06handle\x18\x02 \x01(\tR\x06handle\x12!\n" +
 	"\fdisplay_name\x18\x03 \x01(\tR\vdisplayName\x12\x16\n" +
-	"\x06status\x18\x04 \x01(\tR\x06status\x12!\n" +
-	"\fsponsor_name\x18\x05 \x01(\tR\vsponsorName\x12\x14\n" +
-	"\x05email\x18\x06 \x01(\tR\x05email\"X\n" +
+	"\x06status\x18\x04 \x01(\tR\x06status\x12\x14\n" +
+	"\x05email\x18\x05 \x01(\tR\x05email\"X\n" +
 	"\x10OrganizerProfile\x12\x1d\n" +
 	"\n" +
 	"account_id\x18\x01 \x01(\tR\taccountId\x12%\n" +
-	"\x0eorganizer_name\x18\x02 \x01(\tR\rorganizerName\":\n" +
+	"\x0eorganizer_name\x18\x02 \x01(\tR\rorganizerName\"\x8e\x01\n" +
+	"\x0eSponsorProfile\x12\x1d\n" +
+	"\n" +
+	"account_id\x18\x01 \x01(\tR\taccountId\x12!\n" +
+	"\fsponsor_name\x18\x02 \x01(\tR\vsponsorName\x12\x1f\n" +
+	"\vwebsite_url\x18\x03 \x01(\tR\n" +
+	"websiteUrl\x12\x19\n" +
+	"\blogo_url\x18\x04 \x01(\tR\alogoUrl\":\n" +
 	"\x17BatchGetAccountsRequest\x12\x1f\n" +
 	"\vaccount_ids\x18\x01 \x03(\tR\n" +
 	"accountIds\"o\n" +
@@ -557,15 +807,27 @@ const file_account_v1_account_proto_rawDesc = "" +
 	"\n" +
 	"account_id\x18\x01 \x01(\tR\taccountId\"`\n" +
 	"&GetOrganizerProfileByAccountIDResponse\x126\n" +
-	"\aprofile\x18\x01 \x01(\v2\x1c.account.v1.OrganizerProfileR\aprofile\"3\n" +
+	"\aprofile\x18\x01 \x01(\v2\x1c.account.v1.OrganizerProfileR\aprofile\"P\n" +
+	"\x1eBatchGetSponsorProfilesRequest\x12.\n" +
+	"\x13sponsor_profile_ids\x18\x01 \x03(\tR\x11sponsorProfileIds\"}\n" +
+	"\x1fBatchGetSponsorProfilesResponse\x126\n" +
+	"\bprofiles\x18\x01 \x03(\v2\x1a.account.v1.SponsorProfileR\bprofiles\x12\"\n" +
+	"\rnot_found_ids\x18\x02 \x03(\tR\vnotFoundIds\"D\n" +
+	"#GetSponsorProfileByAccountIDRequest\x12\x1d\n" +
+	"\n" +
+	"account_id\x18\x01 \x01(\tR\taccountId\"\\\n" +
+	"$GetSponsorProfileByAccountIDResponse\x124\n" +
+	"\aprofile\x18\x01 \x01(\v2\x1a.account.v1.SponsorProfileR\aprofile\"3\n" +
 	"\x19GetAccountByHandleRequest\x12\x16\n" +
 	"\x06handle\x18\x01 \x01(\tR\x06handle\"K\n" +
 	"\x1aGetAccountByHandleResponse\x12-\n" +
-	"\aaccount\x18\x01 \x01(\v2\x13.account.v1.AccountR\aaccount2\xd8\x03\n" +
+	"\aaccount\x18\x01 \x01(\v2\x13.account.v1.AccountR\aaccount2\xd0\x05\n" +
 	"\x0eAccountService\x12]\n" +
 	"\x10BatchGetAccounts\x12#.account.v1.BatchGetAccountsRequest\x1a$.account.v1.BatchGetAccountsResponse\x12x\n" +
 	"\x19BatchGetOrganizerProfiles\x12,.account.v1.BatchGetOrganizerProfilesRequest\x1a-.account.v1.BatchGetOrganizerProfilesResponse\x12\x87\x01\n" +
-	"\x1eGetOrganizerProfileByAccountID\x121.account.v1.GetOrganizerProfileByAccountIDRequest\x1a2.account.v1.GetOrganizerProfileByAccountIDResponse\x12c\n" +
+	"\x1eGetOrganizerProfileByAccountID\x121.account.v1.GetOrganizerProfileByAccountIDRequest\x1a2.account.v1.GetOrganizerProfileByAccountIDResponse\x12r\n" +
+	"\x17BatchGetSponsorProfiles\x12*.account.v1.BatchGetSponsorProfilesRequest\x1a+.account.v1.BatchGetSponsorProfilesResponse\x12\x81\x01\n" +
+	"\x1cGetSponsorProfileByAccountID\x12/.account.v1.GetSponsorProfileByAccountIDRequest\x1a0.account.v1.GetSponsorProfileByAccountIDResponse\x12c\n" +
 	"\x12GetAccountByHandle\x12%.account.v1.GetAccountByHandleRequest\x1a&.account.v1.GetAccountByHandleResponseBPZNgithub.com/moomaideng/eventory/services/account/pkg/proto/account/v1;accountv1b\x06proto3"
 
 var (
@@ -580,37 +842,48 @@ func file_account_v1_account_proto_rawDescGZIP() []byte {
 	return file_account_v1_account_proto_rawDescData
 }
 
-var file_account_v1_account_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
+var file_account_v1_account_proto_msgTypes = make([]protoimpl.MessageInfo, 15)
 var file_account_v1_account_proto_goTypes = []any{
 	(*Account)(nil),                                // 0: account.v1.Account
 	(*OrganizerProfile)(nil),                       // 1: account.v1.OrganizerProfile
-	(*BatchGetAccountsRequest)(nil),                // 2: account.v1.BatchGetAccountsRequest
-	(*BatchGetAccountsResponse)(nil),               // 3: account.v1.BatchGetAccountsResponse
-	(*BatchGetOrganizerProfilesRequest)(nil),       // 4: account.v1.BatchGetOrganizerProfilesRequest
-	(*BatchGetOrganizerProfilesResponse)(nil),      // 5: account.v1.BatchGetOrganizerProfilesResponse
-	(*GetOrganizerProfileByAccountIDRequest)(nil),  // 6: account.v1.GetOrganizerProfileByAccountIDRequest
-	(*GetOrganizerProfileByAccountIDResponse)(nil), // 7: account.v1.GetOrganizerProfileByAccountIDResponse
-	(*GetAccountByHandleRequest)(nil),              // 8: account.v1.GetAccountByHandleRequest
-	(*GetAccountByHandleResponse)(nil),             // 9: account.v1.GetAccountByHandleResponse
+	(*SponsorProfile)(nil),                         // 2: account.v1.SponsorProfile
+	(*BatchGetAccountsRequest)(nil),                // 3: account.v1.BatchGetAccountsRequest
+	(*BatchGetAccountsResponse)(nil),               // 4: account.v1.BatchGetAccountsResponse
+	(*BatchGetOrganizerProfilesRequest)(nil),       // 5: account.v1.BatchGetOrganizerProfilesRequest
+	(*BatchGetOrganizerProfilesResponse)(nil),      // 6: account.v1.BatchGetOrganizerProfilesResponse
+	(*GetOrganizerProfileByAccountIDRequest)(nil),  // 7: account.v1.GetOrganizerProfileByAccountIDRequest
+	(*GetOrganizerProfileByAccountIDResponse)(nil), // 8: account.v1.GetOrganizerProfileByAccountIDResponse
+	(*BatchGetSponsorProfilesRequest)(nil),         // 9: account.v1.BatchGetSponsorProfilesRequest
+	(*BatchGetSponsorProfilesResponse)(nil),        // 10: account.v1.BatchGetSponsorProfilesResponse
+	(*GetSponsorProfileByAccountIDRequest)(nil),    // 11: account.v1.GetSponsorProfileByAccountIDRequest
+	(*GetSponsorProfileByAccountIDResponse)(nil),   // 12: account.v1.GetSponsorProfileByAccountIDResponse
+	(*GetAccountByHandleRequest)(nil),              // 13: account.v1.GetAccountByHandleRequest
+	(*GetAccountByHandleResponse)(nil),             // 14: account.v1.GetAccountByHandleResponse
 }
 var file_account_v1_account_proto_depIdxs = []int32{
-	0, // 0: account.v1.BatchGetAccountsResponse.accounts:type_name -> account.v1.Account
-	1, // 1: account.v1.BatchGetOrganizerProfilesResponse.profiles:type_name -> account.v1.OrganizerProfile
-	1, // 2: account.v1.GetOrganizerProfileByAccountIDResponse.profile:type_name -> account.v1.OrganizerProfile
-	0, // 3: account.v1.GetAccountByHandleResponse.account:type_name -> account.v1.Account
-	2, // 4: account.v1.AccountService.BatchGetAccounts:input_type -> account.v1.BatchGetAccountsRequest
-	4, // 5: account.v1.AccountService.BatchGetOrganizerProfiles:input_type -> account.v1.BatchGetOrganizerProfilesRequest
-	6, // 6: account.v1.AccountService.GetOrganizerProfileByAccountID:input_type -> account.v1.GetOrganizerProfileByAccountIDRequest
-	8, // 7: account.v1.AccountService.GetAccountByHandle:input_type -> account.v1.GetAccountByHandleRequest
-	3, // 8: account.v1.AccountService.BatchGetAccounts:output_type -> account.v1.BatchGetAccountsResponse
-	5, // 9: account.v1.AccountService.BatchGetOrganizerProfiles:output_type -> account.v1.BatchGetOrganizerProfilesResponse
-	7, // 10: account.v1.AccountService.GetOrganizerProfileByAccountID:output_type -> account.v1.GetOrganizerProfileByAccountIDResponse
-	9, // 11: account.v1.AccountService.GetAccountByHandle:output_type -> account.v1.GetAccountByHandleResponse
-	8, // [8:12] is the sub-list for method output_type
-	4, // [4:8] is the sub-list for method input_type
-	4, // [4:4] is the sub-list for extension type_name
-	4, // [4:4] is the sub-list for extension extendee
-	0, // [0:4] is the sub-list for field type_name
+	0,  // 0: account.v1.BatchGetAccountsResponse.accounts:type_name -> account.v1.Account
+	1,  // 1: account.v1.BatchGetOrganizerProfilesResponse.profiles:type_name -> account.v1.OrganizerProfile
+	1,  // 2: account.v1.GetOrganizerProfileByAccountIDResponse.profile:type_name -> account.v1.OrganizerProfile
+	2,  // 3: account.v1.BatchGetSponsorProfilesResponse.profiles:type_name -> account.v1.SponsorProfile
+	2,  // 4: account.v1.GetSponsorProfileByAccountIDResponse.profile:type_name -> account.v1.SponsorProfile
+	0,  // 5: account.v1.GetAccountByHandleResponse.account:type_name -> account.v1.Account
+	3,  // 6: account.v1.AccountService.BatchGetAccounts:input_type -> account.v1.BatchGetAccountsRequest
+	5,  // 7: account.v1.AccountService.BatchGetOrganizerProfiles:input_type -> account.v1.BatchGetOrganizerProfilesRequest
+	7,  // 8: account.v1.AccountService.GetOrganizerProfileByAccountID:input_type -> account.v1.GetOrganizerProfileByAccountIDRequest
+	9,  // 9: account.v1.AccountService.BatchGetSponsorProfiles:input_type -> account.v1.BatchGetSponsorProfilesRequest
+	11, // 10: account.v1.AccountService.GetSponsorProfileByAccountID:input_type -> account.v1.GetSponsorProfileByAccountIDRequest
+	13, // 11: account.v1.AccountService.GetAccountByHandle:input_type -> account.v1.GetAccountByHandleRequest
+	4,  // 12: account.v1.AccountService.BatchGetAccounts:output_type -> account.v1.BatchGetAccountsResponse
+	6,  // 13: account.v1.AccountService.BatchGetOrganizerProfiles:output_type -> account.v1.BatchGetOrganizerProfilesResponse
+	8,  // 14: account.v1.AccountService.GetOrganizerProfileByAccountID:output_type -> account.v1.GetOrganizerProfileByAccountIDResponse
+	10, // 15: account.v1.AccountService.BatchGetSponsorProfiles:output_type -> account.v1.BatchGetSponsorProfilesResponse
+	12, // 16: account.v1.AccountService.GetSponsorProfileByAccountID:output_type -> account.v1.GetSponsorProfileByAccountIDResponse
+	14, // 17: account.v1.AccountService.GetAccountByHandle:output_type -> account.v1.GetAccountByHandleResponse
+	12, // [12:18] is the sub-list for method output_type
+	6,  // [6:12] is the sub-list for method input_type
+	6,  // [6:6] is the sub-list for extension type_name
+	6,  // [6:6] is the sub-list for extension extendee
+	0,  // [0:6] is the sub-list for field type_name
 }
 
 func init() { file_account_v1_account_proto_init() }
@@ -624,7 +897,7 @@ func file_account_v1_account_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_account_v1_account_proto_rawDesc), len(file_account_v1_account_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   10,
+			NumMessages:   15,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

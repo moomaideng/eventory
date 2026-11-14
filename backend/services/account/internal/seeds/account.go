@@ -1,6 +1,8 @@
 package seeds
 
 import (
+	"fmt"
+
 	"github.com/google/uuid"
 	"github.com/moomaideng/eventory/services/account/models"
 	"gorm.io/gorm"
@@ -80,6 +82,17 @@ func SeedAccounts(db *gorm.DB) error {
 			Status:      "ACTIVE",
 		},
 	}
+	// The bracket fixtures use distinct competitors within each tournament.
+	// Reusing these accounts across separate tournaments is intentional.
+	for number := 1; number <= 32; number++ {
+		accounts = append(accounts, models.Account{
+			ID:          uuid.MustParse(fmt.Sprintf("00000000-0000-4000-8000-%012d", 100+number)),
+			Email:       fmt.Sprintf("player%02d@example.com", number),
+			Handle:      fmt.Sprintf("player_%02d", number),
+			DisplayName: fmt.Sprintf("Player %02d", number),
+			Status:      models.AccountStatusActive,
+		})
+	}
 
 	if err := db.Clauses(clause.OnConflict{DoNothing: true}).Create(&accounts).Error; err != nil {
 		return err
@@ -116,6 +129,8 @@ func SeedAccounts(db *gorm.DB) error {
 			AccountID:    accounts[0].ID,
 			SponsorName:  "Alex Ventures (Dev)",
 			SponsorEmail: "dev@eventory.gg",
+			WebsiteURL:   "https://alexventures.example.com",
+			LogoURL:      "https://placehold.co/128x128/png?text=AV",
 			Tags:         []string{"gaming"},
 		},
 		// Somchai: Sponsor Profile Only
@@ -123,6 +138,8 @@ func SeedAccounts(db *gorm.DB) error {
 			AccountID:    accounts[2].ID,
 			SponsorName:  "Bright Future Co.",
 			SponsorEmail: "partnerships@example.com",
+			WebsiteURL:   "https://brightfuture.example.com",
+			LogoURL:      "https://placehold.co/128x128/png?text=BF",
 			Tags:         []string{"gaming"},
 		},
 		// Maya: Both Organizer and Sponsor Profiles
@@ -130,6 +147,8 @@ func SeedAccounts(db *gorm.DB) error {
 			AccountID:    accounts[3].ID,
 			SponsorName:  "Maya Works Studio",
 			SponsorEmail: "studio@example.com",
+			WebsiteURL:   "https://mayaworks.example.com",
+			LogoURL:      "https://placehold.co/128x128/png?text=MW",
 			Tags:         []string{"gaming"},
 		},
 	}

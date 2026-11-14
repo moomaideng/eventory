@@ -33,6 +33,12 @@ func (s *stubAccounts) GetOrganizerProfileByAccountID(_ context.Context, account
 	}
 	return &profile, nil
 }
+func (s *stubAccounts) BatchGetSponsorProfiles(context.Context, []uuid.UUID) (map[uuid.UUID]ports.SponsorInfo, error) {
+	return map[uuid.UUID]ports.SponsorInfo{}, nil
+}
+func (s *stubAccounts) GetSponsorProfileByAccountID(context.Context, uuid.UUID) (*ports.SponsorInfo, error) {
+	return nil, ports.ErrSponsorNotFound
+}
 func (s *stubAccounts) GetAccountByHandle(context.Context, string) (*ports.AccountInfo, error) {
 	return nil, ports.ErrAccountNotFound
 }

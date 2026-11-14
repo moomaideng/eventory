@@ -13,6 +13,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/moomaideng/eventory/internal/events"
+	"github.com/moomaideng/eventory/internal/money"
 	"github.com/moomaideng/eventory/services/tournament/internal/forms"
 	"github.com/moomaideng/eventory/services/tournament/internal/ports"
 	"github.com/moomaideng/eventory/services/tournament/internal/repositories"
@@ -495,7 +496,7 @@ func (u *TeamLobbyUseCase) Reconcile(ctx context.Context, team *models.Tournamen
 	request := ports.RegistrationPaymentRequest{
 		PayerAccountID: *team.PaymentPayerID, Source: models.PaymentSourceTeamRegistration,
 		Reference: team.ID.String() + ":" + team.PaymentAttemptID.String(), IdempotencyKey: team.PaymentAttemptID.String(),
-		Description: desc, AmountMinor: team.PaymentAmountMinor, Currency: "THB", ExpiresAt: *team.PaymentExpiresAt,
+		Description: desc, AmountMinor: team.PaymentAmountMinor, Currency: money.CurrencyOrDefault(team.Tournament.Currency), ExpiresAt: *team.PaymentExpiresAt,
 	}
 	payment, err := u.payments.EnsureInvoice(ctx, request)
 	if err != nil {
@@ -678,6 +679,6 @@ func attemptMatches(team *models.TournamentTeam, p PaymentOutcome) bool {
 		team.PaymentPayerID != nil && p.PayerAccountID == *team.PaymentPayerID &&
 		team.PaymentExpiresAt != nil && p.ExpiresAt.Equal(*team.PaymentExpiresAt) &&
 		p.AmountMinor == team.PaymentAmountMinor &&
-		p.Currency == "THB" &&
+		strings.EqualFold(strings.TrimSpace(p.Currency), money.CurrencyOrDefault(team.Tournament.Currency)) &&
 		(team.PaymentID == nil || *team.PaymentID == p.PaymentID)
 }

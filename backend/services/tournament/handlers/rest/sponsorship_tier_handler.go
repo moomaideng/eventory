@@ -4,33 +4,29 @@ import (
 	"context"
 	"errors"
 	"net/http"
-	"time"
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/google/uuid"
 	"github.com/moomaideng/eventory/services/tournament/internal/middlewares"
 	"github.com/moomaideng/eventory/services/tournament/internal/usecases"
-	"github.com/moomaideng/eventory/services/tournament/models"
 )
 
 type SponsorshipTierResponse struct {
 	ID             uuid.UUID `json:"id"`
 	TournamentID   uuid.UUID `json:"tournamentId"`
 	Name           string    `json:"name"`
-	Price          int64     `json:"price" doc:"Price in whole currency units"`
+	PriceMinor     int64     `json:"priceMinor" doc:"Price in minor currency units (satang; 100 satang = 1 THB)"`
 	Slots          int       `json:"slots" doc:"How many sponsors can buy this tier"`
 	AvailableSlots int       `json:"availableSlots" doc:"Slots remaining after pending and confirmed checkouts"`
 	Locked         bool      `json:"locked" doc:"A pending or confirmed checkout prevents editing or deletion"`
 	Perks          []string  `json:"perks"`
-	CreatedAt      time.Time `json:"createdAt"`
-	UpdatedAt      time.Time `json:"updatedAt"`
 }
 
 type SponsorshipTierBody struct {
-	Name  string   `json:"name" minLength:"1" maxLength:"80" doc:"Tier name, e.g. Gold"`
-	Price int64    `json:"price" minimum:"1" doc:"Price in whole currency units"`
-	Slots int      `json:"slots" minimum:"1" doc:"How many sponsors can buy this tier"`
-	Perks []string `json:"perks" minItems:"1" maxItems:"10" doc:"What the sponsor receives"`
+	Name       string   `json:"name" minLength:"1" maxLength:"80" doc:"Tier name, e.g. Gold"`
+	PriceMinor int64    `json:"priceMinor" minimum:"1" maximum:"9007199254740991" doc:"Price in minor currency units (satang; 100 satang = 1 THB)"`
+	Slots      int      `json:"slots" minimum:"1" doc:"How many sponsors can buy this tier"`
+	Perks      []string `json:"perks" minItems:"1" maxItems:"10" doc:"What the sponsor receives"`
 }
 
 type ListSponsorshipTiersInput struct {
@@ -180,7 +176,7 @@ func RegisterSponsorshipTierRoutes(
 	})
 }
 
-func toListSponsorshipTiersOutput(items []models.SponsorshipTier) *ListSponsorshipTiersOutput {
+func toListSponsorshipTiersOutput(items []usecases.SponsorshipTierView) *ListSponsorshipTiersOutput {
 	output := &ListSponsorshipTiersOutput{}
 	output.Body.Items = make([]SponsorshipTierResponse, 0, len(items))
 	for _, tier := range items {
@@ -191,25 +187,23 @@ func toListSponsorshipTiersOutput(items []models.SponsorshipTier) *ListSponsorsh
 
 func toSponsorshipTierInput(body SponsorshipTierBody) usecases.SponsorshipTierInput {
 	return usecases.SponsorshipTierInput{
-		Name:  body.Name,
-		Price: body.Price,
-		Slots: body.Slots,
-		Perks: body.Perks,
+		Name:       body.Name,
+		PriceMinor: body.PriceMinor,
+		Slots:      body.Slots,
+		Perks:      body.Perks,
 	}
 }
 
-func toSponsorshipTierResponse(tier models.SponsorshipTier) SponsorshipTierResponse {
+func toSponsorshipTierResponse(tier usecases.SponsorshipTierView) SponsorshipTierResponse {
 	return SponsorshipTierResponse{
 		ID:             tier.ID,
 		TournamentID:   tier.TournamentID,
 		Name:           tier.Name,
-		Price:          tier.Price,
+		PriceMinor:     tier.PriceMinor,
 		Slots:          tier.Slots,
 		AvailableSlots: tier.AvailableSlots,
 		Locked:         tier.Locked,
 		Perks:          tier.Perks,
-		CreatedAt:      tier.CreatedAt,
-		UpdatedAt:      tier.UpdatedAt,
 	}
 }
 

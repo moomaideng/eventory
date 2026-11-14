@@ -51,7 +51,9 @@ export function TournamentStatusTimeline({
   const status = tournament.status;
   const { now, tiers, matches } = useLifecycleData({ tournamentId, status, isOwner });
 
-  const underGoal = status === "CROWDFUNDING" && funding.raisedAmount < funding.goalAmount;
+  const underGoal =
+    status === "CROWDFUNDING" &&
+    funding.raisedAmountMinor < funding.goalAmountMinor;
   const forceOpen = underGoal && force;
 
   function handleFix(fix: RequirementFix) {
@@ -97,7 +99,7 @@ export function TournamentStatusTimeline({
       aria-label="Tournament stage"
       className="flex flex-col gap-5 rounded-xl border bg-card p-4 sm:p-6"
     >
-      <LifecycleStepper status={status} fundingGoal={funding.goalAmount} />
+      <LifecycleStepper status={status} fundingGoal={funding.goalAmountMinor} />
       <Separator />
 
       {apiError ? (
@@ -161,7 +163,9 @@ export function TournamentStatusTimeline({
                 className="mt-0.5 size-4 shrink-0 rounded border-border accent-primary"
               />
               <label htmlFor="force-reg-checkbox" className="cursor-pointer">
-                The goal isn&apos;t reached yet ({formatMoney(funding.remainingAmount, funding.currency)} to go).
+                The goal isn&apos;t reached yet (
+                {formatMoney(funding.remainingAmountMinor, funding.currency)} to
+                go).
                 Open registration anyway.
               </label>
             </div>

@@ -75,6 +75,40 @@ func (s *AccountServer) GetOrganizerProfileByAccountID(ctx context.Context, req 
 	return &accountv1.GetOrganizerProfileByAccountIDResponse{Profile: toProtoOrganizer(profile)}, nil
 }
 
+func (s *AccountServer) BatchGetSponsorProfiles(ctx context.Context, req *accountv1.BatchGetSponsorProfilesRequest) (*accountv1.BatchGetSponsorProfilesResponse, error) {
+	ids, err := parseIDs(req.GetSponsorProfileIds())
+	if err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, "invalid sponsor_profile_ids: %v", err)
+	}
+	found, missing, err := s.accounts.BatchGetSponsorProfiles(ctx, ids)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "batch get sponsor profiles: %v", err)
+	}
+	resp := &accountv1.BatchGetSponsorProfilesResponse{
+		Profiles:    make([]*accountv1.SponsorProfile, 0, len(found)),
+		NotFoundIds: uuidStrings(missing),
+	}
+	for _, profile := range found {
+		resp.Profiles = append(resp.Profiles, toProtoSponsor(&profile))
+	}
+	return resp, nil
+}
+
+func (s *AccountServer) GetSponsorProfileByAccountID(ctx context.Context, req *accountv1.GetSponsorProfileByAccountIDRequest) (*accountv1.GetSponsorProfileByAccountIDResponse, error) {
+	accountID, err := uuid.Parse(req.GetAccountId())
+	if err != nil || accountID == uuid.Nil {
+		return nil, status.Errorf(codes.InvalidArgument, "invalid account_id")
+	}
+	profile, err := s.accounts.GetSponsorProfile(ctx, accountID)
+	if err != nil {
+		if errors.Is(err, usecases.ErrSponsorProfileNotFound) {
+			return nil, status.Error(codes.NotFound, "sponsor profile not found")
+		}
+		return nil, status.Errorf(codes.Internal, "get sponsor profile: %v", err)
+	}
+	return &accountv1.GetSponsorProfileByAccountIDResponse{Profile: toProtoSponsor(profile)}, nil
+}
+
 func (s *AccountServer) GetAccountByHandle(ctx context.Context, req *accountv1.GetAccountByHandleRequest) (*accountv1.GetAccountByHandleResponse, error) {
 	handle := strings.TrimSpace(req.GetHandle())
 	if handle == "" {
@@ -94,16 +128,11 @@ func (s *AccountServer) GetAccountByHandle(ctx context.Context, req *accountv1.G
 }
 
 func toProtoAccount(account *models.Account) *accountv1.Account {
-	var sponsorName string
-	if account.SponsorProfile != nil {
-		sponsorName = account.SponsorProfile.SponsorName
-	}
 	return &accountv1.Account{
 		Id:          account.ID.String(),
 		Handle:      account.Handle,
 		DisplayName: account.DisplayName,
 		Status:      string(account.Status),
-		SponsorName: sponsorName,
 		Email:       account.Email,
 	}
 }
@@ -112,6 +141,15 @@ func toProtoOrganizer(profile *models.OrganizerProfile) *accountv1.OrganizerProf
 	return &accountv1.OrganizerProfile{
 		AccountId:     profile.AccountID.String(),
 		OrganizerName: profile.OrganizerName,
+	}
+}
+
+func toProtoSponsor(profile *models.SponsorProfile) *accountv1.SponsorProfile {
+	return &accountv1.SponsorProfile{
+		AccountId:   profile.AccountID.String(),
+		SponsorName: profile.SponsorName,
+		WebsiteUrl:  profile.WebsiteURL,
+		LogoUrl:     profile.LogoURL,
 	}
 }
 

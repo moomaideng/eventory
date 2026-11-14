@@ -489,6 +489,10 @@ func (p registrationPaymentStub) EnsureInvoice(_ context.Context, r ports.Regist
 	return payment, p.err
 }
 
+func (p registrationPaymentStub) GetPayment(_ context.Context, id uuid.UUID) (*ports.RegistrationPayment, error) {
+	return &ports.RegistrationPayment{ID: id, Status: models.PaymentPaid}, p.err
+}
+
 func TestSubmissionRequiresAuthoritativeMatchingInvoice(t *testing.T) {
 	for _, tc := range []struct {
 		name   string
@@ -635,7 +639,7 @@ func TestLock_PublishesRegistrationSubmitted_ForFreeTournament(t *testing.T) {
 		RegistrationMode:     models.TournamentRegistrationModeTeam,
 		MinTeamSize:          1,
 		MaxTeamSize:          5,
-		EntryFee:             0,
+		EntryFeeMinor:        0,
 	}
 	team := &models.TournamentTeam{
 		ID:           teamID,
@@ -720,7 +724,7 @@ func TestRegisterSolo_PublishesRegistrationSubmitted(t *testing.T) {
 		RegistrationMode:     models.TournamentRegistrationModeSolo,
 		MinTeamSize:          1,
 		MaxTeamSize:          1,
-		EntryFee:             0,
+		EntryFeeMinor:        0,
 	}
 	repo := &teamLobbyRepositoryStub{
 		tournament: tournament,

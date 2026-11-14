@@ -57,6 +57,16 @@ func (c *Client) EnsureInvoice(ctx context.Context, in ports.RegistrationPayment
 	return fromPayment(res.GetPayment())
 }
 
+func (c *Client) GetPayment(ctx context.Context, id uuid.UUID) (*ports.RegistrationPayment, error) {
+	ctx, cancel := c.callContext(ctx)
+	defer cancel()
+	res, err := c.api.GetPayment(ctx, &paymentv1.GetPaymentRequest{Id: id.String()})
+	if err != nil {
+		return nil, fmt.Errorf("get payment: %w", err)
+	}
+	return fromPayment(res.GetPayment())
+}
+
 func (c *Client) RefundRegistration(ctx context.Context, paymentID, entryID uuid.UUID) (*ports.RegistrationPayment, error) {
 	ctx, cancel := c.callContext(ctx)
 	defer cancel()

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { MAX_WHOLE_MONEY } from "@/lib/money";
 import { optionalPhoneSchema } from "@/lib/schemas";
 
 /**
@@ -86,7 +87,8 @@ export const editGateSectionSchema = z
     entryFee: z.coerce
       .number()
       .int("Entry fee must be a whole number.")
-      .min(0, "Entry fee cannot be negative."),
+      .min(0, "Entry fee cannot be negative.")
+      .max(MAX_WHOLE_MONEY, "Entry fee exceeds the maximum supported amount."),
   })
   .superRefine((data, ctx) => {
     if (
@@ -140,7 +142,8 @@ export const editCrowdfundingSectionSchema = z
     fundingGoal: z.coerce
       .number()
       .int("Funding goal must be a whole number.")
-      .min(1, "Funding goal must be greater than 0."),
+      .min(1, "Funding goal must be greater than 0.")
+      .max(MAX_WHOLE_MONEY, "Funding goal exceeds the maximum supported amount."),
     fundingDeadline: z.string().min(1, "Funding deadline is required."),
   })
   .superRefine((data, ctx) => {

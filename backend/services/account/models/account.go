@@ -57,6 +57,8 @@ type SponsorProfile struct {
 	SponsorName  string    `gorm:"type:varchar(150);not null"`
 	SponsorEmail string    `gorm:"type:varchar(255)"`
 	Phone        *string   `gorm:"type:varchar(32)"`
+	WebsiteURL   string    `gorm:"type:varchar(2048);not null;default:''"`
+	LogoURL      string    `gorm:"type:varchar(2048);not null;default:''"`
 	Tags         []string  `gorm:"serializer:json;type:jsonb;not null;default:'[]'"`
 	CreatedAt    time.Time
 	UpdatedAt    time.Time
@@ -65,5 +67,7 @@ type SponsorProfile struct {
 func (profile *SponsorProfile) BeforeSave(_ *gorm.DB) error {
 	profile.SponsorName = strings.TrimSpace(profile.SponsorName)
 	profile.SponsorEmail = strings.ToLower(strings.TrimSpace(profile.SponsorEmail))
+	profile.WebsiteURL = strings.TrimSpace(profile.WebsiteURL)
+	profile.LogoURL = strings.TrimSpace(profile.LogoURL)
 	return nil
 }

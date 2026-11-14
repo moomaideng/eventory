@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { Badge } from "@/components/ui/badge";
 import { Pencil } from "lucide-react";
 import {
@@ -16,6 +17,8 @@ interface SponsorProfileViewProps {
   sponsorName: string;
   sponsorEmail?: string | null;
   phone?: string | null;
+  websiteUrl?: string | null;
+  logoUrl?: string | null;
   tags: string[];
   onEdit: () => void;
 }
@@ -24,6 +27,8 @@ export function SponsorProfileView({
   sponsorName,
   sponsorEmail,
   phone,
+  websiteUrl,
+  logoUrl,
   tags,
   onEdit,
 }: SponsorProfileViewProps) {
@@ -56,6 +61,38 @@ export function SponsorProfileView({
               <span className="text-muted-foreground font-normal">Not set</span>
             )}
           </p>
+        </div>
+        <div className="flex flex-col gap-1">
+          <p className="text-muted-foreground text-sm">Brand website</p>
+          <p className="font-medium break-all">
+            {websiteUrl ? (
+              <a
+                href={websiteUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline underline-offset-4"
+              >
+                {websiteUrl}
+              </a>
+            ) : (
+              <span className="text-muted-foreground font-normal">Not set</span>
+            )}
+          </p>
+        </div>
+        <div className="flex flex-col gap-2">
+          <p className="text-muted-foreground text-sm">Brand logo</p>
+          {logoUrl ? (
+            <Image
+              src={logoUrl}
+              alt={`${sponsorName} logo`}
+              width={160}
+              height={64}
+              unoptimized
+              className="bg-background h-16 w-40 rounded-md border object-contain p-2"
+            />
+          ) : (
+            <p className="text-muted-foreground text-sm">Not set</p>
+          )}
         </div>
         <div className="border-border space-y-2 border-t pt-4">
           <p className="font-medium">Sponsor directory</p>
