@@ -52,12 +52,13 @@ type UpdateAccountInput struct {
 
 // OrganizerProfileResponse represents the public payload for an OrganizerProfile entity.
 type OrganizerProfileResponse struct {
-	AccountID      uuid.UUID `json:"accountId" doc:"Associated account UUID"`
-	OrganizerName  string    `json:"organizerName" doc:"Organizer organization or brand name"`
-	OrganizerEmail string    `json:"organizerEmail" doc:"Contact email for organizer"`
-	Phone          *string   `json:"phone,omitempty" doc:"Contact phone number for organizer"`
-	CreatedAt      time.Time `json:"createdAt" doc:"Timestamp of profile creation"`
-	UpdatedAt      time.Time `json:"updatedAt" doc:"Timestamp of last profile update"`
+	AccountID          uuid.UUID  `json:"accountId" doc:"Associated account UUID"`
+	OrganizerName      string     `json:"organizerName" doc:"Organizer organization or brand name"`
+	OrganizerEmail     string     `json:"organizerEmail" doc:"Contact email for organizer"`
+	Phone              *string    `json:"phone,omitempty" doc:"Contact phone number for organizer"`
+	PrivacyConsentedAt *time.Time `json:"privacyConsentedAt,omitempty" doc:"Timestamp when user granted data privacy consent"`
+	CreatedAt          time.Time  `json:"createdAt" doc:"Timestamp of profile creation"`
+	UpdatedAt          time.Time  `json:"updatedAt" doc:"Timestamp of last profile update"`
 }
 
 // OrganizerProfileOutput represents the standard HTTP response returning an OrganizerProfile.
@@ -67,9 +68,10 @@ type OrganizerProfileOutput struct {
 
 // UpsertOrganizerProfileRequest defines the request body for creating or updating an organizer profile.
 type UpsertOrganizerProfileRequest struct {
-	OrganizerName  string  `json:"organizerName" doc:"Organizer organization or brand name" minLength:"1" maxLength:"150"`
-	OrganizerEmail *string `json:"organizerEmail,omitempty" doc:"Contact email for organizer" maxLength:"255"`
-	Phone          *string `json:"phone,omitempty" doc:"Contact phone number for organizer" maxLength:"32"`
+	OrganizerName          string  `json:"organizerName" doc:"Organizer organization or brand name" minLength:"1" maxLength:"150"`
+	OrganizerEmail         *string `json:"organizerEmail,omitempty" doc:"Contact email for organizer" maxLength:"255"`
+	Phone                  *string `json:"phone,omitempty" doc:"Contact phone number for organizer" maxLength:"32"`
+	PrivacyConsentAccepted bool    `json:"privacyConsentAccepted,omitempty" doc:"Explicit consent to save and publish organizer profile data (required when creating a profile)"`
 }
 
 // UpsertOrganizerProfileInput represents request payload for upserting an organizer profile.
@@ -79,15 +81,16 @@ type UpsertOrganizerProfileInput struct {
 
 // SponsorProfileResponse represents the public payload for a SponsorProfile entity.
 type SponsorProfileResponse struct {
-	AccountID    uuid.UUID `json:"accountId" doc:"Associated account UUID"`
-	SponsorName  string    `json:"sponsorName" doc:"Sponsor company or organization name"`
-	SponsorEmail string    `json:"sponsorEmail" doc:"Contact email for sponsorship communications"`
-	Phone        *string   `json:"phone,omitempty" doc:"Contact phone number for sponsor"`
-	WebsiteURL   string    `json:"websiteUrl" doc:"Official sponsor website URL"`
-	LogoURL      string    `json:"logoUrl" doc:"Public sponsor logo image URL"`
-	Tags         []string  `json:"tags" doc:"Sponsor interests and business tags"`
-	CreatedAt    time.Time `json:"createdAt" doc:"Timestamp of profile creation"`
-	UpdatedAt    time.Time `json:"updatedAt" doc:"Timestamp of last profile update"`
+	AccountID          uuid.UUID  `json:"accountId" doc:"Associated account UUID"`
+	SponsorName        string     `json:"sponsorName" doc:"Sponsor company or organization name"`
+	SponsorEmail       string     `json:"sponsorEmail" doc:"Contact email for sponsorship communications"`
+	Phone              *string    `json:"phone,omitempty" doc:"Contact phone number for sponsor"`
+	WebsiteURL         string     `json:"websiteUrl" doc:"Official sponsor website URL"`
+	LogoURL            string     `json:"logoUrl" doc:"Public sponsor logo image URL"`
+	Tags               []string   `json:"tags" doc:"Sponsor interests and business tags"`
+	PrivacyConsentedAt *time.Time `json:"privacyConsentedAt,omitempty" doc:"Timestamp when user granted data privacy consent"`
+	CreatedAt          time.Time  `json:"createdAt" doc:"Timestamp of profile creation"`
+	UpdatedAt          time.Time  `json:"updatedAt" doc:"Timestamp of last profile update"`
 }
 
 // SponsorProfileOutput represents the standard HTTP response returning a SponsorProfile.
@@ -97,12 +100,13 @@ type SponsorProfileOutput struct {
 
 // UpsertSponsorProfileRequest defines the request body for creating or updating a sponsor profile.
 type UpsertSponsorProfileRequest struct {
-	SponsorName  string   `json:"sponsorName" doc:"Sponsor company or organization name" minLength:"1" maxLength:"150"`
-	SponsorEmail *string  `json:"sponsorEmail" doc:"Contact email shown to organizers" minLength:"1" maxLength:"255" format:"email"`
-	Phone        *string  `json:"phone,omitempty" doc:"Contact phone number for sponsor" maxLength:"32"`
-	WebsiteURL   *string  `json:"websiteUrl,omitempty" doc:"Official sponsor website URL" maxLength:"2048"`
-	LogoURL      *string  `json:"logoUrl,omitempty" doc:"Public sponsor logo image URL" maxLength:"2048"`
-	Tags         []string `json:"tags" minItems:"1" maxItems:"10" doc:"Free-form sponsor tags, each up to 40 characters"`
+	SponsorName            string   `json:"sponsorName" doc:"Sponsor company or organization name" minLength:"1" maxLength:"150"`
+	SponsorEmail           *string  `json:"sponsorEmail" doc:"Contact email shown to organizers" minLength:"1" maxLength:"255" format:"email"`
+	Phone                  *string  `json:"phone,omitempty" doc:"Contact phone number for sponsor" maxLength:"32"`
+	WebsiteURL             *string  `json:"websiteUrl,omitempty" doc:"Official sponsor website URL" maxLength:"2048"`
+	LogoURL                *string  `json:"logoUrl,omitempty" doc:"Public sponsor logo image URL" maxLength:"2048"`
+	Tags                   []string `json:"tags" minItems:"1" maxItems:"10" doc:"Free-form sponsor tags, each up to 40 characters"`
+	PrivacyConsentAccepted bool     `json:"privacyConsentAccepted,omitempty" doc:"Explicit consent to save and publish sponsor profile data (required when creating a profile)"`
 }
 
 type SponsorDirectoryInput struct {
@@ -147,26 +151,28 @@ func toAccountResponse(acc *models.Account) AccountResponse {
 
 func toOrganizerProfileResponse(p *models.OrganizerProfile) OrganizerProfileResponse {
 	return OrganizerProfileResponse{
-		AccountID:      p.AccountID,
-		OrganizerName:  p.OrganizerName,
-		OrganizerEmail: p.OrganizerEmail,
-		Phone:          p.Phone,
-		CreatedAt:      p.CreatedAt,
-		UpdatedAt:      p.UpdatedAt,
+		AccountID:          p.AccountID,
+		OrganizerName:      p.OrganizerName,
+		OrganizerEmail:     p.OrganizerEmail,
+		Phone:              p.Phone,
+		PrivacyConsentedAt: p.PrivacyConsentedAt,
+		CreatedAt:          p.CreatedAt,
+		UpdatedAt:          p.UpdatedAt,
 	}
 }
 
 func toSponsorProfileResponse(p *models.SponsorProfile) SponsorProfileResponse {
 	return SponsorProfileResponse{
-		AccountID:    p.AccountID,
-		SponsorName:  p.SponsorName,
-		SponsorEmail: p.SponsorEmail,
-		Phone:        p.Phone,
-		WebsiteURL:   p.WebsiteURL,
-		LogoURL:      p.LogoURL,
-		Tags:         p.Tags,
-		CreatedAt:    p.CreatedAt,
-		UpdatedAt:    p.UpdatedAt,
+		AccountID:          p.AccountID,
+		SponsorName:        p.SponsorName,
+		SponsorEmail:       p.SponsorEmail,
+		Phone:              p.Phone,
+		WebsiteURL:         p.WebsiteURL,
+		LogoURL:            p.LogoURL,
+		Tags:               p.Tags,
+		PrivacyConsentedAt: p.PrivacyConsentedAt,
+		CreatedAt:          p.CreatedAt,
+		UpdatedAt:          p.UpdatedAt,
 	}
 }
 
@@ -324,13 +330,17 @@ func RegisterAccountRoutes(api huma.API, accountUseCase *usecases.AccountUseCase
 		}
 
 		profile, err := accountUseCase.UpsertOrganizerProfile(ctx, acc.ID, usecases.UpsertOrganizerProfileInput{
-			OrganizerName:  input.Body.OrganizerName,
-			OrganizerEmail: input.Body.OrganizerEmail,
-			Phone:          input.Body.Phone,
+			OrganizerName:          input.Body.OrganizerName,
+			OrganizerEmail:         input.Body.OrganizerEmail,
+			Phone:                  input.Body.Phone,
+			PrivacyConsentAccepted: input.Body.PrivacyConsentAccepted,
 		})
 		if err != nil {
 			if errors.Is(err, usecases.ErrInvalidOrganizerName) {
 				return nil, huma.Error400BadRequest("Organizer name cannot be empty", err)
+			}
+			if errors.Is(err, usecases.ErrPrivacyConsentRequired) {
+				return nil, huma.Error400BadRequest("Explicit data privacy consent is required before creating an organizer profile", err)
 			}
 			return nil, huma.Error500InternalServerError("Failed to upsert organizer profile", err)
 		}
@@ -383,12 +393,13 @@ func RegisterAccountRoutes(api huma.API, accountUseCase *usecases.AccountUseCase
 		}
 
 		profile, err := accountUseCase.UpsertSponsorProfile(ctx, acc.ID, usecases.UpsertSponsorProfileInput{
-			SponsorName:  input.Body.SponsorName,
-			SponsorEmail: input.Body.SponsorEmail,
-			Phone:        input.Body.Phone,
-			WebsiteURL:   input.Body.WebsiteURL,
-			LogoURL:      input.Body.LogoURL,
-			Tags:         input.Body.Tags,
+			SponsorName:            input.Body.SponsorName,
+			SponsorEmail:           input.Body.SponsorEmail,
+			Phone:                  input.Body.Phone,
+			WebsiteURL:             input.Body.WebsiteURL,
+			LogoURL:                input.Body.LogoURL,
+			Tags:                   input.Body.Tags,
+			PrivacyConsentAccepted: input.Body.PrivacyConsentAccepted,
 		})
 		if err != nil {
 			if errors.Is(err, usecases.ErrInvalidSponsorName) {
@@ -399,6 +410,9 @@ func RegisterAccountRoutes(api huma.API, accountUseCase *usecases.AccountUseCase
 			}
 			if errors.Is(err, usecases.ErrInvalidSponsorDirectory) {
 				return nil, huma.Error400BadRequest("Enter a valid contact email and 1 to 10 tags, up to 40 characters each", err)
+			}
+			if errors.Is(err, usecases.ErrPrivacyConsentRequired) {
+				return nil, huma.Error400BadRequest("Explicit data privacy consent is required before creating a sponsor profile", err)
 			}
 			return nil, huma.Error500InternalServerError("Failed to upsert sponsor profile", err)
 		}

@@ -228,8 +228,9 @@ func (s *accountScenarioContext) theUserUpdatesTheirProfileWithDisplayName(name 
 
 func (s *accountScenarioContext) theUserUpsertsTheirOrganizerProfile(orgName, email string) error {
 	body := handlers.UpsertOrganizerProfileRequest{
-		OrganizerName:  orgName,
-		OrganizerEmail: &email,
+		OrganizerName:          orgName,
+		OrganizerEmail:         &email,
+		PrivacyConsentAccepted: true,
 	}
 	resp, err := s.client.Do(http.MethodPut, "/accounts/me/organizer-profile", body, s.currentUser.AuthHeaders())
 	if err != nil {
@@ -241,9 +242,10 @@ func (s *accountScenarioContext) theUserUpsertsTheirOrganizerProfile(orgName, em
 
 func (s *accountScenarioContext) theUserUpsertsTheirOrganizerProfileWithPhone(orgName, email, phone string) error {
 	body := handlers.UpsertOrganizerProfileRequest{
-		OrganizerName:  orgName,
-		OrganizerEmail: &email,
-		Phone:          &phone,
+		OrganizerName:          orgName,
+		OrganizerEmail:         &email,
+		Phone:                  &phone,
+		PrivacyConsentAccepted: true,
 	}
 	resp, err := s.client.Do(http.MethodPut, "/accounts/me/organizer-profile", body, s.currentUser.AuthHeaders())
 	if err != nil {
@@ -264,9 +266,10 @@ func (s *accountScenarioContext) theUserRetrievesTheirOrganizerProfile() error {
 
 func (s *accountScenarioContext) theUserUpsertsTheirSponsorProfile(sponsorName, email string) error {
 	body := handlers.UpsertSponsorProfileRequest{
-		SponsorName:  sponsorName,
-		SponsorEmail: &email,
-		Tags:         []string{"gaming"},
+		SponsorName:            sponsorName,
+		SponsorEmail:           &email,
+		Tags:                   []string{"gaming"},
+		PrivacyConsentAccepted: true,
 	}
 	resp, err := s.client.Do(http.MethodPut, "/accounts/me/sponsor-profile", body, s.currentUser.AuthHeaders())
 	if err != nil {
@@ -278,16 +281,67 @@ func (s *accountScenarioContext) theUserUpsertsTheirSponsorProfile(sponsorName, 
 
 func (s *accountScenarioContext) theUserUpsertsTheirSponsorProfileWithPhone(sponsorName, email, phone string) error {
 	body := handlers.UpsertSponsorProfileRequest{
-		SponsorName:  sponsorName,
-		SponsorEmail: &email,
-		Phone:        &phone,
-		Tags:         []string{"gaming"},
+		SponsorName:            sponsorName,
+		SponsorEmail:           &email,
+		Phone:                  &phone,
+		Tags:                   []string{"gaming"},
+		PrivacyConsentAccepted: true,
 	}
 	resp, err := s.client.Do(http.MethodPut, "/accounts/me/sponsor-profile", body, s.currentUser.AuthHeaders())
 	if err != nil {
 		return err
 	}
 	s.resp = resp
+	return nil
+}
+
+func (s *accountScenarioContext) theUserCreatesRoleProfileWithoutPrivacyConsent(role string) error {
+	email := "noconsent@eventory.gg"
+	switch role {
+	case "organizer":
+		resp, err := s.client.Do(http.MethodPut, "/accounts/me/organizer-profile", handlers.UpsertOrganizerProfileRequest{
+			OrganizerName:          "No Consent Org",
+			OrganizerEmail:         &email,
+			PrivacyConsentAccepted: false,
+		}, s.currentUser.AuthHeaders())
+		if err != nil {
+			return err
+		}
+		s.resp = resp
+	case "sponsor":
+		resp, err := s.client.Do(http.MethodPut, "/accounts/me/sponsor-profile", handlers.UpsertSponsorProfileRequest{
+			SponsorName:            "No Consent Sponsor",
+			SponsorEmail:           &email,
+			Tags:                   []string{"gaming"},
+			PrivacyConsentAccepted: false,
+		}, s.currentUser.AuthHeaders())
+		if err != nil {
+			return err
+		}
+		s.resp = resp
+	default:
+		return fmt.Errorf("unknown role %q", role)
+	}
+	return nil
+}
+
+func (s *accountScenarioContext) theirRoleProfileShouldNotExist(role string) error {
+	var path string
+	switch role {
+	case "organizer":
+		path = "/accounts/me/organizer-profile"
+	case "sponsor":
+		path = "/accounts/me/sponsor-profile"
+	default:
+		return fmt.Errorf("unknown role %q", role)
+	}
+	resp, err := s.client.Do(http.MethodGet, path, nil, s.currentUser.AuthHeaders())
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode != http.StatusNotFound {
+		return fmt.Errorf("expected %s profile not to be saved (404), got %d: %s", role, resp.StatusCode, resp.Body)
+	}
 	return nil
 }
 
@@ -329,8 +383,9 @@ func (s *accountScenarioContext) theAccountOwnerHasAnExistingRoleProfile(role st
 		s.existingProfileEmail = "existing@organizer.gg"
 		email := s.existingProfileEmail
 		resp, err := s.client.Do(http.MethodPut, "/accounts/me/organizer-profile", handlers.UpsertOrganizerProfileRequest{
-			OrganizerName:  s.existingProfileName,
-			OrganizerEmail: &email,
+			OrganizerName:          s.existingProfileName,
+			OrganizerEmail:         &email,
+			PrivacyConsentAccepted: true,
 		}, s.currentUser.AuthHeaders())
 		if err != nil {
 			return err
@@ -343,9 +398,10 @@ func (s *accountScenarioContext) theAccountOwnerHasAnExistingRoleProfile(role st
 		s.existingProfileEmail = "existing@sponsor.gg"
 		email := s.existingProfileEmail
 		resp, err := s.client.Do(http.MethodPut, "/accounts/me/sponsor-profile", handlers.UpsertSponsorProfileRequest{
-			SponsorName:  s.existingProfileName,
-			SponsorEmail: &email,
-			Tags:         []string{"gaming"},
+			SponsorName:            s.existingProfileName,
+			SponsorEmail:           &email,
+			Tags:                   []string{"gaming"},
+			PrivacyConsentAccepted: true,
 		}, s.currentUser.AuthHeaders())
 		if err != nil {
 			return err
@@ -829,6 +885,12 @@ func InitializeScenario(sc *godog.ScenarioContext) {
 	})
 	sc.Step(`^the user retrieves their sponsor profile$`, func() error {
 		return s.theUserRetrievesTheirSponsorProfile()
+	})
+	sc.Step(`^the user attempts to create an? (organizer|sponsor) profile without privacy consent$`, func(role string) error {
+		return s.theUserCreatesRoleProfileWithoutPrivacyConsent(role)
+	})
+	sc.Step(`^their (organizer|sponsor) profile should not exist$`, func(role string) error {
+		return s.theirRoleProfileShouldNotExist(role)
 	})
 	sc.Step(`^the account owner has an existing (organizer|sponsor) profile$`, func(role string) error {
 		return s.theAccountOwnerHasAnExistingRoleProfile(role)

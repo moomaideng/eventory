@@ -147,6 +147,7 @@ func (r *accountRepositoryImpl) UpsertOrganizerProfile(ctx context.Context, prof
 					fallback.OrganizerName = profile.OrganizerName
 					fallback.OrganizerEmail = profile.OrganizerEmail
 					fallback.Phone = profile.Phone
+					fallback.PrivacyConsentedAt = profile.PrivacyConsentedAt
 					if err := r.db.WithContext(ctx).Save(&fallback).Error; err != nil {
 						return nil, err
 					}
@@ -162,6 +163,7 @@ func (r *accountRepositoryImpl) UpsertOrganizerProfile(ctx context.Context, prof
 	existing.OrganizerName = profile.OrganizerName
 	existing.OrganizerEmail = profile.OrganizerEmail
 	existing.Phone = profile.Phone
+	existing.PrivacyConsentedAt = profile.PrivacyConsentedAt
 	if err := r.db.WithContext(ctx).Save(&existing).Error; err != nil {
 		return nil, err
 	}
@@ -197,6 +199,7 @@ func (r *accountRepositoryImpl) UpsertSponsorProfile(ctx context.Context, profil
 					fallback.WebsiteURL = profile.WebsiteURL
 					fallback.LogoURL = profile.LogoURL
 					fallback.Tags = profile.Tags
+					fallback.PrivacyConsentedAt = profile.PrivacyConsentedAt
 					if err := r.db.WithContext(ctx).Save(&fallback).Error; err != nil {
 						return nil, err
 					}
@@ -215,6 +218,7 @@ func (r *accountRepositoryImpl) UpsertSponsorProfile(ctx context.Context, profil
 	existing.WebsiteURL = profile.WebsiteURL
 	existing.LogoURL = profile.LogoURL
 	existing.Tags = profile.Tags
+	existing.PrivacyConsentedAt = profile.PrivacyConsentedAt
 	if err := r.db.WithContext(ctx).Save(&existing).Error; err != nil {
 		return nil, err
 	}

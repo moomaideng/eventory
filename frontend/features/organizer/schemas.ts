@@ -18,15 +18,25 @@ export const organizerProfileSchema = z.object({
     .transform((val) => (val === "" ? undefined : val))
     .pipe(z.string().email("Enter a valid email address.").optional()),
   phone: optionalPhoneSchema.optional(),
+  privacyConsentAccepted: z.boolean().optional(),
 });
 
 export type OrganizerProfileInput = z.infer<typeof organizerProfileSchema>;
 
 /**
- * Validates onboarding form inputs for organizer profile setup.
+ * Validates onboarding / initial creation inputs for organizer profile setup.
  */
-export const organizerOnboardingSchema = organizerProfileSchema;
-export type OrganizerOnboardingValues = OrganizerProfileInput;
+export const organizerCreateSchema = organizerProfileSchema.extend({
+  privacyConsentAccepted: z.literal(true, {
+    message:
+      "Please confirm consent to store and display your organizer profile.",
+  }),
+});
+
+export const organizerOnboardingSchema = organizerCreateSchema;
+export type OrganizerOnboardingValues = z.infer<
+  typeof organizerOnboardingSchema
+>;
 
 /**
  * Validates form submission when creating a new draft tournament.

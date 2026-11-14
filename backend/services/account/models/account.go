@@ -38,12 +38,13 @@ func (account *Account) BeforeSave(_ *gorm.DB) error {
 }
 
 type OrganizerProfile struct {
-	AccountID      uuid.UUID `gorm:"type:uuid;primaryKey"`
-	OrganizerName  string    `gorm:"type:varchar(150);not null"`
-	OrganizerEmail string    `gorm:"type:varchar(255)"`
-	Phone          *string   `gorm:"type:varchar(32)"`
-	CreatedAt      time.Time
-	UpdatedAt      time.Time
+	AccountID          uuid.UUID  `gorm:"type:uuid;primaryKey"`
+	OrganizerName      string     `gorm:"type:varchar(150);not null"`
+	OrganizerEmail     string     `gorm:"type:varchar(255)"`
+	Phone              *string    `gorm:"type:varchar(32)"`
+	PrivacyConsentedAt *time.Time `gorm:"type:timestamptz"`
+	CreatedAt          time.Time
+	UpdatedAt          time.Time
 }
 
 func (profile *OrganizerProfile) BeforeSave(_ *gorm.DB) error {
@@ -53,15 +54,16 @@ func (profile *OrganizerProfile) BeforeSave(_ *gorm.DB) error {
 }
 
 type SponsorProfile struct {
-	AccountID    uuid.UUID `gorm:"type:uuid;primaryKey"`
-	SponsorName  string    `gorm:"type:varchar(150);not null"`
-	SponsorEmail string    `gorm:"type:varchar(255)"`
-	Phone        *string   `gorm:"type:varchar(32)"`
-	WebsiteURL   string    `gorm:"type:varchar(2048);not null;default:''"`
-	LogoURL      string    `gorm:"type:varchar(2048);not null;default:''"`
-	Tags         []string  `gorm:"serializer:json;type:jsonb;not null;default:'[]'"`
-	CreatedAt    time.Time
-	UpdatedAt    time.Time
+	AccountID          uuid.UUID  `gorm:"type:uuid;primaryKey"`
+	SponsorName        string     `gorm:"type:varchar(150);not null"`
+	SponsorEmail       string     `gorm:"type:varchar(255)"`
+	Phone              *string    `gorm:"type:varchar(32)"`
+	WebsiteURL         string     `gorm:"type:varchar(2048);not null;default:''"`
+	LogoURL            string     `gorm:"type:varchar(2048);not null;default:''"`
+	Tags               []string   `gorm:"serializer:json;type:jsonb;not null;default:'[]'"`
+	PrivacyConsentedAt *time.Time `gorm:"type:timestamptz"`
+	CreatedAt          time.Time
+	UpdatedAt          time.Time
 }
 
 func (profile *SponsorProfile) BeforeSave(_ *gorm.DB) error {

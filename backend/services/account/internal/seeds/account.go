@@ -2,6 +2,7 @@ package seeds
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/moomaideng/eventory/services/account/models"
@@ -98,24 +99,29 @@ func SeedAccounts(db *gorm.DB) error {
 		return err
 	}
 
+	seededConsentAt := time.Now().UTC()
+
 	organizerProfiles := []models.OrganizerProfile{
 		// Alex (Dev): Full Organizer access in dev mode
 		{
-			AccountID:      accounts[0].ID,
-			OrganizerName:  "Alex Events (Dev)",
-			OrganizerEmail: "dev@eventory.gg",
+			AccountID:          accounts[0].ID,
+			OrganizerName:      "Alex Events (Dev)",
+			OrganizerEmail:     "dev@eventory.gg",
+			PrivacyConsentedAt: &seededConsentAt,
 		},
 		// Alice: Organizer Profile Only
 		{
-			AccountID:      accounts[1].ID,
-			OrganizerName:  "Alice Events",
-			OrganizerEmail: "alice.events@example.com",
+			AccountID:          accounts[1].ID,
+			OrganizerName:      "Alice Events",
+			OrganizerEmail:     "alice.events@example.com",
+			PrivacyConsentedAt: &seededConsentAt,
 		},
 		// Maya: Both Organizer and Sponsor Profiles
 		{
-			AccountID:      accounts[3].ID,
-			OrganizerName:  "Maya Works",
-			OrganizerEmail: "maya.events@example.com",
+			AccountID:          accounts[3].ID,
+			OrganizerName:      "Maya Works",
+			OrganizerEmail:     "maya.events@example.com",
+			PrivacyConsentedAt: &seededConsentAt,
 		},
 	}
 
@@ -126,30 +132,33 @@ func SeedAccounts(db *gorm.DB) error {
 	sponsorProfiles := []models.SponsorProfile{
 		// Alex (Dev): Sponsor access in dev mode
 		{
-			AccountID:    accounts[0].ID,
-			SponsorName:  "Alex Ventures (Dev)",
-			SponsorEmail: "dev@eventory.gg",
-			WebsiteURL:   "https://alexventures.example.com",
-			LogoURL:      "https://placehold.co/128x128/png?text=AV",
-			Tags:         []string{"gaming"},
+			AccountID:          accounts[0].ID,
+			SponsorName:        "Alex Ventures (Dev)",
+			SponsorEmail:       "dev@eventory.gg",
+			WebsiteURL:         "https://alexventures.example.com",
+			LogoURL:            "https://placehold.co/128x128/png?text=AV",
+			Tags:               []string{"gaming"},
+			PrivacyConsentedAt: &seededConsentAt,
 		},
 		// Somchai: Sponsor Profile Only
 		{
-			AccountID:    accounts[2].ID,
-			SponsorName:  "Bright Future Co.",
-			SponsorEmail: "partnerships@example.com",
-			WebsiteURL:   "https://brightfuture.example.com",
-			LogoURL:      "https://placehold.co/128x128/png?text=BF",
-			Tags:         []string{"gaming"},
+			AccountID:          accounts[2].ID,
+			SponsorName:        "Bright Future Co.",
+			SponsorEmail:       "partnerships@example.com",
+			WebsiteURL:         "https://brightfuture.example.com",
+			LogoURL:            "https://placehold.co/128x128/png?text=BF",
+			Tags:               []string{"gaming"},
+			PrivacyConsentedAt: &seededConsentAt,
 		},
 		// Maya: Both Organizer and Sponsor Profiles
 		{
-			AccountID:    accounts[3].ID,
-			SponsorName:  "Maya Works Studio",
-			SponsorEmail: "studio@example.com",
-			WebsiteURL:   "https://mayaworks.example.com",
-			LogoURL:      "https://placehold.co/128x128/png?text=MW",
-			Tags:         []string{"gaming"},
+			AccountID:          accounts[3].ID,
+			SponsorName:        "Maya Works Studio",
+			SponsorEmail:       "studio@example.com",
+			WebsiteURL:         "https://mayaworks.example.com",
+			LogoURL:            "https://placehold.co/128x128/png?text=MW",
+			Tags:               []string{"gaming"},
+			PrivacyConsentedAt: &seededConsentAt,
 		},
 	}
 

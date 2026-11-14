@@ -1511,6 +1511,11 @@ export interface components {
             phone?: string;
             /**
              * Format: date-time
+             * @description Timestamp when user granted data privacy consent
+             */
+            privacyConsentedAt?: string;
+            /**
+             * Format: date-time
              * @description Timestamp of last profile update
              */
             updatedAt: string;
@@ -1767,6 +1772,11 @@ export interface components {
             logoUrl: string;
             /** @description Contact phone number for sponsor */
             phone?: string;
+            /**
+             * Format: date-time
+             * @description Timestamp when user granted data privacy consent
+             */
+            privacyConsentedAt?: string;
             /** @description Contact email for sponsorship communications */
             sponsorEmail: string;
             /** @description Sponsor company or organization name */
@@ -2198,6 +2208,8 @@ export interface components {
             organizerName: string;
             /** @description Contact phone number for organizer */
             phone?: string;
+            /** @description Explicit consent to save and publish organizer profile data (required when creating a profile) */
+            privacyConsentAccepted?: boolean;
         };
         UpsertSponsorProfileRequest: {
             /**
@@ -2210,6 +2222,8 @@ export interface components {
             logoUrl?: string;
             /** @description Contact phone number for sponsor */
             phone?: string;
+            /** @description Explicit consent to save and publish sponsor profile data (required when creating a profile) */
+            privacyConsentAccepted?: boolean;
             /**
              * Format: email
              * @description Contact email shown to organizers

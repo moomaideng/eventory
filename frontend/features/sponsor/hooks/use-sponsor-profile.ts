@@ -135,6 +135,7 @@ export function useSponsorProfile(
               websiteUrl: validation.data.websiteUrl,
               logoUrl: validation.data.logoUrl,
               tags: validation.data.tags,
+              privacyConsentAccepted: validation.data.privacyConsentAccepted,
             },
           }
         );
