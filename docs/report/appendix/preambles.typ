@@ -87,25 +87,47 @@
   ).flatten(),
 )
 
-// Test cases of one user story.
-// Each case: (id, inputs, expected, actual, ecs, status)
-//   status: "P" pass, "F" fail, none = not run yet
+// Test cases of one user story. Each case is a vertical card: field | value.
+// Fields (only `id` + `expected` required; empty fields are hidden):
+//   id:       "TC01"
+//   pre:      [per-case pre-condition]
+//   action:   [what the tester does]
+//   inputs:   (Email: [`a@b.com`], Password: [`123`])   → one row per input
+//             or plain content: [email = `a@b.com`]
+//   expected: [text + screenshot]   e.g. [Logged in \ #image("../img/tc01.png", width: 80%)]
+//   actual:   [after running]       default "--"
+//   ecs:      "EC1, EC3"
+//   status:   "P" / "F"             none = not run yet
 #let test-cases(story: "", ..cases) = {
   let cases = cases.pos()
   _cases.update(all => all + cases.map(c => (story: story, id: c.id, status: c.at("status", default: none))))
-  set text(9pt)
-  table(
-    columns: (auto, 1fr, 1fr, 1fr, auto, auto),
-    table.header[*ID*][*Inputs*][*Expected Output*][*Actual Output*][*EC Covered*][*Status*],
-    ..cases.map(c => (
-      c.id,
-      c.inputs,
-      c.expected,
-      c.at("actual", default: [--]),
-      c.ecs,
-      { let st = c.at("status", default: none); if st == none [--] else [#st] },
-    )).flatten(),
-  )
+  set par(justify: false)
+  for c in cases {
+    let row(label, value) = ([*#label*], table.cell(colspan: 2, value))
+    let inputs = c.at("inputs", default: none)
+    let input-rows = if type(inputs) == dictionary {
+      let pairs = inputs.pairs()
+      (table.cell(rowspan: pairs.len(), [*Inputs*]),)
+      for (k, v) in pairs { (k, v) }
+    } else if inputs != none { row("Inputs", inputs) } else { () }
+    let opt(key, label) = {
+      let v = c.at(key, default: none)
+      if v == none { () } else { row(label, v) }
+    }
+    let st = c.at("status", default: none)
+    block(breakable: true, below: 1.2em, table(
+      columns: (3.4cm, 3.2cm, 1fr),
+      align: (left + horizon, left + horizon, left),
+      ..row("Test Case ID", c.id),
+      ..opt("pre", "Pre-condition"),
+      ..opt("action", "Action"),
+      ..input-rows,
+      ..row("Expected Output", c.expected),
+      ..row("Actual Output", c.at("actual", default: [--])),
+      ..opt("ecs", "Classes Covered"),
+      ..row("Status", if st == none [--] else [#st]),
+    ))
+  }
 }
 
 // Test Coverage Matrix: one row per user story, built from all `test-cases` above it.

@@ -11,7 +11,8 @@
 //      (EC = a group of inputs the system should treat the same).
 //      Give each input at least 1 valid + 1 invalid class, with a concrete example.
 //      EC IDs only need to be unique within the story.
-//   2. test-cases: cover EVERY EC at least once.
+//   2. test-cases: cover EVERY EC at least once. One card per case,
+//      field list + screenshot example: see test-cases in appendix/preambles.typ.
 //      TC IDs must be unique across the WHOLE document (TC51, TC52, ...).
 //      `actual` + `status` ("P"/"F") are filled after running the tests;
 //      leave them out until then.
@@ -32,11 +33,26 @@ _As a ..., I want ..., so that ..._
   ("EC2", "Email", [missing `@`, e.g. `ab.com`], false),
 )
 
+=== Pre-condition
+#todo[e.g. logged in as organizer `org@test.com`]
+
 === Test Cases
 #test-cases(
   story: "US p-q",
-  (id: "TC51", inputs: [email = `a@b.com`], expected: [account created], ecs: "EC1"),
-  (id: "TC52", inputs: [email = `ab.com`], expected: [error "invalid email"], ecs: "EC2"),
+  (
+    id: "TC51",
+    action: [Fill the form and press *Register*],
+    inputs: (Email: [`a@b.com`], Password: [`Passw0rd!`]),
+    expected: [Account created],
+    // expected: [Account created \ #image("../img/tc51.png", width: 80%)],
+    ecs: "EC1",
+  ),
+  (
+    id: "TC52",
+    inputs: (Email: [`ab.com`], Password: [`Passw0rd!`]),
+    expected: [Error "invalid email"],
+    ecs: "EC2",
+  ),
 )
 
 // ---------- Story 2 (Mavin) ----------
