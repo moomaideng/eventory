@@ -335,7 +335,7 @@ export function RegistrationFormView({
     <form
       noValidate
       onSubmit={handleSubmit}
-      className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-4 py-10"
+      className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-8 px-4 py-10 sm:px-8"
     >
       <PageHeader
         breadcrumbs={[
@@ -352,7 +352,7 @@ export function RegistrationFormView({
         }
       />
 
-      <div className="flex flex-col gap-6">
+      <div className="flex w-full max-w-3xl flex-col gap-6">
         {fields.map((field, idx) => (
           <FormFieldAnswerCard
             key={field.id}
@@ -364,26 +364,26 @@ export function RegistrationFormView({
             onBlur={() => setError(field, answerOf(field))}
           />
         ))}
-      </div>
 
-      <p className="text-muted-foreground text-sm">
-        Check your answers before submitting. They cannot be edited afterward.
-      </p>
+        <p className="text-muted-foreground text-sm">
+          Check your answers before submitting. They cannot be edited afterward.
+        </p>
 
-      {submitError && (
-        <Alert variant="destructive" aria-live="polite">
-          <AlertTitle>Registration was not completed</AlertTitle>
-          <AlertDescription>{submitError}</AlertDescription>
-        </Alert>
-      )}
+        {submitError && (
+          <Alert variant="destructive" aria-live="polite">
+            <AlertTitle>Registration was not completed</AlertTitle>
+            <AlertDescription>{submitError}</AlertDescription>
+          </Alert>
+        )}
 
-      <div className="flex justify-end">
-        <Button type="submit" disabled={isSubmitting || isRedirecting}>
-          {(isSubmitting || isRedirecting) && (
-            <Spinner data-icon="inline-start" />
-          )}
-          {isRedirecting ? "Redirecting..." : "Submit registration"}
-        </Button>
+        <div className="flex justify-end">
+          <Button type="submit" disabled={isSubmitting || isRedirecting}>
+            {(isSubmitting || isRedirecting) && (
+              <Spinner data-icon="inline-start" />
+            )}
+            {isRedirecting ? "Redirecting..." : "Submit registration"}
+          </Button>
+        </div>
       </div>
     </form>
   );

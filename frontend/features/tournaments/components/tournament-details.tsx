@@ -76,7 +76,7 @@ export function TournamentDetails({
 
   if (error || !data) {
     return (
-      <div className="container mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-12 sm:px-8">
+      <div className="container mx-auto flex w-full max-w-7xl flex-1 flex-col gap-6 px-4 py-10 sm:px-8">
         <PageHeader
           workspace={sponsorMode ? "sponsor" : undefined}
           breadcrumbs={[

@@ -184,7 +184,7 @@ export function TeamLobbyWorkspace({
 
   if (error || !lobby) {
     return (
-      <div className="container mx-auto flex w-full max-w-3xl flex-1 px-4 py-12 sm:px-8">
+      <div className="container mx-auto flex w-full max-w-7xl flex-1 px-4 py-10 sm:px-8">
         <Empty className="border">
           <EmptyHeader>
             <EmptyMedia variant="icon">
@@ -203,7 +203,7 @@ export function TeamLobbyWorkspace({
   const displayedError = actionError || copyError;
 
   return (
-    <div className="container mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 px-4 py-12 sm:px-8">
+    <div className="container mx-auto flex w-full max-w-7xl flex-1 flex-col gap-8 px-4 py-10 sm:px-8">
       <PageHeader
         breadcrumbs={[
           { label: "Tournaments", href: "/tournaments" },

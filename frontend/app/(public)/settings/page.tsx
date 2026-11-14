@@ -11,14 +11,16 @@ export const metadata: Metadata = {
 
 export default function SettingsPage() {
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-8 px-4 py-10">
+    <div className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-8 px-4 py-10 sm:px-8">
       <PageHeader
         title="Profile settings"
         description="Manage your account, and your organizer and sponsor profiles."
       />
-      <AccountSettingsManager />
-      <OrganizerProfileManager />
-      <SponsorProfileManager />
+      <div className="flex w-full max-w-3xl flex-col gap-8">
+        <AccountSettingsManager />
+        <OrganizerProfileManager />
+        <SponsorProfileManager />
+      </div>
     </div>
   );
 }

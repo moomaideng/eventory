@@ -27,7 +27,7 @@ export default async function PublicBracketPage({
   }
 
   return (
-    <div className="flex w-full flex-1 flex-col overflow-x-hidden py-8">
+    <div className="flex w-full flex-1 flex-col overflow-x-hidden py-10">
       <PublicBracketViewer tournamentId={parsed.data} />
     </div>
   );
