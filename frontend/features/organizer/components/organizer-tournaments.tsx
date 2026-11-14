@@ -22,6 +22,7 @@ import {
   CardContent,
   CardFooter,
 } from "@/components/ui/card";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Empty,
   EmptyHeader,
@@ -42,20 +43,47 @@ import {
 import { TournamentStatusBadge } from "@/features/tournaments/components/tournament-status-badge";
 import { dashboardQueryOptions } from "@/features/organizer/utils";
 import {
+  organizerRoleFilterSchema,
+  organizerTournamentStatusFilterSchema,
+  type OrganizerRoleFilter,
+  type OrganizerTournamentStatusFilter,
+} from "@/features/organizer/schemas";
+import {
   DashboardError,
   DashboardLoading,
   DashboardPagination,
   RefreshDashboard,
 } from "@/features/organizer/components/dashboard-shared";
 import { StaffRoleBadge } from "@/features/tournament-staff";
-import { cn } from "@/lib/utils";
 
-type RoleFilter = "ALL" | "OWNER" | "ADMIN" | "REFEREE";
+const STATUS_TABS: ReadonlyArray<{
+  value: OrganizerTournamentStatusFilter;
+  label: string;
+}> = [
+  { value: "ALL", label: "All" },
+  { value: "DRAFT", label: "Draft" },
+  { value: "CROWDFUNDING", label: "Crowdfunding" },
+  { value: "REGISTRATION", label: "Registration" },
+  { value: "ONGOING", label: "Ongoing" },
+  { value: "COMPLETED", label: "Completed" },
+];
+
+const ROLE_TABS: ReadonlyArray<{
+  value: OrganizerRoleFilter;
+  label: string;
+}> = [
+  { value: "ALL", label: "All roles" },
+  { value: "OWNER", label: "Owner" },
+  { value: "ADMIN", label: "Admin" },
+  { value: "REFEREE", label: "Referee" },
+];
 
 export function OrganizerTournaments() {
   const { authorizationHeader, isLoading: authLoading } = useAuth();
   const [page, setPage] = useState(1);
-  const [roleFilter, setRoleFilter] = useState<RoleFilter>("ALL");
+  const [statusFilter, setStatusFilter] =
+    useState<OrganizerTournamentStatusFilter>("ALL");
+  const [roleFilter, setRoleFilter] = useState<OrganizerRoleFilter>("ALL");
   const { data, error, isLoading, isFetching, refetch } = $api.useQuery(
     "get",
     "/api/v1/tournaments/mine",
@@ -66,22 +94,30 @@ export function OrganizerTournaments() {
     { ...dashboardQueryOptions, enabled: Boolean(authorizationHeader) }
   );
 
-  const counts = useMemo(() => {
-    const items = data?.items ?? [];
-    const c = { ALL: items.length, OWNER: 0, ADMIN: 0, REFEREE: 0 };
-    for (const item of items) {
-      if (item.role === "OWNER") c.OWNER++;
-      else if (item.role === "ADMIN") c.ADMIN++;
-      else if (item.role === "REFEREE") c.REFEREE++;
-    }
-    return c;
-  }, [data?.items]);
+  const handleStatusChange = (value: string) => {
+    const parsed = organizerTournamentStatusFilterSchema.safeParse(value);
+    if (!parsed.success) return;
+    setStatusFilter(parsed.data);
+  };
+
+  const handleRoleChange = (value: string) => {
+    const parsed = organizerRoleFilterSchema.safeParse(value);
+    if (!parsed.success) return;
+    setRoleFilter(parsed.data);
+  };
 
   const filteredItems = useMemo(() => {
     const items = data?.items ?? [];
-    if (roleFilter === "ALL") return items;
-    return items.filter((item) => item.role === roleFilter);
-  }, [data?.items, roleFilter]);
+    return items.filter((item) => {
+      if (statusFilter !== "ALL" && item.tournament.status !== statusFilter) {
+        return false;
+      }
+      if (roleFilter !== "ALL" && item.role !== roleFilter) {
+        return false;
+      }
+      return true;
+    });
+  }, [data?.items, roleFilter, statusFilter]);
 
   const loading = authLoading || !authorizationHeader || isLoading;
   return (
@@ -152,55 +188,54 @@ export function OrganizerTournaments() {
         </Empty>
       ) : (
         <div className="flex flex-col gap-6">
-          <div className="flex flex-wrap items-center gap-2">
-            {(
-              [
-                { id: "ALL", label: "All" },
-                { id: "OWNER", label: "Owner" },
-                { id: "ADMIN", label: "Admin" },
-                { id: "REFEREE", label: "Referee" },
-              ] as const
-            ).map(({ id, label }) => {
-              const count = counts[id];
-              const isActive = roleFilter === id;
-              return (
-                <Button
-                  key={id}
-                  variant={isActive ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setRoleFilter(id)}
-                  className="rounded-full"
-                >
-                  {label}
-                  <span
-                    className={cn(
-                      "ml-1.5 text-xs font-normal",
-                      isActive
-                        ? "text-primary-foreground/80"
-                        : "text-muted-foreground"
-                    )}
-                  >
-                    {count}
-                  </span>
-                </Button>
-              );
-            })}
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <Tabs value={statusFilter} onValueChange={handleStatusChange}>
+              <TabsList
+                aria-label="Filter tournaments by status"
+                className="max-w-full justify-start overflow-x-auto"
+              >
+                {STATUS_TABS.map((tab) => (
+                  <TabsTrigger key={tab.value} value={tab.value}>
+                    {tab.label}
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+            </Tabs>
+
+            <Tabs value={roleFilter} onValueChange={handleRoleChange}>
+              <TabsList
+                aria-label="Filter tournaments by role"
+                className="max-w-full justify-start overflow-x-auto"
+              >
+                {ROLE_TABS.map((tab) => (
+                  <TabsTrigger key={tab.value} value={tab.value}>
+                    {tab.label}
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+            </Tabs>
           </div>
 
           {filteredItems.length === 0 ? (
             <Empty className="border">
               <EmptyHeader>
-                <EmptyTitle>No {roleFilter.toLowerCase()} tournaments</EmptyTitle>
+                <EmptyTitle>No matching tournaments</EmptyTitle>
                 <EmptyDescription>
-                  You are not assigned as a {roleFilter.toLowerCase()} on any
-                  tournaments.
+                  {statusFilter !== "ALL" && roleFilter !== "ALL"
+                    ? `You have no ${statusFilter.toLowerCase()} tournaments as ${roleFilter.toLowerCase()}.`
+                    : statusFilter !== "ALL"
+                      ? `You have no ${statusFilter.toLowerCase()} tournaments.`
+                      : `You are not assigned as a ${roleFilter.toLowerCase()} on any tournaments.`}
                 </EmptyDescription>
               </EmptyHeader>
               <EmptyContent>
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setRoleFilter("ALL")}
+                  onClick={() => {
+                    setStatusFilter("ALL");
+                    setRoleFilter("ALL");
+                  }}
                 >
                   Show all tournaments
                 </Button>

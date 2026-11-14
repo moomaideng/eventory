@@ -169,3 +169,31 @@ export const editCrowdfundingSectionSchema = z
 export type EditCrowdfundingSectionInput = z.infer<
   typeof editCrowdfundingSectionSchema
 >;
+
+export const ORGANIZER_MY_TOURNAMENT_STATUSES = [
+  "ALL",
+  "DRAFT",
+  "CROWDFUNDING",
+  "REGISTRATION",
+  "ONGOING",
+  "COMPLETED",
+] as const;
+
+export const organizerTournamentStatusFilterSchema = z.enum(
+  ORGANIZER_MY_TOURNAMENT_STATUSES
+);
+
+export type OrganizerTournamentStatusFilter = z.infer<
+  typeof organizerTournamentStatusFilterSchema
+>;
+
+export const ORGANIZER_ROLE_FILTERS = [
+  "ALL",
+  "OWNER",
+  "ADMIN",
+  "REFEREE",
+] as const;
+
+export const organizerRoleFilterSchema = z.enum(ORGANIZER_ROLE_FILTERS);
+
+export type OrganizerRoleFilter = z.infer<typeof organizerRoleFilterSchema>;
