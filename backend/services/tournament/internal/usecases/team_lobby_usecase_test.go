@@ -30,7 +30,7 @@ type teamLobbyRepositoryStub struct {
 func (s *teamLobbyRepositoryStub) FindTournamentByID(_ context.Context, _ uuid.UUID) (*models.Tournament, error) {
 	return s.tournament, nil
 }
-func (s *teamLobbyRepositoryStub) FindByID(_ context.Context, _ uuid.UUID) (*models.TournamentTeam, error) {
+func (s *teamLobbyRepositoryStub) FindByID(_ context.Context, _ uuid.UUID, _ string) (*models.TournamentTeam, error) {
 	if s.team == nil {
 		return nil, repositories.ErrTeamLobbyNotFound
 	}
@@ -49,6 +49,7 @@ func (s *teamLobbyRepositoryStub) FindActiveByTournamentAndAccount(_ context.Con
 	return s.activeTeam, nil
 }
 func (s *teamLobbyRepositoryStub) Create(_ context.Context, team *models.TournamentTeam, captain *models.TournamentTeamMember) (*models.TournamentTeam, error) {
+	captain.TournamentID = team.TournamentID
 	captain.TournamentTeamID = team.ID
 	team.Members = []models.TournamentTeamMember{*captain}
 	s.created, s.captain, s.team = team, captain, team
@@ -57,27 +58,27 @@ func (s *teamLobbyRepositoryStub) Create(_ context.Context, team *models.Tournam
 	}
 	return team, nil
 }
-func (s *teamLobbyRepositoryStub) Join(_ context.Context, _ uuid.UUID, accountID uuid.UUID, membershipID ...uuid.UUID) (*models.TournamentTeam, error) {
+func (s *teamLobbyRepositoryStub) Join(_ context.Context, _ uuid.UUID, _ string, accountID uuid.UUID, membershipID ...uuid.UUID) (*models.TournamentTeam, error) {
 	s.joined = true
 	if len(membershipID) > 0 {
-		s.team.Members = append(s.team.Members, models.TournamentTeamMember{ID: membershipID[0], AccountID: accountID, TournamentTeamID: s.team.ID, Role: models.TournamentTeamMemberRoleMember})
+		s.team.Members = append(s.team.Members, models.TournamentTeamMember{ID: membershipID[0], TournamentID: s.team.TournamentID, AccountID: accountID, TournamentTeamID: s.team.ID, Role: models.TournamentTeamMemberRoleMember})
 	}
 	return s.team, nil
 }
-func (s *teamLobbyRepositoryStub) RegenerateInvite(_ context.Context, _ uuid.UUID, inviteCode string) (*models.TournamentTeam, error) {
+func (s *teamLobbyRepositoryStub) RegenerateInvite(_ context.Context, _ uuid.UUID, _ string, inviteCode string) (*models.TournamentTeam, error) {
 	if s.team != nil {
 		s.team.InviteCode = &inviteCode
 	}
 	return s.team, nil
 }
-func (s *teamLobbyRepositoryStub) Lock(_ context.Context, _ uuid.UUID, _ ...[]models.TournamentTeamMember) (*models.TournamentTeam, error) {
+func (s *teamLobbyRepositoryStub) Lock(_ context.Context, _ uuid.UUID, _ string, _ ...[]models.TournamentTeamMember) (*models.TournamentTeam, error) {
 	s.locked = true
 	if s.team != nil {
 		s.team.Status = models.TournamentTeamStatusLocked
 	}
 	return s.team, nil
 }
-func (s *teamLobbyRepositoryStub) RemoveMember(_ context.Context, _ uuid.UUID, memberID uuid.UUID) (*models.TournamentTeam, error) {
+func (s *teamLobbyRepositoryStub) RemoveMember(_ context.Context, _ uuid.UUID, _ string, memberID uuid.UUID) (*models.TournamentTeam, error) {
 	if s.team != nil {
 		newMembers := make([]models.TournamentTeamMember, 0, len(s.team.Members))
 		for _, m := range s.team.Members {
@@ -89,7 +90,7 @@ func (s *teamLobbyRepositoryStub) RemoveMember(_ context.Context, _ uuid.UUID, m
 	}
 	return s.team, nil
 }
-func (s *teamLobbyRepositoryStub) Disband(_ context.Context, _ uuid.UUID) error {
+func (s *teamLobbyRepositoryStub) Disband(_ context.Context, _ uuid.UUID, _ string) error {
 	s.team = nil
 	return nil
 }
@@ -173,6 +174,9 @@ func TestCreateTeamLobby_InitializesCaptainAndInvite(t *testing.T) {
 	}
 	if team.Team.Name != "Night Owls" || team.Team.InviteCode == nil || len(*team.Team.InviteCode) != 6 {
 		t.Fatalf("unexpected team: %+v", team)
+	}
+	if !models.ValidateTeamID(team.Team.ID) {
+		t.Fatalf("invalid team id: %q", team.Team.ID)
 	}
 	if !usecases.ValidateInviteCode(*team.Team.InviteCode) {
 		t.Fatalf("invalid invite code: %s", *team.Team.InviteCode)
@@ -317,22 +321,24 @@ func TestRegisterSolo_RejectsNonSoloTournament(t *testing.T) {
 
 func TestCaptainActions_RejectNonCaptain(t *testing.T) {
 	captainID := uuid.New()
+	tournamentID := uuid.New()
 	repo := &teamLobbyRepositoryStub{team: &models.TournamentTeam{
-		ID: uuid.New(),
+		ID:           "Ab12Cd34",
+		TournamentID: tournamentID,
 		Members: []models.TournamentTeamMember{{
 			AccountID: captainID, Role: models.TournamentTeamMemberRoleCaptain,
 		}},
 	}}
 	useCase := newTestTeamLobbyUseCase(repo, newStubAccountService().withAccount(captainID, "captain", "Captain"))
 
-	_, err := useCase.Lock(context.Background(), repo.team.ID, uuid.New())
+	_, err := useCase.Lock(context.Background(), tournamentID, repo.team.ID, uuid.New())
 	if !errors.Is(err, usecases.ErrLobbyAccessDenied) {
 		t.Fatalf("Lock() error = %v, want captain access denial", err)
 	}
 }
 
 func TestGetActiveForTournament_ReturnsActiveTeam(t *testing.T) {
-	team := &models.TournamentTeam{ID: uuid.New(), Name: "Night Owls"}
+	team := &models.TournamentTeam{ID: "Ab12Cd34", Name: "Night Owls"}
 	accountID := uuid.New()
 	useCase := newTestTeamLobbyUseCase(&teamLobbyRepositoryStub{activeTeam: team}, newStubAccountService().withAccount(accountID, "player", "Player"))
 
@@ -345,28 +351,42 @@ func TestGetActiveForTournament_ReturnsActiveTeam(t *testing.T) {
 	}
 }
 
-func TestGetByInviteCode_ValidatesFormat(t *testing.T) {
-	repo := &teamLobbyRepositoryStub{}
+func TestResolveByInviteCode_ValidatesFormatAndCode(t *testing.T) {
+	tournamentID := uuid.New()
+	code := "ABC123"
+	repo := &teamLobbyRepositoryStub{team: &models.TournamentTeam{
+		ID:           "Ab12Cd34",
+		TournamentID: tournamentID,
+		InviteCode:   &code,
+		Status:       models.TournamentTeamStatusForming,
+	}}
 	useCase := newTestTeamLobbyUseCase(repo, newStubAccountService().withAccount(uuid.New(), "user", "User"))
 
-	_, err := useCase.GetByInviteCode(context.Background(), "INVALID-CODE", uuid.New())
+	_, err := useCase.ResolveByInviteCode(context.Background(), "INVALID-CODE", uuid.New())
 	if !errors.Is(err, usecases.ErrInvalidInviteCode) {
 		t.Fatalf("expected ErrInvalidInviteCode, got %v", err)
 	}
 
-	_, err = useCase.Join(context.Background(), "123", uuid.New())
+	_, err = useCase.Join(context.Background(), tournamentID, "Ab12Cd34", "123", uuid.New())
 	if !errors.Is(err, usecases.ErrInvalidInviteCode) {
 		t.Fatalf("expected ErrInvalidInviteCode, got %v", err)
+	}
+
+	_, err = useCase.Join(context.Background(), tournamentID, "Ab12Cd34", "XYZ999", uuid.New())
+	if !errors.Is(err, usecases.ErrInvalidInviteCode) {
+		t.Fatalf("expected ErrInvalidInviteCode on mismatched code, got %v", err)
 	}
 }
 
 func TestRegenerateInvite(t *testing.T) {
 	captainID := uuid.New()
-	teamID := uuid.New()
+	tournamentID := uuid.New()
+	teamID := "Ab12Cd34"
 	oldCode := "OLDCOD"
 	team := &models.TournamentTeam{
-		ID:         teamID,
-		InviteCode: &oldCode,
+		ID:           teamID,
+		TournamentID: tournamentID,
+		InviteCode:   &oldCode,
 		Members: []models.TournamentTeamMember{{
 			AccountID: captainID, Role: models.TournamentTeamMemberRoleCaptain,
 		}},
@@ -375,13 +395,13 @@ func TestRegenerateInvite(t *testing.T) {
 	useCase := newTestTeamLobbyUseCase(repo, newStubAccountService().withAccount(captainID, "captain", "Captain"))
 
 	// Non-captain denied
-	_, err := useCase.RegenerateInvite(context.Background(), teamID, uuid.New())
+	_, err := useCase.RegenerateInvite(context.Background(), tournamentID, teamID, uuid.New())
 	if !errors.Is(err, usecases.ErrLobbyAccessDenied) {
 		t.Fatalf("RegenerateInvite() error = %v, want ErrLobbyAccessDenied", err)
 	}
 
 	// Captain succeeds
-	updated, err := useCase.RegenerateInvite(context.Background(), teamID, captainID)
+	updated, err := useCase.RegenerateInvite(context.Background(), tournamentID, teamID, captainID)
 	if err != nil {
 		t.Fatalf("RegenerateInvite() error = %v", err)
 	}
@@ -395,10 +415,12 @@ func TestRegenerateInvite(t *testing.T) {
 
 func TestLock_Success(t *testing.T) {
 	captainID := uuid.New()
-	teamID := uuid.New()
+	tournamentID := uuid.New()
+	teamID := "Ab12Cd34"
 	team := &models.TournamentTeam{
-		ID:     teamID,
-		Status: models.TournamentTeamStatusForming,
+		ID:           teamID,
+		TournamentID: tournamentID,
+		Status:       models.TournamentTeamStatusForming,
 		Members: []models.TournamentTeamMember{{
 			AccountID: captainID, Role: models.TournamentTeamMemberRoleCaptain,
 		}},
@@ -406,7 +428,7 @@ func TestLock_Success(t *testing.T) {
 	repo := &teamLobbyRepositoryStub{team: team}
 	useCase := newTestTeamLobbyUseCase(repo, newStubAccountService().withAccount(captainID, "captain", "Captain"))
 
-	locked, err := useCase.Lock(context.Background(), teamID, captainID)
+	locked, err := useCase.Lock(context.Background(), tournamentID, teamID, captainID)
 	if err != nil {
 		t.Fatalf("Lock() error = %v", err)
 	}
@@ -419,9 +441,11 @@ func TestRemoveMember(t *testing.T) {
 	captainID := uuid.New()
 	memberID := uuid.New()
 	memberAccountID := uuid.New()
-	teamID := uuid.New()
+	tournamentID := uuid.New()
+	teamID := "Ab12Cd34"
 	team := &models.TournamentTeam{
-		ID: teamID,
+		ID:           teamID,
+		TournamentID: tournamentID,
 		Members: []models.TournamentTeamMember{
 			{ID: uuid.New(), AccountID: captainID, Role: models.TournamentTeamMemberRoleCaptain},
 			{ID: memberID, AccountID: memberAccountID, Role: models.TournamentTeamMemberRoleMember},
@@ -434,13 +458,13 @@ func TestRemoveMember(t *testing.T) {
 	useCase := newTestTeamLobbyUseCase(repo, accounts)
 
 	// Non-captain denied
-	_, err := useCase.RemoveMember(context.Background(), teamID, memberID, memberAccountID)
+	_, err := useCase.RemoveMember(context.Background(), tournamentID, teamID, memberID, memberAccountID)
 	if !errors.Is(err, usecases.ErrLobbyAccessDenied) {
 		t.Fatalf("RemoveMember() error = %v, want ErrLobbyAccessDenied", err)
 	}
 
 	// Captain succeeds
-	updated, err := useCase.RemoveMember(context.Background(), teamID, memberID, captainID)
+	updated, err := useCase.RemoveMember(context.Background(), tournamentID, teamID, memberID, captainID)
 	if err != nil {
 		t.Fatalf("RemoveMember() error = %v", err)
 	}
@@ -451,9 +475,11 @@ func TestRemoveMember(t *testing.T) {
 
 func TestDisband(t *testing.T) {
 	captainID := uuid.New()
-	teamID := uuid.New()
+	tournamentID := uuid.New()
+	teamID := "Ab12Cd34"
 	team := &models.TournamentTeam{
-		ID: teamID,
+		ID:           teamID,
+		TournamentID: tournamentID,
 		Members: []models.TournamentTeamMember{{
 			AccountID: captainID, Role: models.TournamentTeamMemberRoleCaptain,
 		}},
@@ -462,13 +488,13 @@ func TestDisband(t *testing.T) {
 	useCase := newTestTeamLobbyUseCase(repo, newStubAccountService().withAccount(captainID, "captain", "Captain"))
 
 	// Non-captain denied
-	err := useCase.Disband(context.Background(), teamID, uuid.New())
+	err := useCase.Disband(context.Background(), tournamentID, teamID, uuid.New())
 	if !errors.Is(err, usecases.ErrLobbyAccessDenied) {
 		t.Fatalf("Disband() error = %v, want ErrLobbyAccessDenied", err)
 	}
 
 	// Captain succeeds
-	if err := useCase.Disband(context.Background(), teamID, captainID); err != nil {
+	if err := useCase.Disband(context.Background(), tournamentID, teamID, captainID); err != nil {
 		t.Fatalf("Disband() error = %v", err)
 	}
 	if repo.team != nil {
@@ -511,7 +537,7 @@ func TestSubmissionRequiresAuthoritativeMatchingInvoice(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			attempt, payer := uuid.New(), uuid.New()
 			expires := time.Now().Add(time.Minute)
-			team := &models.TournamentTeam{ID: uuid.New(), Status: models.TournamentTeamStatusPaymentPending, PaymentAttemptID: &attempt, PaymentPayerID: &payer, PaymentExpiresAt: &expires, PaymentAmountMinor: 10000}
+			team := &models.TournamentTeam{ID: "Ab12Cd34", TournamentID: uuid.New(), Status: models.TournamentTeamStatusPaymentPending, PaymentAttemptID: &attempt, PaymentPayerID: &payer, PaymentExpiresAt: &expires, PaymentAmountMinor: 10000}
 			repo := &teamLobbyRepositoryStub{}
 			uc := newTestTeamLobbyUseCase(repo, nil, registrationPaymentStub{tc.mutate, tc.err})
 			if err := uc.Reconcile(context.Background(), team); !errors.Is(err, usecases.ErrPaymentUnavailable) {
@@ -533,7 +559,7 @@ func TestSubmissionRequiresAuthoritativeMatchingInvoice(t *testing.T) {
 }
 
 func TestReconcile_ClearedAttemptWaitsForExplicitRetry(t *testing.T) {
-	team := &models.TournamentTeam{ID: uuid.New(), Status: models.TournamentTeamStatusPaymentPending}
+	team := &models.TournamentTeam{ID: "Ab12Cd34", TournamentID: uuid.New(), Status: models.TournamentTeamStatusPaymentPending}
 	u := newTestTeamLobbyUseCase(&teamLobbyRepositoryStub{team: team}, nil,
 		registrationPaymentStub{err: errors.New("invoice must not be requested before retry")})
 	if err := u.Reconcile(context.Background(), team); err != nil {
@@ -554,10 +580,10 @@ func TestApplyPaymentOutcome(t *testing.T) {
 	attempt, payer := uuid.New(), uuid.New()
 	expires := time.Now().Add(time.Minute).UTC().Truncate(time.Microsecond)
 	pending := func() *models.TournamentTeam {
-		return &models.TournamentTeam{ID: uuid.New(), Status: models.TournamentTeamStatusPaymentPending, PaymentAttemptID: &attempt, PaymentPayerID: &payer, PaymentExpiresAt: &expires, PaymentAmountMinor: 10000}
+		return &models.TournamentTeam{ID: "Ab12Cd34", TournamentID: uuid.New(), Status: models.TournamentTeamStatusPaymentPending, PaymentAttemptID: &attempt, PaymentPayerID: &payer, PaymentExpiresAt: &expires, PaymentAmountMinor: 10000}
 	}
 	outcome := func(team *models.TournamentTeam, status models.PaymentStatus) usecases.PaymentOutcome {
-		return usecases.PaymentOutcome{Status: status, PaymentID: uuid.New(), PayerAccountID: payer, Reference: team.ID.String() + ":" + attempt.String(), AmountMinor: 10000, Currency: "THB", ExpiresAt: expires}
+		return usecases.PaymentOutcome{Status: status, PaymentID: uuid.New(), PayerAccountID: payer, Reference: team.TournamentID.String() + ":" + team.ID + ":" + attempt.String(), AmountMinor: 10000, Currency: "THB", ExpiresAt: expires}
 	}
 	for _, tc := range []struct {
 		name        string
@@ -570,9 +596,10 @@ func TestApplyPaymentOutcome(t *testing.T) {
 		{"expired clears the attempt", pending(), func(o *usecases.PaymentOutcome) { o.Status = models.PaymentExpired }, "EXPIRED", nil},
 		{"cancelled clears the attempt", pending(), func(o *usecases.PaymentOutcome) { o.Status = models.PaymentCancelled }, "CANCELLED", nil},
 		{"deleted team is ignored", nil, nil, "", nil},
-		{"settled team is left alone", &models.TournamentTeam{ID: uuid.New(), Status: models.TournamentTeamStatusLocked}, nil, "", nil},
+		{"settled team is left alone", &models.TournamentTeam{ID: "Ab12Cd34", TournamentID: uuid.New(), Status: models.TournamentTeamStatusLocked}, nil, "", nil},
 		{"event for an older attempt is ignored", pending(), func(o *usecases.PaymentOutcome) {
-			o.Reference = strings.Split(o.Reference, ":")[0] + ":" + uuid.NewString()
+			parts := strings.Split(o.Reference, ":")
+			o.Reference = parts[0] + ":" + parts[1] + ":" + uuid.NewString()
 		}, "", nil},
 		{"malformed reference is rejected", pending(), func(o *usecases.PaymentOutcome) { o.Reference = "not-a-team" }, "", usecases.ErrPaymentMismatch},
 		{"wrong payer is rejected", pending(), func(o *usecases.PaymentOutcome) { o.PayerAccountID = uuid.New() }, "", usecases.ErrPaymentMismatch},
@@ -601,7 +628,7 @@ func TestApplyPaymentOutcome(t *testing.T) {
 	}
 }
 
-func (s *teamLobbyRepositoryStub) LockRegistration(_ context.Context, _ uuid.UUID) (repositories.TeamRegistrationLock, error) {
+func (s *teamLobbyRepositoryStub) LockRegistration(_ context.Context, _ uuid.UUID, _ string) (repositories.TeamRegistrationLock, error) {
 	if s.team == nil {
 		return nil, repositories.ErrTeamLobbyNotFound
 	}
@@ -630,7 +657,7 @@ func (s *registrationFormRepositoryStub) GetResponsesByAccounts(_ context.Contex
 func TestLock_PublishesRegistrationSubmitted_ForFreeTournament(t *testing.T) {
 	tournamentID := uuid.New()
 	captainID := uuid.New()
-	teamID := uuid.New()
+	teamID := "Ab12Cd34"
 	tournament := &models.Tournament{
 		ID:                   tournamentID,
 		Name:                 "Championship 2026",
@@ -663,7 +690,7 @@ func TestLock_PublishesRegistrationSubmitted_ForFreeTournament(t *testing.T) {
 
 	uc := usecases.NewTeamLobbyUseCase(repo, accountSvc, nil, nil, nil, pub)
 
-	view, err := uc.Lock(context.Background(), teamID, captainID)
+	view, err := uc.Lock(context.Background(), tournamentID, teamID, captainID)
 	if err != nil {
 		t.Fatalf("Lock() failed: %v", err)
 	}
@@ -771,7 +798,7 @@ func TestRegisterSolo_PublishesRegistrationSubmitted(t *testing.T) {
 
 func TestReconcile_PublishesRegistrationSubmitted_WhenPaid(t *testing.T) {
 	tournamentID := uuid.New()
-	teamID := uuid.New()
+	teamID := "Ef56Gh78"
 	payerID := uuid.New()
 	attemptID := uuid.New()
 	expires := time.Now().Add(time.Minute)
@@ -832,7 +859,7 @@ func TestReconcile_PublishesRegistrationSubmitted_WhenPaid(t *testing.T) {
 
 func TestApplyPaymentOutcome_PublishesRegistrationSubmitted_WhenPaid(t *testing.T) {
 	tournamentID := uuid.New()
-	teamID := uuid.New()
+	teamID := "Ij90Kl12"
 	payerID := uuid.New()
 	attemptID := uuid.New()
 	expires := time.Now().Add(time.Minute).UTC().Truncate(time.Microsecond)
@@ -879,7 +906,7 @@ func TestApplyPaymentOutcome_PublishesRegistrationSubmitted_WhenPaid(t *testing.
 		Status:         models.PaymentPaid,
 		PaymentID:      uuid.New(),
 		PayerAccountID: payerID,
-		Reference:      teamID.String() + ":" + attemptID.String(),
+		Reference:      tournamentID.String() + ":" + teamID + ":" + attemptID.String(),
 		AmountMinor:    10000,
 		Currency:       "THB",
 		ExpiresAt:      expires,

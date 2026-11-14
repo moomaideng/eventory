@@ -67,10 +67,10 @@ func (c *Client) GetPayment(ctx context.Context, id uuid.UUID) (*ports.Registrat
 	return fromPayment(res.GetPayment())
 }
 
-func (c *Client) RefundRegistration(ctx context.Context, paymentID, entryID uuid.UUID) (*ports.RegistrationPayment, error) {
+func (c *Client) RefundRegistration(ctx context.Context, paymentID uuid.UUID, entryID string) (*ports.RegistrationPayment, error) {
 	ctx, cancel := c.callContext(ctx)
 	defer cancel()
-	res, err := c.api.RefundRegistration(ctx, &paymentv1.RefundRegistrationRequest{Id: paymentID.String(), EntryId: entryID.String()})
+	res, err := c.api.RefundRegistration(ctx, &paymentv1.RefundRegistrationRequest{Id: paymentID.String(), EntryId: entryID})
 	if err != nil {
 		return nil, fmt.Errorf("refund registration: %w", err)
 	}
@@ -78,7 +78,7 @@ func (c *Client) RefundRegistration(ctx context.Context, paymentID, entryID uuid
 	if err != nil {
 		return nil, err
 	}
-	if p.ID != paymentID || p.Status != models.PaymentRefunded || p.Source != models.PaymentSourceTeamRegistration || !strings.HasPrefix(p.Reference, entryID.String()+":") {
+	if p.ID != paymentID || p.Status != models.PaymentRefunded || p.Source != models.PaymentSourceTeamRegistration || !strings.HasPrefix(p.Reference, entryID+":") {
 		return nil, fmt.Errorf("payment service returned a mismatched refund")
 	}
 	return p, nil

@@ -32,11 +32,11 @@ type mockBracketRepository struct {
 	matchesMap              map[uuid.UUID]*models.Match
 	getMatchErr             error
 	recordResultsErr        error
-	lastRecordedRankUpdates map[uuid.UUID]int
-	lastRecordedScores      map[uuid.UUID]*string
-	lastRecordedAdvances    map[uuid.UUID]bool
-	lastAdvancingTeamIDs    []uuid.UUID
-	lastSwap                []uuid.UUID
+	lastRecordedRankUpdates map[string]int
+	lastRecordedScores      map[string]*string
+	lastRecordedAdvances    map[string]bool
+	lastAdvancingTeamIDs    []string
+	lastSwap                []string
 }
 
 func (m *mockBracketRepository) GetTournament(_ context.Context, _ uuid.UUID) (*models.Tournament, error) {
@@ -113,19 +113,19 @@ func (m *mockBracketRepository) UpdateMatchSchedule(_ context.Context, _, matchI
 	return nil
 }
 
-func (m *mockBracketRepository) SwapMatchEntries(_ context.Context, matchA, teamA, matchB, teamB uuid.UUID) error {
-	m.lastSwap = []uuid.UUID{matchA, teamA, matchB, teamB}
+func (m *mockBracketRepository) SwapMatchEntries(_ context.Context, matchA uuid.UUID, teamA string, matchB uuid.UUID, teamB string) error {
+	m.lastSwap = []string{matchA.String(), teamA, matchB.String(), teamB}
 	return nil
 }
 
 func (m *mockBracketRepository) RecordMatchResults(
 	_ context.Context,
 	_, _ uuid.UUID,
-	rankUpdates map[uuid.UUID]int,
-	scoreUpdates map[uuid.UUID]*string,
-	advanceFlags map[uuid.UUID]bool,
+	rankUpdates map[string]int,
+	scoreUpdates map[string]*string,
+	advanceFlags map[string]bool,
 	_ *uuid.UUID,
-	advancingTeamIDs []uuid.UUID,
+	advancingTeamIDs []string,
 ) error {
 	if m.recordResultsErr != nil {
 		return m.recordResultsErr
@@ -512,9 +512,9 @@ func TestDefineBracket(t *testing.T) {
 			tournament: baseTournament,
 			staffRole:  &ownerRole,
 			acceptedTeams: []models.TournamentTeam{
-				{ID: uuid.New(), Name: "T1", Status: models.TournamentTeamStatusAccepted},
-				{ID: uuid.New(), Name: "T2", Status: models.TournamentTeamStatusAccepted},
-				{ID: uuid.New(), Name: "T3", Status: models.TournamentTeamStatusAccepted},
+				{ID: "TM000001", Name: "T1", Status: models.TournamentTeamStatusAccepted},
+				{ID: "TM000002", Name: "T2", Status: models.TournamentTeamStatusAccepted},
+				{ID: "TM000003", Name: "T3", Status: models.TournamentTeamStatusAccepted},
 			},
 		}
 		uc := usecases.NewBracketUseCase(repo)
@@ -544,10 +544,10 @@ func TestSeedStage1(t *testing.T) {
 		{ID: match2ID, TournamentID: tournamentID, Name: "Match 2", StageLevel: 1, TeamCount: 2},
 	}
 
-	team1ID := uuid.New()
-	team2ID := uuid.New()
-	team3ID := uuid.New()
-	team4ID := uuid.New()
+	team1ID := "TM000001"
+	team2ID := "TM000002"
+	team3ID := "TM000003"
+	team4ID := "TM000004"
 	acceptedTeams := []models.TournamentTeam{
 		{ID: team1ID, Name: "Team Alpha", Status: models.TournamentTeamStatusAccepted},
 		{ID: team2ID, Name: "Team Beta", Status: models.TournamentTeamStatusAccepted},
@@ -600,8 +600,8 @@ func TestSeedStage1(t *testing.T) {
 		uc := usecases.NewBracketUseCase(repo)
 
 		assignments := []usecases.Stage1SeedAssignment{
-			{MatchID: match1ID, TeamIDs: []uuid.UUID{team1ID, team4ID}},
-			{MatchID: match2ID, TeamIDs: []uuid.UUID{team2ID, team3ID}},
+			{MatchID: match1ID, TeamIDs: []string{team1ID, team4ID}},
+			{MatchID: match2ID, TeamIDs: []string{team2ID, team3ID}},
 		}
 
 		_, err := uc.SeedStage1(context.Background(), ownerID, tournamentID, assignments)
@@ -623,8 +623,8 @@ func TestSeedStage1(t *testing.T) {
 		uc := usecases.NewBracketUseCase(repo)
 
 		assignments := []usecases.Stage1SeedAssignment{
-			{MatchID: match1ID, TeamIDs: []uuid.UUID{team1ID, team2ID}},
-			{MatchID: match2ID, TeamIDs: []uuid.UUID{team1ID, team3ID}},
+			{MatchID: match1ID, TeamIDs: []string{team1ID, team2ID}},
+			{MatchID: match2ID, TeamIDs: []string{team1ID, team3ID}},
 		}
 
 		_, err := uc.SeedStage1(context.Background(), ownerID, tournamentID, assignments)
@@ -642,9 +642,9 @@ func TestSeedStage1(t *testing.T) {
 		}
 		uc := usecases.NewBracketUseCase(repo)
 
-		unknownTeam := uuid.New()
+		unknownTeam := "TM999999"
 		assignments := []usecases.Stage1SeedAssignment{
-			{MatchID: match1ID, TeamIDs: []uuid.UUID{unknownTeam}},
+			{MatchID: match1ID, TeamIDs: []string{unknownTeam}},
 		}
 
 		_, err := uc.SeedStage1(context.Background(), ownerID, tournamentID, assignments)
@@ -663,7 +663,7 @@ func TestSeedStage1(t *testing.T) {
 		uc := usecases.NewBracketUseCase(repo)
 
 		assignments := []usecases.Stage1SeedAssignment{
-			{MatchID: match1ID, TeamIDs: []uuid.UUID{team1ID, team2ID, team3ID}},
+			{MatchID: match1ID, TeamIDs: []string{team1ID, team2ID, team3ID}},
 		}
 
 		_, err := uc.SeedStage1(context.Background(), ownerID, tournamentID, assignments)
@@ -711,8 +711,8 @@ func TestRecordMatchResults(t *testing.T) {
 	}
 
 	matchID := uuid.New()
-	team1ID := uuid.New()
-	team2ID := uuid.New()
+	team1ID := "TM000001"
+	team2ID := "TM000002"
 	match := &models.Match{
 		ID:             matchID,
 		TournamentID:   tournamentID,
@@ -909,7 +909,7 @@ func TestSwapTeams(t *testing.T) {
 	referee := models.TournamentStaffRoleReferee
 	tournamentID := uuid.New()
 	m1, m2, m3 := uuid.New(), uuid.New(), uuid.New()
-	t1, t2, t3 := uuid.New(), uuid.New(), uuid.New()
+	t1, t2, t3 := "TM000001", "TM000002", "TM000003"
 	newRepo := func(role *models.TournamentStaffRole, m2Completed bool) *mockBracketRepository {
 		repo := &mockBracketRepository{
 			tournament: &models.Tournament{ID: tournamentID, Status: models.TournamentStatusOngoing},

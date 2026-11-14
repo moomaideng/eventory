@@ -79,14 +79,20 @@ func TestMemberRegistrationAnswers(t *testing.T) {
 	answers := func(value any) map[string]any {
 		return map[string]any{"answers": []models.FieldAnswer{{FieldID: "ign", Value: value}}}
 	}
-	request(http.MethodPost, tourPath+"/lobbies", map[string]any{"name": "Incomplete"}, captain, 400)
-	request(http.MethodPost, tourPath+"/lobbies", map[string]any{"name": "Invalid file", "answers": []models.FieldAnswer{{FieldID: "ign", Value: map[string]any{"filename": "bad.exe", "type": "application/octet-stream"}}}}, captain, 400)
+	joinPayload := func(inviteCode *string, value any) map[string]any {
+		return map[string]any{"inviteCode": *inviteCode, "answers": []models.FieldAnswer{{FieldID: "ign", Value: value}}}
+	}
+	teamPath := func(teamID string) string {
+		return tourPath + "/teams/" + teamID
+	}
+	request(http.MethodPost, tourPath+"/teams", map[string]any{"name": "Incomplete"}, captain, 400)
+	request(http.MethodPost, tourPath+"/teams", map[string]any{"name": "Invalid file", "answers": []models.FieldAnswer{{FieldID: "ign", Value: map[string]any{"filename": "bad.exe", "type": "application/octet-stream"}}}}, captain, 400)
 	var count int64
 	app.DB.Model(&models.TournamentTeam{}).Where("tournament_id = ?", s.tournament.ID).Count(&count)
 	if count != 0 {
 		t.Fatal("invalid answers created a team")
 	}
-	created := request(http.MethodPost, tourPath+"/lobbies", map[string]any{"name": "Ready team", "answers": []models.FieldAnswer{{FieldID: "ign", Value: "Captain"}}}, captain, 201)
+	created := request(http.MethodPost, tourPath+"/teams", map[string]any{"name": "Ready team", "answers": []models.FieldAnswer{{FieldID: "ign", Value: "Captain"}}}, captain, 201)
 	var lobby handlers.TeamLobbyResponse
 	if err := created.JSON(&lobby); err != nil {
 		t.Fatal(err)
@@ -98,11 +104,11 @@ func TestMemberRegistrationAnswers(t *testing.T) {
 	if _, err := collection.InsertOne(ctx, bson.M{"tournament_id": s.tournament.ID, "account_id": captain.ID}); !mongo.IsDuplicateKeyError(err) {
 		t.Fatalf("composite answer key must be unique: %v", err)
 	}
-	joinPath := "/lobbies/" + *lobby.InviteCode + "/join"
-	request(http.MethodPost, joinPath, answers(nil), member, 400)
-	request(http.MethodPost, joinPath, answers(map[string]any{"filename": "bad.exe"}), member, 400)
-	request(http.MethodPost, joinPath, answers("Member"), member, 200)
-	registrationPath := "/lobbies/" + lobby.ID.String() + "/registration"
+	joinPath := teamPath(lobby.ID) + "/join"
+	request(http.MethodPost, joinPath, joinPayload(lobby.InviteCode, nil), member, 400)
+	request(http.MethodPost, joinPath, joinPayload(lobby.InviteCode, map[string]any{"filename": "bad.exe"}), member, 400)
+	request(http.MethodPost, joinPath, joinPayload(lobby.InviteCode, "Member"), member, 200)
+	registrationPath := teamPath(lobby.ID) + "/registration"
 	request(http.MethodPut, registrationPath, answers("Intruder"), outsider, 403)
 	request(http.MethodPut, registrationPath, answers(nil), member, 400)
 	request(http.MethodPut, registrationPath, answers("Member revised"), member, 409)
@@ -110,7 +116,7 @@ func TestMemberRegistrationAnswers(t *testing.T) {
 	request(http.MethodPost, tourPath+"/form/responses", answers("standalone"), member, 405)
 	// Rejected edits must leave the original responses and readiness intact.
 	var latest handlers.TeamLobbyResponse
-	response := request(http.MethodGet, "/lobbies/"+*lobby.InviteCode, nil, captain, 200)
+	response := request(http.MethodGet, teamPath(lobby.ID), nil, captain, 200)
 	if err := response.JSON(&latest); err != nil {
 		t.Fatal(err)
 	}
@@ -120,7 +126,7 @@ func TestMemberRegistrationAnswers(t *testing.T) {
 		}
 	}
 	var persisted models.TournamentTeam
-	request(http.MethodPost, "/lobbies/"+lobby.ID.String()+"/lock", nil, captain, 200)
+	request(http.MethodPost, teamPath(lobby.ID)+"/lock", nil, captain, 200)
 	request(http.MethodPut, registrationPath, answers("Changed after locking"), member, 409)
 	list := request(http.MethodGet, tourPath+"/form/responses", nil, owner, 200)
 	var responses struct {
@@ -141,20 +147,20 @@ func TestMemberRegistrationAnswers(t *testing.T) {
 		}
 	}
 	request(http.MethodGet, tourPath+"/form/responses", nil, member, 403)
-	request(http.MethodPost, tourPath+"/entries/"+lobby.ID.String()+"/review", map[string]any{"decision": "REJECT", "reason": "One member does not meet the requirements"}, owner, 200)
-	if err := app.DB.Preload("Members").First(&persisted, "id = ?", lobby.ID).Error; err != nil {
+	request(http.MethodPost, tourPath+"/entries/"+lobby.ID+"/review", map[string]any{"decision": "REJECT", "reason": "One member does not meet the requirements"}, owner, 200)
+	if err := app.DB.Preload("Members").First(&persisted, "tournament_id = ? AND id = ?", s.tournament.ID, lobby.ID).Error; err != nil {
 		t.Fatal(err)
 	}
 	if persisted.Status != models.TournamentTeamStatusRejected || len(persisted.Members) != 2 {
 		t.Fatal("reject must apply to the whole team")
 	}
 	// Rejection is final for this team and its members; they cannot re-apply.
-	request(http.MethodPost, tourPath+"/entries/"+lobby.ID.String()+"/review", map[string]any{"decision": "ACCEPT"}, owner, 409)
+	request(http.MethodPost, tourPath+"/entries/"+lobby.ID+"/review", map[string]any{"decision": "ACCEPT"}, owner, 409)
 	request(http.MethodGet, tourPath+"/form/responses/me", nil, captain, 200)
 	request(http.MethodGet, tourPath+"/form/responses/me", nil, member, 200)
-	request(http.MethodPost, tourPath+"/lobbies", map[string]any{"name": "Missing new answers"}, captain, 400)
-	request(http.MethodPost, tourPath+"/lobbies", map[string]any{"name": "Second application", "answers": []models.FieldAnswer{{FieldID: "ign", Value: "New captain"}}}, captain, 409)
-	request(http.MethodPost, tourPath+"/lobbies", map[string]any{"name": "Member new team", "answers": []models.FieldAnswer{{FieldID: "ign", Value: "New member"}}}, member, 409)
+	request(http.MethodPost, tourPath+"/teams", map[string]any{"name": "Missing new answers"}, captain, 400)
+	request(http.MethodPost, tourPath+"/teams", map[string]any{"name": "Second application", "answers": []models.FieldAnswer{{FieldID: "ign", Value: "New captain"}}}, captain, 409)
+	request(http.MethodPost, tourPath+"/teams", map[string]any{"name": "Member new team", "answers": []models.FieldAnswer{{FieldID: "ign", Value: "New member"}}}, member, 409)
 
 	// Fresh users exercise removing/rejoining and disbanding while FORMING.
 	captain2, member2 := apptest.NewTestUser(), apptest.NewTestUser()
@@ -163,12 +169,12 @@ func TestMemberRegistrationAnswers(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	second := request(http.MethodPost, tourPath+"/lobbies", map[string]any{"name": "Second application", "answers": []models.FieldAnswer{{FieldID: "ign", Value: "New captain"}}}, captain2, 201)
+	second := request(http.MethodPost, tourPath+"/teams", map[string]any{"name": "Second application", "answers": []models.FieldAnswer{{FieldID: "ign", Value: "New captain"}}}, captain2, 201)
 	var newLobby handlers.TeamLobbyResponse
 	if err := second.JSON(&newLobby); err != nil {
 		t.Fatal(err)
 	}
-	joined := request(http.MethodPost, "/lobbies/"+*newLobby.InviteCode+"/join", answers("New member"), member2, 200)
+	joined := request(http.MethodPost, teamPath(newLobby.ID)+"/join", joinPayload(newLobby.InviteCode, "New member"), member2, 200)
 	if err := joined.JSON(&newLobby); err != nil {
 		t.Fatal(err)
 	}
@@ -184,7 +190,7 @@ func TestMemberRegistrationAnswers(t *testing.T) {
 	}
 	assertCurrent(captain2, "New captain")
 	assertCurrent(member2, "New member")
-	request(http.MethodPut, "/lobbies/"+newLobby.ID.String()+"/registration", answers("Edited"), member2, 409)
+	request(http.MethodPut, teamPath(newLobby.ID)+"/registration", answers("Edited"), member2, 409)
 	var history []models.FormResponse
 	filter := bson.M{"tournament_id": s.tournament.ID, "account_id": member2.ID}
 	cursor, err := collection.Find(ctx, filter)
@@ -205,23 +211,23 @@ func TestMemberRegistrationAnswers(t *testing.T) {
 			memberID = entry.ID
 		}
 	}
-	request(http.MethodDelete, "/lobbies/"+newLobby.ID.String()+"/members/"+memberID.String(), nil, captain2, 200)
+	request(http.MethodDelete, teamPath(newLobby.ID)+"/members/"+memberID.String(), nil, captain2, 200)
 	request(http.MethodGet, tourPath+"/form/responses/me", nil, member2, 404)
-	request(http.MethodPost, "/lobbies/"+*newLobby.InviteCode+"/join", answers(nil), member2, 400)
-	request(http.MethodPost, "/lobbies/"+*newLobby.InviteCode+"/join", answers("Rejoined member"), member2, 200)
+	request(http.MethodPost, teamPath(newLobby.ID)+"/join", joinPayload(newLobby.InviteCode, nil), member2, 400)
+	request(http.MethodPost, teamPath(newLobby.ID)+"/join", joinPayload(newLobby.InviteCode, "Rejoined member"), member2, 200)
 	assertCurrent(member2, "Rejoined member")
-	request(http.MethodPut, "/lobbies/"+newLobby.ID.String()+"/registration", answers("Edited again"), member2, 409)
+	request(http.MethodPut, teamPath(newLobby.ID)+"/registration", answers("Edited again"), member2, 409)
 
 	// Disbanding releases all members; registering again overwrites their answers.
-	request(http.MethodDelete, "/lobbies/"+newLobby.ID.String(), nil, captain2, 204)
+	request(http.MethodDelete, teamPath(newLobby.ID), nil, captain2, 204)
 	request(http.MethodGet, tourPath+"/form/responses/me", nil, captain2, 404)
 	request(http.MethodGet, tourPath+"/form/responses/me", nil, member2, 404)
-	third := request(http.MethodPost, tourPath+"/lobbies", map[string]any{"name": "Third application", "answers": []models.FieldAnswer{{FieldID: "ign", Value: "Third captain"}}}, captain2, 201)
+	third := request(http.MethodPost, tourPath+"/teams", map[string]any{"name": "Third application", "answers": []models.FieldAnswer{{FieldID: "ign", Value: "Third captain"}}}, captain2, 201)
 	var thirdLobby handlers.TeamLobbyResponse
 	if err := third.JSON(&thirdLobby); err != nil {
 		t.Fatal(err)
 	}
-	request(http.MethodPost, "/lobbies/"+*thirdLobby.InviteCode+"/join", answers("Other team member"), member2, 200)
+	request(http.MethodPost, teamPath(thirdLobby.ID)+"/join", joinPayload(thirdLobby.InviteCode, "Other team member"), member2, 200)
 	assertCurrent(captain2, "Third captain")
 	assertCurrent(member2, "Other team member")
 	total, err := collection.CountDocuments(ctx, filter)
@@ -229,7 +235,7 @@ func TestMemberRegistrationAnswers(t *testing.T) {
 		t.Fatalf("expected one response per tournament/account, count=%d err=%v", total, err)
 	}
 	// Solo rejection is also permanent.
-	request(http.MethodDelete, "/lobbies/"+thirdLobby.ID.String(), nil, captain2, 204)
+	request(http.MethodDelete, teamPath(thirdLobby.ID), nil, captain2, 204)
 	if err := app.DB.Model(&models.Tournament{}).Where("id = ?", s.tournament.ID).Updates(map[string]any{"registration_mode": "SOLO", "min_team_size": 1, "max_team_size": 1}).Error; err != nil {
 		t.Fatal(err)
 	}
@@ -240,7 +246,7 @@ func TestMemberRegistrationAnswers(t *testing.T) {
 	}
 	assertCurrent(captain2, "Solo first")
 	request(http.MethodPost, tourPath+"/solo-register", answers("Solo edit"), captain2, 409)
-	request(http.MethodPost, tourPath+"/entries/"+soloLobby.ID.String()+"/review", map[string]any{"decision": "REJECT", "reason": "Try a new application"}, owner, 200)
+	request(http.MethodPost, tourPath+"/entries/"+soloLobby.ID+"/review", map[string]any{"decision": "REJECT", "reason": "Try a new application"}, owner, 200)
 	request(http.MethodGet, tourPath+"/form/responses/me", nil, captain2, 200)
 	request(http.MethodPost, tourPath+"/solo-register", answers(nil), captain2, 400)
 	request(http.MethodPost, tourPath+"/solo-register", answers("Solo second"), captain2, 409)

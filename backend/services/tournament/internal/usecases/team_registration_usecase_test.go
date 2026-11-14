@@ -15,8 +15,9 @@ func teamAnswerFixture() (*usecases.TeamLobbyUseCase, *teamLobbyRepositoryStub, 
 	captain, member := uuid.New(), uuid.New()
 	tournament := &models.Tournament{ID: uuid.New(), RegistrationMode: models.TournamentRegistrationModeTeam,
 		Status: models.TournamentStatusRegistration, RegistrationDeadline: time.Now().Add(time.Hour), MinTeamSize: 2, MaxTeamSize: 5}
+	inviteCode := "ABC123"
 	repo := &teamLobbyRepositoryStub{tournament: tournament, team: &models.TournamentTeam{
-		ID: uuid.New(), TournamentID: tournament.ID, Tournament: *tournament, Status: models.TournamentTeamStatusForming,
+		ID: "Ab12Cd34", TournamentID: tournament.ID, Tournament: *tournament, InviteCode: &inviteCode, Status: models.TournamentTeamStatusForming,
 		Members: []models.TournamentTeamMember{
 			{ID: uuid.New(), AccountID: captain, Role: models.TournamentTeamMemberRoleCaptain},
 			{ID: uuid.New(), AccountID: member, Role: models.TournamentTeamMemberRoleMember},
@@ -65,11 +66,11 @@ func TestTeamRegistration_CreateValidatesBeforeCreatingMembership(t *testing.T) 
 
 func TestTeamRegistration_JoinValidatesBeforeAddingMember(t *testing.T) {
 	u, repo, _, _, member := teamAnswerFixture()
-	_, err := u.Join(context.Background(), "ABC123", member, nil)
+	_, err := u.Join(context.Background(), repo.tournament.ID, repo.team.ID, "ABC123", member, nil)
 	if !errors.Is(err, forms.ErrFieldRequired) || repo.joined {
 		t.Fatalf("Join error=%v joined=%v", err, repo.joined)
 	}
-	_, err = u.Join(context.Background(), "ABC123", member, validTeamAnswers())
+	_, err = u.Join(context.Background(), repo.tournament.ID, repo.team.ID, "ABC123", member, validTeamAnswers())
 	if err != nil || !repo.joined {
 		t.Fatalf("Join valid error=%v", err)
 	}
@@ -80,15 +81,15 @@ func TestTeamRegistration_IncompleteMemberBlocksFreeAndPaidSubmission(t *testing
 		t.Run(time.Duration(fee).String(), func(t *testing.T) {
 			u, repo, _, captain, member := teamAnswerFixture()
 			repo.team.Tournament.EntryFeeMinor = fee
-			_, err := u.Lock(context.Background(), repo.team.ID, captain)
+			_, err := u.Lock(context.Background(), repo.tournament.ID, repo.team.ID, captain)
 			if !errors.Is(err, usecases.ErrMemberAnswersIncomplete) || repo.locked {
 				t.Fatalf("Lock error=%v, locked=%v", err, repo.locked)
 			}
-			view, err := u.SaveRegistrationAnswers(context.Background(), repo.team.ID, member, validTeamAnswers())
+			view, err := u.SaveRegistrationAnswers(context.Background(), repo.tournament.ID, repo.team.ID, member, validTeamAnswers())
 			if err != nil || !view.Members[1].RegistrationComplete {
 				t.Fatalf("Save answers error=%v", err)
 			}
-			_, err = u.Lock(context.Background(), repo.team.ID, captain)
+			_, err = u.Lock(context.Background(), repo.tournament.ID, repo.team.ID, captain)
 			if err != nil || !repo.locked {
 				t.Fatalf("Lock complete error=%v", err)
 			}
@@ -100,7 +101,7 @@ func TestTeamRegistration_OnlyOwnFirstSubmissionAllowedWhileForming(t *testing.T
 	for _, status := range []models.TournamentTeamStatus{models.TournamentTeamStatusLocked, models.TournamentTeamStatusAccepted, models.TournamentTeamStatusRejected, models.TournamentTeamStatusPaymentPending} {
 		u, repo, form, _, member := teamAnswerFixture()
 		repo.team.Status = status
-		_, err := u.SaveRegistrationAnswers(context.Background(), repo.team.ID, member, validTeamAnswers())
+		_, err := u.SaveRegistrationAnswers(context.Background(), repo.tournament.ID, repo.team.ID, member, validTeamAnswers())
 		if !errors.Is(err, usecases.ErrTeamLobbyNotForming) || form.upserted != nil {
 			t.Fatalf("status=%s err=%v", status, err)
 		}
@@ -108,7 +109,7 @@ func TestTeamRegistration_OnlyOwnFirstSubmissionAllowedWhileForming(t *testing.T
 	u, repo, _, outsider, _ := teamAnswerFixture()
 	// The account remains active, but is no longer a member of this roster.
 	repo.team.Members = repo.team.Members[1:]
-	_, err := u.SaveRegistrationAnswers(context.Background(), repo.team.ID, outsider, validTeamAnswers())
+	_, err := u.SaveRegistrationAnswers(context.Background(), repo.tournament.ID, repo.team.ID, outsider, validTeamAnswers())
 	if !errors.Is(err, usecases.ErrNotTeamMember) {
 		t.Fatalf("outsider error=%v, want ErrNotTeamMember", err)
 	}
@@ -117,7 +118,7 @@ func TestTeamRegistration_OnlyOwnFirstSubmissionAllowedWhileForming(t *testing.T
 func TestTeamRegistration_CannotReplaceSubmittedAnswers(t *testing.T) {
 	u, repo, form, captain, _ := teamAnswerFixture()
 	changed := []models.FieldAnswer{{FieldID: "ign", Value: "Changed"}}
-	_, err := u.SaveRegistrationAnswers(context.Background(), repo.team.ID, captain, changed)
+	_, err := u.SaveRegistrationAnswers(context.Background(), repo.tournament.ID, repo.team.ID, captain, changed)
 	if !errors.Is(err, usecases.ErrResponseAlreadyExists) || form.responses[captain].Answers[0].Value != "Player" || form.upserted != nil {
 		t.Fatalf("existing application answers must stay immutable: %v", err)
 	}
@@ -133,7 +134,7 @@ func TestTeamRegistration_ActiveApplicationCannotBeReplaced(t *testing.T) {
 			case "create":
 				_, err = u.Create(context.Background(), repo.tournament.ID, captain, "Another team", validTeamAnswers())
 			case "join":
-				_, err = u.Join(context.Background(), "ABC123", captain, validTeamAnswers())
+				_, err = u.Join(context.Background(), repo.tournament.ID, repo.team.ID, "ABC123", captain, validTeamAnswers())
 			case "solo":
 				repo.tournament.MinTeamSize, repo.tournament.MaxTeamSize = 1, 1
 				_, err = u.RegisterSolo(context.Background(), repo.tournament.ID, captain, validTeamAnswers())
@@ -156,7 +157,7 @@ func TestTeamRegistration_NewApplicationOverwritesAccountAnswers(t *testing.T) {
 			case "create":
 				_, err = u.Create(context.Background(), repo.tournament.ID, captain, "New team", changed)
 			case "join":
-				_, err = u.Join(context.Background(), "ABC123", captain, changed)
+				_, err = u.Join(context.Background(), repo.tournament.ID, repo.team.ID, "ABC123", captain, changed)
 			case "solo":
 				repo.tournament.MinTeamSize, repo.tournament.MaxTeamSize = 1, 1
 				_, err = u.RegisterSolo(context.Background(), repo.tournament.ID, captain, changed)
@@ -174,11 +175,11 @@ func TestTeamRegistration_NewApplicationOverwritesAccountAnswers(t *testing.T) {
 
 func TestTeamRegistration_SecondSaveRejectedEvenWithIdenticalAnswers(t *testing.T) {
 	u, repo, form, _, member := teamAnswerFixture()
-	if _, err := u.SaveRegistrationAnswers(context.Background(), repo.team.ID, member, validTeamAnswers()); err != nil {
+	if _, err := u.SaveRegistrationAnswers(context.Background(), repo.tournament.ID, repo.team.ID, member, validTeamAnswers()); err != nil {
 		t.Fatal(err)
 	}
 	original := form.responses[member]
-	_, err := u.SaveRegistrationAnswers(context.Background(), repo.team.ID, member, validTeamAnswers())
+	_, err := u.SaveRegistrationAnswers(context.Background(), repo.tournament.ID, repo.team.ID, member, validTeamAnswers())
 	if !errors.Is(err, usecases.ErrResponseAlreadyExists) || form.responses[member] != original {
 		t.Fatalf("second save: %v", err)
 	}
@@ -188,7 +189,7 @@ func TestTeamRegistration_FormChangesInvalidateReadiness(t *testing.T) {
 	u, repo, form, captain, _ := teamAnswerFixture()
 	form.responses[repo.team.Members[1].AccountID] = &models.FormResponse{TournamentID: repo.tournament.ID, AccountID: repo.team.Members[1].AccountID, Answers: validTeamAnswers()}
 	form.form.Fields = append(form.form.Fields, models.FormField{ID: "age", Type: models.FieldTypeNumber, Label: "Age", Required: true})
-	_, err := u.Lock(context.Background(), repo.team.ID, captain)
+	_, err := u.Lock(context.Background(), repo.tournament.ID, repo.team.ID, captain)
 	if !errors.Is(err, usecases.ErrMemberAnswersIncomplete) || repo.locked {
 		t.Fatalf("Lock after form change error=%v", err)
 	}
@@ -196,7 +197,7 @@ func TestTeamRegistration_FormChangesInvalidateReadiness(t *testing.T) {
 
 func TestTeamRegistration_ReadinessUsesOneBatchAndFailsClosed(t *testing.T) {
 	u, repo, form, captain, _ := teamAnswerFixture()
-	view, err := u.GetByInviteCode(context.Background(), "ABC123", captain)
+	view, err := u.GetByID(context.Background(), repo.tournament.ID, repo.team.ID, captain)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -204,7 +205,7 @@ func TestTeamRegistration_ReadinessUsesOneBatchAndFailsClosed(t *testing.T) {
 		t.Fatalf("unexpected readiness: batch calls=%d members=%+v", form.batchCalls, view.Members)
 	}
 	form.batchError = errors.New("MongoDB unavailable")
-	_, err = u.Lock(context.Background(), repo.team.ID, captain)
+	_, err = u.Lock(context.Background(), repo.tournament.ID, repo.team.ID, captain)
 	if !errors.Is(err, form.batchError) || repo.locked {
 		t.Fatalf("Lock error=%v locked=%v", err, repo.locked)
 	}

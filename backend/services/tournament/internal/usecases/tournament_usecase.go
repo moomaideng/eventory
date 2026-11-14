@@ -194,7 +194,7 @@ type OrganizerTournamentSummary struct {
 }
 
 type OrganizerDashboardEntry struct {
-	ID        uuid.UUID
+	ID        string
 	Name      string
 	Status    string
 	CreatedAt time.Time

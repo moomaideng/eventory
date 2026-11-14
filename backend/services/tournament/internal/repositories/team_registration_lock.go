@@ -25,12 +25,12 @@ type teamRegistrationLock struct {
 func (l *teamRegistrationLock) Team() *models.TournamentTeam { return l.team }
 func (l *teamRegistrationLock) Release() error               { return l.tx.Rollback().Error }
 
-func (r *teamLobbyRepository) LockRegistration(ctx context.Context, teamID uuid.UUID) (TeamRegistrationLock, error) {
+func (r *teamLobbyRepository) LockRegistration(ctx context.Context, tournamentID uuid.UUID, teamID string) (TeamRegistrationLock, error) {
 	tx := r.db.WithContext(ctx).Begin()
 	if tx.Error != nil {
 		return nil, tx.Error
 	}
-	team, err := r.lockTeam(tx, teamID)
+	team, err := r.lockTeam(tx, tournamentID, teamID)
 	if err != nil {
 		return nil, errors.Join(err, tx.Rollback().Error)
 	}

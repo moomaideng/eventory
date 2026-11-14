@@ -118,7 +118,7 @@ func (r *announcementRepository) Audience(
 	var accountIDs []uuid.UUID
 	err = r.db.WithContext(ctx).
 		Model(&models.TournamentTeamMember{}).
-		Joins("JOIN tournament_teams ON tournament_teams.id = tournament_team_members.tournament_team_id").
+		Joins("JOIN tournament_teams ON tournament_teams.tournament_id = tournament_team_members.tournament_id AND tournament_teams.id = tournament_team_members.tournament_team_id").
 		Where("tournament_teams.tournament_id = ? AND tournament_teams.status = ?",
 			tournamentID, models.TournamentTeamStatusAccepted).
 		Pluck("tournament_team_members.account_id", &accountIDs).Error

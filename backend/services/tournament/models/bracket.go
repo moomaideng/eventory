@@ -31,11 +31,12 @@ func (Match) TableName() string {
 
 // MatchEntry represents a team assigned to a specific match.
 type MatchEntry struct {
-	ID        uuid.UUID      `gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
-	MatchID   uuid.UUID      `gorm:"type:uuid;not null;index;uniqueIndex:idx_match_entry_team,priority:1"`
-	Match     Match          `gorm:"foreignKey:MatchID;constraint:OnDelete:CASCADE;"`
-	TeamID    uuid.UUID      `gorm:"type:uuid;not null;index;uniqueIndex:idx_match_entry_team,priority:2"`
-	Team      TournamentTeam `gorm:"foreignKey:TeamID;constraint:OnDelete:CASCADE;"`
+	ID           uuid.UUID      `gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
+	MatchID      uuid.UUID      `gorm:"type:uuid;not null;index;uniqueIndex:idx_match_entry_team,priority:1"`
+	Match        Match          `gorm:"foreignKey:MatchID;constraint:OnDelete:CASCADE;"`
+	TournamentID uuid.UUID      `gorm:"type:uuid;not null;index"`
+	TeamID       string         `gorm:"type:varchar(8);not null;index;uniqueIndex:idx_match_entry_team,priority:2"`
+	Team         TournamentTeam `gorm:"foreignKey:TournamentID,TeamID;references:TournamentID,ID;constraint:OnDelete:CASCADE;"`
 	FinalRank *int           `gorm:"type:int"`
 	Score     *string        `gorm:"type:varchar(32)"`
 	Advances  bool           `gorm:"not null;default:false"`

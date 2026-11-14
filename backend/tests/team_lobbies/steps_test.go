@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"regexp"
+	"strings"
 	"time"
 
 	"github.com/cucumber/godog"
@@ -139,14 +140,16 @@ func (s *teamLobbyScenarioContext) theCompetitorSubmitsAValidTeamName() error {
 
 func (s *teamLobbyScenarioContext) rejectedEntry(name string) error {
 	team := models.TournamentTeam{
-		ID: uuid.New(), TournamentID: s.tournament.ID, Name: name,
-		Status: models.TournamentTeamStatusRejected,
+		ID:           strings.ToUpper(strings.ReplaceAll(uuid.NewString(), "-", "")[:8]),
+		TournamentID: s.tournament.ID,
+		Name:         name,
+		Status:       models.TournamentTeamStatusRejected,
 	}
 	if err := app.DB.Create(&team).Error; err != nil {
 		return err
 	}
 	return app.DB.Create(&models.TournamentTeamMember{
-		ID: uuid.New(), TournamentTeamID: team.ID, AccountID: s.actor.ID,
+		ID: uuid.New(), TournamentID: s.tournament.ID, TournamentTeamID: team.ID, AccountID: s.actor.ID,
 		Role: models.TournamentTeamMemberRoleCaptain,
 	}).Error
 }
@@ -181,7 +184,7 @@ func (s *teamLobbyScenarioContext) createLobby(user *apptest.TestUser, name stri
 	}
 	resp, err := s.client.Do(
 		http.MethodPost,
-		fmt.Sprintf("/tournaments/%s/lobbies", s.tournament.ID),
+		fmt.Sprintf("/tournaments/%s/teams", s.tournament.ID),
 		handlers.CreateTeamLobbyRequest{Name: name},
 		user.AuthHeaders(),
 	)
@@ -201,10 +204,30 @@ func (s *teamLobbyScenarioContext) theOtherCompetitorJoinsUsingTheValidInviteCod
 	if s.lobby.InviteCode == nil {
 		return fmt.Errorf("lobby invite code is nil")
 	}
+	resolveResp, err := s.client.Do(
+		http.MethodGet,
+		fmt.Sprintf("/lobbies/%s", *s.lobby.InviteCode),
+		nil,
+		s.otherCompetitor.AuthHeaders(),
+	)
+	if err != nil {
+		return err
+	}
+	if resolveResp.StatusCode != http.StatusOK {
+		return fmt.Errorf("resolve invite code: status=%d body=%s", resolveResp.StatusCode, string(resolveResp.Body))
+	}
+	var resolved handlers.InviteResolutionResponse
+	if err := resolveResp.JSON(&resolved); err != nil {
+		return fmt.Errorf("parse invite resolution: %w", err)
+	}
+	if resolved.TournamentID != s.tournament.ID || resolved.TeamID != s.lobby.ID {
+		return fmt.Errorf("resolved (%s, %s), want (%s, %s)", resolved.TournamentID, resolved.TeamID, s.tournament.ID, s.lobby.ID)
+	}
+
 	resp, err := s.client.Do(
 		http.MethodPost,
-		fmt.Sprintf("/lobbies/%s/join", *s.lobby.InviteCode),
-		map[string]any{"answers": []any{}},
+		fmt.Sprintf("/tournaments/%s/teams/%s/join", resolved.TournamentID, resolved.TeamID),
+		map[string]any{"inviteCode": *s.lobby.InviteCode, "answers": []any{}},
 		s.otherCompetitor.AuthHeaders(),
 	)
 	if err != nil {
@@ -220,12 +243,64 @@ func (s *teamLobbyScenarioContext) theOtherCompetitorJoinsUsingTheValidInviteCod
 }
 
 func (s *teamLobbyScenarioContext) theCompetitorTriesToJoinWithAnInvalidInviteCode() error {
-	resp, err := s.client.Do(http.MethodPost, "/lobbies/ZZZZZZ/join", map[string]any{"answers": []any{}}, s.actor.AuthHeaders())
+	resp, err := s.client.Do(http.MethodGet, "/lobbies/ZZZZZZ", nil, s.actor.AuthHeaders())
 	if err != nil {
 		return err
 	}
 	s.resp = resp
 	return nil
+}
+
+func (s *teamLobbyScenarioContext) theOtherCompetitorViewsTheTeamRoster() error {
+	resp, err := s.client.Do(
+		http.MethodGet,
+		fmt.Sprintf("/tournaments/%s/teams/%s", s.tournament.ID, s.lobby.ID),
+		nil,
+		s.otherCompetitor.AuthHeaders(),
+	)
+	if err != nil {
+		return err
+	}
+	s.resp = resp
+	return nil
+}
+
+func (s *teamLobbyScenarioContext) theOtherCompetitorTriesToJoinTheTeamWithWrongInviteCode() error {
+	resp, err := s.client.Do(
+		http.MethodPost,
+		fmt.Sprintf("/tournaments/%s/teams/%s/join", s.tournament.ID, s.lobby.ID),
+		map[string]any{"inviteCode": "ZZZZZZ", "answers": []any{}},
+		s.otherCompetitor.AuthHeaders(),
+	)
+	if err != nil {
+		return err
+	}
+	s.resp = resp
+	return nil
+}
+
+func (s *teamLobbyScenarioContext) theRosterShouldBeVisibleWithoutTheInviteCode() error {
+	if err := s.responseStatusShouldBe(http.StatusOK); err != nil {
+		return err
+	}
+	var viewed handlers.TeamLobbyResponse
+	if err := s.resp.JSON(&viewed); err != nil {
+		return fmt.Errorf("parse viewed roster: %w", err)
+	}
+	if viewed.ViewerRole != "INVITEE" {
+		return fmt.Errorf("expected viewerRole INVITEE, got %q", viewed.ViewerRole)
+	}
+	if viewed.InviteCode != nil {
+		return fmt.Errorf("expected inviteCode to be hidden for outsider, got %q", *viewed.InviteCode)
+	}
+	if len(viewed.Members) == 0 {
+		return fmt.Errorf("expected roster members to be visible")
+	}
+	return nil
+}
+
+func (s *teamLobbyScenarioContext) joiningTheTeamWithMismatchedCodeShouldFail() error {
+	return s.responseStatusShouldBe(http.StatusBadRequest)
 }
 
 func (s *teamLobbyScenarioContext) responseStatusShouldBe(expected int) error {
@@ -239,7 +314,13 @@ func (s *teamLobbyScenarioContext) responseStatusShouldBe(expected int) error {
 }
 
 func (s *teamLobbyScenarioContext) theTeamLobbyShouldBeCreatedSuccessfully() error {
-	return s.responseStatusShouldBe(http.StatusCreated)
+	if err := s.responseStatusShouldBe(http.StatusCreated); err != nil {
+		return err
+	}
+	if !models.ValidateTeamID(s.lobby.ID) {
+		return fmt.Errorf("expected valid 8-char team id, got %q", s.lobby.ID)
+	}
+	return nil
 }
 
 func (s *teamLobbyScenarioContext) theTeamLobbyCreationShouldFail() error {
@@ -299,10 +380,10 @@ func (s *teamLobbyScenarioContext) theOtherCompetitorsProfileShouldBeAttachedToT
 	return fmt.Errorf("competitor profile %s was not attached to the team entry", s.otherCompetitor.ID)
 }
 
-func (s *teamLobbyScenarioContext) theCompetitorShouldNotBeAttachedToATournamentTeam() error {
+func (s *teamLobbyScenarioContext) checkNotAttachedToTeam(user *apptest.TestUser) error {
 	var count int64
 	if err := app.DB.Model(&models.TournamentTeamMember{}).
-		Where("account_id = ?", s.actor.ID).
+		Where("account_id = ?", user.ID).
 		Count(&count).Error; err != nil {
 		return fmt.Errorf("count competitor team memberships: %w", err)
 	}
@@ -310,6 +391,14 @@ func (s *teamLobbyScenarioContext) theCompetitorShouldNotBeAttachedToATournament
 		return fmt.Errorf("expected competitor to have no tournament team membership, got %d", count)
 	}
 	return nil
+}
+
+func (s *teamLobbyScenarioContext) theCompetitorShouldNotBeAttachedToATournamentTeam() error {
+	return s.checkNotAttachedToTeam(s.actor)
+}
+
+func (s *teamLobbyScenarioContext) theOtherCompetitorShouldNotBeAttachedToATournamentTeam() error {
+	return s.checkNotAttachedToTeam(s.otherCompetitor)
 }
 
 func InitializeScenario(sc *godog.ScenarioContext) {
@@ -337,13 +426,18 @@ func InitializeScenario(sc *godog.ScenarioContext) {
 	sc.Step(`^the competitor submits an empty team name$`, s.theCompetitorSubmitsAnEmptyTeamName)
 	sc.Step(`^the other competitor joins the lobby using the valid invite code$`, s.theOtherCompetitorJoinsUsingTheValidInviteCode)
 	sc.Step(`^the competitor tries to join with an invalid invite code$`, s.theCompetitorTriesToJoinWithAnInvalidInviteCode)
+	sc.Step(`^the other competitor views the team roster$`, s.theOtherCompetitorViewsTheTeamRoster)
+	sc.Step(`^the other competitor tries to join the team with a wrong invite code$`, s.theOtherCompetitorTriesToJoinTheTeamWithWrongInviteCode)
 	sc.Step(`^the team lobby should be created successfully$`, s.theTeamLobbyShouldBeCreatedSuccessfully)
 	sc.Step(`^the team lobby creation should fail$`, s.theTeamLobbyCreationShouldFail)
 	sc.Step(`^the competitor should be blocked from re-applying$`, s.theCompetitorShouldBeBlockedFromReApplying)
 	sc.Step(`^the other competitor should join the team lobby successfully$`, s.theOtherCompetitorShouldJoinTheTeamLobbySuccessfully)
 	sc.Step(`^joining the team lobby should fail$`, s.joiningTheTeamLobbyShouldFail)
+	sc.Step(`^the roster should be visible without the invite code$`, s.theRosterShouldBeVisibleWithoutTheInviteCode)
+	sc.Step(`^joining the team with a mismatched invite code should fail$`, s.joiningTheTeamWithMismatchedCodeShouldFail)
 	sc.Step(`^the competitor should be the lobby captain$`, s.theCompetitorShouldBeTheLobbyCaptain)
 	sc.Step(`^a valid invite code should be generated$`, s.aValidInviteCodeShouldBeGenerated)
 	sc.Step(`^the other competitor's profile should be attached to the team entry$`, s.theOtherCompetitorsProfileShouldBeAttachedToTheTeamEntry)
 	sc.Step(`^the competitor should not be attached to a tournament team$`, s.theCompetitorShouldNotBeAttachedToATournamentTeam)
+	sc.Step(`^the other competitor should not be attached to a tournament team$`, s.theOtherCompetitorShouldNotBeAttachedToATournamentTeam)
 }

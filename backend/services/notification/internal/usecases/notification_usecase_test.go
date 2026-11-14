@@ -77,13 +77,13 @@ type permanentSendError struct{ error }
 func (permanentSendError) Permanent() bool { return true }
 
 func testEvent() events.RegistrationSubmitted {
-	teamID := uuid.New()
+	teamID := "Ab12Cd34"
 	teamName := "Phoenix <One>"
 	return events.RegistrationSubmitted{
 		SpecVersion: events.EventSpecVersion, ID: uuid.New(), Type: events.RegistrationSubmittedType,
 		Source: "tournament-service", OccurredAt: time.Now().UTC(), CorrelationID: uuid.New(),
 		Data: events.RegistrationSubmittedData{
-			RegistrationID: uuid.New(), TournamentID: uuid.New(), TournamentName: "Eventory Cup",
+			RegistrationID: teamID, TournamentID: uuid.New(), TournamentName: "Eventory Cup",
 			RegistrationMode: events.RegistrationModeTeam, TeamID: &teamID, TeamName: &teamName,
 			Recipient: events.EventRecipient{AccountID: uuid.New(), Email: "CAPTAIN@example.com", DisplayName: "Captain <Ace>", Role: events.RecipientRoleCaptain},
 		},
@@ -177,7 +177,7 @@ func TestProcessRegistrationApproved(t *testing.T) {
 		Data: events.RegistrationReviewedData{
 			TournamentID:   uuid.New(),
 			TournamentName: "Grand Masters 2026",
-			TeamID:         uuid.New(),
+			TeamID:         "Ab12Cd34",
 			TeamName:       "Titans",
 			Recipient: events.EventRecipient{
 				AccountID:   recipientID,
@@ -221,7 +221,7 @@ func TestProcessRegistrationRejected(t *testing.T) {
 		Data: events.RegistrationReviewedData{
 			TournamentID:   uuid.New(),
 			TournamentName: "Grand Masters 2026",
-			TeamID:         uuid.New(),
+			TeamID:         "Ab12Cd34",
 			TeamName:       "Titans",
 			Reason:         "Roster incomplete",
 			Recipient: events.EventRecipient{

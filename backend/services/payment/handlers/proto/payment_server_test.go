@@ -32,7 +32,7 @@ func (s *stubPayments) GetForService(context.Context, uuid.UUID) (*models.Invoic
 	s.calls++
 	return nil, s.err
 }
-func (s *stubPayments) RefundRegistration(context.Context, uuid.UUID, uuid.UUID) (*models.Invoice, error) {
+func (s *stubPayments) RefundRegistration(context.Context, uuid.UUID, string) (*models.Invoice, error) {
 	s.calls++
 	return nil, s.err
 }
@@ -69,7 +69,9 @@ func TestRPCValidationAndErrors(t *testing.T) {
 		if _, err := server.GetPayment(ctx, &paymentv1.GetPaymentRequest{Id: id}); status.Code(err) != codes.InvalidArgument {
 			t.Fatal(err)
 		}
-		if _, err := server.RefundRegistration(ctx, &paymentv1.RefundRegistrationRequest{Id: uuid.NewString(), EntryId: id}); status.Code(err) != codes.InvalidArgument {
+	}
+	for _, entryID := range []string{"", "   "} {
+		if _, err := server.RefundRegistration(ctx, &paymentv1.RefundRegistrationRequest{Id: uuid.NewString(), EntryId: entryID}); status.Code(err) != codes.InvalidArgument {
 			t.Fatal(err)
 		}
 	}

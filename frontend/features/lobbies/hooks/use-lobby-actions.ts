@@ -59,12 +59,14 @@ export function useLobbyActions({
     if (!authorizationHeader || !lobby) return;
     void runAction(
       "regenerate",
-      apiClient.POST("/api/v1/lobbies/{id}/invite/regenerate", {
-        params: { path: { id: lobby.id } },
+      apiClient.POST("/api/v1/tournaments/{tournamentId}/teams/{teamId}/invite/regenerate", {
+        params: {
+          path: { tournamentId: lobby.tournament.id, teamId: lobby.id },
+        },
         headers: { Authorization: authorizationHeader },
       }),
-      (updatedLobby) => {
-        if (updatedLobby) router.replace(`/lobbies/${updatedLobby.inviteCode}`);
+      () => {
+        void refetch();
       }
     );
   }
@@ -73,8 +75,10 @@ export function useLobbyActions({
     if (!authorizationHeader || !lobby) return;
     void runAction(
       openCheckout ? "pay" : "lock",
-      apiClient.POST("/api/v1/lobbies/{id}/lock", {
-        params: { path: { id: lobby.id } },
+      apiClient.POST("/api/v1/tournaments/{tournamentId}/teams/{teamId}/lock", {
+        params: {
+          path: { tournamentId: lobby.tournament.id, teamId: lobby.id },
+        },
         headers: { Authorization: authorizationHeader },
       }),
       openCheckout
@@ -99,10 +103,19 @@ export function useLobbyActions({
     if (!authorizationHeader || !lobby) return;
     void runAction(
       `remove-${memberId}`,
-      apiClient.DELETE("/api/v1/lobbies/{id}/members/{memberId}", {
-        params: { path: { id: lobby.id, memberId } },
-        headers: { Authorization: authorizationHeader },
-      })
+      apiClient.DELETE(
+        "/api/v1/tournaments/{tournamentId}/teams/{teamId}/members/{memberId}",
+        {
+          params: {
+            path: {
+              tournamentId: lobby.tournament.id,
+              teamId: lobby.id,
+              memberId,
+            },
+          },
+          headers: { Authorization: authorizationHeader },
+        }
+      )
     );
   }
 
@@ -110,11 +123,13 @@ export function useLobbyActions({
     if (!authorizationHeader || !lobby) return;
     void runAction(
       "disband",
-      apiClient.DELETE("/api/v1/lobbies/{id}", {
-        params: { path: { id: lobby.id } },
+      apiClient.DELETE("/api/v1/tournaments/{tournamentId}/teams/{teamId}", {
+        params: {
+          path: { tournamentId: lobby.tournament.id, teamId: lobby.id },
+        },
         headers: { Authorization: authorizationHeader },
       }),
-      () => router.replace("/lobbies")
+      () => router.replace(`/tournaments/${lobby.tournament.id}`)
     );
   }
 

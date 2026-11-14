@@ -25,7 +25,7 @@ type discoveryScenario struct {
 	tournaments   map[string]models.Tournament
 	organizerName string
 	accountIDs    []uuid.UUID
-	acceptedID    uuid.UUID
+	acceptedID    string
 	privateValues []string
 }
 
@@ -155,9 +155,9 @@ func (s *discoveryScenario) catalog(names string, total int) error {
 
 func (s *discoveryScenario) teams(name string) error {
 	tournament := s.tournaments[name]
-	for _, status := range []models.TournamentTeamStatus{models.TournamentTeamStatusAccepted, models.TournamentTeamStatusForming, models.TournamentTeamStatusLocked, models.TournamentTeamStatusRejected} {
+	for idx, status := range []models.TournamentTeamStatus{models.TournamentTeamStatusAccepted, models.TournamentTeamStatusForming, models.TournamentTeamStatusLocked, models.TournamentTeamStatusRejected} {
 		inviteCode := fmt.Sprintf("INV%03d", len(s.privateValues))
-		team := models.TournamentTeam{ID: uuid.New(), TournamentID: tournament.ID, Name: string(status) + " Team", Status: status, InviteCode: &inviteCode}
+		team := models.TournamentTeam{ID: fmt.Sprintf("TM%06d", idx+1), TournamentID: tournament.ID, Name: string(status) + " Team", Status: status, InviteCode: &inviteCode}
 		if err := s.app.DB.Create(&team).Error; err != nil {
 			return err
 		}
@@ -170,7 +170,7 @@ func (s *discoveryScenario) teams(name string) error {
 			if err != nil {
 				return err
 			}
-			member := models.TournamentTeamMember{ID: uuid.New(), TournamentTeamID: team.ID, AccountID: a.ID, Role: role}
+			member := models.TournamentTeamMember{ID: uuid.New(), TournamentID: tournament.ID, TournamentTeamID: team.ID, AccountID: a.ID, Role: role}
 			if err := s.app.DB.Create(&member).Error; err != nil {
 				return err
 			}

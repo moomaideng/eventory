@@ -2,10 +2,14 @@ import { z } from "zod";
 
 export const teamPaymentReferenceSchema = z
   .string()
-  .regex(/^[0-9a-f-]{36}:[0-9a-f-]{36}$/i)
-  .refine((value) =>
-    value.split(":").every((id) => z.uuid().safeParse(id).success)
-  );
+  .regex(/^[0-9a-f-]{36}:[A-Za-z0-9]{8}:[0-9a-f-]{36}$/i)
+  .refine((value) => {
+    const [tournamentId, , attemptId] = value.split(":");
+    return (
+      z.uuid().safeParse(tournamentId).success &&
+      z.uuid().safeParse(attemptId).success
+    );
+  });
 
 export const paymentIdSchema = z.uuid();
 

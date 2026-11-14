@@ -42,9 +42,12 @@ func TestRosterSubmission(t *testing.T) {
 		}
 		return s
 	}
+	teamPath := func(s *teamLobbyScenarioContext) string {
+		return "/tournaments/" + s.tournament.ID.String() + "/teams/" + s.lobby.ID
+	}
 	lock := func(t *testing.T, s *teamLobbyScenarioContext) handlers.TeamLobbyResponse {
 		t.Helper()
-		resp := request(t, s.client, http.MethodPost, "/lobbies/"+s.lobby.ID.String()+"/lock", nil, s.captain, 200)
+		resp := request(t, s.client, http.MethodPost, teamPath(s)+"/lock", nil, s.captain, 200)
 		var lobby handlers.TeamLobbyResponse
 		if err := resp.JSON(&lobby); err != nil {
 			t.Fatal(err)
@@ -53,7 +56,7 @@ func TestRosterSubmission(t *testing.T) {
 	}
 	refresh := func(t *testing.T, s *teamLobbyScenarioContext, status string) {
 		t.Helper()
-		resp := request(t, s.client, http.MethodPost, "/lobbies/"+s.lobby.ID.String()+"/submission/refresh", nil, s.captain, 200)
+		resp := request(t, s.client, http.MethodPost, teamPath(s)+"/submission/refresh", nil, s.captain, 200)
 		var lobby handlers.TeamLobbyResponse
 		if err := resp.JSON(&lobby); err != nil {
 			t.Fatal(err)
@@ -96,7 +99,7 @@ func TestRosterSubmission(t *testing.T) {
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
-				r, e := s.client.Do(http.MethodPost, "/lobbies/"+s.lobby.ID.String()+"/lock", nil, s.captain.AuthHeaders())
+				r, e := s.client.Do(http.MethodPost, teamPath(s)+"/lock", nil, s.captain.AuthHeaders())
 				if e != nil {
 					t.Error(e)
 					return
@@ -131,8 +134,8 @@ func TestRosterSubmission(t *testing.T) {
 			t.Fatalf("wrong invoice: %+v", invoice)
 		}
 		review(t, s, 0)
-		request(t, s.client, http.MethodDelete, "/lobbies/"+s.lobby.ID.String(), nil, s.captain, 409)
-		request(t, s.client, http.MethodPost, "/lobbies/"+s.lobby.ID.String()+"/invite/regenerate", nil, s.captain, 409)
+		request(t, s.client, http.MethodDelete, teamPath(s), nil, s.captain, 409)
+		request(t, s.client, http.MethodPost, teamPath(s)+"/invite/regenerate", nil, s.captain, 409)
 		for range 2 {
 			request(t, payments, http.MethodPost, "/"+id.String()+"/mock-result", map[string]string{"result": "SUCCEEDED"}, s.captain, 200)
 		}
@@ -152,8 +155,8 @@ func TestRosterSubmission(t *testing.T) {
 			first := lock(t, s)
 			request(t, payments, http.MethodPost, "/"+first.PaymentID.String()+"/mock-result", map[string]string{"result": result}, s.captain, 200)
 			refresh(t, s, "PAYMENT_PENDING")
-			request(t, s.client, http.MethodDelete, "/lobbies/"+s.lobby.ID.String(), nil, s.captain, 409)
-			request(t, s.client, http.MethodPost, "/lobbies/"+s.lobby.ID.String()+"/invite/regenerate", nil, s.captain, 409)
+			request(t, s.client, http.MethodDelete, teamPath(s), nil, s.captain, 409)
+			request(t, s.client, http.MethodPost, teamPath(s)+"/invite/regenerate", nil, s.captain, 409)
 			review(t, s, 0)
 			request(t, payments, http.MethodPost, "/"+first.PaymentID.String()+"/mock-result", map[string]string{"result": "SUCCEEDED"}, s.captain, 409)
 			next := lock(t, s)
@@ -181,7 +184,7 @@ func TestRosterSubmission(t *testing.T) {
 	})
 	t.Run("solo failed payment can be retried without another registration", func(t *testing.T) {
 		s := fixture(t, 10000)
-		request(t, s.client, http.MethodDelete, "/lobbies/"+s.lobby.ID.String(), nil, s.captain, 204)
+		request(t, s.client, http.MethodDelete, teamPath(s), nil, s.captain, 204)
 		if err := app.DB.Model(s.tournament).Updates(map[string]any{"registration_mode": "SOLO", "max_team_size": 1}).Error; err != nil {
 			t.Fatal(err)
 		}
@@ -210,7 +213,7 @@ func TestRosterSubmission(t *testing.T) {
 		if err := app.DB.Model(&paymentmodels.Invoice{}).Where("id = ?", first.PaymentID).Update("expires_at", expired).Error; err != nil {
 			t.Fatal(err)
 		}
-		if err := app.DB.Model(&models.TournamentTeam{}).Where("id = ?", s.lobby.ID).Update("payment_expires_at", expired).Error; err != nil {
+		if err := app.DB.Model(&models.TournamentTeam{}).Where("tournament_id = ? AND id = ?", s.tournament.ID, s.lobby.ID).Update("payment_expires_at", expired).Error; err != nil {
 			t.Fatal(err)
 		}
 		refresh(t, s, "PAYMENT_PENDING")
@@ -222,12 +225,12 @@ func TestRosterSubmission(t *testing.T) {
 		if err := s.anotherActiveCompetitor(); err != nil {
 			t.Fatal(err)
 		}
-		request(t, s.client, http.MethodPost, "/lobbies/"+s.lobby.ID.String()+"/lock", nil, s.otherCompetitor, 403)
+		request(t, s.client, http.MethodPost, teamPath(s)+"/lock", nil, s.otherCompetitor, 403)
 		for _, updates := range []map[string]any{{"min_team_size": 2}, {"min_team_size": 1, "registration_deadline": time.Now().Add(-time.Minute)}} {
 			if err := app.DB.Model(s.tournament).Updates(updates).Error; err != nil {
 				t.Fatal(err)
 			}
-			request(t, s.client, http.MethodPost, "/lobbies/"+s.lobby.ID.String()+"/lock", nil, s.captain, 409)
+			request(t, s.client, http.MethodPost, teamPath(s)+"/lock", nil, s.captain, 409)
 			refresh(t, s, "FORMING")
 			review(t, s, 0)
 		}

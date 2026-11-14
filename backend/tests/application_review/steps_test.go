@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/cucumber/godog"
@@ -131,7 +132,7 @@ func (s *reviewScenarioContext) seedTeamWithCode(
 		return nil, err
 	}
 	team := models.TournamentTeam{
-		ID:           uuid.New(),
+		ID:           strings.ToUpper(strings.ReplaceAll(uuid.NewString(), "-", "")[:8]),
 		TournamentID: s.tournament.ID,
 		Name:         "Team " + uuid.NewString()[:8],
 		InviteCode:   inviteCode,
@@ -145,6 +146,7 @@ func (s *reviewScenarioContext) seedTeamWithCode(
 		return nil, fmt.Errorf("create %s team: %w", status, err)
 	}
 	member := models.TournamentTeamMember{
+		TournamentID:     s.tournament.ID,
 		TournamentTeamID: team.ID,
 		AccountID:        captain.ID,
 		Role:             models.TournamentTeamMemberRoleCaptain,
@@ -292,7 +294,7 @@ func (s *reviewScenarioContext) theOrganizerRejectsTheApplication() error {
 // straight from the database.
 func (s *reviewScenarioContext) applicationStatus() (string, error) {
 	var team models.TournamentTeam
-	if err := app.DB.First(&team, "id = ?", s.team.ID).Error; err != nil {
+	if err := app.DB.First(&team, "tournament_id = ? AND id = ?", s.tournament.ID, s.team.ID).Error; err != nil {
 		return "", fmt.Errorf("load team: %w", err)
 	}
 	return string(team.Status), nil
@@ -343,7 +345,7 @@ func (s *reviewScenarioContext) expectDecision(want string) error {
 // recorded once, with who made it, what changed and why.
 func (s *reviewScenarioContext) expectAuditRow(want string) error {
 	var rows []models.TournamentTeamReview
-	if err := app.DB.Where("tournament_team_id = ?", s.team.ID).Find(&rows).Error; err != nil {
+	if err := app.DB.Where("tournament_id = ? AND tournament_team_id = ?", s.tournament.ID, s.team.ID).Find(&rows).Error; err != nil {
 		return fmt.Errorf("load review audit rows: %w", err)
 	}
 	if len(rows) != 1 {
@@ -424,7 +426,7 @@ func (s *reviewScenarioContext) theApplicationShouldKeepItsPreviousStatus() erro
 	// A blocked decision must leave no audit row behind either.
 	var count int64
 	if err := app.DB.Model(&models.TournamentTeamReview{}).
-		Where("tournament_team_id = ?", s.team.ID).Count(&count).Error; err != nil {
+		Where("tournament_id = ? AND tournament_team_id = ?", s.tournament.ID, s.team.ID).Count(&count).Error; err != nil {
 		return fmt.Errorf("count review audit rows: %w", err)
 	}
 	if count != 0 {

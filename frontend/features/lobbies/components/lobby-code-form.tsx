@@ -3,6 +3,8 @@
 import React from "react";
 import { ArrowRight, UsersRound } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/context/auth-context";
+import { apiClient } from "@/lib/api/client";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -20,22 +22,56 @@ import {
   FieldLabel,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { Spinner } from "@/components/ui/spinner";
 
 import { lobbyCodeSchema } from "../schemas";
+import { problemMessage } from "../utils";
 
 export function LobbyCodeForm() {
   const router = useRouter();
+  const { authorizationHeader } = useAuth();
   const [inviteCode, setInviteCode] = React.useState("");
   const [error, setError] = React.useState("");
+  const [isResolving, setIsResolving] = React.useState(false);
 
-  function submit(event: React.FormEvent<HTMLFormElement>) {
+  async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const result = lobbyCodeSchema.safeParse(inviteCode);
     if (!result.success) {
       setError(result.error.issues[0]?.message ?? "Invalid invite code.");
       return;
     }
-    router.push(`/lobbies/${result.data}`);
+    if (!authorizationHeader) {
+      setError("Sign in to resolve this invite code.");
+      return;
+    }
+    setError("");
+    setIsResolving(true);
+    try {
+      const { data, error: resolveError } = await apiClient.GET(
+        "/api/v1/lobbies/{inviteCode}",
+        {
+          params: { path: { inviteCode: result.data } },
+          headers: { Authorization: authorizationHeader },
+        }
+      );
+      if (resolveError || !data) {
+        setError(
+          problemMessage(
+            resolveError,
+            "No active team lobby matched that invite code."
+          )
+        );
+        return;
+      }
+      router.push(
+        `/tournaments/${data.tournamentId}/teams/${data.teamId}?invite=${result.data}`
+      );
+    } catch {
+      setError("Connection error. Please check your network and try again.");
+    } finally {
+      setIsResolving(false);
+    }
   }
 
   return (
@@ -80,9 +116,13 @@ export function LobbyCodeForm() {
             </FieldGroup>
           </CardContent>
           <CardFooter className="justify-end">
-            <Button type="submit">
+            <Button type="submit" disabled={isResolving}>
+              {isResolving ? (
+                <Spinner data-icon="inline-start" />
+              ) : (
+                <ArrowRight data-icon="inline-end" />
+              )}
               View lobby
-              <ArrowRight data-icon="inline-end" />
             </Button>
           </CardFooter>
         </form>

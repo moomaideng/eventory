@@ -112,9 +112,9 @@ type SearchTournamentsOutput struct {
 }
 
 type TournamentTeamResponse struct {
-	ID          uuid.UUID `json:"id"`
-	Name        string    `json:"name"`
-	MemberCount int       `json:"memberCount"`
+	ID          string `json:"id"`
+	Name        string `json:"name"`
+	MemberCount int    `json:"memberCount"`
 }
 
 type TournamentFundingResponse struct {

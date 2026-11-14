@@ -15,10 +15,10 @@ import (
 // TournamentTeam.Status.
 type TournamentTeamReview struct {
 	ID               uuid.UUID      `gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
-	TournamentID     uuid.UUID      `gorm:"type:uuid;not null;index"`
+	TournamentID     uuid.UUID      `gorm:"type:uuid;not null;index:idx_tournament_team_reviews_history,priority:1"`
 	Tournament       Tournament     `gorm:"foreignKey:TournamentID;constraint:OnDelete:CASCADE;"`
-	TournamentTeamID uuid.UUID      `gorm:"type:uuid;not null;index:idx_tournament_team_reviews_history,priority:1"`
-	Team             TournamentTeam `gorm:"foreignKey:TournamentTeamID;constraint:OnDelete:CASCADE;"`
+	TournamentTeamID string         `gorm:"type:varchar(8);not null;index:idx_tournament_team_reviews_history,priority:2"`
+	Team             TournamentTeam `gorm:"foreignKey:TournamentID,TournamentTeamID;references:TournamentID,ID;constraint:OnDelete:CASCADE;"`
 
 	// FromStatus is the status the team held before the decision.
 	FromStatus TournamentTeamStatus `gorm:"type:varchar(16);not null"`

@@ -56,14 +56,14 @@ func run(cfg config.Config, email string) error {
 	}
 	defer broker.Close()
 
-	teamID := uuid.New()
+	teamID := "Ab12Cd34"
 	teamName := "Phoenix Squad"
 	now := time.Now().UTC()
 	event := events.RegistrationSubmitted{
 		SpecVersion: events.EventSpecVersion, ID: uuid.New(), Type: events.RegistrationSubmittedType,
 		Source: "notification-smoke-publisher", OccurredAt: now, CorrelationID: uuid.New(),
 		Data: events.RegistrationSubmittedData{
-			RegistrationID: uuid.New(), TournamentID: uuid.New(), TournamentName: "Eventory Cup",
+			RegistrationID: teamID, TournamentID: uuid.New(), TournamentName: "Eventory Cup",
 			RegistrationMode: events.RegistrationModeTeam, TeamID: &teamID, TeamName: &teamName,
 			Recipient: events.EventRecipient{AccountID: uuid.New(), Email: email, DisplayName: "Demo Captain", Role: events.RecipientRoleCaptain},
 		},

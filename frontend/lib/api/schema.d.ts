@@ -136,125 +136,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/health": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Health Check */
-        get: operations["health-check"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/lobbies/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        /** Disband a team lobby */
-        delete: operations["disband-team-lobby"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/lobbies/{id}/invite/regenerate": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Regenerate a team invite */
-        post: operations["regenerate-team-lobby-invite"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/lobbies/{id}/lock": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Lock a team roster */
-        post: operations["lock-team-lobby"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/lobbies/{id}/members/{memberId}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        /** Remove a lobby member */
-        delete: operations["remove-team-lobby-member"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/lobbies/{id}/registration": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        /** Submit your own registration answers once while the team is forming */
-        put: operations["update-member-registration-answers"];
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/lobbies/{id}/submission/refresh": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Verify team registration payment */
-        post: operations["refresh-team-submission"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/lobbies/{inviteCode}": {
         parameters: {
             query?: never;
@@ -262,8 +143,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** View a team lobby by invite code */
-        get: operations["get-team-lobby"];
+        /** Resolve a team invite code to tournament and team IDs */
+        get: operations["resolve-team-invite"];
         put?: never;
         post?: never;
         delete?: never;
@@ -272,7 +153,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/lobbies/{inviteCode}/join": {
+    "/api/v1/notifications": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List personal notifications ordered newest first */
+        get: operations["list-my-notifications"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/notifications/read-all": {
         parameters: {
             query?: never;
             header?: never;
@@ -281,8 +179,110 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Join a team lobby */
-        post: operations["join-team-lobby"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Mark all notifications for the user as read */
+        patch: operations["mark-all-notifications-read"];
+        trace?: never;
+    };
+    "/api/v1/notifications/{id}/read": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Mark an owned notification as read */
+        patch: operations["mark-notification-read"];
+        trace?: never;
+    };
+    "/api/v1/payments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Personal invoices, newest first; date filters use UTC */
+        get: operations["list-my-payments"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/payments/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** View an owned payment */
+        get: operations["get-my-payment"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/payments/{id}/mock-result": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Simulate a payment result; no money moves */
+        post: operations["complete-mock-payment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/payments/{id}/receipt": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** View the receipt for an owned paid invoice */
+        get: operations["get-my-receipt"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/payments/{id}/receipt.pdf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Download a mock receipt as PDF */
+        get: operations["download-my-receipt"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -701,26 +701,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/tournaments/{tournamentId}/lobbies": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Create a team lobby
-         * @description Creates a forming team and makes the authenticated account its captain.
-         */
-        post: operations["create-team-lobby"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/tournaments/{tournamentId}/my-team": {
         parameters: {
             query?: never;
@@ -860,41 +840,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/payments": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Personal invoices, newest first; date filters use UTC */
-        get: operations["list-my-payments"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/payments/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** View an owned payment */
-        get: operations["get-my-payment"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/payments/{id}/mock-result": {
+    "/api/v1/tournaments/{tournamentId}/teams": {
         parameters: {
             query?: never;
             header?: never;
@@ -903,66 +849,87 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Simulate a payment result; no money moves */
-        post: operations["complete-mock-payment"];
+        /**
+         * Create a team lobby
+         * @description Creates a forming team and makes the authenticated account its captain.
+         */
+        post: operations["create-team-lobby"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/api/v1/payments/{id}/receipt": {
+    "/api/v1/tournaments/{tournamentId}/teams/{teamId}": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** View the receipt for an owned paid invoice */
-        get: operations["get-my-receipt"];
+        /** View a team lobby */
+        get: operations["get-team-lobby"];
         put?: never;
         post?: never;
-        delete?: never;
+        /** Disband a team lobby */
+        delete: operations["disband-team-lobby"];
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/api/v1/payments/{id}/receipt.pdf": {
+    "/api/v1/tournaments/{tournamentId}/teams/{teamId}/invite/regenerate": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** Download a mock receipt as PDF */
-        get: operations["download-my-receipt"];
+        get?: never;
         put?: never;
-        post?: never;
+        /** Regenerate a team invite */
+        post: operations["regenerate-team-lobby-invite"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/api/v1/notifications": {
+    "/api/v1/tournaments/{tournamentId}/teams/{teamId}/join": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** List personal notifications ordered newest first */
-        get: operations["list-my-notifications"];
+        get?: never;
         put?: never;
-        post?: never;
+        /** Join a team lobby using an invite code */
+        post: operations["join-team-lobby"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/api/v1/notifications/read-all": {
+    "/api/v1/tournaments/{tournamentId}/teams/{teamId}/lock": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Lock a team roster */
+        post: operations["lock-team-lobby"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournamentId}/teams/{teamId}/members/{memberId}": {
         parameters: {
             query?: never;
             header?: never;
@@ -972,14 +939,31 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
+        /** Remove a lobby member */
+        delete: operations["remove-team-lobby-member"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tournaments/{tournamentId}/teams/{teamId}/registration": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Submit your own registration answers once while the team is forming */
+        put: operations["update-member-registration-answers"];
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
-        /** Mark all notifications for the user as read */
-        patch: operations["mark-all-notifications-read"];
+        patch?: never;
         trace?: never;
     };
-    "/api/v1/notifications/{id}/read": {
+    "/api/v1/tournaments/{tournamentId}/teams/{teamId}/submission/refresh": {
         parameters: {
             query?: never;
             header?: never;
@@ -988,12 +972,29 @@ export interface paths {
         };
         get?: never;
         put?: never;
+        /** Verify team registration payment */
+        post: operations["refresh-team-submission"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/health": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Health Check */
+        get: operations["health-check"];
+        put?: never;
         post?: never;
         delete?: never;
         options?: never;
         head?: never;
-        /** Mark an owned notification as read */
-        patch: operations["mark-notification-read"];
+        patch?: never;
         trace?: never;
     };
 }
@@ -1026,183 +1027,6 @@ export interface components {
              */
             status: "ONBOARDING" | "ACTIVE" | "SUSPENDED";
         };
-        ErrorDetail: {
-            /** @description Where the error occurred, e.g. 'body.items[3].tags' or 'path.thing-id' */
-            location?: string;
-            /** @description Error message text */
-            message?: string;
-            /** @description The value at the given location */
-            value?: unknown;
-        };
-        ErrorModel: {
-            /**
-             * Format: uri
-             * @description A URL to the JSON Schema for this object.
-             * @example https://example.com/schemas/ErrorModel.json
-             */
-            readonly $schema?: string;
-            /**
-             * @description A human-readable explanation specific to this occurrence of the problem.
-             * @example Property foo is required but is missing.
-             */
-            detail?: string;
-            /** @description Optional list of individual error details */
-            errors?: components["schemas"]["ErrorDetail"][] | null;
-            /**
-             * Format: uri
-             * @description A URI reference that identifies the specific occurrence of the problem.
-             * @example https://example.com/error-log/abc123
-             */
-            instance?: string;
-            /**
-             * Format: int64
-             * @description HTTP status code
-             * @example 400
-             */
-            status?: number;
-            /**
-             * @description A short, human-readable summary of the problem type. This value should not change between occurrences of the error.
-             * @example Bad Request
-             */
-            title?: string;
-            /**
-             * Format: uri
-             * @description A URI reference to human-readable documentation for the error.
-             * @default about:blank
-             * @example https://example.com/errors/example
-             */
-            type: string;
-        };
-        OrganizerProfileResponse: {
-            /**
-             * Format: uri
-             * @description A URL to the JSON Schema for this object.
-             * @example https://example.com/schemas/OrganizerProfileResponse.json
-             */
-            readonly $schema?: string;
-            /** @description Associated account UUID */
-            accountId: string;
-            /**
-             * Format: date-time
-             * @description Timestamp of profile creation
-             */
-            createdAt: string;
-            /** @description Contact email for organizer */
-            organizerEmail: string;
-            /** @description Organizer organization or brand name */
-            organizerName: string;
-            /** @description Contact phone number for organizer */
-            phone?: string;
-            /**
-             * Format: date-time
-             * @description Timestamp of last profile update
-             */
-            updatedAt: string;
-        };
-        SponsorDirectoryItem: {
-            accountId: string;
-            contactEmail: string;
-            sponsorName: string;
-            /** @description Sponsor interests and business tags */
-            tags: string[] | null;
-        };
-        SponsorDirectoryOutputBody: {
-            /**
-             * Format: uri
-             * @description A URL to the JSON Schema for this object.
-             * @example https://example.com/schemas/SponsorDirectoryOutputBody.json
-             */
-            readonly $schema?: string;
-            items: components["schemas"]["SponsorDirectoryItem"][] | null;
-            /** Format: int64 */
-            page: number;
-            /** Format: int64 */
-            pageSize: number;
-            tags: string[] | null;
-            /** Format: int64 */
-            total: number;
-        };
-        SponsorProfileResponse: {
-            /**
-             * Format: uri
-             * @description A URL to the JSON Schema for this object.
-             * @example https://example.com/schemas/SponsorProfileResponse.json
-             */
-            readonly $schema?: string;
-            /** @description Associated account UUID */
-            accountId: string;
-            /**
-             * Format: date-time
-             * @description Timestamp of profile creation
-             */
-            createdAt: string;
-            /** @description Public sponsor logo image URL */
-            logoUrl: string;
-            /** @description Contact phone number for sponsor */
-            phone?: string;
-            /** @description Contact email for sponsorship communications */
-            sponsorEmail: string;
-            /** @description Sponsor company or organization name */
-            sponsorName: string;
-            /** @description Sponsor interests and business tags */
-            tags: string[] | null;
-            /**
-             * Format: date-time
-             * @description Timestamp of last profile update
-             */
-            updatedAt: string;
-            /** @description Official sponsor website URL */
-            websiteUrl: string;
-        };
-        UpdateAccountRequest: {
-            /**
-             * Format: uri
-             * @description A URL to the JSON Schema for this object.
-             * @example https://example.com/schemas/UpdateAccountRequest.json
-             */
-            readonly $schema?: string;
-            /** @description New display name */
-            displayName?: string;
-            /** @description New unique handle */
-            handle?: string;
-        };
-        UpsertOrganizerProfileRequest: {
-            /**
-             * Format: uri
-             * @description A URL to the JSON Schema for this object.
-             * @example https://example.com/schemas/UpsertOrganizerProfileRequest.json
-             */
-            readonly $schema?: string;
-            /** @description Contact email for organizer */
-            organizerEmail?: string;
-            /** @description Organizer organization or brand name */
-            organizerName: string;
-            /** @description Contact phone number for organizer */
-            phone?: string;
-        };
-        UpsertSponsorProfileRequest: {
-            /**
-             * Format: uri
-             * @description A URL to the JSON Schema for this object.
-             * @example https://example.com/schemas/UpsertSponsorProfileRequest.json
-             */
-            readonly $schema?: string;
-            /** @description Public sponsor logo image URL */
-            logoUrl?: string;
-            /** @description Contact phone number for sponsor */
-            phone?: string;
-            /**
-             * Format: email
-             * @description Contact email shown to organizers
-             */
-            sponsorEmail: string | null;
-            /** @description Sponsor company or organization name */
-            sponsorName: string;
-            /** @description Free-form sponsor tags, each up to 40 characters */
-            tags: string[] | null;
-            /** @description Official sponsor website URL */
-            websiteUrl?: string;
-        };
         AnnouncementResponse: {
             /**
              * Format: uri
@@ -1226,6 +1050,16 @@ export interface components {
              */
             readonly $schema?: string;
             matches: components["schemas"]["MatchResponse"][] | null;
+        };
+        "Complete-mock-paymentRequest": {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/Complete-mock-paymentRequest.json
+             */
+            readonly $schema?: string;
+            /** @enum {string} */
+            result: "SUCCEEDED" | "FAILED" | "CANCELLED";
         };
         CreateAnnouncementInputBody: {
             /**
@@ -1356,6 +1190,53 @@ export interface components {
             /** @description List of matches defining the bracket DAG (empty list clears/resets bracket) */
             matches: components["schemas"]["DefineBracketMatchItem"][] | null;
         };
+        ErrorDetail: {
+            /** @description Where the error occurred, e.g. 'body.items[3].tags' or 'path.thing-id' */
+            location?: string;
+            /** @description Error message text */
+            message?: string;
+            /** @description The value at the given location */
+            value?: unknown;
+        };
+        ErrorModel: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/ErrorModel.json
+             */
+            readonly $schema?: string;
+            /**
+             * @description A human-readable explanation specific to this occurrence of the problem.
+             * @example Property foo is required but is missing.
+             */
+            detail?: string;
+            /** @description Optional list of individual error details */
+            errors?: components["schemas"]["ErrorDetail"][] | null;
+            /**
+             * Format: uri
+             * @description A URI reference that identifies the specific occurrence of the problem.
+             * @example https://example.com/error-log/abc123
+             */
+            instance?: string;
+            /**
+             * Format: int64
+             * @description HTTP status code
+             * @example 400
+             */
+            status?: number;
+            /**
+             * @description A short, human-readable summary of the problem type. This value should not change between occurrences of the error.
+             * @example Bad Request
+             */
+            title?: string;
+            /**
+             * Format: uri
+             * @description A URI reference to human-readable documentation for the error.
+             * @default about:blank
+             * @example https://example.com/errors/example
+             */
+            type: string;
+        };
         FieldAnswer: {
             fieldId: string;
             value: unknown;
@@ -1382,6 +1263,16 @@ export interface components {
             id: string;
             tournamentId: string;
         };
+        InviteResolutionResponse: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/InviteResolutionResponse.json
+             */
+            readonly $schema?: string;
+            teamId: string;
+            tournamentId: string;
+        };
         InviteStaffRequest: {
             /**
              * Format: uri
@@ -1396,6 +1287,29 @@ export interface components {
              * @enum {string}
              */
             role: "ADMIN" | "REFEREE";
+        };
+        JoinTeamLobbyRequest: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/JoinTeamLobbyRequest.json
+             */
+            readonly $schema?: string;
+            /** @description Submitted answers for custom registration form */
+            answers?: components["schemas"]["FieldAnswer"][] | null;
+            /** @description Six-character team invite code */
+            inviteCode: string;
+        };
+        "List-my-paymentsResponse": {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/List-my-paymentsResponse.json
+             */
+            readonly $schema?: string;
+            items: components["schemas"]["PaymentResponse"][] | null;
+            /** Format: int64 */
+            total: number;
         };
         "List-my-sponsorshipsResponse": {
             /**
@@ -1495,6 +1409,46 @@ export interface components {
             /** @description Accepted tournament team IDs assigned to this match */
             teamIds: string[] | null;
         };
+        NotificationCountOutputBody: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/NotificationCountOutputBody.json
+             */
+            readonly $schema?: string;
+            /** Format: int64 */
+            updatedCount: number;
+        };
+        NotificationItem: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/NotificationItem.json
+             */
+            readonly $schema?: string;
+            /** Format: date-time */
+            createdAt: string;
+            id: string;
+            isRead: boolean;
+            link: string;
+            message: string;
+            /** Format: date-time */
+            readAt: string | null;
+            title: string;
+            type: string;
+            userId: string;
+        };
+        NotificationListResponse: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/NotificationListResponse.json
+             */
+            readonly $schema?: string;
+            notifications: components["schemas"]["NotificationItem"][] | null;
+            /** Format: int64 */
+            unreadCount: number;
+        };
         OrganizerDashboardEntry: {
             /** Format: date-time */
             createdAt: string;
@@ -1534,6 +1488,32 @@ export interface components {
             readonly $schema?: string;
             entries: components["schemas"]["OrganizerDashboardEntry"][] | null;
             summary: components["schemas"]["OrganizerTournamentSummary"];
+        };
+        OrganizerProfileResponse: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/OrganizerProfileResponse.json
+             */
+            readonly $schema?: string;
+            /** @description Associated account UUID */
+            accountId: string;
+            /**
+             * Format: date-time
+             * @description Timestamp of profile creation
+             */
+            createdAt: string;
+            /** @description Contact email for organizer */
+            organizerEmail: string;
+            /** @description Organizer organization or brand name */
+            organizerName: string;
+            /** @description Contact phone number for organizer */
+            phone?: string;
+            /**
+             * Format: date-time
+             * @description Timestamp of last profile update
+             */
+            updatedAt: string;
         };
         OrganizerTournamentListOutputBody: {
             /**
@@ -1601,6 +1581,62 @@ export interface components {
             tierName: string;
             tournamentId: string;
             tournamentName: string;
+        };
+        PaymentResponse: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/PaymentResponse.json
+             */
+            readonly $schema?: string;
+            /**
+             * Format: int64
+             * @description Amount in satang
+             */
+            amountMinor: number;
+            checkoutPath: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** @enum {string} */
+            currency: "THB";
+            description: string;
+            /** Format: date-time */
+            expiresAt: string;
+            id: string;
+            invoicePath: string;
+            /** Format: date-time */
+            paidAt: string | null;
+            payerAccountId: string;
+            /** @enum {string} */
+            provider: "MOCK";
+            reference: string;
+            /** Format: date-time */
+            refundedAt: string | null;
+            source: string;
+            /** @enum {string} */
+            status: "UNPAID" | "PAID" | "REFUNDED" | "EXPIRED" | "CANCELLED";
+        };
+        ReceiptResponse: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/ReceiptResponse.json
+             */
+            readonly $schema?: string;
+            /** Format: int64 */
+            amountMinor: number;
+            /** @enum {string} */
+            currency: "THB";
+            description: string;
+            id: string;
+            invoiceId: string;
+            /** Format: date-time */
+            paidAt: string;
+            payerAccountId: string;
+            /** @enum {string} */
+            provider: "MOCK";
+            reference: string;
+            source: string;
         };
         RecordMatchResultsRequest: {
             /**
@@ -1689,6 +1725,61 @@ export interface components {
             readonly $schema?: string;
             /** @description Optional explicit assignments of teams to Stage 1 matches. If omitted or empty, teams are auto-distributed round-robin. */
             assignments?: components["schemas"]["MatchSeedAssignmentItem"][] | null;
+        };
+        SponsorDirectoryItem: {
+            accountId: string;
+            contactEmail: string;
+            sponsorName: string;
+            /** @description Sponsor interests and business tags */
+            tags: string[] | null;
+        };
+        SponsorDirectoryOutputBody: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/SponsorDirectoryOutputBody.json
+             */
+            readonly $schema?: string;
+            items: components["schemas"]["SponsorDirectoryItem"][] | null;
+            /** Format: int64 */
+            page: number;
+            /** Format: int64 */
+            pageSize: number;
+            tags: string[] | null;
+            /** Format: int64 */
+            total: number;
+        };
+        SponsorProfileResponse: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/SponsorProfileResponse.json
+             */
+            readonly $schema?: string;
+            /** @description Associated account UUID */
+            accountId: string;
+            /**
+             * Format: date-time
+             * @description Timestamp of profile creation
+             */
+            createdAt: string;
+            /** @description Public sponsor logo image URL */
+            logoUrl: string;
+            /** @description Contact phone number for sponsor */
+            phone?: string;
+            /** @description Contact email for sponsorship communications */
+            sponsorEmail: string;
+            /** @description Sponsor company or organization name */
+            sponsorName: string;
+            /** @description Sponsor interests and business tags */
+            tags: string[] | null;
+            /**
+             * Format: date-time
+             * @description Timestamp of last profile update
+             */
+            updatedAt: string;
+            /** @description Official sponsor website URL */
+            websiteUrl: string;
         };
         SponsorResponse: {
             id: string;
@@ -1810,7 +1901,7 @@ export interface components {
             /** Format: date-time */
             createdAt: string;
             id: string;
-            /** @description Six-character team invite code, or null if registration is closed/solo */
+            /** @description Six-character team invite code, or null if viewer is not a team member or registration is closed/solo */
             inviteCode?: string;
             members: components["schemas"]["TeamLobbyMemberResponse"][] | null;
             name: string;
@@ -2001,6 +2092,18 @@ export interface components {
             memberCount: number;
             name: string;
         };
+        UpdateAccountRequest: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/UpdateAccountRequest.json
+             */
+            readonly $schema?: string;
+            /** @description New display name */
+            displayName?: string;
+            /** @description New unique handle */
+            handle?: string;
+        };
         UpdateStaffRoleRequest: {
             /**
              * Format: uri
@@ -2082,122 +2185,42 @@ export interface components {
              */
             startAt?: string;
         };
-        "Complete-mock-paymentRequest": {
+        UpsertOrganizerProfileRequest: {
             /**
              * Format: uri
              * @description A URL to the JSON Schema for this object.
-             * @example https://example.com/schemas/Complete-mock-paymentRequest.json
+             * @example https://example.com/schemas/UpsertOrganizerProfileRequest.json
              */
             readonly $schema?: string;
-            /** @enum {string} */
-            result: "SUCCEEDED" | "FAILED" | "CANCELLED";
+            /** @description Contact email for organizer */
+            organizerEmail?: string;
+            /** @description Organizer organization or brand name */
+            organizerName: string;
+            /** @description Contact phone number for organizer */
+            phone?: string;
         };
-        "List-my-paymentsResponse": {
+        UpsertSponsorProfileRequest: {
             /**
              * Format: uri
              * @description A URL to the JSON Schema for this object.
-             * @example https://example.com/schemas/List-my-paymentsResponse.json
+             * @example https://example.com/schemas/UpsertSponsorProfileRequest.json
              */
             readonly $schema?: string;
-            items: components["schemas"]["PaymentResponse"][] | null;
-            /** Format: int64 */
-            total: number;
-        };
-        PaymentResponse: {
+            /** @description Public sponsor logo image URL */
+            logoUrl?: string;
+            /** @description Contact phone number for sponsor */
+            phone?: string;
             /**
-             * Format: uri
-             * @description A URL to the JSON Schema for this object.
-             * @example https://example.com/schemas/PaymentResponse.json
+             * Format: email
+             * @description Contact email shown to organizers
              */
-            readonly $schema?: string;
-            /**
-             * Format: int64
-             * @description Amount in satang
-             */
-            amountMinor: number;
-            checkoutPath: string;
-            /** Format: date-time */
-            createdAt: string;
-            /** @enum {string} */
-            currency: "THB";
-            description: string;
-            /** Format: date-time */
-            expiresAt: string;
-            id: string;
-            invoicePath: string;
-            /** Format: date-time */
-            paidAt: string | null;
-            payerAccountId: string;
-            /** @enum {string} */
-            provider: "MOCK";
-            reference: string;
-            /** Format: date-time */
-            refundedAt: string | null;
-            source: string;
-            /** @enum {string} */
-            status: "UNPAID" | "PAID" | "REFUNDED" | "EXPIRED" | "CANCELLED";
-        };
-        ReceiptResponse: {
-            /**
-             * Format: uri
-             * @description A URL to the JSON Schema for this object.
-             * @example https://example.com/schemas/ReceiptResponse.json
-             */
-            readonly $schema?: string;
-            /** Format: int64 */
-            amountMinor: number;
-            /** @enum {string} */
-            currency: "THB";
-            description: string;
-            id: string;
-            invoiceId: string;
-            /** Format: date-time */
-            paidAt: string;
-            payerAccountId: string;
-            /** @enum {string} */
-            provider: "MOCK";
-            reference: string;
-            source: string;
-        };
-        NotificationCountOutputBody: {
-            /**
-             * Format: uri
-             * @description A URL to the JSON Schema for this object.
-             * @example https://example.com/schemas/NotificationCountOutputBody.json
-             */
-            readonly $schema?: string;
-            /** Format: int64 */
-            updatedCount: number;
-        };
-        NotificationItem: {
-            /**
-             * Format: uri
-             * @description A URL to the JSON Schema for this object.
-             * @example https://example.com/schemas/NotificationItem.json
-             */
-            readonly $schema?: string;
-            /** Format: date-time */
-            createdAt: string;
-            id: string;
-            isRead: boolean;
-            link: string;
-            message: string;
-            /** Format: date-time */
-            readAt: string | null;
-            title: string;
-            type: string;
-            userId: string;
-        };
-        NotificationListResponse: {
-            /**
-             * Format: uri
-             * @description A URL to the JSON Schema for this object.
-             * @example https://example.com/schemas/NotificationListResponse.json
-             */
-            readonly $schema?: string;
-            notifications: components["schemas"]["NotificationItem"][] | null;
-            /** Format: int64 */
-            unreadCount: number;
+            sponsorEmail: string | null;
+            /** @description Sponsor company or organization name */
+            sponsorName: string;
+            /** @description Free-form sponsor tags, each up to 40 characters */
+            tags: string[] | null;
+            /** @description Official sponsor website URL */
+            websiteUrl?: string;
         };
     };
     responses: never;
@@ -2426,9 +2449,9 @@ export interface operations {
     "list-sponsor-directory": {
         parameters: {
             query?: {
-                /** @description Search sponsor name */
+                /** @description Search sponsor names or tags by partial text */
                 search?: string;
-                /** @description Filter by an exact tag (case-insensitive) */
+                /** @description Comma-separated exact tags; sponsors must match every tag (up to 10) */
                 tag?: string;
                 page?: number;
                 pageSize?: number;
@@ -2491,229 +2514,7 @@ export interface operations {
             };
         };
     };
-    "health-check": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description No Content */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Error */
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["ErrorModel"];
-                };
-            };
-        };
-    };
-    "disband-team-lobby": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description Team UUID */
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description No Content */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Error */
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["ErrorModel"];
-                };
-            };
-        };
-    };
-    "regenerate-team-lobby-invite": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description Team UUID */
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["TeamLobbyResponse"];
-                };
-            };
-            /** @description Error */
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["ErrorModel"];
-                };
-            };
-        };
-    };
-    "lock-team-lobby": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description Team UUID */
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["TeamLobbyResponse"];
-                };
-            };
-            /** @description Error */
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["ErrorModel"];
-                };
-            };
-        };
-    };
-    "remove-team-lobby-member": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description Team UUID */
-                id: string;
-                /** @description Team member UUID */
-                memberId: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["TeamLobbyResponse"];
-                };
-            };
-            /** @description Error */
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["ErrorModel"];
-                };
-            };
-        };
-    };
-    "update-member-registration-answers": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["RegisterSoloRequest"];
-            };
-        };
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["TeamLobbyResponse"];
-                };
-            };
-            /** @description Error */
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["ErrorModel"];
-                };
-            };
-        };
-    };
-    "refresh-team-submission": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description Team UUID */
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["TeamLobbyResponse"];
-                };
-            };
-            /** @description Error */
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["ErrorModel"];
-                };
-            };
-        };
-    };
-    "get-team-lobby": {
+    "resolve-team-invite": {
         parameters: {
             query?: never;
             header?: never;
@@ -2731,7 +2532,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["TeamLobbyResponse"];
+                    "application/json": components["schemas"]["InviteResolutionResponse"];
                 };
             };
             /** @description Error */
@@ -2745,18 +2546,177 @@ export interface operations {
             };
         };
     };
-    "join-team-lobby": {
+    "list-my-notifications": {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificationListResponse"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "mark-all-notifications-read": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificationCountOutputBody"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "mark-notification-read": {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                inviteCode: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificationItem"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "list-my-payments": {
+        parameters: {
+            query?: {
+                /** @description Inclusive creation date YYYY-MM-DD (UTC) */
+                from?: string;
+                /** @description Inclusive creation date YYYY-MM-DD (UTC) */
+                to?: string;
+                page?: number;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["List-my-paymentsResponse"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "get-my-payment": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaymentResponse"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "complete-mock-payment": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
             };
             cookie?: never;
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["RegisterSoloRequest"];
+                "application/json": components["schemas"]["Complete-mock-paymentRequest"];
             };
         };
         responses: {
@@ -2766,7 +2726,71 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["TeamLobbyResponse"];
+                    "application/json": components["schemas"]["PaymentResponse"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "get-my-receipt": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReceiptResponse"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "download-my-receipt": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Mock receipt PDF */
+            200: {
+                headers: {
+                    "Content-Disposition"?: string;
+                    "Content-Type"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/pdf": string;
                 };
             };
             /** @description Error */
@@ -3162,7 +3186,7 @@ export interface operations {
             path: {
                 /** @description Tournament ID */
                 id: string;
-                /** @description Application ID: the team's ID (a solo player registers as a one-person team) */
+                /** @description Application ID: the team's 8-character ID (a solo player registers as a one-person team) */
                 entryId: string;
             };
             cookie?: never;
@@ -3679,42 +3703,6 @@ export interface operations {
             };
         };
     };
-    "create-team-lobby": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description Tournament UUID */
-                tournamentId: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["CreateTeamLobbyRequest"];
-            };
-        };
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["TeamLobbyResponse"];
-                };
-            };
-            /** @description Error */
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["ErrorModel"];
-                };
-            };
-        };
-    };
     "get-my-tournament-team": {
         parameters: {
             query?: never;
@@ -4021,85 +4009,19 @@ export interface operations {
             };
         };
     };
-    "list-my-payments": {
-        parameters: {
-            query?: {
-                /** @description Inclusive creation date YYYY-MM-DD (UTC) */
-                from?: string;
-                /** @description Inclusive creation date YYYY-MM-DD (UTC) */
-                to?: string;
-                page?: number;
-                limit?: number;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["List-my-paymentsResponse"];
-                };
-            };
-            /** @description Error */
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["ErrorModel"];
-                };
-            };
-        };
-    };
-    "get-my-payment": {
+    "create-team-lobby": {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["PaymentResponse"];
-                };
-            };
-            /** @description Error */
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["ErrorModel"];
-                };
-            };
-        };
-    };
-    "complete-mock-payment": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
+                /** @description Tournament UUID */
+                tournamentId: string;
             };
             cookie?: never;
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["Complete-mock-paymentRequest"];
+                "application/json": components["schemas"]["CreateTeamLobbyRequest"];
             };
         };
         responses: {
@@ -4109,7 +4031,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["PaymentResponse"];
+                    "application/json": components["schemas"]["TeamLobbyResponse"];
                 };
             };
             /** @description Error */
@@ -4123,12 +4045,15 @@ export interface operations {
             };
         };
     };
-    "get-my-receipt": {
+    "get-team-lobby": {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                id: string;
+                /** @description Tournament UUID */
+                tournamentId: string;
+                /** @description Eight-character team ID */
+                teamId: string;
             };
             cookie?: never;
         };
@@ -4140,7 +4065,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ReceiptResponse"];
+                    "application/json": components["schemas"]["TeamLobbyResponse"];
                 };
             };
             /** @description Error */
@@ -4154,26 +4079,59 @@ export interface operations {
             };
         };
     };
-    "download-my-receipt": {
+    "disband-team-lobby": {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                id: string;
+                /** @description Tournament UUID */
+                tournamentId: string;
+                /** @description Eight-character team ID */
+                teamId: string;
             };
             cookie?: never;
         };
         requestBody?: never;
         responses: {
-            /** @description Mock receipt PDF */
-            200: {
+            /** @description No Content */
+            204: {
                 headers: {
-                    "Content-Disposition"?: string;
-                    "Content-Type"?: string;
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Error */
+            default: {
+                headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/pdf": string;
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "regenerate-team-lobby-invite": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Tournament UUID */
+                tournamentId: string;
+                /** @description Eight-character team ID */
+                teamId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TeamLobbyResponse"];
                 };
             };
             /** @description Error */
@@ -4187,86 +4145,201 @@ export interface operations {
             };
         };
     };
-    "list-my-notifications": {
+    "join-team-lobby": {
         parameters: {
-            query?: {
-                limit?: number;
-                offset?: number;
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Tournament UUID */
+                tournamentId: string;
+                /** @description Eight-character team ID */
+                teamId: string;
             };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["JoinTeamLobbyRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TeamLobbyResponse"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "lock-team-lobby": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Tournament UUID */
+                tournamentId: string;
+                /** @description Eight-character team ID */
+                teamId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TeamLobbyResponse"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "remove-team-lobby-member": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Tournament UUID */
+                tournamentId: string;
+                /** @description Eight-character team ID */
+                teamId: string;
+                /** @description Team member UUID */
+                memberId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TeamLobbyResponse"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "update-member-registration-answers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Tournament UUID */
+                tournamentId: string;
+                /** @description Eight-character team ID */
+                teamId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RegisterSoloRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TeamLobbyResponse"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "refresh-team-submission": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Tournament UUID */
+                tournamentId: string;
+                /** @description Eight-character team ID */
+                teamId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TeamLobbyResponse"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
+    "health-check": {
+        parameters: {
+            query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
         requestBody?: never;
         responses: {
-            /** @description OK */
-            200: {
+            /** @description No Content */
+            204: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content: {
-                    "application/json": components["schemas"]["NotificationListResponse"];
-                };
-            };
-            /** @description Error */
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["ErrorModel"];
-                };
-            };
-        };
-    };
-    "mark-all-notifications-read": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotificationCountOutputBody"];
-                };
-            };
-            /** @description Error */
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["ErrorModel"];
-                };
-            };
-        };
-    };
-    "mark-notification-read": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotificationItem"];
-                };
+                content?: never;
             };
             /** @description Error */
             default: {

@@ -71,7 +71,7 @@ func SeedTournaments(db *gorm.DB) error {
 	teams := make([]models.TournamentTeam, 0, 36)
 	addTeams := func(tournamentID uuid.UUID, names []string, firstID int) {
 		for index, name := range names {
-			teams = append(teams, models.TournamentTeam{ID: fixtureID(44444444, firstID+index), TournamentID: tournamentID, Name: name, Status: models.TournamentTeamStatusAccepted, LockedAt: &lockedAt})
+			teams = append(teams, models.TournamentTeam{ID: fmt.Sprintf("TM%06d", firstID+index), TournamentID: tournamentID, Name: name, Status: models.TournamentTeamStatusAccepted, LockedAt: &lockedAt})
 		}
 	}
 	addTeams(setupID, setupNames, 61)
@@ -79,16 +79,16 @@ func SeedTournaments(db *gorm.DB) error {
 	addTeams(liveID, liveNames, 21)
 	archiveTeamStart := len(teams)
 	addTeams(completedID, archiveNames, 45)
-	teamIDs := make([]uuid.UUID, 0, len(teams))
+	teamIDs := make([]string, 0, len(teams))
 	for _, team := range teams {
 		teamIDs = append(teamIDs, team.ID)
 	}
 	// Team members are fixture detail rather than user-created data. Clear them
 	// before re-seeding so a changed roster cannot leave stale memberships behind.
-	if err := db.Where("tournament_team_id IN ?", teamIDs).Delete(&models.TournamentTeamMember{}).Error; err != nil {
+	if err := db.Where("tournament_id IN ? AND tournament_team_id IN ?", []uuid.UUID{setupID, liveID, completedID}, teamIDs).Delete(&models.TournamentTeamMember{}).Error; err != nil {
 		return err
 	}
-	if err := upsert(db, "id", &teams); err != nil {
+	if err := db.Clauses(clause.OnConflict{Columns: []clause.Column{{Name: "tournament_id"}, {Name: "id"}}, UpdateAll: true}).Create(&teams).Error; err != nil {
 		return err
 	}
 
@@ -104,7 +104,7 @@ func SeedTournaments(db *gorm.DB) error {
 				role = models.TournamentTeamMemberRoleCaptain
 			}
 			accountID := playerIDs[(index*2+offset)%len(playerIDs)]
-			members = append(members, models.TournamentTeamMember{ID: uuid.NewSHA1(uuid.NameSpaceOID, []byte(team.ID.String()+":"+accountID.String())), TournamentTeamID: team.ID, AccountID: accountID, Role: role})
+			members = append(members, models.TournamentTeamMember{ID: uuid.NewSHA1(uuid.NameSpaceOID, []byte(team.TournamentID.String()+":"+team.ID+":"+accountID.String())), TournamentID: team.TournamentID, TournamentTeamID: team.ID, AccountID: accountID, Role: role})
 		}
 	}
 	if err := upsert(db, "id", &members); err != nil {
@@ -143,14 +143,14 @@ func SeedTournaments(db *gorm.DB) error {
 		first, second := teams[liveTeamStart+index*2].ID, teams[liveTeamStart+index*2+1].ID
 		entryID := 1 + index*2
 		if index < 2 {
-			entries = append(entries, models.MatchEntry{ID: fixtureID(88888888, entryID), MatchID: matchID, TeamID: first, FinalRank: &rank1, Score: &score21, Advances: true}, models.MatchEntry{ID: fixtureID(88888888, entryID+1), MatchID: matchID, TeamID: second, FinalRank: &rank2, Score: &score12})
+			entries = append(entries, models.MatchEntry{ID: fixtureID(88888888, entryID), MatchID: matchID, TournamentID: liveID, TeamID: first, FinalRank: &rank1, Score: &score21, Advances: true}, models.MatchEntry{ID: fixtureID(88888888, entryID+1), MatchID: matchID, TournamentID: liveID, TeamID: second, FinalRank: &rank2, Score: &score12})
 		} else {
-			entries = append(entries, models.MatchEntry{ID: fixtureID(88888888, entryID), MatchID: matchID, TeamID: first}, models.MatchEntry{ID: fixtureID(88888888, entryID+1), MatchID: matchID, TeamID: second})
+			entries = append(entries, models.MatchEntry{ID: fixtureID(88888888, entryID), MatchID: matchID, TournamentID: liveID, TeamID: first}, models.MatchEntry{ID: fixtureID(88888888, entryID+1), MatchID: matchID, TournamentID: liveID, TeamID: second})
 		}
 	}
-	entries = append(entries, models.MatchEntry{ID: fixtureID(88888888, 17), MatchID: quarters[0], TeamID: teams[liveTeamStart].ID}, models.MatchEntry{ID: fixtureID(88888888, 18), MatchID: quarters[0], TeamID: teams[liveTeamStart+2].ID})
+	entries = append(entries, models.MatchEntry{ID: fixtureID(88888888, 17), MatchID: quarters[0], TournamentID: liveID, TeamID: teams[liveTeamStart].ID}, models.MatchEntry{ID: fixtureID(88888888, 18), MatchID: quarters[0], TournamentID: liveID, TeamID: teams[liveTeamStart+2].ID})
 	archiveTeams := teams[archiveTeamStart:]
-	entries = append(entries, models.MatchEntry{ID: fixtureID(88888888, 31), MatchID: archiveSemi1ID, TeamID: archiveTeams[0].ID, FinalRank: &rank1, Score: &score20, Advances: true}, models.MatchEntry{ID: fixtureID(88888888, 32), MatchID: archiveSemi1ID, TeamID: archiveTeams[1].ID, FinalRank: &rank2, Score: &score02}, models.MatchEntry{ID: fixtureID(88888888, 33), MatchID: archiveSemi2ID, TeamID: archiveTeams[2].ID, FinalRank: &rank1, Score: &score21, Advances: true}, models.MatchEntry{ID: fixtureID(88888888, 34), MatchID: archiveSemi2ID, TeamID: archiveTeams[3].ID, FinalRank: &rank2, Score: &score12}, models.MatchEntry{ID: fixtureID(88888888, 35), MatchID: archiveFinalID, TeamID: archiveTeams[0].ID, FinalRank: &rank1, Score: &score21}, models.MatchEntry{ID: fixtureID(88888888, 36), MatchID: archiveFinalID, TeamID: archiveTeams[2].ID, FinalRank: &rank2, Score: &score12})
+	entries = append(entries, models.MatchEntry{ID: fixtureID(88888888, 31), MatchID: archiveSemi1ID, TournamentID: completedID, TeamID: archiveTeams[0].ID, FinalRank: &rank1, Score: &score20, Advances: true}, models.MatchEntry{ID: fixtureID(88888888, 32), MatchID: archiveSemi1ID, TournamentID: completedID, TeamID: archiveTeams[1].ID, FinalRank: &rank2, Score: &score02}, models.MatchEntry{ID: fixtureID(88888888, 33), MatchID: archiveSemi2ID, TournamentID: completedID, TeamID: archiveTeams[2].ID, FinalRank: &rank1, Score: &score21, Advances: true}, models.MatchEntry{ID: fixtureID(88888888, 34), MatchID: archiveSemi2ID, TournamentID: completedID, TeamID: archiveTeams[3].ID, FinalRank: &rank2, Score: &score12}, models.MatchEntry{ID: fixtureID(88888888, 35), MatchID: archiveFinalID, TournamentID: completedID, TeamID: archiveTeams[0].ID, FinalRank: &rank1, Score: &score21}, models.MatchEntry{ID: fixtureID(88888888, 36), MatchID: archiveFinalID, TournamentID: completedID, TeamID: archiveTeams[2].ID, FinalRank: &rank2, Score: &score12})
 	return upsert(db, "id", &entries)
 }
 

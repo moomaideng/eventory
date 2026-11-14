@@ -80,12 +80,13 @@ func (uc *PaymentUseCase) GetForService(ctx context.Context, id uuid.UUID) (*mod
 	return uc.repo.Get(ctx, id)
 }
 
-func (uc *PaymentUseCase) RefundRegistration(ctx context.Context, invoiceID, entryID uuid.UUID) (*models.Invoice, error) {
-	if invoiceID == uuid.Nil || entryID == uuid.Nil {
+func (uc *PaymentUseCase) RefundRegistration(ctx context.Context, invoiceID uuid.UUID, entryID string) (*models.Invoice, error) {
+	entryID = strings.TrimSpace(entryID)
+	if invoiceID == uuid.Nil || entryID == "" {
 		return nil, ErrInvalid
 	}
 	return uc.repo.Refund(ctx, invoiceID, func(invoice *models.Invoice) error {
-		if invoice.Source != models.SourceTeamRegistration || !strings.HasPrefix(invoice.Reference, entryID.String()+":") || invoice.PaidAt == nil {
+		if invoice.Source != models.SourceTeamRegistration || !strings.HasPrefix(invoice.Reference, entryID+":") || invoice.PaidAt == nil {
 			return repositories.ErrConflict
 		}
 		if invoice.RefundedAt != nil {
