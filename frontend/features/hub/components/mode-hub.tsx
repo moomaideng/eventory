@@ -3,44 +3,10 @@
 import React from "react";
 import { useAuth } from "@/context/auth-context";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Gamepad2, Trophy, Briefcase } from "lucide-react";
-import { PersonaCard, type PersonaConfig } from "./persona-card";
+import { PersonaGrid } from "./persona-card";
 
 export function ModeHub() {
   const { user, isLoading } = useAuth();
-
-  const personas: PersonaConfig[] = [
-    {
-      id: "competitor",
-      title: "Competitor",
-      description:
-        "Browse open tournaments, join team lobbies, and compete in brackets.",
-      targetHref: "/tournaments",
-      actionText: "Browse Tournaments",
-      icon: Gamepad2,
-      profileName: user ? `@${user.handle}` : undefined,
-    },
-    {
-      id: "organizer",
-      title: "Organizer",
-      description:
-        "Host tournaments, set crowdfunding prize goals, manage match schedules, and invite staff.",
-      targetHref: "/organizer",
-      actionText: "Open Organizer Workspace",
-      icon: Trophy,
-      profileName: "Organizer Workspace",
-    },
-    {
-      id: "sponsor",
-      title: "Sponsor",
-      description:
-        "Pledge funding to tournament prize pools, track sponsorships, and showcase your brand logo.",
-      targetHref: "/sponsor",
-      actionText: "Open Sponsor Workspace",
-      icon: Briefcase,
-      profileName: "Sponsor Workspace",
-    },
-  ];
 
   if (isLoading || !user) {
     return (
@@ -73,11 +39,7 @@ export function ModeHub() {
       </div>
 
       {/* 3 Interactive Clickable Persona Cards */}
-      <div className="grid gap-6 md:grid-cols-3">
-        {personas.map((persona) => (
-          <PersonaCard key={persona.id} persona={persona} />
-        ))}
-      </div>
+      <PersonaGrid handle={user.handle} />
     </div>
   );
 }

@@ -2,7 +2,6 @@ import { NextResponse, type NextRequest } from "next/server";
 import { updateSession } from "@/lib/proxy-session";
 
 const PROTECTED_PREFIXES = [
-  "/hub",
   "/organizer",
   "/sponsor",
   "/settings",

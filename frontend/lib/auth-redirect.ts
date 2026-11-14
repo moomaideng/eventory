@@ -4,7 +4,7 @@
  */
 export function getSafeRedirectPath(
   target: string | null | undefined,
-  fallback = "/hub"
+  fallback = "/"
 ): string {
   if (!target) return fallback;
 
@@ -27,7 +27,7 @@ export function getSafeRedirectPath(
  */
 export function getRedirectDestinationLabel(path: string): string | null {
   const safePath = getSafeRedirectPath(path);
-  if (safePath === "/hub") return null;
+  if (safePath === "/" || safePath === "/hub") return null;
 
   // Match lobby invite code e.g. /lobbies/ABC123
   const lobbyMatch = safePath.match(/^\/lobbies\/([A-Za-z0-9_-]+)/);
