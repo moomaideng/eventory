@@ -1,5 +1,5 @@
 import type { components } from "@/lib/api/schema";
-import { formatMinorMoney } from "../../lib/money.ts";
+import { formatMinorMoney } from "@/lib/money";
 
 export type Payment = components["schemas"]["PaymentResponse"];
 

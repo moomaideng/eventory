@@ -1,7 +1,15 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { formatAmount, formatPaymentDate } from "./utils.ts";
+import { formatMinorMoney } from "../../lib/money.ts";
 import { historyDatesSchema, paymentIdSchema, sponsorPaymentRouteSchema } from "./schemas.ts";
+
+function formatPaymentDate(value) {
+  return new Intl.DateTimeFormat("en-GB", {
+    dateStyle: "medium",
+    timeStyle: "short",
+    timeZone: "UTC",
+  }).format(new Date(value));
+}
 
 test("sponsor payment routes accept only invoice, checkout and receipt paths", () => {
   const id = "66666666-6666-4666-8666-666666666666";
@@ -15,12 +23,12 @@ test("sponsor payment routes accept only invoice, checkout and receipt paths", (
 
 test("money display preserves satang, including the largest allowed amount", () => {
   assert.equal(
-    formatAmount({ amountMinor: 15000, currency: "THB" }),
+    formatMinorMoney(15000, "THB"),
     "THB 150.00"
   );
-  assert.equal(formatAmount({ amountMinor: 1, currency: "THB" }), "THB 0.01");
+  assert.equal(formatMinorMoney(1, "THB"), "THB 0.01");
   assert.equal(
-    formatAmount({ amountMinor: 9007199254740991, currency: "THB" }),
+    formatMinorMoney(9007199254740991, "THB"),
     "THB 90,071,992,547,409.91"
   );
 });
