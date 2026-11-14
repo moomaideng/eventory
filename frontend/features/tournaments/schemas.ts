@@ -26,6 +26,10 @@ export type CreateTeamLobbyInput = z.infer<typeof createTeamLobbySchema>;
  */
 export const tournamentFiltersSchema = z.object({
   q: z.string().trim().max(100).optional().catch(undefined),
+  status: z
+    .enum(["CROWDFUNDING", "REGISTRATION", "ONGOING", "COMPLETED"])
+    .optional()
+    .catch(undefined),
   startFrom: z.string().trim().optional().catch(undefined),
   startTo: z.string().trim().optional().catch(undefined),
   maxEntryFee: z.coerce
