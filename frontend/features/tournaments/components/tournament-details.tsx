@@ -3,7 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
-import { GitBranch, Megaphone, Users } from "lucide-react";
+import { ArrowUpRight, GitBranch, Users } from "lucide-react";
 import { AnnouncementPreview } from "@/features/announcements";
 import { $api, apiClient } from "@/lib/api/client";
 import { useAuth } from "@/context/auth-context";
@@ -19,16 +19,16 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { PublicTiersSection } from "@/features/sponsorship";
+import { PublicSponsorsSection, PublicTiersSection } from "@/features/sponsorship";
 import { RegistrationPaymentButton } from "@/features/payments/components/registration-payment-button";
 import {
   formatRegistrationType,
-  formatTournamentStatus,
   isRegistrationOpen,
 } from "../utils";
 import { TournamentAboutCard } from "./tournament-about-card";
 import { TournamentDetailsSkeleton } from "./tournament-details-skeleton";
 import { TournamentFundingCard } from "./tournament-funding-card";
+import { TournamentHeaderTags } from "./tournament-header-tags";
 import { TournamentRegisteredTeamsCard } from "./tournament-registered-teams-card";
 
 export function TournamentDetails({
@@ -105,16 +105,147 @@ export function TournamentDetails({
     tournament.capacity - tournament.registeredCount,
     0
   );
-  const status = formatTournamentStatus(
-    tournament.status,
-    tournament.registrationDeadline
-  );
   const registrationType = formatRegistrationType(tournament.registrationMode);
   const isSolo = tournament.registrationMode === "SOLO";
   const isCrowdfunding = tournament.status === "CROWDFUNDING";
   const hasPublicBracket = ["REGISTRATION", "ONGOING", "COMPLETED"].includes(
     tournament.status
   );
+
+  const hasFundingOutcome = funding.goalAmountMinor > 0;
+
+  if (sponsorMode && !isCrowdfunding && !hasFundingOutcome) {
+    return (
+      <main className="container mx-auto flex w-full max-w-7xl flex-1 flex-col gap-6 px-4 py-10 sm:px-8">
+        <PageHeader
+          workspace="sponsor"
+          breadcrumbs={[
+            { label: "Find tournaments", href: catalogPath },
+            { label: tournament.name },
+          ]}
+          tags={
+            <TournamentHeaderTags
+              game={tournament.game}
+              status={tournament.status}
+              registrationMode={tournament.registrationMode}
+              registrationDeadline={tournament.registrationDeadline}
+            />
+          }
+          title={tournament.name}
+          description={`Hosted by ${tournament.organizerName}`}
+          actions={
+            <Button
+              render={<Link href={`/tournaments/${tournament.id}`} />}
+              nativeButton={false}
+              variant="outline"
+            >
+              View public page
+              <ArrowUpRight data-icon="inline-end" />
+            </Button>
+          }
+        />
+        <Alert>
+          <AlertTitle>Sponsorship unavailable</AlertTitle>
+          <AlertDescription className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <span>
+              Only tournaments with crowdfunding are available here.
+            </span>
+            <Button
+              render={<Link href="/sponsor/tournaments" />}
+              nativeButton={false}
+              variant="outline"
+              size="sm"
+            >
+              Browse crowdfunding tournaments
+            </Button>
+          </AlertDescription>
+        </Alert>
+      </main>
+    );
+  }
+
+  let registrationAction: React.ReactNode = null;
+  if (!sponsorMode && !isCrowdfunding) {
+    if (myTeam?.status === "REJECTED") {
+      registrationAction = <Button disabled>Application rejected</Button>;
+    } else if (myTeam?.status === "ACCEPTED") {
+      registrationAction = <Button disabled>Confirmed</Button>;
+    } else if (myTeam?.status === "LOCKED") {
+      registrationAction = <Button disabled>Awaiting review</Button>;
+    } else if (!isRegistrationOpen(tournament)) {
+      registrationAction = <Button disabled>Registration closed</Button>;
+    } else if (!authorizationHeader) {
+      registrationAction = isSolo ? (
+        <Button
+          render={
+            <Link href={`/login?redirect=/tournaments/${tournament.id}`} />
+          }
+          nativeButton={false}
+        >
+          Sign in to register
+        </Button>
+      ) : (
+        <Button
+          render={<Link href={`/tournaments/${tournament.id}/teams/new`} />}
+          nativeButton={false}
+        >
+          <Users data-icon="inline-start" />
+          Create a team
+        </Button>
+      );
+    } else if (isMyTeamFetching) {
+      registrationAction = <Button disabled>Checking eligibility</Button>;
+    } else if (isMyTeamError) {
+      registrationAction = <Button disabled>Registration unavailable</Button>;
+    } else if (myTeam) {
+      if (myTeam.status === "PAYMENT_PENDING") {
+        registrationAction = isSolo ? (
+          <RegistrationPaymentButton
+            tournamentId={tournament.id}
+            teamId={myTeam.id}
+          />
+        ) : (
+          <Button disabled>Payment pending</Button>
+        );
+      } else if (myTeam.status === "FORMING") {
+        registrationAction = isSolo ? (
+          <RegistrationPaymentButton
+            tournamentId={tournament.id}
+            teamId={myTeam.id}
+          >
+            {tournament.entryFeeMinor > 0
+              ? "Continue to payment"
+              : "Submit registration"}
+          </RegistrationPaymentButton>
+        ) : (
+          <Button disabled>Team forming</Button>
+        );
+      } else {
+        registrationAction = <Button disabled>Registration started</Button>;
+      }
+    } else if (spotsLeft <= 0) {
+      registrationAction = <Button disabled>Tournament full</Button>;
+    } else if (isSolo) {
+      registrationAction = (
+        <Button
+          render={<Link href={`/tournaments/${tournament.id}/form`} />}
+          nativeButton={false}
+        >
+          Register as an individual
+        </Button>
+      );
+    } else {
+      registrationAction = (
+        <Button
+          render={<Link href={`/tournaments/${tournament.id}/teams/new`} />}
+          nativeButton={false}
+        >
+          <Users data-icon="inline-start" />
+          Create a team
+        </Button>
+      );
+    }
+  }
 
   return (
     <main className="container mx-auto flex w-full max-w-7xl flex-1 flex-col gap-8 px-4 py-10 sm:px-8">
@@ -128,162 +259,62 @@ export function TournamentDetails({
           { label: tournament.name },
         ]}
         tags={
-          <>
-            <Badge>{tournament.game}</Badge>
-            <Badge variant="outline" className="capitalize">
-              {status}
-            </Badge>
-            {!isCrowdfunding ? (
-              <Badge variant="outline">{registrationType}</Badge>
-            ) : null}
-          </>
+          <TournamentHeaderTags
+            game={tournament.game}
+            status={tournament.status}
+            registrationMode={tournament.registrationMode}
+            registrationDeadline={tournament.registrationDeadline}
+          />
         }
         title={tournament.name}
         description={`Hosted by ${tournament.organizerName}`}
         actions={
-          <>
+          sponsorMode ? (
             <Button
-              variant="outline"
-              render={
-                <Link href={`/tournaments/${tournament.id}/announcements`} />
-              }
+              render={<Link href={`/tournaments/${tournament.id}`} />}
               nativeButton={false}
+              variant="outline"
             >
-              <Megaphone data-icon="inline-start" />
-              Announcements
+              View public page
+              <ArrowUpRight data-icon="inline-end" />
             </Button>
-            {hasPublicBracket ? (
-              <Button
-                render={<Link href={`/tournaments/${tournament.id}/bracket`} />}
-                nativeButton={false}
-                variant="outline"
-              >
-                <GitBranch data-icon="inline-start" />
-                View bracket
-              </Button>
-            ) : null}
-          </>
+          ) : hasPublicBracket || registrationAction ? (
+            <>
+              {hasPublicBracket ? (
+                <Button
+                  render={<Link href={`/tournaments/${tournament.id}/bracket`} />}
+                  nativeButton={false}
+                  variant="outline"
+                >
+                  <GitBranch data-icon="inline-start" />
+                  View bracket
+                </Button>
+              ) : null}
+              {registrationAction}
+            </>
+          ) : undefined
         }
       />
 
-      {(isCrowdfunding || (!sponsorMode && !isCrowdfunding)) && (
-        <div className="flex flex-col gap-4">
-        {isCrowdfunding ? (
-          <Alert>
-            <AlertTitle>Funding stage</AlertTitle>
-            <AlertDescription>
-              Sponsorship is open. Participant registration will open after this
-              stage.
-            </AlertDescription>
-          </Alert>
-        ) : null}
-        {!sponsorMode && !isCrowdfunding ? (
-          myTeam?.status === "REJECTED" ? (
-            <Button disabled className="self-start">
-              Application rejected
-            </Button>
-          ) : myTeam?.status === "ACCEPTED" ? (
-            <Button disabled className="self-start">
-              Confirmed
-            </Button>
-          ) : myTeam?.status === "LOCKED" ? (
-            <Button disabled className="self-start">
-              Awaiting review
-            </Button>
-          ) : !isRegistrationOpen(tournament) ? (
-            <Button disabled className="self-start">
-              Registration closed
-            </Button>
-          ) : !authorizationHeader ? (
-            isSolo ? (
-              <Button
-                render={
-                  <Link href={`/login?redirect=/tournaments/${tournament.id}`} />
-                }
-                nativeButton={false}
-                className="self-start"
-              >
-                Sign in to register
-              </Button>
-            ) : (
-              <Button
-                render={<Link href={`/tournaments/${tournament.id}/teams/new`} />}
-                nativeButton={false}
-                className="self-start"
-              >
-                <Users data-icon="inline-start" />
-                Create a team
-              </Button>
-            )
-          ) : isMyTeamFetching ? (
-            <Button disabled className="self-start">
-              Checking eligibility
-            </Button>
-          ) : isMyTeamError ? (
-            <Button disabled className="self-start">
-              Registration unavailable
-            </Button>
-          ) : myTeam ? (
-            myTeam.status === "PAYMENT_PENDING" ? (
-              isSolo ? (
-                <RegistrationPaymentButton
-                  tournamentId={tournament.id}
-                  teamId={myTeam.id}
-                />
-              ) : (
-                <Button disabled className="self-start">
-                  Payment pending
-                </Button>
-              )
-            ) : myTeam.status === "FORMING" ? (
-              isSolo ? (
-                <RegistrationPaymentButton
-                  tournamentId={tournament.id}
-                  teamId={myTeam.id}
-                >
-                  {tournament.entryFeeMinor > 0
-                    ? "Continue to payment"
-                    : "Submit registration"}
-                </RegistrationPaymentButton>
-              ) : (
-                <Button disabled className="self-start">
-                  Team forming
-                </Button>
-              )
-            ) : (
-              <Button disabled className="self-start">
-                Registration started
-              </Button>
-            )
-          ) : spotsLeft <= 0 ? (
-            <Button disabled className="self-start">
-              Tournament full
-            </Button>
-          ) : isSolo ? (
-            <Button
-              render={<Link href={`/tournaments/${tournament.id}/form`} />}
-              nativeButton={false}
-              className="self-start"
-            >
-              Register as an individual
-            </Button>
-          ) : (
-            <Button
-              render={<Link href={`/tournaments/${tournament.id}/teams/new`} />}
-              nativeButton={false}
-              className="self-start"
-            >
-              <Users data-icon="inline-start" />
-              Create a team
-            </Button>
-          )
-        ) : null}
-        </div>
-      )}
+      {!sponsorMode && isCrowdfunding ? (
+        <Alert>
+          <AlertTitle>Funding stage</AlertTitle>
+          <AlertDescription>
+            Sponsorship is open. Participant registration will open after this
+            stage.
+          </AlertDescription>
+        </Alert>
+      ) : null}
 
-      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
+      <div
+        className={
+          !sponsorMode || funding.goalAmountMinor > 0
+            ? "grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]"
+            : "flex flex-col gap-6"
+        }
+      >
         <div className="flex flex-col gap-6">
-          {sponsorMode && (
+          {sponsorMode ? (
             <PublicTiersSection
               sponsorMode
               tournamentId={tournament.id}
@@ -291,76 +322,88 @@ export function TournamentDetails({
               status={tournament.status}
               endsAt={tournament.endAt}
             />
-          )}
+          ) : null}
           <TournamentAboutCard
             tournament={tournament}
             spotsLeft={spotsLeft}
             registrationType={registrationType}
           />
-          {!isCrowdfunding ? (
+          {!sponsorMode && !isCrowdfunding ? (
             <TournamentRegisteredTeamsCard
               tournamentId={tournament.id}
               teams={teams}
               isSolo={isSolo}
             />
           ) : null}
+          <PublicSponsorsSection
+            tournamentId={tournament.id}
+            hideWhenEmpty={!sponsorMode && !isCrowdfunding && !hasFundingOutcome}
+          />
         </div>
 
-        <div className="flex flex-col gap-6 lg:sticky lg:top-24">
-          {!sponsorMode && !isMyTeamFetching && !isMyTeamError && myTeam ? (
-            <Card>
-              <CardHeader>
-                <CardTitle>
-                  {isSolo ? "Your registration" : "Your team"}
-                </CardTitle>
-                <CardDescription>
-                  {isSolo
-                    ? "Your registration for this tournament."
-                    : "Your registration team for this tournament."}
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="flex flex-col gap-3">
-                <div className="flex items-center justify-between gap-3">
-                  <p className="font-medium">{myTeam.name}</p>
-                  <Badge variant="outline" className="capitalize">
-                    {myTeam.status.toLowerCase().replace("_", " ")}
-                  </Badge>
-                </div>
-                {!isSolo && (
-                  <p className="text-muted-foreground text-sm">
-                    {myTeam.members?.length ?? 0} of {tournament.maxTeamSize}{" "}
-                    players
-                  </p>
-                )}
-              </CardContent>
-              {!isSolo ? (
-                <CardFooter>
-                  <Button
-                    render={
-                      <Link
-                        href={`/tournaments/${tournament.id}/teams/${myTeam.id}`}
-                      />
-                    }
-                    nativeButton={false}
-                    className="w-full"
-                  >
-                    <Users data-icon="inline-start" />
-                    Open team lobby
-                  </Button>
-                </CardFooter>
-              ) : null}
-            </Card>
-          ) : null}
+        {!sponsorMode || funding.goalAmountMinor > 0 ? (
+          <div className="flex flex-col gap-6 lg:sticky lg:top-24">
+            {!sponsorMode ? (
+              <AnnouncementPreview
+                key={tournament.id}
+                tournamentId={tournament.id}
+              />
+            ) : null}
 
-          {funding.goalAmountMinor > 0 ? (
-            <TournamentFundingCard
-              funding={funding}
-              status={tournament.status}
-            />
-          ) : null}
-        </div>
+            {!sponsorMode && !isMyTeamFetching && !isMyTeamError && myTeam ? (
+              <Card>
+                <CardHeader>
+                  <CardTitle>
+                    {isSolo ? "Your registration" : "Your team"}
+                  </CardTitle>
+                  <CardDescription>
+                    {isSolo
+                      ? "Your registration for this tournament."
+                      : "Your registration team for this tournament."}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="flex flex-col gap-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="font-medium">{myTeam.name}</p>
+                    <Badge variant="outline" className="capitalize">
+                      {myTeam.status.toLowerCase().replace("_", " ")}
+                    </Badge>
+                  </div>
+                  {!isSolo && (
+                    <p className="text-muted-foreground text-sm">
+                      {myTeam.members?.length ?? 0} of {tournament.maxTeamSize}{" "}
+                      players
+                    </p>
+                  )}
+                </CardContent>
+                {!isSolo ? (
+                  <CardFooter>
+                    <Button
+                      render={
+                        <Link
+                          href={`/tournaments/${tournament.id}/teams/${myTeam.id}`}
+                        />
+                      }
+                      nativeButton={false}
+                      className="w-full"
+                    >
+                      <Users data-icon="inline-start" />
+                      Open team lobby
+                    </Button>
+                  </CardFooter>
+                ) : null}
+              </Card>
+            ) : null}
+
+            {sponsorMode && funding.goalAmountMinor > 0 ? (
+              <TournamentFundingCard
+                funding={funding}
+                status={tournament.status}
+              />
+            ) : null}
+          </div>
+        ) : null}
       </div>
-      <AnnouncementPreview key={tournament.id} tournamentId={tournament.id} />
     </main>
   );
 }

@@ -7,6 +7,7 @@ import { $api, apiClient } from "@/lib/api/client";
 import { useAuth } from "@/context/auth-context";
 import { PageHeader } from "@/components/page-header";
 import { LobbyStatusBadge } from "./lobby-status-badge";
+import { TournamentHeaderTags } from "@/features/tournaments/components/tournament-header-tags";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
@@ -213,7 +214,17 @@ export function TeamLobbyWorkspace({
           },
           { label: lobby.name },
         ]}
-        tags={<LobbyStatusBadge status={lobby.status} />}
+        tags={
+          <>
+            <TournamentHeaderTags
+              game={lobby.tournament.game}
+              status={lobby.tournament.status}
+              registrationMode={lobby.tournament.registrationMode}
+              registrationDeadline={lobby.tournament.registrationDeadline}
+            />
+            <LobbyStatusBadge status={lobby.status} />
+          </>
+        }
         title={lobby.name}
         description={`Teaming up for ${lobby.tournament.name} · Hosted by ${lobby.tournament.organizerName}`}
       />

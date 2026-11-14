@@ -29,6 +29,7 @@ import {
 
 interface TournamentFiltersCardProps {
   searchKey: string;
+  hideStatusFilter?: boolean;
   defaultQ: string;
   defaultStatus: string;
   defaultStartFrom: string;
@@ -40,6 +41,7 @@ interface TournamentFiltersCardProps {
 
 export function TournamentFiltersCard({
   searchKey,
+  hideStatusFilter = false,
   defaultQ,
   defaultStatus,
   defaultStartFrom,
@@ -108,27 +110,29 @@ export function TournamentFiltersCard({
                 maxLength={100}
               />
             </Field>
-            <Field>
-              <FieldLabel htmlFor="tournament-status">Status</FieldLabel>
-              <input name="status" type="hidden" value={status} />
-              <Select
-                value={status}
-                onValueChange={(value) => setStatus((value as string) ?? "")}
-              >
-                <SelectTrigger id="tournament-status" className="w-full">
-                  <SelectValue placeholder="All active states" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectGroup>
-                    <SelectItem value="">All active states</SelectItem>
-                    <SelectItem value="CROWDFUNDING">Crowdfunding</SelectItem>
-                    <SelectItem value="REGISTRATION">Registration</SelectItem>
-                    <SelectItem value="ONGOING">Ongoing</SelectItem>
-                    <SelectItem value="COMPLETED">Completed</SelectItem>
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
-            </Field>
+            {!hideStatusFilter ? (
+              <Field>
+                <FieldLabel htmlFor="tournament-status">Status</FieldLabel>
+                <input name="status" type="hidden" value={status} />
+                <Select
+                  value={status}
+                  onValueChange={(value) => setStatus((value as string) ?? "")}
+                >
+                  <SelectTrigger id="tournament-status" className="w-full">
+                    <SelectValue placeholder="All active states" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectGroup>
+                      <SelectItem value="">All active states</SelectItem>
+                      <SelectItem value="CROWDFUNDING">Crowdfunding</SelectItem>
+                      <SelectItem value="REGISTRATION">Registration</SelectItem>
+                      <SelectItem value="ONGOING">Ongoing</SelectItem>
+                      <SelectItem value="COMPLETED">Completed</SelectItem>
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+              </Field>
+            ) : null}
             <Field data-invalid={isInvalidDateRange || undefined}>
               <FieldLabel htmlFor="start-from">From</FieldLabel>
               <Input

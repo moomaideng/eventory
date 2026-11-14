@@ -9,6 +9,7 @@ import { PageHeader } from "@/components/page-header";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { LobbyWorkspaceSkeleton } from "@/features/lobbies/components/lobby-skeleton";
 import { MemberRegistrationForm } from "@/features/lobbies/components/member-registration-form";
+import { TournamentHeaderTags } from "@/features/tournaments/components/tournament-header-tags";
 import { isRegistrationOpen } from "@/features/tournaments/utils";
 
 export function TeamLobbyJoin({
@@ -188,6 +189,14 @@ export function TeamLobbyJoin({
               { label: "Join team" },
             ]}
             title={`Join ${lobby.name}`}
+            tags={
+              <TournamentHeaderTags
+                game={lobby.tournament.game}
+                status={lobby.tournament.status}
+                registrationMode={lobby.tournament.registrationMode}
+                registrationDeadline={lobby.tournament.registrationDeadline}
+              />
+            }
             description={`Complete your registration for ${lobby.tournament.name}. You will return to the lobby after submitting.`}
           />
           <div className="w-full max-w-3xl">

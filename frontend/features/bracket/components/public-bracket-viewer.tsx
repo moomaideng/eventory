@@ -3,8 +3,8 @@
 import { RefreshCw } from "lucide-react";
 import { $api } from "@/lib/api/client";
 import { PageHeader } from "@/components/page-header";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { TournamentHeaderTags } from "@/features/tournaments/components/tournament-header-tags";
 import { BracketTreeView } from "./bracket-tree-view";
 import { useBracket } from "../hooks/use-bracket";
 
@@ -35,18 +35,20 @@ export function PublicBracketViewer({ tournamentId }: PublicBracketViewerProps) 
             { label: "Bracket" },
           ]}
           tags={
-            <>
-              {tournament?.game ? (
-                <Badge variant="secondary">{tournament.game}</Badge>
-              ) : null}
-              {matches.length > 0 ? (
-                <Badge variant="outline" className="font-mono">
-                  {matches.length} {matches.length === 1 ? "match" : "matches"}
-                </Badge>
-              ) : null}
-            </>
+            tournament ? (
+              <TournamentHeaderTags
+                game={tournament.game}
+                status={tournament.status}
+                registrationMode={tournament.registrationMode}
+                registrationDeadline={tournament.registrationDeadline}
+              />
+            ) : undefined
           }
-          title="Tournament bracket"
+          title={
+            tournament?.name
+              ? `${tournament.name} bracket`
+              : "Tournament bracket"
+          }
           actions={
             <Button
               variant="outline"

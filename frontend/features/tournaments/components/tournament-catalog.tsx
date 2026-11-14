@@ -58,6 +58,8 @@ export function TournamentCatalog({
         startTo: undefined,
       };
 
+  const effectiveStatus = sponsorMode ? "CROWDFUNDING" : status;
+
   const { data, error, isLoading, isFetching } = $api.useQuery(
     "get",
     "/api/v1/tournaments",
@@ -65,7 +67,7 @@ export function TournamentCatalog({
       params: {
         query: {
           q: q || undefined,
-          status,
+          status: effectiveStatus,
           startFrom: startFrom || undefined,
           startTo: startTo || undefined,
           maxEntryFeeMinor:
@@ -103,7 +105,7 @@ export function TournamentCatalog({
     }
     const next = new URLSearchParams();
     if (q) next.set("q", q);
-    if (status) next.set("status", status);
+    if (!sponsorMode && status) next.set("status", status);
     if (startFrom) next.set("startFrom", startFrom);
     if (startTo) next.set("startTo", startTo);
     if (maxEntryFee !== undefined) {
@@ -140,7 +142,7 @@ export function TournamentCatalog({
         }
         description={
           sponsorMode
-            ? "Browse tournaments, view their sponsorship packages, and choose where to showcase your brand."
+            ? "Browse crowdfunding tournaments, view their sponsorship packages, and choose where to showcase your brand."
             : "Search published competitions and narrow the list to events that fit your schedule and budget."
         }
       />
@@ -148,6 +150,7 @@ export function TournamentCatalog({
       <TournamentFiltersCard
         key={searchParams.toString()}
         searchKey={searchParams.toString()}
+        hideStatusFilter={sponsorMode}
         defaultQ={searchParams.get("q") ?? ""}
         defaultStatus={searchParams.get("status") ?? ""}
         defaultStartFrom={searchParams.get("startFrom") ?? ""}
