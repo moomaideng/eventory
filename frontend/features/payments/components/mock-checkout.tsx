@@ -67,10 +67,15 @@ export function MockCheckout({
     });
   };
   if (paymentQuery.isPending)
-    return <Skeleton className="h-80 w-full" aria-label="Loading payment" />;
+    return (
+      <Skeleton
+        className="h-80 w-full max-w-2xl"
+        aria-label="Loading payment"
+      />
+    );
   if (paymentQuery.isError)
     return (
-      <Alert variant="destructive">
+      <Alert variant="destructive" className="max-w-2xl">
         <AlertTitle>Payment unavailable</AlertTitle>
         <AlertDescription>
           This payment may not belong to you, or the service could not load it.
@@ -85,7 +90,7 @@ export function MockCheckout({
     );
   const payment = paymentQuery.data;
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex w-full max-w-2xl flex-col gap-6">
       <TeamSubmissionResult payment={payment} />
       <SponsorshipResult payment={payment} />
       <Alert>

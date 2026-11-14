@@ -127,7 +127,7 @@ export function TournamentCatalog({
   }
 
   return (
-    <div className="container mx-auto flex w-full max-w-7xl flex-1 flex-col gap-8 px-4 py-12 sm:px-8">
+    <div className="container mx-auto flex w-full max-w-7xl flex-1 flex-col gap-8 px-4 py-10 sm:px-8">
       <PageHeader
         workspace={sponsorMode ? "sponsor" : undefined}
         title={

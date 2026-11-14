@@ -12,7 +12,7 @@ export const metadata: Metadata = {
 
 function CatalogFallback() {
   return (
-    <div className="container mx-auto flex w-full max-w-7xl flex-col gap-8 px-4 py-12 sm:px-8">
+    <div className="container mx-auto flex w-full max-w-7xl flex-col gap-8 px-4 py-10 sm:px-8">
       <div className="flex flex-col gap-3">
         <Skeleton className="h-10 w-72" />
         <Skeleton className="h-5 w-full max-w-xl" />

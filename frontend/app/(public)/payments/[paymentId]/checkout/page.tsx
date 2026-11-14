@@ -14,7 +14,7 @@ export default async function CheckoutPage({
   const parsed = paymentIdSchema.safeParse(paymentId);
   if (!parsed.success) notFound();
   return (
-    <div className="mx-auto flex w-full max-w-2xl flex-col gap-8 px-4 py-10">
+    <div className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-8 px-4 py-10 sm:px-8">
       <PaymentPageHeader
         title="Checkout"
         description="Review your invoice and complete payment before the deadline."

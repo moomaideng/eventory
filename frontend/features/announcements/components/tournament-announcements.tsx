@@ -37,7 +37,7 @@ export function TournamentAnnouncements({
   }, [announcements]);
 
   return (
-    <div className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-6 px-4 py-8 sm:px-8">
+    <div className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-8 px-4 py-10 sm:px-8">
       <PageHeader
         breadcrumbs={[
           { label: "Tournaments", href: "/tournaments" },

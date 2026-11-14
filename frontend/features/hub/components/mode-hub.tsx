@@ -44,7 +44,7 @@ export function ModeHub() {
 
   if (isLoading || !user) {
     return (
-      <div className="container mx-auto flex max-w-5xl flex-1 flex-col items-center justify-center px-4 py-20 sm:px-8">
+      <div className="container mx-auto flex w-full max-w-7xl flex-1 flex-col items-center justify-center px-4 py-16 sm:px-8">
         <Skeleton className="h-8 w-48 rounded-xl" />
         <Skeleton className="mt-2 h-10 w-72 rounded-xl" />
         <Skeleton className="mt-3 h-5 w-80 rounded-md" />
@@ -58,7 +58,7 @@ export function ModeHub() {
   }
 
   return (
-    <div className="container mx-auto flex max-w-6xl flex-1 flex-col justify-center px-4 py-16 sm:px-8">
+    <div className="container mx-auto flex w-full max-w-7xl flex-1 flex-col justify-center px-4 py-16 sm:px-8">
       {/* Header Greeting */}
       <div className="mb-12 text-center">
         <h1 className="text-3xl font-extrabold tracking-tight sm:text-5xl">

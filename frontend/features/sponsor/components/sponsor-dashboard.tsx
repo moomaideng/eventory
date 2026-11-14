@@ -53,7 +53,7 @@ export function SponsorDashboard() {
   );
 
   return (
-    <div className="sponsorship-surface mx-auto flex w-full max-w-5xl flex-1 flex-col gap-12 px-4 py-10 sm:px-8 sm:py-14">
+    <div className="sponsorship-surface mx-auto flex w-full max-w-7xl flex-1 flex-col gap-10 px-4 py-10 sm:px-8">
       <PageHeader
         workspace="sponsor"
         title="Sponsor dashboard"

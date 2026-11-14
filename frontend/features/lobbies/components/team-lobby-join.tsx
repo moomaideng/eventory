@@ -119,7 +119,7 @@ export function TeamLobbyJoin({
     (lobby.members?.length ?? 0) >= lobby.tournament.maxTeamSize;
 
   return (
-    <div className="container mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-12 sm:px-8">
+    <div className="container mx-auto flex w-full max-w-7xl flex-1 flex-col gap-8 px-4 py-10 sm:px-8">
       {myTeamQuery.data?.status === "REJECTED" ? (
         <>
           <PageHeader
@@ -138,7 +138,7 @@ export function TeamLobbyJoin({
             ]}
             title="Unable to join this team"
           />
-          <Alert variant="destructive">
+          <Alert variant="destructive" className="max-w-3xl">
             <AlertTitle>Application rejected</AlertTitle>
             <AlertDescription>
               Your application was not accepted for this tournament, so you
@@ -164,7 +164,7 @@ export function TeamLobbyJoin({
             ]}
             title="Unable to join this team"
           />
-          <Alert>
+          <Alert className="max-w-3xl">
             <AlertTitle>Unable to join this team</AlertTitle>
             <AlertDescription>
               {error
@@ -190,11 +190,13 @@ export function TeamLobbyJoin({
             title={`Join ${lobby.name}`}
             description={`Complete your registration for ${lobby.tournament.name}. You will return to the lobby after submitting.`}
           />
-          <MemberRegistrationForm
-            lobby={lobby}
-            inviteCode={normalizedInviteCode}
-            onSaved={returnToLobby}
-          />
+          <div className="w-full max-w-3xl">
+            <MemberRegistrationForm
+              lobby={lobby}
+              inviteCode={normalizedInviteCode}
+              onSaved={returnToLobby}
+            />
+          </div>
         </>
       )}
     </div>

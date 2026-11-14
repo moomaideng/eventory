@@ -14,7 +14,7 @@ export default async function ReceiptPage({
   const parsed = paymentIdSchema.safeParse(paymentId);
   if (!parsed.success) notFound();
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-8 px-4 py-10">
+    <div className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-8 px-4 py-10 sm:px-8">
       <PaymentPageHeader
         title="Receipt"
         description="View your payment confirmation or download the receipt as a PDF."

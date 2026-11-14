@@ -72,10 +72,15 @@ export function Receipt({
     }
   }
   if (query.isPending)
-    return <Skeleton className="h-80 w-full" aria-label="Loading receipt" />;
+    return (
+      <Skeleton
+        className="h-80 w-full max-w-3xl"
+        aria-label="Loading receipt"
+      />
+    );
   if (query.isError)
     return (
-      <Alert variant="destructive">
+      <Alert variant="destructive" className="max-w-3xl">
         <AlertTitle>Receipt unavailable</AlertTitle>
         <AlertDescription>
           A receipt is only available after this invoice has been paid, and only
@@ -91,7 +96,7 @@ export function Receipt({
     );
   const receipt = query.data;
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex w-full max-w-3xl flex-col gap-6">
       <SponsorshipResult
         payment={{
           id: receipt.invoiceId,
