@@ -7,8 +7,8 @@ import { useAuth } from "@/context/auth-context";
 import { apiClient } from "@/lib/api/client";
 import { PageHeader } from "@/components/page-header";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { TournamentHeaderTags } from "@/features/tournaments/components/tournament-header-tags";
 import { Card, CardContent } from "@/components/ui/card";
 import { Spinner } from "@/components/ui/spinner";
 import { FormFieldAnswerCard } from "@/features/registration-form/components/form-field-answer-card";
@@ -343,7 +343,14 @@ export function RegistrationFormView({
           { label: tournament.name, href: `/tournaments/${tournamentId}` },
           { label: "Registration" },
         ]}
-        tags={<Badge variant="outline">Solo registration</Badge>}
+        tags={
+          <TournamentHeaderTags
+            game={tournament.game}
+            status={tournament.status}
+            registrationMode={tournament.registrationMode}
+            registrationDeadline={tournament.registrationDeadline}
+          />
+        }
         title={data?.title ?? "Individual registration"}
         description={
           data?.description ? (

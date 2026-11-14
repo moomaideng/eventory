@@ -8,8 +8,8 @@ import { $api, apiClient } from "@/lib/api/client";
 import { useAuth } from "@/context/auth-context";
 import { PageHeader } from "@/components/page-header";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { TournamentHeaderTags } from "./tournament-header-tags";
 import {
   Card,
   CardContent,
@@ -173,7 +173,14 @@ export function TeamLobbyCreate({ tournamentId }: { tournamentId: string }) {
           { label: tournament.name, href: `/tournaments/${tournamentId}` },
           { label: "Create your team" },
         ]}
-        tags={<Badge variant="secondary">Team registration</Badge>}
+        tags={
+          <TournamentHeaderTags
+            game={tournament.game}
+            status={tournament.status}
+            registrationMode={tournament.registrationMode}
+            registrationDeadline={tournament.registrationDeadline}
+          />
+        }
         title="Create your team"
         description={`Start a roster for ${tournament.name}, then share a secure invite code with your teammates.`}
       />

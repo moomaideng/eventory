@@ -16,13 +16,15 @@ export function TierCard({
   tier,
   currency,
   footer,
+  className,
 }: {
   tier: SponsorshipTier;
   currency: string;
   footer?: ReactNode;
+  className?: string;
 }) {
   return (
-    <Card>
+    <Card className={className}>
       <CardHeader>
         <CardTitle className="wrap-anywhere">{tier.name}</CardTitle>
         <CardDescription>

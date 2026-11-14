@@ -2,7 +2,7 @@
 
 import React from "react";
 import { PageHeader } from "@/components/page-header";
-import { Badge } from "@/components/ui/badge";
+import { TournamentHeaderTags } from "@/features/tournaments/components/tournament-header-tags";
 import { AnnouncementList } from "@/features/announcements/components/announcement-list";
 import { useAnnouncements } from "@/features/announcements/hooks/use-announcements";
 import { $api } from "@/lib/api/client";
@@ -48,12 +48,14 @@ export function TournamentAnnouncements({
           { label: "Announcements" },
         ]}
         tags={
-          <>
-            <Badge variant="outline">Announcements</Badge>
-            {tournament?.game ? (
-              <Badge variant="secondary">{tournament.game}</Badge>
-            ) : null}
-          </>
+          tournament ? (
+            <TournamentHeaderTags
+              game={tournament.game}
+              status={tournament.status}
+              registrationMode={tournament.registrationMode}
+              registrationDeadline={tournament.registrationDeadline}
+            />
+          ) : undefined
         }
         title={
           tournament?.name
