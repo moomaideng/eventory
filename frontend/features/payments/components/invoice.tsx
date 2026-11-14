@@ -19,14 +19,8 @@ import {
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 
-export function Invoice({
-  paymentId,
-  sponsorMode = false,
-}: {
-  paymentId: string;
-  sponsorMode?: boolean;
-}) {
-  const basePath = sponsorMode ? "/sponsor/payments" : "/payments";
+export function Invoice({ paymentId }: { paymentId: string }) {
+  const basePath = "/payments";
   const query = useInvoice(paymentId);
   if (query.isPending)
     return <Skeleton className="h-80 w-full" aria-label="Loading invoice" />;

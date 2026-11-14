@@ -24,14 +24,8 @@ import { PaymentStatus } from "@/features/payments/components/payment-display";
 import { useInvoice } from "@/features/payments/hooks/use-invoice";
 import { formatAmount, formatPaymentDate } from "@/features/payments/utils";
 
-export function MockCheckout({
-  paymentId,
-  sponsorMode = false,
-}: {
-  paymentId: string;
-  sponsorMode?: boolean;
-}) {
-  const basePath = sponsorMode ? "/sponsor/payments" : "/payments";
+export function MockCheckout({ paymentId }: { paymentId: string }) {
+  const basePath = "/payments";
   const { authorizationHeader } = useAuth();
   const queryClient = useQueryClient();
   const [lastResult, setLastResult] = useState<"FAILED" | "CANCELLED" | null>(

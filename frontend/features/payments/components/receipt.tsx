@@ -20,14 +20,8 @@ import { Separator } from "@/components/ui/separator";
 import { Spinner } from "@/components/ui/spinner";
 import { SponsorshipResult } from "@/features/payments/components/sponsorship-result";
 
-export function Receipt({
-  paymentId,
-  sponsorMode = false,
-}: {
-  paymentId: string;
-  sponsorMode?: boolean;
-}) {
-  const basePath = sponsorMode ? "/sponsor/payments" : "/payments";
+export function Receipt({ paymentId }: { paymentId: string }) {
+  const basePath = "/payments";
   const { authorizationHeader } = useAuth();
   const [downloading, setDownloading] = useState(false);
   const [downloadError, setDownloadError] = useState(false);

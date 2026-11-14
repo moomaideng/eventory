@@ -86,17 +86,6 @@ export function SponsorDashboard() {
             Refresh
           </Button>
         </div>
-        <p className="text-muted-foreground text-sm">
-          View your packages and visit their tournament pages. Invoices and
-          receipts are kept separately in{" "}
-          <Link
-            href="/sponsor/payments"
-            className="underline underline-offset-4"
-          >
-            My payments
-          </Link>
-          .
-        </p>
         {query.isPending ? (
           <div
             aria-label="Loading sponsorships"

@@ -157,7 +157,7 @@ export function PublicTiersSection({
             <p className="text-muted-foreground text-sm">
               Already started checkout?{" "}
               <Link
-                href="/sponsor/payments"
+                href="/payments"
                 className="underline underline-offset-4"
               >
                 Resume from My payments

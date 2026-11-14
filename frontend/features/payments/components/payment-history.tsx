@@ -34,11 +34,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 const limit = 20;
 
-export function PaymentHistory({
-  sponsorMode = false,
-}: {
-  sponsorMode?: boolean;
-}) {
+export function PaymentHistory() {
   const { authorizationHeader } = useAuth();
   const [dates, setDates] = useState({ from: "", to: "" });
   const [filter, setFilter] = useState({ from: "", to: "", page: 1 });
@@ -166,10 +162,7 @@ export function PaymentHistory({
             </EmptyHeader>
           </Empty>
         ) : (
-          <PaymentHistoryTable
-            payments={history.data.items}
-            sponsorMode={sponsorMode}
-          />
+          <PaymentHistoryTable payments={history.data.items} />
         )}
       </CardContent>
       <CardFooter className="flex flex-wrap items-center justify-between gap-3">

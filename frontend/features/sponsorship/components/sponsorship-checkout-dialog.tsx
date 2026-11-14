@@ -100,7 +100,7 @@ export function SponsorshipCheckoutDialog({
         ],
       });
       router.push(
-        `/sponsor/payments/${pledge.paymentId}/${pledge.status === "CONFIRMED" ? "receipt" : "checkout"}`
+        `/payments/${pledge.paymentId}/${pledge.status === "CONFIRMED" ? "receipt" : "checkout"}`
       );
       onClose();
     } catch {
