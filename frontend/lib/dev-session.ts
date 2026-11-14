@@ -1,6 +1,10 @@
 "use server";
 
 import { cookies } from "next/headers";
+import {
+  parseDevSessionCookie,
+  type DevProfileId,
+} from "@/context/mock-data";
 
 /**
  * Dev Session Cookie Management (Server Actions)
@@ -14,15 +18,21 @@ const DEV_SESSION_COOKIE = "eventory_dev_session";
 
 function checkAuth() {
   if (process.env.NODE_ENV === "production") {
-    throw new Error("Unauthorized: Dev session is only available in development environment.");
+    throw new Error(
+      "Unauthorized: Dev session is only available in development environment."
+    );
   }
 }
 
-export async function setDevSessionAction(enabled: boolean): Promise<void> {
+export async function setDevSessionAction(
+  profile: DevProfileId | boolean
+): Promise<void> {
   checkAuth();
   const cookieStore = await cookies();
-  if (enabled) {
-    cookieStore.set(DEV_SESSION_COOKIE, "true", {
+  if (profile) {
+    const cookieValue: DevProfileId =
+      profile === true ? "alex-dev" : profile;
+    cookieStore.set(DEV_SESSION_COOKIE, cookieValue, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
@@ -35,7 +45,7 @@ export async function setDevSessionAction(enabled: boolean): Promise<void> {
   }
 }
 
-export async function getDevSessionAction(): Promise<boolean> {
+export async function getDevSessionAction(): Promise<DevProfileId | null> {
   const cookieStore = await cookies();
-  return cookieStore.get(DEV_SESSION_COOKIE)?.value === "true";
+  return parseDevSessionCookie(cookieStore.get(DEV_SESSION_COOKIE)?.value);
 }

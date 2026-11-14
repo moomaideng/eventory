@@ -4,7 +4,9 @@ import React from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/context/auth-context";
+import { DEV_PROFILE_LIST } from "@/context/mock-data";
 import { getWorkspaceRoleFromPath, type UserRole } from "@/lib/role";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -13,6 +15,7 @@ import {
   DropdownMenuContent,
   DropdownMenuGroup,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -73,7 +76,7 @@ export function NavbarRight({
 }: NavbarRightProps) {
   const pathname = usePathname();
   const router = useRouter();
-  const { user, isLoading, loginAsDev, logout } = useAuth();
+  const { user, devProfileId, isLoading, loginAsDev, logout } = useAuth();
   const activeRole = role ?? getWorkspaceRoleFromPath(pathname);
 
   const handleSelectRole = (targetHref: string) => {
@@ -184,6 +187,43 @@ export function NavbarRight({
 
                 <DropdownMenuSeparator className="my-1.5" />
 
+                {process.env.NODE_ENV === "development" && devProfileId ? (
+                  <>
+                    <DropdownMenuGroup>
+                      <DropdownMenuLabel className="text-[10px] font-bold tracking-wider uppercase">
+                        Dev Profile
+                      </DropdownMenuLabel>
+                      {DEV_PROFILE_LIST.map((profile) => {
+                        const isCurrent = devProfileId === profile.id;
+                        return (
+                          <DropdownMenuItem
+                            key={profile.id}
+                            onClick={() => loginAsDev(profile.id)}
+                            className="flex cursor-pointer items-center justify-between gap-2 text-xs"
+                          >
+                            <div className="flex min-w-0 flex-col">
+                              <span className="truncate font-medium">
+                                {profile.user.displayName}
+                              </span>
+                              <span className="text-muted-foreground truncate text-[10px]">
+                                {profile.description}
+                              </span>
+                            </div>
+                            {isCurrent ? (
+                              <Check className="text-foreground/70 size-3.5 shrink-0" />
+                            ) : (
+                              <Badge variant="outline" className="text-[10px]">
+                                {profile.roleLabel}
+                              </Badge>
+                            )}
+                          </DropdownMenuItem>
+                        );
+                      })}
+                    </DropdownMenuGroup>
+                    <DropdownMenuSeparator className="my-1.5" />
+                  </>
+                ) : null}
+
                 <DropdownMenuGroup>
                   <DropdownMenuItem render={<Link href="/settings" />}>
                     <Settings data-icon="inline-start" />
@@ -219,15 +259,47 @@ export function NavbarRight({
             /* Unauthenticated: Dev Login & Sign In */
             <div className="flex items-center gap-2">
               {process.env.NODE_ENV === "development" && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => loginAsDev()}
-                  className="text-primary border-primary/30 hidden text-xs sm:inline-flex"
-                >
-                  <Sparkles data-icon="inline-start" />
-                  Dev Quick Login
-                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger
+                    render={
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="text-primary border-primary/30 hidden text-xs sm:inline-flex"
+                      />
+                    }
+                  >
+                    <Sparkles data-icon="inline-start" />
+                    Dev Quick Login
+                    <ChevronDown data-icon="inline-end" />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-64 p-1.5">
+                    <DropdownMenuGroup>
+                      <DropdownMenuLabel className="text-[10px] font-bold tracking-wider uppercase">
+                        Select Dev Profile
+                      </DropdownMenuLabel>
+                      {DEV_PROFILE_LIST.map((profile) => (
+                        <DropdownMenuItem
+                          key={profile.id}
+                          onClick={() => loginAsDev(profile.id)}
+                          className="flex cursor-pointer items-center justify-between gap-2 py-2"
+                        >
+                          <div className="flex min-w-0 flex-col">
+                            <span className="truncate text-xs font-semibold">
+                              {profile.user.displayName}
+                            </span>
+                            <span className="text-muted-foreground truncate text-[11px]">
+                              {profile.description}
+                            </span>
+                          </div>
+                          <Badge variant="secondary" className="shrink-0 text-[10px]">
+                            {profile.roleLabel}
+                          </Badge>
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuGroup>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               )}
 
               <Button

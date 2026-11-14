@@ -1,7 +1,9 @@
 package main
 
 import (
+	"context"
 	"log"
+	"time"
 
 	"github.com/moomaideng/eventory/internal/database"
 	"github.com/moomaideng/eventory/services/tournament/config"
@@ -33,5 +35,28 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to seed database: %v", err)
 	}
+
+	if cfg.MongoURI == "" {
+		log.Println("Warning: MONGO_URI is empty; skipping registration form seeding")
+	} else {
+		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+		defer cancel()
+
+		mongoClient, err := database.ConnectMongo(ctx, cfg.MongoURI)
+		if err != nil {
+			log.Fatalf("failed to connect to mongodb: %v", err)
+		}
+		defer func() { _ = mongoClient.Disconnect(context.Background()) }()
+
+		dbName := cfg.MongoDBName
+		if dbName == "" {
+			dbName = "tournament_db"
+		}
+		log.Println("Running seed task: Registration Forms & Responses (MongoDB)")
+		if err := seeds.SeedForms(ctx, mongoClient.Database(dbName)); err != nil {
+			log.Fatalf("failed to seed mongodb forms: %v", err)
+		}
+	}
+
 	log.Println("Tournament database seed completed successfully")
 }

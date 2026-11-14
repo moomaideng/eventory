@@ -1,77 +1,134 @@
 package seeds
 
 import (
+	"fmt"
+	"time"
+
 	"github.com/google/uuid"
+	"github.com/moomaideng/eventory/internal/seedids"
 	"github.com/moomaideng/eventory/services/payment/models"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
-	"time"
 )
 
+// SeedPayments populates deterministic sponsorship and tournament registration
+// invoices (with receipts for PAID and REFUNDED entries) linked to tournament fixtures.
 func SeedPayments(db *gorm.DB) error {
-	payer := uuid.MustParse("99999999-0000-4000-8000-000000000001")
-	for _, status := range []models.Status{models.Unpaid, models.Paid, models.Expired} {
-		now := time.Now().UTC().Truncate(time.Microsecond)
-		key := string(status)
-		payment := models.Invoice{ID: uuid.NewSHA1(uuid.NameSpaceURL, []byte("eventory/mock-invoice/"+key)),
-			PayerAccountID: payer, Source: "seed", Reference: "sample-" + key, IdempotencyKey: key,
-			Description: "Sample mock invoice — " + key, AmountMinor: 15000, Currency: "THB", Provider: "MOCK", ExpiresAt: now.Add(24 * time.Hour)}
-		if status == models.Expired {
-			payment.ExpiresAt = now.Add(-time.Hour)
+	now := time.Now().UTC().Truncate(time.Second)
+
+	var invoices []models.Invoice
+	var receipts []models.Receipt
+
+	for i, s := range seedids.SponsorshipInvoices() {
+		created := now.Add(-time.Duration(72-i*2) * time.Hour)
+		inv := models.Invoice{
+			ID:             s.InvoiceID,
+			PayerAccountID: s.PayerAccountID,
+			Source:         models.SourceSponsorship,
+			Reference:      s.PledgeID.String(),
+			IdempotencyKey: "sponsorship:" + s.PledgeID.String(),
+			Description:    fmt.Sprintf("Sponsorship: %s (%s)", s.TournamentName, s.TierName),
+			AmountMinor:    s.AmountMinor,
+			Currency:       "THB",
+			Provider:       "MOCK",
+			CreatedAt:      created,
+			UpdatedAt:      created,
 		}
-		if status == models.Paid {
-			payment.PaidAt = &now
-			payment.Receipt = &models.Receipt{ID: uuid.NewSHA1(uuid.NameSpaceURL, []byte("eventory/mock-receipt/"+key)), InvoiceID: payment.ID, CreatedAt: now}
+
+		switch s.Status {
+		case "PAID":
+			paidAt := created.Add(5 * time.Minute)
+			inv.ExpiresAt = created.Add(30 * time.Minute)
+			inv.PaidAt = &paidAt
+			inv.UpdatedAt = paidAt
+			receipts = append(receipts, models.Receipt{
+				ID:        s.ReceiptID,
+				InvoiceID: s.InvoiceID,
+				CreatedAt: paidAt,
+			})
+		case "UNPAID":
+			inv.ExpiresAt = now.Add(2 * time.Hour)
+		case "EXPIRED":
+			expiredAt := created.Add(30 * time.Minute)
+			inv.ExpiresAt = expiredAt
+			inv.ExpiryAnnouncedAt = &expiredAt
+			inv.UpdatedAt = expiredAt
+		default: // CANCELLED
+			cancelledAt := created.Add(10 * time.Minute)
+			inv.ExpiresAt = created.Add(30 * time.Minute)
+			inv.CancelledAt = &cancelledAt
+			inv.UpdatedAt = cancelledAt
 		}
-		// Seeding again must not reopen an already completed checkout.
-		if err := db.Transaction(func(tx *gorm.DB) error {
-			result := tx.Omit("Receipt").Clauses(clause.OnConflict{DoNothing: true}).Create(&payment)
-			if result.Error != nil {
-				return result.Error
-			}
-			if result.RowsAffected == 1 && payment.Receipt != nil {
-				return tx.Create(payment.Receipt).Error
-			}
-			return nil
-		}); err != nil {
+
+		invoices = append(invoices, inv)
+	}
+
+	for i, r := range seedids.RegistrationInvoices() {
+		created := now.Add(-time.Duration(96-i*2) * time.Hour)
+		inv := models.Invoice{
+			ID:             r.InvoiceID,
+			PayerAccountID: r.PayerAccountID,
+			Source:         models.SourceTeamRegistration,
+			Reference:      fmt.Sprintf("%s:%s:%s", r.TournamentID, r.TeamID, r.AttemptID),
+			IdempotencyKey: r.AttemptID.String(),
+			Description:    fmt.Sprintf("Registration: %s (%s)", r.TournamentName, r.TeamID),
+			AmountMinor:    r.AmountMinor,
+			Currency:       "THB",
+			Provider:       "MOCK",
+			CreatedAt:      created,
+			UpdatedAt:      created,
+		}
+
+		switch r.Status {
+		case "PAID":
+			paidAt := created.Add(4 * time.Minute)
+			inv.ExpiresAt = created.Add(45 * time.Minute)
+			inv.PaidAt = &paidAt
+			inv.UpdatedAt = paidAt
+			receipts = append(receipts, models.Receipt{
+				ID:        r.ReceiptID,
+				InvoiceID: r.InvoiceID,
+				CreatedAt: paidAt,
+			})
+		case "REFUNDED":
+			paidAt := created.Add(4 * time.Minute)
+			refundedAt := created.Add(6 * time.Hour)
+			inv.ExpiresAt = created.Add(45 * time.Minute)
+			inv.PaidAt = &paidAt
+			inv.RefundedAt = &refundedAt
+			inv.RefundReason = r.RefundReason
+			inv.UpdatedAt = refundedAt
+			receipts = append(receipts, models.Receipt{
+				ID:        r.ReceiptID,
+				InvoiceID: r.InvoiceID,
+				CreatedAt: paidAt,
+			})
+		default: // UNPAID
+			inv.ExpiresAt = now.Add(45 * time.Minute)
+		}
+
+		invoices = append(invoices, inv)
+	}
+
+	for i := range invoices {
+		// Preserve state transitions if a developer pays or refunds a seeded invoice locally.
+		if err := db.Omit("Receipt").Clauses(clause.OnConflict{
+			Columns:   []clause.Column{{Name: "id"}},
+			DoNothing: true,
+		}).Create(&invoices[i]).Error; err != nil {
 			return err
 		}
 	}
 
-	// Matches the confirmed Bronze pledge in the tournament demo seed.
-	// Keeping both sides of the cross-service payment record makes the funding
-	// total, sponsor list, and payment history describe the same checkout.
-	now := time.Now().UTC().Truncate(time.Microsecond)
-	pledgeID := uuid.MustParse("66666666-0000-4000-8000-000000000001")
-	sponsorship := models.Invoice{
-		ID:             uuid.MustParse("66666666-0000-4000-8000-000000000002"),
-		PayerAccountID: uuid.MustParse("00000000-0000-4000-8000-000000000002"),
-		Source:         models.SourceSponsorship,
-		Reference:      pledgeID.String(),
-		IdempotencyKey: "sponsorship:" + pledgeID.String(),
-		Description:    "Sponsorship: [DEMO · Sponsor] Checkout Playground (Bronze)",
-		AmountMinor:    100000,
-		Currency:       "THB",
-		Provider:       "MOCK",
-		ExpiresAt:      now.Add(24 * time.Hour),
-		PaidAt:         &now,
-		Receipt: &models.Receipt{
-			ID:        uuid.MustParse("66666666-0000-4000-8000-000000000003"),
-			InvoiceID: uuid.MustParse("66666666-0000-4000-8000-000000000002"),
-			CreatedAt: now,
-		},
-	}
-	if err := db.Transaction(func(tx *gorm.DB) error {
-		result := tx.Omit("Receipt").Clauses(clause.OnConflict{DoNothing: true}).Create(&sponsorship)
-		if result.Error != nil {
-			return result.Error
+	for i := range receipts {
+		if err := db.Clauses(clause.OnConflict{
+			Columns:   []clause.Column{{Name: "id"}},
+			DoNothing: true,
+		}).Create(&receipts[i]).Error; err != nil {
+			return err
 		}
-		if result.RowsAffected == 1 {
-			return tx.Create(sponsorship.Receipt).Error
-		}
-		return nil
-	}); err != nil {
-		return err
 	}
+
+	_ = uuid.Nil
 	return nil
 }

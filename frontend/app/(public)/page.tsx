@@ -23,9 +23,11 @@ export default async function HomePage() {
   // [DEV-ONLY] Check active dev session cookie in development mode
   if (!serverAuthenticated && process.env.NODE_ENV === "development") {
     const { cookies } = await import("next/headers");
+    const { parseDevSessionCookie } = await import("@/context/mock-data");
     const cookieStore = await cookies();
-    serverAuthenticated =
-      cookieStore.get("eventory_dev_session")?.value === "true";
+    serverAuthenticated = Boolean(
+      parseDevSessionCookie(cookieStore.get("eventory_dev_session")?.value)
+    );
   }
 
   return (
