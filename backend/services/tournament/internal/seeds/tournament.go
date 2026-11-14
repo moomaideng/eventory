@@ -22,6 +22,7 @@ func SeedTournaments(db *gorm.DB) error {
 	const notice = "Local seed fixture only — not a real tournament. "
 	alexID := id("99999999-0000-4000-8000-000000000001")
 	aliceID := id("00000000-0000-4000-8000-000000000001")
+	somchaiID := id("00000000-0000-4000-8000-000000000002")
 	mayaID := id("00000000-0000-4000-8000-000000000003")
 	sponsorID := fixtureID(33333333, 1)
 	setupID := fixtureID(33333333, 6)
@@ -52,6 +53,18 @@ func SeedTournaments(db *gorm.DB) error {
 		return err
 	}
 
+	// This mirrors the paid sponsorship invoice seeded by the payment service.
+	// It gives the crowdfunding fixture a real confirmed supporter without
+	// creating an active pledge that would block Dev Quick Login from testing checkout.
+	pledges := []models.SponsorshipPledge{{
+		ID: fixtureID(66666666, 1), TournamentID: sponsorID, TierID: fixtureID(55555555, 1),
+		PayerAccountID: somchaiID, AmountMinor: 100000, Currency: "THB", Status: models.PledgeConfirmed,
+		PaymentID: ptrUUID(fixtureID(66666666, 2)),
+	}}
+	if err := upsert(db, "id", &pledges); err != nil {
+		return err
+	}
+
 	setupNames := []string{"Setup Tigers", "Setup Dragons", "Setup Wolves", "Setup Falcons", "Setup Comets", "Setup Ravens", "Setup Phoenix", "Setup Panthers", "Setup Sharks", "Setup Cobras", "Setup Bears", "Setup Owls", "Setup Lions", "Setup Foxes", "Setup Knights", "Setup Giants"}
 	liveNames := []string{"Apex Titans", "Neon Dragons", "Cyber Valkyrie", "Shadow Wolves", "Solar Flare", "Phantom Strike", "Echo Esports", "Vortex Gaming", "Quantum Pulse", "Ironclad Legion", "Crimson Vipers", "Astral Horizon", "Thunderbolt Gaming", "Frostbite Clan", "Midnight Stalkers", "Hyperion Rising"}
 	archiveNames := []string{"Archive Tigers", "Archive Dragons", "Archive Wolves", "Archive Falcons"}
@@ -66,11 +79,23 @@ func SeedTournaments(db *gorm.DB) error {
 	addTeams(liveID, liveNames, 21)
 	archiveTeamStart := len(teams)
 	addTeams(completedID, archiveNames, 45)
+	teamIDs := make([]uuid.UUID, 0, len(teams))
+	for _, team := range teams {
+		teamIDs = append(teamIDs, team.ID)
+	}
+	// Team members are fixture detail rather than user-created data. Clear them
+	// before re-seeding so a changed roster cannot leave stale memberships behind.
+	if err := db.Where("tournament_team_id IN ?", teamIDs).Delete(&models.TournamentTeamMember{}).Error; err != nil {
+		return err
+	}
 	if err := upsert(db, "id", &teams); err != nil {
 		return err
 	}
 
-	playerIDs := []uuid.UUID{id("00000000-0000-4000-8000-000000000010"), id("00000000-0000-4000-8000-000000000011"), id("00000000-0000-4000-8000-000000000012"), id("00000000-0000-4000-8000-000000000013"), id("00000000-0000-4000-8000-000000000014"), id("00000000-0000-4000-8000-000000000015")}
+	playerIDs := make([]uuid.UUID, 32)
+	for index := range playerIDs {
+		playerIDs[index] = id(fmt.Sprintf("00000000-0000-4000-8000-%012d", 101+index))
+	}
 	members := make([]models.TournamentTeamMember, 0, len(teams)*2)
 	for index, team := range teams {
 		for offset := 0; offset < 2; offset++ {
@@ -128,6 +153,8 @@ func SeedTournaments(db *gorm.DB) error {
 	entries = append(entries, models.MatchEntry{ID: fixtureID(88888888, 31), MatchID: archiveSemi1ID, TeamID: archiveTeams[0].ID, FinalRank: &rank1, Score: &score20, Advances: true}, models.MatchEntry{ID: fixtureID(88888888, 32), MatchID: archiveSemi1ID, TeamID: archiveTeams[1].ID, FinalRank: &rank2, Score: &score02}, models.MatchEntry{ID: fixtureID(88888888, 33), MatchID: archiveSemi2ID, TeamID: archiveTeams[2].ID, FinalRank: &rank1, Score: &score21, Advances: true}, models.MatchEntry{ID: fixtureID(88888888, 34), MatchID: archiveSemi2ID, TeamID: archiveTeams[3].ID, FinalRank: &rank2, Score: &score12}, models.MatchEntry{ID: fixtureID(88888888, 35), MatchID: archiveFinalID, TeamID: archiveTeams[0].ID, FinalRank: &rank1, Score: &score21}, models.MatchEntry{ID: fixtureID(88888888, 36), MatchID: archiveFinalID, TeamID: archiveTeams[2].ID, FinalRank: &rank2, Score: &score12})
 	return upsert(db, "id", &entries)
 }
+
+func ptrUUID(value uuid.UUID) *uuid.UUID { return &value }
 
 func upsert(db *gorm.DB, column string, value any) error {
 	return db.Clauses(clause.OnConflict{Columns: []clause.Column{{Name: column}}, UpdateAll: true}).Create(value).Error

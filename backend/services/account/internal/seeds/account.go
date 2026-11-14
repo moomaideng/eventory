@@ -1,6 +1,8 @@
 package seeds
 
 import (
+	"fmt"
+
 	"github.com/google/uuid"
 	"github.com/moomaideng/eventory/services/account/models"
 	"gorm.io/gorm"
@@ -79,6 +81,17 @@ func SeedAccounts(db *gorm.DB) error {
 			DisplayName: "Player Six",
 			Status:      "ACTIVE",
 		},
+	}
+	// The bracket fixtures use distinct competitors within each tournament.
+	// Reusing these accounts across separate tournaments is intentional.
+	for number := 1; number <= 32; number++ {
+		accounts = append(accounts, models.Account{
+			ID:          uuid.MustParse(fmt.Sprintf("00000000-0000-4000-8000-%012d", 100+number)),
+			Email:       fmt.Sprintf("player%02d@example.com", number),
+			Handle:      fmt.Sprintf("player_%02d", number),
+			DisplayName: fmt.Sprintf("Player %02d", number),
+			Status:      models.AccountStatusActive,
+		})
 	}
 
 	if err := db.Clauses(clause.OnConflict{DoNothing: true}).Create(&accounts).Error; err != nil {
