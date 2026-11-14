@@ -36,10 +36,16 @@ import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { SponsorTagsField } from "./sponsor-tags-field";
 import { sponsorProfileSchema, type SponsorProfileInput } from "../schemas";
+import { validateSponsorLogo } from "../logo-upload";
 
 type FieldErrors = Partial<
   Record<
-    "sponsorName" | "sponsorEmail" | "phone" | "websiteUrl" | "logoUrl" | "tags",
+    | "sponsorName"
+    | "sponsorEmail"
+    | "phone"
+    | "websiteUrl"
+    | "logoUrl"
+    | "tags",
     string
   >
 >;
@@ -52,7 +58,10 @@ interface SponsorProfileFormProps {
   initialLogoUrl: string;
   initialTags: string[];
   onCancel: () => void;
-  onConfirmSave: (data: SponsorProfileInput) => Promise<boolean>;
+  onConfirmSave: (
+    data: SponsorProfileInput,
+    logoFile: File | null,
+  ) => Promise<boolean>;
   isSaving: boolean;
   saveError: string;
 }
@@ -73,13 +82,14 @@ export function SponsorProfileForm({
   const [sponsorEmail, setSponsorEmail] = useState(initialEmail);
   const [phone, setPhone] = useState(initialPhone);
   const [websiteUrl, setWebsiteUrl] = useState(initialWebsiteUrl);
-  const [logoUrl, setLogoUrl] = useState(initialLogoUrl);
+  const logoUrl = initialLogoUrl;
+  const [logoFile, setLogoFile] = useState<File | null>(null);
   const [tags, setTags] = useState(initialTags);
   const [tagDraft, setTagDraft] = useState("");
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [dialogOpen, setDialogOpen] = useState(false);
   const [pendingData, setPendingData] = useState<SponsorProfileInput | null>(
-    null
+    null,
   );
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -118,7 +128,7 @@ export function SponsorProfileForm({
     // the error message (and retry) stay visible.
     event.preventDefault();
     if (!pendingData) return;
-    const ok = await onConfirmSave(pendingData);
+    const ok = await onConfirmSave(pendingData, logoFile);
     if (ok) {
       setDialogOpen(false);
       setPendingData(null);
@@ -241,27 +251,27 @@ export function SponsorProfileForm({
             </Field>
 
             <Field data-invalid={Boolean(fieldErrors.logoUrl)}>
-              <FieldLabel htmlFor="sponsor-logo-url">Logo image URL</FieldLabel>
+              <FieldLabel htmlFor="sponsor-logo">Brand logo</FieldLabel>
               <Input
-                id="sponsor-logo-url"
-                type="url"
-                value={logoUrl}
+                id="sponsor-logo"
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
                 onChange={(event) => {
-                  setLogoUrl(event.target.value);
-                  setFieldErrors((prev) => ({ ...prev, logoUrl: undefined }));
+                  const file = event.target.files?.[0] ?? null;
+                  const error = file ? validateSponsorLogo(file) : undefined;
+                  setLogoFile(error ? null : file);
+                  setFieldErrors((prev) => ({ ...prev, logoUrl: error }));
                 }}
-                placeholder="https://cdn.example.com/logo.png"
-                maxLength={2048}
-                autoCorrect="off"
-                autoCapitalize="none"
-                spellCheck={false}
                 aria-invalid={Boolean(fieldErrors.logoUrl)}
                 aria-describedby={
-                  fieldErrors.logoUrl ? "sponsor-logo-error" : "sponsor-logo-hint"
+                  fieldErrors.logoUrl
+                    ? "sponsor-logo-error"
+                    : "sponsor-logo-hint"
                 }
               />
               <FieldDescription id="sponsor-logo-hint">
-                Public http:// or https:// image URL. Required before checkout.
+                PNG, JPEG, or WebP up to 5 MB. A new upload replaces your
+                current logo.
               </FieldDescription>
               {fieldErrors.logoUrl ? (
                 <FieldError id="sponsor-logo-error">

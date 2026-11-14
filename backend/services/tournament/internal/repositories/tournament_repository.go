@@ -63,6 +63,9 @@ func (r *tournamentRepositoryImpl) Search(
 	query := r.db.WithContext(ctx).
 		Model(&models.Tournament{}).
 		Where("status <> ?", models.TournamentStatusDraft)
+	if filters.Status == "" {
+		query = query.Where("status <> ?", models.TournamentStatusCompleted)
+	}
 
 	if filters.Query != "" {
 		pattern := "%" + escapeLikePattern(filters.Query) + "%"
