@@ -266,10 +266,6 @@ function RegistrationFormEditor({
                   Basic competitor details are already collected by default. Add custom fields if your tournament requires rank proof, Discord handles, or jerseys.
                 </p>
               </div>
-              <Button type="button" variant="outline" size="sm" onClick={handleAddField}>
-                <Plus data-icon="inline-start" />
-                Add Question
-              </Button>
             </div>
           ) : (
             <div className="flex flex-col gap-6">
@@ -289,39 +285,6 @@ function RegistrationFormEditor({
             </div>
           )}
 
-          {fields.length > 0 && (
-            <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handleAddField}
-              >
-                <Plus data-icon="inline-start" />
-                Add Question
-              </Button>
-
-              <div className="flex items-center gap-3">
-                {errorMessage && (
-                  <span className="text-xs font-medium text-destructive">
-                    {errorMessage}
-                  </span>
-                )}
-
-                <Button
-                  type="button"
-                  onClick={handleSave}
-                  disabled={saveMutation.isPending}
-                >
-                  {saveMutation.isPending ? (
-                    <Spinner data-icon="inline-start" className="size-4" />
-                  ) : (
-                    <Save data-icon="inline-start" />
-                  )}
-                  Save Form
-                </Button>
-              </div>
-            </div>
-          )}
         </div>
 
         {/* Companion Sidebar */}

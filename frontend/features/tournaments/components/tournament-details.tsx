@@ -271,14 +271,6 @@ export function TournamentDetails({
             spotsLeft={spotsLeft}
             registrationType={registrationType}
           />
-          {!sponsorMode && (
-            <PublicTiersSection
-              tournamentId={tournament.id}
-              currency={tournament.currency}
-              status={tournament.status}
-              endsAt={tournament.endAt}
-            />
-          )}
           {!isCrowdfunding ? (
             <TournamentRegisteredTeamsCard teams={teams} />
           ) : null}
