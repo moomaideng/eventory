@@ -4,6 +4,7 @@
 
 # for dev to put context, temporary file
 temp/
+docs/report/*.pdf
 
 # Taskfile
 /.task/
