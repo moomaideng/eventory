@@ -88,6 +88,7 @@ export function OrganizerTournaments() {
     <div className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-8 px-4 py-10 sm:px-8">
       <PageHeader
         workspace="organizer"
+        breadcrumbs={[{ label: "My tournaments" }]}
         title="My tournaments"
         description={
           data && !loading

@@ -80,7 +80,10 @@ export function TournamentDetails({
         <PageHeader
           workspace={sponsorMode ? "sponsor" : undefined}
           breadcrumbs={[
-            { label: "Tournaments", href: catalogPath },
+            {
+              label: sponsorMode ? "Find tournaments" : "Tournaments",
+              href: catalogPath,
+            },
             { label: "Unavailable" },
           ]}
           title="Tournament unavailable"
@@ -118,7 +121,10 @@ export function TournamentDetails({
       <PageHeader
         workspace={sponsorMode ? "sponsor" : undefined}
         breadcrumbs={[
-          { label: "Tournaments", href: catalogPath },
+          {
+            label: sponsorMode ? "Find tournaments" : "Tournaments",
+            href: catalogPath,
+          },
           { label: tournament.name },
         ]}
         tags={
