@@ -3,7 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Megaphone, Users } from "lucide-react";
+import { ArrowLeft, GitBranch, Megaphone, Users } from "lucide-react";
 import { AnnouncementPreview } from "@/features/announcements";
 import { $api, apiClient } from "@/lib/api/client";
 import { useAuth } from "@/context/auth-context";
@@ -109,6 +109,9 @@ export function TournamentDetails({
   const registrationType = formatRegistrationType(tournament.registrationMode);
   const isSolo = tournament.registrationMode === "SOLO";
   const isCrowdfunding = tournament.status === "CROWDFUNDING";
+  const hasPublicBracket = ["REGISTRATION", "ONGOING", "COMPLETED"].includes(
+    tournament.status
+  );
 
   return (
     <main className="container mx-auto flex w-full max-w-7xl flex-1 flex-col gap-8 px-4 py-10 sm:px-8">
@@ -149,6 +152,17 @@ export function TournamentDetails({
           <Megaphone data-icon="inline-start" />
           Announcements
         </Button>
+        {hasPublicBracket ? (
+          <Button
+            render={<Link href={`/tournaments/${tournament.id}/bracket`} />}
+            nativeButton={false}
+            variant="outline"
+            className="self-start"
+          >
+            <GitBranch data-icon="inline-start" />
+            View bracket
+          </Button>
+        ) : null}
         {isCrowdfunding ? (
           <Alert>
             <AlertTitle>Funding stage</AlertTitle>

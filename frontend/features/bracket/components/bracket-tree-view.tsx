@@ -41,7 +41,7 @@ const PADDING_LEFT = 8; // px-2 = 8px
 const STAGE_HEADER_OFFSET = 68; // pt-2 (8px) + header (40px) + gap-5 (20px) = 68px
 
 function getCardHeight(teamCount: number): number {
-  const totalSlots = Math.max(2, teamCount);
+  const totalSlots = Math.max(1, teamCount);
   const rows = totalSlots <= MAX_DISPLAY_SLOTS ? totalSlots : MAX_DISPLAY_SLOTS;
   return CARD_HEADER_FOOTER_HEIGHT + rows * SLOT_ROW_HEIGHT;
 }
@@ -323,7 +323,7 @@ export function BracketTreeView({
                   const cardH = getCardHeight(m.teamCount);
                   const slot = nodeSlotStatus[m.id];
                   const entries = m.entries ?? [];
-                  const totalSlots = Math.max(2, m.teamCount);
+                  const totalSlots = Math.max(1, m.teamCount);
 
                   // Prioritize showing advancing teams, winners, or ranked teams first
                   const sortedEntries = [...entries].sort((a, b) => {
@@ -543,7 +543,7 @@ export function BracketTreeView({
                   Participating Teams & Slots ({viewingMatch.teamCount} Total)
                 </h4>
                 <div className="flex flex-col gap-2 max-h-64 overflow-y-auto pr-1">
-                  {Array.from({ length: Math.max(2, viewingMatch.teamCount) }).map((_, slotIdx) => {
+                  {Array.from({ length: Math.max(1, viewingMatch.teamCount) }).map((_, slotIdx) => {
                     const entry = viewingMatch.entries?.[slotIdx];
                     if (!entry) {
                       return (
