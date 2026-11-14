@@ -161,18 +161,25 @@ func TestSponsorshipCheckout(t *testing.T) {
 		}
 		path := s.tiersPath() + "/" + s.tierIDs[result].String() + "/checkout"
 		attemptID := uuid.New()
-		resp := startPledge(t, s.client, path, sponsor, attemptID)
+		resp := startPledge(t, s.client, path, loser, attemptID)
 		if err := resp.JSON(&pledge); err != nil || resp.StatusCode != 200 {
 			t.Fatalf("start %s: %s", result, resp.Body)
 		}
-		mustAPI(t, payments, "POST", "/payments/"+pledge.PaymentID.String()+"/mock-result", map[string]string{"result": result}, sponsor, 200)
-		closed := mustAPI(t, s.client, "POST", "/tournaments/sponsorships/"+attemptID.String()+"/refresh", nil, sponsor, 200)
+		mustAPI(t, payments, "POST", "/payments/"+pledge.PaymentID.String()+"/mock-result", map[string]string{"result": result}, loser, 200)
+		closed := mustAPI(t, s.client, "POST", "/tournaments/sponsorships/"+attemptID.String()+"/refresh", nil, loser, 200)
 		if !bytes.Contains(closed.Body, []byte(`"status":"CANCELLED"`)) {
 			t.Fatalf("cancel failed: %s", closed.Body)
 		}
-		if retry := startPledge(t, s.client, path, sponsor, uuid.New()); retry.StatusCode != 200 {
+		retryID := uuid.New()
+		retry := startPledge(t, s.client, path, loser, retryID)
+		if retry.StatusCode != 200 {
 			t.Fatalf("slot not released: %s", retry.Body)
 		}
+		if err := retry.JSON(&pledge); err != nil {
+			t.Fatalf("decode retry pledge: %v", err)
+		}
+		mustAPI(t, payments, "POST", "/payments/"+pledge.PaymentID.String()+"/mock-result", map[string]string{"result": "CANCELLED"}, loser, 200)
+		mustAPI(t, s.client, "POST", "/tournaments/sponsorships/"+retryID.String()+"/refresh", nil, loser, 200)
 	}
 	// Recover an attempt whose invoice expired in payment service after an outage.
 	if err := s.given("Expired", 10000); err != nil {
