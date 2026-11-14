@@ -38,7 +38,7 @@ type TournamentRepository interface {
 	Search(ctx context.Context, filters TournamentFilters) ([]TournamentSearchItem, int64, error)
 	GetPublishedByID(ctx context.Context, id uuid.UUID) (*models.Tournament, error)
 	GetByID(ctx context.Context, id uuid.UUID) (*models.Tournament, error)
-	Create(ctx context.Context, tournament *models.Tournament, funding *models.TournamentFunding) error
+	Create(ctx context.Context, tournament *models.Tournament) error
 	Update(ctx context.Context, tournament *models.Tournament) error
 	ListOwned(ctx context.Context, organizerID uuid.UUID, page, pageSize int) ([]models.Tournament, int64, error)
 	GetOwned(ctx context.Context, organizerID, tournamentID uuid.UUID) (*models.Tournament, error)
@@ -161,7 +161,7 @@ func (r *tournamentRepositoryImpl) GetPublishedByID(
 			return db.Where("status = ?", models.TournamentTeamStatusAccepted).Order("name ASC")
 		}).
 		Preload("Teams.Members").
-		Preload("Funding").
+		Preload("Pledges", "status = ?", models.PledgeConfirmed).
 		First(&tournament).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, ErrTournamentNotFound
@@ -181,7 +181,7 @@ func (r *tournamentRepositoryImpl) GetByID(
 	err := r.db.WithContext(ctx).
 		Where("id = ?", id).
 		Preload("Staff", orderedStaff).
-		Preload("Funding").
+		Preload("Pledges", "status = ?", models.PledgeConfirmed).
 		First(&tournament).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, ErrTournamentNotFound
@@ -196,67 +196,40 @@ func (r *tournamentRepositoryImpl) GetByID(
 func (r *tournamentRepositoryImpl) Create(
 	ctx context.Context,
 	tournament *models.Tournament,
-	funding *models.TournamentFunding,
 ) error {
-	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		if err := tx.Create(tournament).Error; err != nil {
-			return err
-		}
-		if funding != nil {
-			funding.TournamentID = tournament.ID
-			if err := tx.Create(funding).Error; err != nil {
-				return err
-			}
-			tournament.Funding = funding
-		}
-		return nil
-	})
+	return r.db.WithContext(ctx).Create(tournament).Error
 }
 
 func (r *tournamentRepositoryImpl) Update(
 	ctx context.Context,
 	tournament *models.Tournament,
 ) error {
-	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		result := tx.Model(&models.Tournament{}).
-			Where("id = ? AND status = ?", tournament.ID, tournament.Status).
-			Updates(map[string]any{
-				"name":                  tournament.Name,
-				"description":           tournament.Description,
-				"detail":                tournament.Detail,
-				"game":                  tournament.Game,
-				"location":              tournament.Location,
-				"start_at":              tournament.StartsAt,
-				"end_at":                tournament.EndsAt,
-				"registration_deadline": tournament.RegistrationDeadline,
-				"entry_fee_minor":       tournament.EntryFeeMinor,
-				"registration_mode":     tournament.RegistrationMode,
-				"min_team_size":         tournament.MinTeamSize,
-				"max_team_size":         tournament.MaxTeamSize,
-				"capacity":              tournament.Capacity,
-			})
-		if result.Error != nil {
-			return result.Error
-		}
-		if result.RowsAffected == 0 {
-			return ErrTournamentStateChanged
-		}
-		if tournament.Funding != nil {
-			tournament.Funding.TournamentID = tournament.ID
-			var existing models.TournamentFunding
-			err := tx.Where("tournament_id = ?", tournament.ID).First(&existing).Error
-			if errors.Is(err, gorm.ErrRecordNotFound) {
-				return tx.Create(tournament.Funding).Error
-			} else if err != nil {
-				return err
-			}
-			return tx.Model(&existing).Updates(map[string]any{
-				"goal_amount_minor": tournament.Funding.GoalAmountMinor,
-				"deadline":          tournament.Funding.Deadline,
-			}).Error
-		}
-		return nil
-	})
+	result := r.db.WithContext(ctx).Model(&models.Tournament{}).
+		Where("id = ? AND status = ?", tournament.ID, tournament.Status).
+		Updates(map[string]any{
+			"name":                          tournament.Name,
+			"description":                   tournament.Description,
+			"detail":                        tournament.Detail,
+			"game":                          tournament.Game,
+			"location":                      tournament.Location,
+			"start_at":                      tournament.StartsAt,
+			"end_at":                        tournament.EndsAt,
+			"registration_deadline":         tournament.RegistrationDeadline,
+			"entry_fee_minor":               tournament.EntryFeeMinor,
+			"registration_mode":             tournament.RegistrationMode,
+			"min_team_size":                 tournament.MinTeamSize,
+			"max_team_size":                 tournament.MaxTeamSize,
+			"capacity":                      tournament.Capacity,
+			"crowdfunding_goal_amount_minor": tournament.Crowdfunding.GoalAmountMinor,
+			"crowdfunding_deadline":         tournament.Crowdfunding.Deadline,
+		})
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return ErrTournamentStateChanged
+	}
+	return nil
 }
 
 func escapeLikePattern(value string) string {
@@ -283,7 +256,7 @@ func (r *tournamentRepositoryImpl) ListOwned(ctx context.Context, accountID uuid
 	}
 	tournaments := make([]models.Tournament, 0)
 	err := r.staffOf(ctx, accountID).
-		Preload("Staff", orderedStaff).Preload("Teams.Members").Preload("Funding").
+		Preload("Staff", orderedStaff).Preload("Teams.Members").Preload("Pledges", "status = ?", models.PledgeConfirmed).
 		Order("tournaments.start_at DESC, tournaments.id ASC").
 		Limit(pageSize).Offset((page - 1) * pageSize).Find(&tournaments).Error
 	return tournaments, total, err
@@ -293,7 +266,7 @@ func (r *tournamentRepositoryImpl) GetOwned(ctx context.Context, accountID, tour
 	var tournament models.Tournament
 	err := r.staffOf(ctx, accountID).
 		Where("tournaments.id = ?", tournamentID).
-		Preload("Staff", orderedStaff).Preload("Funding").
+		Preload("Staff", orderedStaff).Preload("Pledges", "status = ?", models.PledgeConfirmed).
 		Preload("Teams", func(db *gorm.DB) *gorm.DB { return db.Order("created_at DESC, id ASC") }).
 		Preload("Teams.Members", func(db *gorm.DB) *gorm.DB { return db.Order("joined_at ASC, id ASC") }).
 		First(&tournament).Error
@@ -330,7 +303,7 @@ func (r *tournamentRepositoryImpl) CountActiveTiers(
 ) (int64, error) {
 	var count int64
 	err := r.db.WithContext(ctx).Model(&models.SponsorshipTier{}).
-		Where("tournament_id = ? AND archived = false AND price_minor > 0 AND slots >= 1", tournamentID).
+		Where("tournament_id = ? AND price_minor > 0 AND slots >= 1", tournamentID).
 		Count(&count).Error
 	return count, err
 }

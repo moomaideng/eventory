@@ -44,6 +44,12 @@ func (d *dummyAccountSvc) BatchGetOrganizerProfiles(_ context.Context, _ []uuid.
 func (d *dummyAccountSvc) GetOrganizerProfileByAccountID(_ context.Context, _ uuid.UUID) (*ports.OrganizerInfo, error) {
 	return nil, nil
 }
+func (d *dummyAccountSvc) BatchGetSponsorProfiles(_ context.Context, _ []uuid.UUID) (map[uuid.UUID]ports.SponsorInfo, error) {
+	return nil, nil
+}
+func (d *dummyAccountSvc) GetSponsorProfileByAccountID(_ context.Context, _ uuid.UUID) (*ports.SponsorInfo, error) {
+	return nil, nil
+}
 func (d *dummyAccountSvc) GetAccountByHandle(_ context.Context, _ string) (*ports.AccountInfo, error) {
 	return nil, nil
 }

@@ -11,6 +11,7 @@ type stubAccountService struct {
 	accounts   map[uuid.UUID]ports.AccountInfo
 	organizers map[uuid.UUID]ports.OrganizerInfo // by profile ID
 	byAccount  map[uuid.UUID]ports.OrganizerInfo // by account ID
+	sponsors   map[uuid.UUID]ports.SponsorInfo   // by account ID
 }
 
 func newStubAccountService() *stubAccountService {
@@ -18,6 +19,7 @@ func newStubAccountService() *stubAccountService {
 		accounts:   make(map[uuid.UUID]ports.AccountInfo),
 		organizers: make(map[uuid.UUID]ports.OrganizerInfo),
 		byAccount:  make(map[uuid.UUID]ports.OrganizerInfo),
+		sponsors:   make(map[uuid.UUID]ports.SponsorInfo),
 	}
 }
 
@@ -49,6 +51,13 @@ func (s *stubAccountService) withOrganizer(accountID uuid.UUID, organizerName st
 	}
 	s.organizers[accountID] = info
 	s.byAccount[accountID] = info
+	return s
+}
+
+func (s *stubAccountService) withSponsor(accountID uuid.UUID, sponsorName, websiteURL, logoURL string) *stubAccountService {
+	s.sponsors[accountID] = ports.SponsorInfo{
+		AccountID: accountID, SponsorName: sponsorName, WebsiteURL: websiteURL, LogoURL: logoURL,
+	}
 	return s
 }
 
@@ -90,6 +99,24 @@ func (s *stubAccountService) GetOrganizerProfileByAccountID(ctx context.Context,
 	profile, ok := s.byAccount[accountID]
 	if !ok {
 		return nil, ports.ErrOrganizerNotFound
+	}
+	return &profile, nil
+}
+
+func (s *stubAccountService) BatchGetSponsorProfiles(ctx context.Context, ids []uuid.UUID) (map[uuid.UUID]ports.SponsorInfo, error) {
+	out := make(map[uuid.UUID]ports.SponsorInfo)
+	for _, id := range ids {
+		if profile, ok := s.sponsors[id]; ok {
+			out[id] = profile
+		}
+	}
+	return out, nil
+}
+
+func (s *stubAccountService) GetSponsorProfileByAccountID(ctx context.Context, accountID uuid.UUID) (*ports.SponsorInfo, error) {
+	profile, ok := s.sponsors[accountID]
+	if !ok {
+		return nil, ports.ErrSponsorNotFound
 	}
 	return &profile, nil
 }

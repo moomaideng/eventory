@@ -22,6 +22,8 @@ const (
 	AccountService_BatchGetAccounts_FullMethodName               = "/account.v1.AccountService/BatchGetAccounts"
 	AccountService_BatchGetOrganizerProfiles_FullMethodName      = "/account.v1.AccountService/BatchGetOrganizerProfiles"
 	AccountService_GetOrganizerProfileByAccountID_FullMethodName = "/account.v1.AccountService/GetOrganizerProfileByAccountID"
+	AccountService_BatchGetSponsorProfiles_FullMethodName        = "/account.v1.AccountService/BatchGetSponsorProfiles"
+	AccountService_GetSponsorProfileByAccountID_FullMethodName   = "/account.v1.AccountService/GetSponsorProfileByAccountID"
 	AccountService_GetAccountByHandle_FullMethodName             = "/account.v1.AccountService/GetAccountByHandle"
 )
 
@@ -32,6 +34,8 @@ type AccountServiceClient interface {
 	BatchGetAccounts(ctx context.Context, in *BatchGetAccountsRequest, opts ...grpc.CallOption) (*BatchGetAccountsResponse, error)
 	BatchGetOrganizerProfiles(ctx context.Context, in *BatchGetOrganizerProfilesRequest, opts ...grpc.CallOption) (*BatchGetOrganizerProfilesResponse, error)
 	GetOrganizerProfileByAccountID(ctx context.Context, in *GetOrganizerProfileByAccountIDRequest, opts ...grpc.CallOption) (*GetOrganizerProfileByAccountIDResponse, error)
+	BatchGetSponsorProfiles(ctx context.Context, in *BatchGetSponsorProfilesRequest, opts ...grpc.CallOption) (*BatchGetSponsorProfilesResponse, error)
+	GetSponsorProfileByAccountID(ctx context.Context, in *GetSponsorProfileByAccountIDRequest, opts ...grpc.CallOption) (*GetSponsorProfileByAccountIDResponse, error)
 	GetAccountByHandle(ctx context.Context, in *GetAccountByHandleRequest, opts ...grpc.CallOption) (*GetAccountByHandleResponse, error)
 }
 
@@ -73,6 +77,26 @@ func (c *accountServiceClient) GetOrganizerProfileByAccountID(ctx context.Contex
 	return out, nil
 }
 
+func (c *accountServiceClient) BatchGetSponsorProfiles(ctx context.Context, in *BatchGetSponsorProfilesRequest, opts ...grpc.CallOption) (*BatchGetSponsorProfilesResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(BatchGetSponsorProfilesResponse)
+	err := c.cc.Invoke(ctx, AccountService_BatchGetSponsorProfiles_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *accountServiceClient) GetSponsorProfileByAccountID(ctx context.Context, in *GetSponsorProfileByAccountIDRequest, opts ...grpc.CallOption) (*GetSponsorProfileByAccountIDResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetSponsorProfileByAccountIDResponse)
+	err := c.cc.Invoke(ctx, AccountService_GetSponsorProfileByAccountID_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *accountServiceClient) GetAccountByHandle(ctx context.Context, in *GetAccountByHandleRequest, opts ...grpc.CallOption) (*GetAccountByHandleResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(GetAccountByHandleResponse)
@@ -90,6 +114,8 @@ type AccountServiceServer interface {
 	BatchGetAccounts(context.Context, *BatchGetAccountsRequest) (*BatchGetAccountsResponse, error)
 	BatchGetOrganizerProfiles(context.Context, *BatchGetOrganizerProfilesRequest) (*BatchGetOrganizerProfilesResponse, error)
 	GetOrganizerProfileByAccountID(context.Context, *GetOrganizerProfileByAccountIDRequest) (*GetOrganizerProfileByAccountIDResponse, error)
+	BatchGetSponsorProfiles(context.Context, *BatchGetSponsorProfilesRequest) (*BatchGetSponsorProfilesResponse, error)
+	GetSponsorProfileByAccountID(context.Context, *GetSponsorProfileByAccountIDRequest) (*GetSponsorProfileByAccountIDResponse, error)
 	GetAccountByHandle(context.Context, *GetAccountByHandleRequest) (*GetAccountByHandleResponse, error)
 	mustEmbedUnimplementedAccountServiceServer()
 }
@@ -109,6 +135,12 @@ func (UnimplementedAccountServiceServer) BatchGetOrganizerProfiles(context.Conte
 }
 func (UnimplementedAccountServiceServer) GetOrganizerProfileByAccountID(context.Context, *GetOrganizerProfileByAccountIDRequest) (*GetOrganizerProfileByAccountIDResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetOrganizerProfileByAccountID not implemented")
+}
+func (UnimplementedAccountServiceServer) BatchGetSponsorProfiles(context.Context, *BatchGetSponsorProfilesRequest) (*BatchGetSponsorProfilesResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method BatchGetSponsorProfiles not implemented")
+}
+func (UnimplementedAccountServiceServer) GetSponsorProfileByAccountID(context.Context, *GetSponsorProfileByAccountIDRequest) (*GetSponsorProfileByAccountIDResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetSponsorProfileByAccountID not implemented")
 }
 func (UnimplementedAccountServiceServer) GetAccountByHandle(context.Context, *GetAccountByHandleRequest) (*GetAccountByHandleResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetAccountByHandle not implemented")
@@ -188,6 +220,42 @@ func _AccountService_GetOrganizerProfileByAccountID_Handler(srv interface{}, ctx
 	return interceptor(ctx, in, info, handler)
 }
 
+func _AccountService_BatchGetSponsorProfiles_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(BatchGetSponsorProfilesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AccountServiceServer).BatchGetSponsorProfiles(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AccountService_BatchGetSponsorProfiles_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AccountServiceServer).BatchGetSponsorProfiles(ctx, req.(*BatchGetSponsorProfilesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AccountService_GetSponsorProfileByAccountID_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetSponsorProfileByAccountIDRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AccountServiceServer).GetSponsorProfileByAccountID(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AccountService_GetSponsorProfileByAccountID_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AccountServiceServer).GetSponsorProfileByAccountID(ctx, req.(*GetSponsorProfileByAccountIDRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _AccountService_GetAccountByHandle_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetAccountByHandleRequest)
 	if err := dec(in); err != nil {
@@ -224,6 +292,14 @@ var AccountService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetOrganizerProfileByAccountID",
 			Handler:    _AccountService_GetOrganizerProfileByAccountID_Handler,
+		},
+		{
+			MethodName: "BatchGetSponsorProfiles",
+			Handler:    _AccountService_BatchGetSponsorProfiles_Handler,
+		},
+		{
+			MethodName: "GetSponsorProfileByAccountID",
+			Handler:    _AccountService_GetSponsorProfileByAccountID_Handler,
 		},
 		{
 			MethodName: "GetAccountByHandle",

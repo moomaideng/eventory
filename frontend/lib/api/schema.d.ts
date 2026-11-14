@@ -344,25 +344,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List the signed-in account's sponsorships */
+        /** List sponsorships owned by the caller */
         get: operations["list-my-sponsorships"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/tournaments/sponsorships/{id}/logo": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get a confirmed sponsor's logo */
-        get: operations["get-sponsor-logo"];
         put?: never;
         post?: never;
         delete?: never;
@@ -869,8 +852,8 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Reserve a sponsorship slot with brand assets and start checkout */
-        post: operations["start-sponsorship-checkout"];
+        /** Start or resume a sponsorship checkout */
+        post: operations["start-sponsorship"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1153,6 +1136,8 @@ export interface components {
              * @description Timestamp of profile creation
              */
             createdAt: string;
+            /** @description Public sponsor logo image URL */
+            logoUrl: string;
             /** @description Contact phone number for sponsor */
             phone?: string;
             /** @description Contact email for sponsorship communications */
@@ -1166,6 +1151,8 @@ export interface components {
              * @description Timestamp of last profile update
              */
             updatedAt: string;
+            /** @description Official sponsor website URL */
+            websiteUrl: string;
         };
         UpdateAccountRequest: {
             /**
@@ -1200,6 +1187,8 @@ export interface components {
              * @example https://example.com/schemas/UpsertSponsorProfileRequest.json
              */
             readonly $schema?: string;
+            /** @description Public sponsor logo image URL */
+            logoUrl?: string;
             /** @description Contact phone number for sponsor */
             phone?: string;
             /**
@@ -1211,6 +1200,8 @@ export interface components {
             sponsorName: string;
             /** @description Free-form sponsor tags, each up to 40 characters */
             tags: string[] | null;
+            /** @description Official sponsor website URL */
+            websiteUrl?: string;
         };
         AnnouncementResponse: {
             /**
@@ -1406,6 +1397,21 @@ export interface components {
              */
             role: "ADMIN" | "REFEREE";
         };
+        "List-my-sponsorshipsResponse": {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/List-my-sponsorshipsResponse.json
+             */
+            readonly $schema?: string;
+            items: components["schemas"]["OwnedSponsorshipResponse"][] | null;
+            /** Format: int64 */
+            limit: number;
+            /** Format: int64 */
+            page: number;
+            /** Format: int64 */
+            total: number;
+        };
         "List-tournament-sponsorsResponse": {
             /**
              * Format: uri
@@ -1582,11 +1588,12 @@ export interface components {
             tournamentId: string;
         };
         OwnedSponsorshipResponse: {
-            /** Format: int64 */
+            /**
+             * Format: int64
+             * @description Pledge amount in minor currency units (satang; 100 satang = 1 THB)
+             */
             amountMinor: number;
             currency: string;
-            /** Format: date-time */
-            expiresAt: string;
             id: string;
             paymentId?: string;
             /** @enum {string} */
@@ -1594,17 +1601,6 @@ export interface components {
             tierName: string;
             tournamentId: string;
             tournamentName: string;
-        };
-        OwnedSponsorshipsOutputBody: {
-            /**
-             * Format: uri
-             * @description A URL to the JSON Schema for this object.
-             * @example https://example.com/schemas/OwnedSponsorshipsOutputBody.json
-             */
-            readonly $schema?: string;
-            items: components["schemas"]["OwnedSponsorshipResponse"][] | null;
-            /** Format: int64 */
-            total: number;
         };
         RecordMatchResultsRequest: {
             /**
@@ -1696,7 +1692,7 @@ export interface components {
         };
         SponsorResponse: {
             id: string;
-            logoPath: string;
+            logoUrl: string;
             sponsorName: string;
             tierName: string;
             websiteUrl: string;
@@ -1708,8 +1704,6 @@ export interface components {
              * @example https://example.com/schemas/SponsorshipResponse.json
              */
             readonly $schema?: string;
-            /** Format: date-time */
-            expiresAt: string;
             id: string;
             paymentId?: string;
             /** @enum {string} */
@@ -1750,8 +1744,6 @@ export interface components {
              * @description Slots remaining after pending and confirmed checkouts
              */
             availableSlots: number;
-            /** Format: date-time */
-            createdAt: string;
             id: string;
             /** @description A pending or confirmed checkout prevents editing or deletion */
             locked: boolean;
@@ -1768,8 +1760,15 @@ export interface components {
              */
             slots: number;
             tournamentId: string;
-            /** Format: date-time */
-            updatedAt: string;
+        };
+        StartSponsorshipInputBody: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/StartSponsorshipInputBody.json
+             */
+            readonly $schema?: string;
+            requestId: string;
         };
         SwapSlotItem: {
             /** @description Match the team is currently in */
@@ -2908,42 +2907,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["OwnedSponsorshipsOutputBody"];
-                };
-            };
-            /** @description Error */
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["ErrorModel"];
-                };
-            };
-        };
-    };
-    "get-sponsor-logo": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Sponsor logo */
-            200: {
-                headers: {
-                    "Cache-Control"?: string;
-                    "Content-Type"?: string;
-                    "X-Content-Type-Options"?: string;
-                    [name: string]: unknown;
-                };
-                content: {
-                    "image/jpeg": string;
-                    "image/png": string;
+                    "application/json": components["schemas"]["List-my-sponsorshipsResponse"];
                 };
             };
             /** @description Error */
@@ -4021,7 +3985,7 @@ export interface operations {
             };
         };
     };
-    "start-sponsorship-checkout": {
+    "start-sponsorship": {
         parameters: {
             query?: never;
             header?: never;
@@ -4031,14 +3995,9 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: {
+        requestBody: {
             content: {
-                "multipart/form-data": {
-                    /** Format: binary */
-                    logo: string;
-                    requestId: string;
-                    websiteUrl: string;
-                };
+                "application/json": components["schemas"]["StartSponsorshipInputBody"];
             };
         };
         responses: {

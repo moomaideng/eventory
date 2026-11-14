@@ -38,13 +38,18 @@ import { SponsorTagsField } from "./sponsor-tags-field";
 import { sponsorProfileSchema, type SponsorProfileInput } from "../schemas";
 
 type FieldErrors = Partial<
-  Record<"sponsorName" | "sponsorEmail" | "phone" | "tags", string>
+  Record<
+    "sponsorName" | "sponsorEmail" | "phone" | "websiteUrl" | "logoUrl" | "tags",
+    string
+  >
 >;
 
 interface SponsorProfileFormProps {
   initialName: string;
   initialEmail: string;
   initialPhone: string;
+  initialWebsiteUrl: string;
+  initialLogoUrl: string;
   initialTags: string[];
   onCancel: () => void;
   onConfirmSave: (data: SponsorProfileInput) => Promise<boolean>;
@@ -56,6 +61,8 @@ export function SponsorProfileForm({
   initialName,
   initialEmail,
   initialPhone,
+  initialWebsiteUrl,
+  initialLogoUrl,
   initialTags,
   onCancel,
   onConfirmSave,
@@ -65,6 +72,8 @@ export function SponsorProfileForm({
   const [sponsorName, setSponsorName] = useState(initialName);
   const [sponsorEmail, setSponsorEmail] = useState(initialEmail);
   const [phone, setPhone] = useState(initialPhone);
+  const [websiteUrl, setWebsiteUrl] = useState(initialWebsiteUrl);
+  const [logoUrl, setLogoUrl] = useState(initialLogoUrl);
   const [tags, setTags] = useState(initialTags);
   const [tagDraft, setTagDraft] = useState("");
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
@@ -80,6 +89,8 @@ export function SponsorProfileForm({
       sponsorName,
       sponsorEmail,
       phone,
+      websiteUrl,
+      logoUrl,
       tags: [...tags, tagDraft],
     });
 
@@ -89,6 +100,8 @@ export function SponsorProfileForm({
         sponsorName: flat.sponsorName?.[0],
         sponsorEmail: flat.sponsorEmail?.[0],
         phone: flat.phone?.[0],
+        websiteUrl: flat.websiteUrl?.[0],
+        logoUrl: flat.logoUrl?.[0],
         tags: flat.tags?.[0],
       });
       return;
@@ -187,6 +200,73 @@ export function SponsorProfileForm({
               <FieldDescription>Optional.</FieldDescription>
               {fieldErrors.phone ? (
                 <FieldError>{fieldErrors.phone}</FieldError>
+              ) : null}
+            </Field>
+
+            <Field data-invalid={Boolean(fieldErrors.websiteUrl)}>
+              <FieldLabel htmlFor="sponsor-website-url">
+                Brand website
+              </FieldLabel>
+              <Input
+                id="sponsor-website-url"
+                type="url"
+                value={websiteUrl}
+                onChange={(event) => {
+                  setWebsiteUrl(event.target.value);
+                  setFieldErrors((prev) => ({
+                    ...prev,
+                    websiteUrl: undefined,
+                  }));
+                }}
+                placeholder="https://your-brand.com"
+                maxLength={2048}
+                autoCorrect="off"
+                autoCapitalize="none"
+                spellCheck={false}
+                aria-invalid={Boolean(fieldErrors.websiteUrl)}
+                aria-describedby={
+                  fieldErrors.websiteUrl
+                    ? "sponsor-website-error"
+                    : "sponsor-website-hint"
+                }
+              />
+              <FieldDescription id="sponsor-website-hint">
+                Required before sponsoring a tournament. Your logo links here.
+              </FieldDescription>
+              {fieldErrors.websiteUrl ? (
+                <FieldError id="sponsor-website-error">
+                  {fieldErrors.websiteUrl}
+                </FieldError>
+              ) : null}
+            </Field>
+
+            <Field data-invalid={Boolean(fieldErrors.logoUrl)}>
+              <FieldLabel htmlFor="sponsor-logo-url">Logo image URL</FieldLabel>
+              <Input
+                id="sponsor-logo-url"
+                type="url"
+                value={logoUrl}
+                onChange={(event) => {
+                  setLogoUrl(event.target.value);
+                  setFieldErrors((prev) => ({ ...prev, logoUrl: undefined }));
+                }}
+                placeholder="https://cdn.example.com/logo.png"
+                maxLength={2048}
+                autoCorrect="off"
+                autoCapitalize="none"
+                spellCheck={false}
+                aria-invalid={Boolean(fieldErrors.logoUrl)}
+                aria-describedby={
+                  fieldErrors.logoUrl ? "sponsor-logo-error" : "sponsor-logo-hint"
+                }
+              />
+              <FieldDescription id="sponsor-logo-hint">
+                Public http:// or https:// image URL. Required before checkout.
+              </FieldDescription>
+              {fieldErrors.logoUrl ? (
+                <FieldError id="sponsor-logo-error">
+                  {fieldErrors.logoUrl}
+                </FieldError>
               ) : null}
             </Field>
 

@@ -58,6 +58,8 @@ function SponsorOnboardingForm({
 
   const [sponsorName, setSponsorName] = useState(user.displayName || "");
   const [sponsorEmail, setSponsorEmail] = useState(user.email || "");
+  const [websiteUrl, setWebsiteUrl] = useState("");
+  const [logoUrl, setLogoUrl] = useState("");
   const [tags, setTags] = useState<string[]>([]);
   const [tagDraft, setTagDraft] = useState("");
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
@@ -71,6 +73,8 @@ function SponsorOnboardingForm({
     const validation = sponsorOnboardingSchema.safeParse({
       sponsorName,
       sponsorEmail,
+      websiteUrl,
+      logoUrl,
       tags: [...tags, tagDraft],
     });
 
@@ -93,6 +97,8 @@ function SponsorOnboardingForm({
       const { data, error } = await upsertProfile({
         sponsorName: validation.data.sponsorName,
         sponsorEmail: validation.data.sponsorEmail,
+        websiteUrl: validation.data.websiteUrl,
+        logoUrl: validation.data.logoUrl,
         tags: validation.data.tags,
       });
 
@@ -226,6 +232,65 @@ function SponsorOnboardingForm({
             </FieldDescription>
             {fieldErrors.sponsorEmail && (
               <FieldError>{fieldErrors.sponsorEmail}</FieldError>
+            )}
+          </Field>
+
+          <Field data-invalid={Boolean(fieldErrors.websiteUrl)}>
+            <FieldLabel htmlFor="onboarding-sponsor-website">
+              Brand Website (Optional)
+            </FieldLabel>
+            <Input
+              id="onboarding-sponsor-website"
+              type="url"
+              value={websiteUrl}
+              onChange={(e) => {
+                setWebsiteUrl(e.target.value);
+                if (fieldErrors.websiteUrl) {
+                  setFieldErrors((prev) => ({
+                    ...prev,
+                    websiteUrl: undefined,
+                  }));
+                }
+                if (apiError) setApiError("");
+              }}
+              placeholder="https://your-brand.com"
+              maxLength={2048}
+              autoCorrect="off"
+              autoCapitalize="none"
+              spellCheck={false}
+              disabled={isSubmitting}
+              aria-invalid={Boolean(fieldErrors.websiteUrl)}
+            />
+            {fieldErrors.websiteUrl && (
+              <FieldError>{fieldErrors.websiteUrl}</FieldError>
+            )}
+          </Field>
+
+          <Field data-invalid={Boolean(fieldErrors.logoUrl)}>
+            <FieldLabel htmlFor="onboarding-sponsor-logo">
+              Logo Image URL (Optional)
+            </FieldLabel>
+            <Input
+              id="onboarding-sponsor-logo"
+              type="url"
+              value={logoUrl}
+              onChange={(e) => {
+                setLogoUrl(e.target.value);
+                if (fieldErrors.logoUrl) {
+                  setFieldErrors((prev) => ({ ...prev, logoUrl: undefined }));
+                }
+                if (apiError) setApiError("");
+              }}
+              placeholder="https://cdn.example.com/logo.png"
+              maxLength={2048}
+              autoCorrect="off"
+              autoCapitalize="none"
+              spellCheck={false}
+              disabled={isSubmitting}
+              aria-invalid={Boolean(fieldErrors.logoUrl)}
+            />
+            {fieldErrors.logoUrl && (
+              <FieldError>{fieldErrors.logoUrl}</FieldError>
             )}
           </Field>
           <SponsorTagsField

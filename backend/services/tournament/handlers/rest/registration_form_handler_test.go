@@ -39,7 +39,7 @@ func (m *mockTournamentRepo) GetByID(_ context.Context, id uuid.UUID) (*models.T
 	}
 	return nil, repositories.ErrTournamentNotFound
 }
-func (m *mockTournamentRepo) Create(_ context.Context, _ *models.Tournament, _ *models.TournamentFunding) error {
+func (m *mockTournamentRepo) Create(_ context.Context, _ *models.Tournament) error {
 	return nil
 }
 func (m *mockTournamentRepo) Update(_ context.Context, _ *models.Tournament) error {

@@ -29,6 +29,8 @@ interface SponsorProfileData {
   sponsorName: string;
   sponsorEmail?: string | null;
   phone?: string | null;
+  websiteUrl?: string | null;
+  logoUrl?: string | null;
   tags?: string[] | null;
 }
 
@@ -71,6 +73,8 @@ export function SponsorProfileManager() {
             sponsorName: data.sponsorName,
             sponsorEmail: data.sponsorEmail,
             phone: data.phone,
+            websiteUrl: data.websiteUrl,
+            logoUrl: data.logoUrl,
             tags: data.tags,
           },
         }
@@ -133,6 +137,8 @@ export function SponsorProfileManager() {
         initialName={current?.sponsorName ?? ""}
         initialEmail={current?.sponsorEmail ?? ""}
         initialPhone={current?.phone ?? ""}
+        initialWebsiteUrl={current?.websiteUrl ?? ""}
+        initialLogoUrl={current?.logoUrl ?? ""}
         initialTags={current?.tags ?? []}
         onCancel={() => setMode("view")}
         onConfirmSave={handleConfirmSave}
@@ -167,6 +173,8 @@ export function SponsorProfileManager() {
       sponsorName={current.sponsorName}
       sponsorEmail={current.sponsorEmail}
       phone={current.phone}
+      websiteUrl={current.websiteUrl}
+      logoUrl={current.logoUrl}
       tags={current.tags ?? []}
       onEdit={() => setMode("edit")}
     />

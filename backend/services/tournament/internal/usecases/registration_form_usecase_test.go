@@ -31,7 +31,7 @@ func (s *tournamentRepoStub) GetByID(_ context.Context, id uuid.UUID) (*models.T
 	}
 	return t, nil
 }
-func (s *tournamentRepoStub) Create(_ context.Context, _ *models.Tournament, _ *models.TournamentFunding) error {
+func (s *tournamentRepoStub) Create(_ context.Context, _ *models.Tournament) error {
 	return nil
 }
 func (s *tournamentRepoStub) Update(_ context.Context, _ *models.Tournament) error {

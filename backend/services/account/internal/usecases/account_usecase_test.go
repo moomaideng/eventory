@@ -109,10 +109,23 @@ func (m *mockAccountRepository) FindSponsorProfileByAccountID(ctx context.Contex
 	return nil, nil
 }
 
+func (m *mockAccountRepository) FindSponsorProfilesByIDs(ctx context.Context, ids []uuid.UUID) ([]models.SponsorProfile, error) {
+	var out []models.SponsorProfile
+	for _, id := range ids {
+		if p, exists := m.sponsorProfiles[id]; exists {
+			out = append(out, *p)
+		}
+	}
+	return out, nil
+}
+
 func (m *mockAccountRepository) UpsertSponsorProfile(ctx context.Context, profile *models.SponsorProfile) (*models.SponsorProfile, error) {
 	if existing, exists := m.sponsorProfiles[profile.AccountID]; exists {
 		existing.SponsorName = profile.SponsorName
 		existing.SponsorEmail = profile.SponsorEmail
+		existing.Phone = profile.Phone
+		existing.WebsiteURL = profile.WebsiteURL
+		existing.LogoURL = profile.LogoURL
 		existing.Tags = profile.Tags
 		return existing, nil
 	}
@@ -517,5 +530,29 @@ func TestCreateAccount_NilIDFails(t *testing.T) {
 	})
 	if err != usecases.ErrInvalidAccountID {
 		t.Errorf("expected ErrInvalidAccountID, got: %v", err)
+	}
+}
+
+func TestBatchGetSponsorProfiles(t *testing.T) {
+	repo := newMockAccountRepository()
+	uc := usecases.NewAccountUseCase(repo)
+	foundID := uuid.New()
+	missingID := uuid.New()
+	repo.sponsorProfiles[foundID] = &models.SponsorProfile{
+		AccountID:   foundID,
+		SponsorName: "Apex Sponsors",
+		WebsiteURL:  "https://apex.example",
+		LogoURL:     "https://cdn.example/apex.png",
+	}
+
+	found, missing, err := uc.BatchGetSponsorProfiles(context.Background(), []uuid.UUID{foundID, foundID, missingID, uuid.Nil})
+	if err != nil {
+		t.Fatalf("BatchGetSponsorProfiles() error = %v", err)
+	}
+	if len(found) != 1 || found[0].AccountID != foundID || found[0].SponsorName != "Apex Sponsors" {
+		t.Fatalf("unexpected found profiles: %+v", found)
+	}
+	if len(missing) != 1 || missing[0] != missingID {
+		t.Fatalf("unexpected missing IDs: %+v", missing)
 	}
 }

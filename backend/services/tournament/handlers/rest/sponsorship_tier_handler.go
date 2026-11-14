@@ -4,13 +4,11 @@ import (
 	"context"
 	"errors"
 	"net/http"
-	"time"
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/google/uuid"
 	"github.com/moomaideng/eventory/services/tournament/internal/middlewares"
 	"github.com/moomaideng/eventory/services/tournament/internal/usecases"
-	"github.com/moomaideng/eventory/services/tournament/models"
 )
 
 type SponsorshipTierResponse struct {
@@ -22,8 +20,6 @@ type SponsorshipTierResponse struct {
 	AvailableSlots int       `json:"availableSlots" doc:"Slots remaining after pending and confirmed checkouts"`
 	Locked         bool      `json:"locked" doc:"A pending or confirmed checkout prevents editing or deletion"`
 	Perks          []string  `json:"perks"`
-	CreatedAt      time.Time `json:"createdAt"`
-	UpdatedAt      time.Time `json:"updatedAt"`
 }
 
 type SponsorshipTierBody struct {
@@ -180,7 +176,7 @@ func RegisterSponsorshipTierRoutes(
 	})
 }
 
-func toListSponsorshipTiersOutput(items []models.SponsorshipTier) *ListSponsorshipTiersOutput {
+func toListSponsorshipTiersOutput(items []usecases.SponsorshipTierView) *ListSponsorshipTiersOutput {
 	output := &ListSponsorshipTiersOutput{}
 	output.Body.Items = make([]SponsorshipTierResponse, 0, len(items))
 	for _, tier := range items {
@@ -198,7 +194,7 @@ func toSponsorshipTierInput(body SponsorshipTierBody) usecases.SponsorshipTierIn
 	}
 }
 
-func toSponsorshipTierResponse(tier models.SponsorshipTier) SponsorshipTierResponse {
+func toSponsorshipTierResponse(tier usecases.SponsorshipTierView) SponsorshipTierResponse {
 	return SponsorshipTierResponse{
 		ID:             tier.ID,
 		TournamentID:   tier.TournamentID,
@@ -208,8 +204,6 @@ func toSponsorshipTierResponse(tier models.SponsorshipTier) SponsorshipTierRespo
 		AvailableSlots: tier.AvailableSlots,
 		Locked:         tier.Locked,
 		Perks:          tier.Perks,
-		CreatedAt:      tier.CreatedAt,
-		UpdatedAt:      tier.UpdatedAt,
 	}
 }
 

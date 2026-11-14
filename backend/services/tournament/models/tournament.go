@@ -60,7 +60,7 @@ type Tournament struct {
 	Staff                []TournamentStaff          `gorm:"foreignKey:TournamentID;constraint:OnDelete:CASCADE;"`
 	Teams                []TournamentTeam           `gorm:"foreignKey:TournamentID;constraint:OnDelete:CASCADE;"`
 	Matches              []Match                    `gorm:"foreignKey:TournamentID;constraint:OnDelete:CASCADE;"`
-	Funding              *TournamentFunding         `gorm:"foreignKey:TournamentID;constraint:OnDelete:CASCADE;"`
+	Crowdfunding         CrowdfundingInfo           `gorm:"embedded;embeddedPrefix:crowdfunding_"`
 	CreatedAt            time.Time
 	UpdatedAt            time.Time
 }
@@ -123,13 +123,9 @@ type TournamentTeamMember struct {
 	JoinedAt         time.Time                `gorm:"not null;autoCreateTime"`
 }
 
-type TournamentFunding struct {
-	ID                uuid.UUID `gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
-	TournamentID      uuid.UUID `gorm:"type:uuid;not null;uniqueIndex"`
-	GoalAmountMinor   int64     `gorm:"not null;default:0"`
-	Deadline          *time.Time
-	RaisedAmountMinor int64 `gorm:"not null;default:0"`
-	SupporterCount    int   `gorm:"not null;default:0"`
-	CreatedAt         time.Time
-	UpdatedAt         time.Time
+type CrowdfundingInfo struct {
+	GoalAmountMinor int64               `gorm:"not null;default:0"`
+	Deadline        *time.Time
+	Tiers           []SponsorshipTier   `gorm:"foreignKey:TournamentID;references:ID;constraint:OnDelete:CASCADE;"`
+	Pledges         []SponsorshipPledge `gorm:"foreignKey:TournamentID;references:ID;constraint:OnDelete:CASCADE;"`
 }

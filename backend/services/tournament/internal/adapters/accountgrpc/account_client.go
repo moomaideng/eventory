@@ -69,7 +69,6 @@ func (c *AccountClient) BatchGetAccounts(ctx context.Context, ids []uuid.UUID) (
 			Handle:      account.GetHandle(),
 			DisplayName: account.GetDisplayName(),
 			Status:      ports.AccountStatus(account.GetStatus()),
-			SponsorName: account.GetSponsorName(),
 			Email:       account.GetEmail(),
 		}
 	}
@@ -117,6 +116,47 @@ func (c *AccountClient) GetOrganizerProfileByAccountID(ctx context.Context, acco
 	return &info, nil
 }
 
+func (c *AccountClient) BatchGetSponsorProfiles(ctx context.Context, ids []uuid.UUID) (map[uuid.UUID]ports.SponsorInfo, error) {
+	ctx, cancel := context.WithTimeout(ctx, defaultTimeout)
+	defer cancel()
+
+	resp, err := c.api.BatchGetSponsorProfiles(ctx, &accountv1.BatchGetSponsorProfilesRequest{
+		SponsorProfileIds: uuidStrings(ids),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("%w: %v", ports.ErrAccountUnavailable, err)
+	}
+	out := make(map[uuid.UUID]ports.SponsorInfo, len(resp.GetProfiles()))
+	for _, profile := range resp.GetProfiles() {
+		info, err := toSponsorInfo(profile)
+		if err != nil {
+			continue
+		}
+		out[info.AccountID] = info
+	}
+	return out, nil
+}
+
+func (c *AccountClient) GetSponsorProfileByAccountID(ctx context.Context, accountID uuid.UUID) (*ports.SponsorInfo, error) {
+	ctx, cancel := context.WithTimeout(ctx, defaultTimeout)
+	defer cancel()
+
+	resp, err := c.api.GetSponsorProfileByAccountID(ctx, &accountv1.GetSponsorProfileByAccountIDRequest{
+		AccountId: accountID.String(),
+	})
+	if err != nil {
+		if status.Code(err) == codes.NotFound {
+			return nil, ports.ErrSponsorNotFound
+		}
+		return nil, fmt.Errorf("%w: %v", ports.ErrAccountUnavailable, err)
+	}
+	info, err := toSponsorInfo(resp.GetProfile())
+	if err != nil {
+		return nil, ports.ErrSponsorNotFound
+	}
+	return &info, nil
+}
+
 func (c *AccountClient) GetAccountByHandle(ctx context.Context, handle string) (*ports.AccountInfo, error) {
 	ctx, cancel := context.WithTimeout(ctx, defaultTimeout)
 	defer cancel()
@@ -153,6 +193,22 @@ func toOrganizerInfo(profile *accountv1.OrganizerProfile) (ports.OrganizerInfo, 
 	return ports.OrganizerInfo{
 		AccountID:     accountID,
 		OrganizerName: profile.GetOrganizerName(),
+	}, nil
+}
+
+func toSponsorInfo(profile *accountv1.SponsorProfile) (ports.SponsorInfo, error) {
+	if profile == nil {
+		return ports.SponsorInfo{}, ports.ErrSponsorNotFound
+	}
+	accountID, err := uuid.Parse(profile.GetAccountId())
+	if err != nil {
+		return ports.SponsorInfo{}, err
+	}
+	return ports.SponsorInfo{
+		AccountID:   accountID,
+		SponsorName: profile.GetSponsorName(),
+		WebsiteURL:  profile.GetWebsiteUrl(),
+		LogoURL:     profile.GetLogoUrl(),
 	}, nil
 }
 

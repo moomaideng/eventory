@@ -40,29 +40,8 @@ export const sponsorshipTierSchema = z.object({
 export type SponsorshipTierFormInput = z.input<typeof sponsorshipTierSchema>;
 export type SponsorshipTierPayload = z.output<typeof sponsorshipTierSchema>;
 
-export const sponsorshipBrandSchema = z.object({
-  websiteUrl: z
-    .string()
-    .trim()
-    .max(2048)
-    .url("Enter a complete website URL.")
-    .refine((value) => {
-      try {
-        const url = new URL(value);
-        return (
-          ["https:", "http:"].includes(url.protocol) &&
-          !url.username &&
-          !url.password
-        );
-      } catch {
-        return false;
-      }
-    }, "Use an HTTP or HTTPS website without login details."),
-  logo: z
-    .file()
-    .min(1, "Choose a logo.")
-    .max(1024 * 1024, "Logo must be 1 MB or smaller.")
-    .mime(["image/png", "image/jpeg"], "Choose a PNG or JPEG logo."),
+export const sponsorshipCheckoutRequestSchema = z.object({
+  requestId: z.uuid(),
 });
 
 export const sponsorshipCheckoutSchema = z.object({

@@ -6,13 +6,11 @@ func All() []any {
 		&TournamentStaff{},
 		&TournamentTeam{},
 		&TournamentTeamMember{},
-		&TournamentFunding{},
 		&TournamentTeamReview{},
 		&TournamentAnnouncement{},
 		&SponsorshipTier{},
 		&Match{},
 		&MatchEntry{},
 		&SponsorshipPledge{},
-		&SponsorshipLogo{},
 	}
 }

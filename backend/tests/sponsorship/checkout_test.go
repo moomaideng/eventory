@@ -4,12 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"image"
-	"image/png"
-	"io"
-	"mime/multipart"
 	"net/http"
-	"net/textproto"
 	"sync"
 	"testing"
 	"time"
@@ -21,7 +16,7 @@ import (
 	"github.com/moomaideng/eventory/tests/internal/apptest"
 )
 
-// Real PostgreSQL, account gRPC, multipart HTTP, and the mock payment service.
+// Real PostgreSQL, account gRPC, JSON checkout HTTP, and the mock payment service.
 func TestSponsorshipCheckout(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
@@ -37,36 +32,34 @@ func TestSponsorshipCheckout(t *testing.T) {
 	if err := app.DB.Model(&models.SponsorshipTier{}).Where("id = ?", s.tierIDs["Gold"]).Update("slots", 1).Error; err != nil {
 		t.Fatal(err)
 	}
-	var imageBuffer bytes.Buffer
-	if err := png.Encode(&imageBuffer, image.NewRGBA(image.Rect(0, 0, 2, 2))); err != nil {
-		t.Fatal(err)
-	}
-	logo := imageBuffer.Bytes()
+
 	sponsor := createSponsor(t, app, "First Brand", true)
 	other := createSponsor(t, app, "Second Brand", true)
 	withoutProfile := createSponsor(t, app, "No Profile", false)
-	startPath := app.TournamentBaseURL() + s.tiersPath() + "/" + s.tierIDs["Gold"].String() + "/checkout"
-	post := func(user *apptest.TestUser, id uuid.UUID, data []byte) *apptest.Response {
-		return uploadPledge(t, startPath, user, id, data)
+	incompleteProfile := createSponsorWithBrand(t, app, "Incomplete Brand", "", "")
+
+	startPath := s.tiersPath() + "/" + s.tierIDs["Gold"].String() + "/checkout"
+	post := func(user *apptest.TestUser, id uuid.UUID) *apptest.Response {
+		return startPledge(t, s.client, startPath, user, id)
 	}
-	if got := post(withoutProfile, uuid.New(), logo).StatusCode; got != 403 {
+	if got := post(withoutProfile, uuid.New()).StatusCode; got != 403 {
 		t.Fatalf("missing sponsor profile: %d", got)
 	}
-	if got := post(sponsor, uuid.New(), []byte("not an image")).StatusCode; got != 422 {
-		t.Fatalf("spoofed image: %d", got)
+	if got := post(incompleteProfile, uuid.New()).StatusCode; got != 403 {
+		t.Fatalf("incomplete sponsor profile: %d", got)
 	}
-	missingTier := app.TournamentBaseURL() + s.tiersPath() + "/" + uuid.NewString() + "/checkout"
-	if got := uploadPledge(t, missingTier, sponsor, uuid.New(), logo).StatusCode; got != 404 {
+	missingTier := s.tiersPath() + "/" + uuid.NewString() + "/checkout"
+	if got := startPledge(t, s.client, missingTier, sponsor, uuid.New()).StatusCode; got != 404 {
 		t.Fatalf("missing package should map to 404, got %d", got)
 	}
 	mustAPI(t, s.client, "GET", "/tournaments/"+uuid.NewString()+"/sponsors", nil, nil, 404)
-	mustAPI(t, s.client, "GET", "/tournaments/sponsorships/"+uuid.NewString()+"/logo", nil, nil, 404)
+
 	firstID, secondID := uuid.New(), uuid.New()
 	var first, second *apptest.Response
 	var wg sync.WaitGroup
 	wg.Add(2)
-	go func() { defer wg.Done(); first = post(sponsor, firstID, logo) }()
-	go func() { defer wg.Done(); second = post(other, secondID, logo) }()
+	go func() { defer wg.Done(); first = post(sponsor, firstID) }()
+	go func() { defer wg.Done(); second = post(other, secondID) }()
 	wg.Wait()
 	winner, loser := sponsor, other
 	winnerID := firstID
@@ -86,9 +79,16 @@ func TestSponsorshipCheckout(t *testing.T) {
 	if err := first.JSON(&pledge); err != nil || pledge.ID != winnerID || pledge.PaymentID == uuid.Nil || pledge.Status != "PENDING" {
 		t.Fatalf("checkout: %s, %v", first.Body, err)
 	}
+	if err := s.given("Silver", 10000); err != nil {
+		t.Fatal(err)
+	}
+	secondTierPath := s.tiersPath() + "/" + s.tierIDs["Silver"].String() + "/checkout"
+	if got := startPledge(t, s.client, secondTierPath, winner, uuid.New()).StatusCode; got != http.StatusConflict {
+		t.Fatalf("a sponsor with an active pledge must not buy another tournament tier: %d", got)
+	}
 	mustAPI(t, s.client, "PUT", s.tiersPath()+"/"+s.tierIDs["Gold"].String(), map[string]any{"name": "Changed", "priceMinor": 1, "slots": 9, "perks": []string{"Changed"}}, s.owner, 409)
 	mustAPI(t, s.client, "DELETE", s.tiersPath()+"/"+s.tierIDs["Gold"].String(), nil, s.owner, 409)
-	if retried := post(winner, winnerID, logo); retried.StatusCode != 200 {
+	if retried := post(winner, winnerID); retried.StatusCode != 200 {
 		t.Fatalf("retry: %s", retried.Body)
 	}
 	var invoiceCount int64
@@ -124,8 +124,6 @@ func TestSponsorshipCheckout(t *testing.T) {
 	}
 	mustAPI(t, s.client, "GET", minePath+"?limit=101", nil, winner, 422)
 	mustAPI(t, s.client, "POST", refreshPath, nil, loser, 404)
-	logoPath := "/tournaments/sponsorships/" + winnerID.String() + "/logo"
-	mustAPI(t, s.client, "GET", logoPath, nil, nil, 404)
 	public := mustAPI(t, s.client, "GET", "/tournaments/"+s.tournament.ID.String()+"/sponsors", nil, nil, 200)
 	if !bytes.Contains(public.Body, []byte(`"items":[]`)) {
 		t.Fatalf("unpaid sponsor published: %s", public.Body)
@@ -139,17 +137,20 @@ func TestSponsorshipCheckout(t *testing.T) {
 			t.Fatalf("confirmation: %s", confirmed.Body)
 		}
 	}
-	var funding models.TournamentFunding
-	if err := app.DB.First(&funding, "tournament_id = ?", s.tournament.ID).Error; err != nil || funding.RaisedAmountMinor != 1000000 || funding.SupporterCount != 1 {
-		t.Fatalf("funding: %+v, %v", funding, err)
+	var details struct {
+		Funding struct {
+			GoalAmountMinor   int64 `json:"goalAmountMinor"`
+			RaisedAmountMinor int64 `json:"raisedAmountMinor"`
+			SupporterCount    int   `json:"supporterCount"`
+		} `json:"funding"`
+	}
+	detailsResp := mustAPI(t, s.client, "GET", "/tournaments/"+s.tournament.ID.String(), nil, nil, 200)
+	if err := detailsResp.JSON(&details); err != nil || details.Funding.RaisedAmountMinor != 1000000 || details.Funding.SupporterCount != 1 {
+		t.Fatalf("funding details: %s, %v", detailsResp.Body, err)
 	}
 	public = mustAPI(t, s.client, "GET", "/tournaments/"+s.tournament.ID.String()+"/sponsors", nil, nil, 200)
-	if !bytes.Contains(public.Body, []byte("Brand")) {
-		t.Fatalf("paid sponsor missing: %s", public.Body)
-	}
-	storedLogo := mustAPI(t, s.client, "GET", logoPath, nil, nil, 200)
-	if !bytes.Equal(storedLogo.Body, logo) || storedLogo.Header.Get("Content-Type") != "image/png" || storedLogo.Header.Get("X-Content-Type-Options") != "nosniff" {
-		t.Fatal("logo response mismatch")
+	if !bytes.Contains(public.Body, []byte("Brand")) || !bytes.Contains(public.Body, []byte(`"logoUrl":"https://brand.example/logo.png"`)) {
+		t.Fatalf("paid sponsor or logoUrl missing: %s", public.Body)
 	}
 	mustAPI(t, s.client, "PUT", s.tiersPath()+"/"+s.tierIDs["Gold"].String(), map[string]any{"name": "Changed", "priceMinor": 1, "slots": 9, "perks": []string{"Changed"}}, s.owner, 409)
 	mustAPI(t, s.client, "DELETE", s.tiersPath()+"/"+s.tierIDs["Gold"].String(), nil, s.owner, 409)
@@ -158,9 +159,9 @@ func TestSponsorshipCheckout(t *testing.T) {
 		if err := s.given(result, 10000); err != nil {
 			t.Fatal(err)
 		}
-		path := app.TournamentBaseURL() + s.tiersPath() + "/" + s.tierIDs[result].String() + "/checkout"
+		path := s.tiersPath() + "/" + s.tierIDs[result].String() + "/checkout"
 		attemptID := uuid.New()
-		resp := uploadPledge(t, path, sponsor, attemptID, logo)
+		resp := startPledge(t, s.client, path, sponsor, attemptID)
 		if err := resp.JSON(&pledge); err != nil || resp.StatusCode != 200 {
 			t.Fatalf("start %s: %s", result, resp.Body)
 		}
@@ -169,14 +170,29 @@ func TestSponsorshipCheckout(t *testing.T) {
 		if !bytes.Contains(closed.Body, []byte(`"status":"CANCELLED"`)) {
 			t.Fatalf("cancel failed: %s", closed.Body)
 		}
-		mustAPI(t, s.client, "GET", "/tournaments/sponsorships/"+attemptID.String()+"/logo", nil, nil, 404)
-		if retry := uploadPledge(t, path, sponsor, uuid.New(), logo); retry.StatusCode != 200 {
+		if retry := startPledge(t, s.client, path, sponsor, uuid.New()); retry.StatusCode != 200 {
 			t.Fatalf("slot not released: %s", retry.Body)
 		}
 	}
-	// Recover an attempt after an outage that lasted beyond its deadline.
+	// Recover an attempt whose invoice expired in payment service after an outage.
+	if err := s.given("Expired", 10000); err != nil {
+		t.Fatal(err)
+	}
 	expiredID := uuid.New()
-	expired := models.SponsorshipPledge{ID: expiredID, TournamentID: s.tournament.ID, TierID: s.tierIDs["Gold"], PayerAccountID: sponsor.ID, SponsorName: "Expired", WebsiteURL: "https://brand.example", TierName: "Gold", AmountMinor: 10000, Currency: "THB", Status: models.PledgePending, ExpiresAt: time.Now().Add(-time.Minute).UTC().Truncate(time.Microsecond)}
+	expiredPaymentID := uuid.New()
+	invoice := paymentmodels.Invoice{
+		ID: expiredPaymentID, PayerAccountID: sponsor.ID, Source: models.PaymentSourceSponsorship,
+		Reference: expiredID.String(), IdempotencyKey: "sponsorship:" + expiredID.String(),
+		Description: "Expired sponsorship", AmountMinor: 10000, Currency: "THB", Provider: "MOCK",
+		ExpiresAt: time.Now().Add(-time.Minute).UTC().Truncate(time.Microsecond),
+	}
+	if err := app.DB.Create(&invoice).Error; err != nil {
+		t.Fatal(err)
+	}
+	expired := models.SponsorshipPledge{
+		ID: expiredID, TournamentID: s.tournament.ID, TierID: s.tierIDs["Expired"], PayerAccountID: sponsor.ID,
+		AmountMinor: 10000, Currency: "THB", Status: models.PledgePending, PaymentID: &expiredPaymentID,
+	}
 	if err := app.DB.Omit("Tier").Create(&expired).Error; err != nil {
 		t.Fatal(err)
 	}
@@ -216,12 +232,8 @@ func TestSponsorshipCrowdfundingLaunch(t *testing.T) {
 	launch := map[string]any{"status": "REGISTRATION", "reason": "Event details are ready for registration"}
 	mustAPI(t, s.client, "PATCH", path+"/status", launch, owner, http.StatusUnprocessableEntity)
 
-	var imageBuffer bytes.Buffer
-	if err := png.Encode(&imageBuffer, image.NewRGBA(image.Rect(0, 0, 2, 2))); err != nil {
-		t.Fatal(err)
-	}
 	sponsor := createSponsor(t, app, "Campaign Sponsor", true)
-	checkout := uploadPledge(t, app.TournamentBaseURL()+s.tiersPath()+"/"+s.tierIDs["Gold"].String()+"/checkout", sponsor, uuid.New(), imageBuffer.Bytes())
+	checkout := startPledge(t, s.client, s.tiersPath()+"/"+s.tierIDs["Gold"].String()+"/checkout", sponsor, uuid.New())
 	var pledge struct {
 		ID        uuid.UUID `json:"id"`
 		PaymentID uuid.UUID `json:"paymentId"`
@@ -235,76 +247,64 @@ func TestSponsorshipCrowdfundingLaunch(t *testing.T) {
 		mustAPI(t, s.client, "POST", "/tournaments/sponsorships/"+pledge.ID.String()+"/refresh", nil, sponsor, http.StatusOK)
 	}
 	mustAPI(t, s.client, "PATCH", path, map[string]string{"description": "Final event details confirmed"}, owner, http.StatusOK)
-	var funding models.TournamentFunding
-	if err := app.DB.First(&funding, "tournament_id = ?", s.tournament.ID).Error; err != nil {
+
+	var details struct {
+		Funding struct {
+			GoalAmountMinor   int64      `json:"goalAmountMinor"`
+			RaisedAmountMinor int64      `json:"raisedAmountMinor"`
+			SupporterCount    int        `json:"supporterCount"`
+			Deadline          *time.Time `json:"deadline"`
+		} `json:"funding"`
+	}
+	detailsResp := mustAPI(t, s.client, "GET", path, nil, nil, http.StatusOK)
+	if err := detailsResp.JSON(&details); err != nil {
 		t.Fatal(err)
 	}
-	if funding.GoalAmountMinor != 1000000 || funding.RaisedAmountMinor != 1000000 || funding.SupporterCount != 1 || funding.Deadline == nil || !funding.Deadline.Equal(deadline) {
-		t.Fatalf("payment or event edit changed the campaign terms or totals: %+v", funding)
+	f := details.Funding
+	if f.GoalAmountMinor != 1000000 || f.RaisedAmountMinor != 1000000 || f.SupporterCount != 1 || f.Deadline == nil || !f.Deadline.Equal(deadline) {
+		t.Fatalf("payment or event edit changed the campaign terms or totals: %+v", f)
 	}
 	mustAPI(t, s.client, "PATCH", path+"/status", launch, owner, http.StatusOK)
 }
 
 func createSponsor(t *testing.T, app *apptest.App, name string, profile bool) *apptest.TestUser {
 	t.Helper()
+	if !profile {
+		return createSponsorWithBrand(t, app, name, "", "", true)
+	}
+	return createSponsorWithBrand(t, app, name, "https://brand.example", "https://brand.example/logo.png")
+}
+
+func createSponsorWithBrand(t *testing.T, app *apptest.App, name, websiteURL, logoURL string, skipProfile ...bool) *apptest.TestUser {
+	t.Helper()
 	u := apptest.NewTestUser()
 	account := accountmodels.Account{ID: u.ID, Email: u.Email, Handle: u.Handle, DisplayName: u.DisplayName, Status: accountmodels.AccountStatusActive}
 	if err := app.DB.Create(&account).Error; err != nil {
 		t.Fatal(err)
 	}
-	if profile {
-		if err := app.DB.Create(&accountmodels.SponsorProfile{AccountID: u.ID, SponsorName: name}).Error; err != nil {
+	if len(skipProfile) == 0 || !skipProfile[0] {
+		if err := app.DB.Create(&accountmodels.SponsorProfile{
+			AccountID:    u.ID,
+			SponsorName:  name,
+			SponsorEmail: u.Email,
+			WebsiteURL:   websiteURL,
+			LogoURL:      logoURL,
+			Tags:         []string{"esports"},
+		}).Error; err != nil {
 			t.Fatal(err)
 		}
 	}
 	return u
 }
 
-func uploadPledge(t *testing.T, path string, user *apptest.TestUser, id uuid.UUID, logo []byte) *apptest.Response {
+func startPledge(t *testing.T, client *apptest.Client, path string, user *apptest.TestUser, id uuid.UUID) *apptest.Response {
 	t.Helper()
-	var body bytes.Buffer
-	w := multipart.NewWriter(&body)
-	if err := w.WriteField("requestId", id.String()); err != nil {
-		t.Error(err)
-		return &apptest.Response{}
-	}
-	if err := w.WriteField("websiteUrl", "https://brand.example"); err != nil {
-		t.Error(err)
-		return &apptest.Response{}
-	}
-	header := textproto.MIMEHeader{"Content-Disposition": {`form-data; name="logo"; filename="logo.png"`}, "Content-Type": {"image/png"}}
-	part, err := w.CreatePart(header)
+	resp, err := client.Do("POST", path, map[string]any{"requestId": id}, user.AuthHeaders())
 	if err != nil {
 		t.Error(err)
 		return &apptest.Response{}
 	}
-	if _, err := part.Write(logo); err != nil {
-		t.Error(err)
-		return &apptest.Response{}
-	}
-	if err := w.Close(); err != nil {
-		t.Error(err)
-		return &apptest.Response{}
-	}
-	req, err := http.NewRequest("POST", path, &body)
-	if err != nil {
-		t.Error(err)
-		return &apptest.Response{}
-	}
-	req.Header.Set("Content-Type", w.FormDataContentType())
-	req.Header.Set("Authorization", "Bearer "+user.Token)
-	resp, err := (&http.Client{Timeout: 10 * time.Second}).Do(req)
-	if err != nil {
-		t.Error(err)
-		return &apptest.Response{}
-	}
-	defer resp.Body.Close()
-	data, err := io.ReadAll(resp.Body)
-	if err != nil {
-		t.Error(err)
-		return &apptest.Response{}
-	}
-	return &apptest.Response{StatusCode: resp.StatusCode, Header: resp.Header, Body: data}
+	return resp
 }
 
 func mustAPI(t *testing.T, client *apptest.Client, method, path string, body any, user *apptest.TestUser, status int) *apptest.Response {
