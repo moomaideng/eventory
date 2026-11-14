@@ -18,15 +18,16 @@ var (
 )
 
 type TournamentFilters struct {
-	Query       string
+	Query            string
+	OrganizerID      *uuid.UUID
 	StartFrom        *time.Time
 	StartTo          *time.Time
 	MinEntryFeeMinor *int64
 	MaxEntryFeeMinor *int64
 	Status           models.TournamentStatus
-	Sort        string
-	Page        int
-	PageSize    int
+	Sort             string
+	Page             int
+	PageSize         int
 }
 
 type TournamentSearchItem struct {
@@ -63,8 +64,15 @@ func (r *tournamentRepositoryImpl) Search(
 	query := r.db.WithContext(ctx).
 		Model(&models.Tournament{}).
 		Where("status <> ?", models.TournamentStatusDraft)
-	if filters.Status == "" {
+	if filters.Status == "" && filters.OrganizerID == nil {
 		query = query.Where("status <> ?", models.TournamentStatusCompleted)
+	}
+	if filters.OrganizerID != nil {
+		query = query.Where(
+			"EXISTS (SELECT 1 FROM tournament_staff ts WHERE ts.tournament_id = tournaments.id AND ts.account_id = ? AND ts.role = ?)",
+			*filters.OrganizerID,
+			models.TournamentStaffRoleOwner,
+		)
 	}
 
 	if filters.Query != "" {

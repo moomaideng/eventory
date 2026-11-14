@@ -74,6 +74,7 @@ type TournamentResponse struct {
 	Detail               string     `json:"detail" doc:"Tournament rules and full details (Markdown supported)"`
 	Game                 string     `json:"game"`
 	Location             string     `json:"location"`
+	OrganizerID          uuid.UUID  `json:"organizerId"`
 	OrganizerName        string     `json:"organizerName"`
 	StartAt              *time.Time `json:"startAt,omitempty"`
 	EndAt                *time.Time `json:"endAt,omitempty"`
@@ -89,9 +90,10 @@ type TournamentResponse struct {
 }
 
 type SearchTournamentsInput struct {
-	Q           string `query:"q" maxLength:"100" doc:"Case-insensitive name, game, or description search"`
-	StartFrom   string `query:"startFrom" doc:"Earliest tournament start date (YYYY-MM-DD)"`
-	StartTo     string `query:"startTo" doc:"Latest tournament start date (YYYY-MM-DD)"`
+	Q                string `query:"q" maxLength:"100" doc:"Case-insensitive name, game, or description search"`
+	OrganizerID      string `query:"organizerId" doc:"Filter published tournaments owned by an organizer account UUID"`
+	StartFrom        string `query:"startFrom" doc:"Earliest tournament start date (YYYY-MM-DD)"`
+	StartTo          string `query:"startTo" doc:"Latest tournament start date (YYYY-MM-DD)"`
 	MinEntryFeeMinor int64 `query:"minEntryFeeMinor" default:"-1" minimum:"-1" doc:"Minimum entry fee in minor units (satang); omit to disable"`
 	MaxEntryFeeMinor int64 `query:"maxEntryFeeMinor" default:"-1" minimum:"-1" doc:"Maximum entry fee in minor units (satang); omit to disable"`
 	Status      string `query:"status" enum:"DRAFT,CROWDFUNDING,REGISTRATION,ONGOING,COMPLETED"`
@@ -155,7 +157,7 @@ func RegisterTournamentRoutes(
 		Tags:        []string{"Tournaments"},
 	}, func(ctx context.Context, input *SearchTournamentsInput) (*SearchTournamentsOutput, error) {
 		result, err := tournamentUseCase.Search(ctx, usecases.SearchTournamentsInput{
-			Query: input.Q, StartFrom: input.StartFrom, StartTo: input.StartTo,
+			Query: input.Q, OrganizerID: input.OrganizerID, StartFrom: input.StartFrom, StartTo: input.StartTo,
 			MinEntryFeeMinor: optionalFee(input.MinEntryFeeMinor), MaxEntryFeeMinor: optionalFee(input.MaxEntryFeeMinor),
 			Status: input.Status, Sort: input.Sort, Page: input.Page, PageSize: input.PageSize,
 		})
@@ -374,6 +376,7 @@ func toTournamentResponse(tournament models.Tournament, organizerName string, re
 		ID: tournament.ID, Name: tournament.Name, Description: tournament.Description,
 		Detail: tournament.Detail,
 		Game: tournament.Game, Location: tournament.Location,
+		OrganizerID:   tournament.OwnerID(),
 		OrganizerName: organizerName,
 		StartAt:       startAt, EndAt: endAt,
 		RegistrationDeadline: regDeadline,

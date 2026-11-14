@@ -98,6 +98,7 @@ var catalogLocation = time.FixedZone("Asia/Bangkok", 7*60*60)
 
 type SearchTournamentsInput struct {
 	Query            string
+	OrganizerID      string
 	StartFrom        string
 	StartTo          string
 	MinEntryFeeMinor *int64
@@ -246,6 +247,15 @@ func (u *TournamentUseCase) Search(
 		return nil, ErrInvalidTournamentFilters
 	}
 
+	var organizerID *uuid.UUID
+	if rawOrganizerID := strings.TrimSpace(input.OrganizerID); rawOrganizerID != "" {
+		parsed, err := uuid.Parse(rawOrganizerID)
+		if err != nil || parsed == uuid.Nil {
+			return nil, ErrInvalidTournamentFilters
+		}
+		organizerID = &parsed
+	}
+
 	startFrom, err := parseCatalogDate(input.StartFrom, false)
 	if err != nil {
 		return nil, ErrInvalidTournamentFilters
@@ -300,7 +310,7 @@ func (u *TournamentUseCase) Search(
 	}
 
 	repositoryItems, total, err := u.tournamentRepo.Search(ctx, repositories.TournamentFilters{
-		Query: query, StartFrom: startFrom, StartTo: startTo,
+		Query: query, OrganizerID: organizerID, StartFrom: startFrom, StartTo: startTo,
 		MinEntryFeeMinor: input.MinEntryFeeMinor, MaxEntryFeeMinor: input.MaxEntryFeeMinor,
 		Status: status, Sort: sort, Page: page, PageSize: pageSize,
 	})

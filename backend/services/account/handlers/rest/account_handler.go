@@ -66,6 +66,25 @@ type OrganizerProfileOutput struct {
 	Body OrganizerProfileResponse
 }
 
+// PublicOrganizerProfileResponse represents the public payload for an OrganizerProfile entity.
+type PublicOrganizerProfileResponse struct {
+	AccountID      uuid.UUID `json:"accountId" doc:"Associated account UUID"`
+	OrganizerName  string    `json:"organizerName" doc:"Organizer organization or brand name"`
+	OrganizerEmail string    `json:"organizerEmail" doc:"Contact email for organizer"`
+	Phone          *string   `json:"phone,omitempty" doc:"Contact phone number for organizer"`
+	CreatedAt      time.Time `json:"createdAt" doc:"Timestamp of profile creation"`
+}
+
+// PublicOrganizerProfileOutput represents the public HTTP response returning an OrganizerProfile.
+type PublicOrganizerProfileOutput struct {
+	Body PublicOrganizerProfileResponse
+}
+
+// GetOrganizerByIDInput represents path parameters for retrieving a public organizer profile by account ID.
+type GetOrganizerByIDInput struct {
+	ID uuid.UUID `path:"id" doc:"Organizer account UUID"`
+}
+
 // UpsertOrganizerProfileRequest defines the request body for creating or updating an organizer profile.
 type UpsertOrganizerProfileRequest struct {
 	OrganizerName          string  `json:"organizerName" doc:"Organizer organization or brand name" minLength:"1" maxLength:"150"`
@@ -161,6 +180,16 @@ func toOrganizerProfileResponse(p *models.OrganizerProfile) OrganizerProfileResp
 	}
 }
 
+func toPublicOrganizerProfileResponse(p *models.OrganizerProfile) PublicOrganizerProfileResponse {
+	return PublicOrganizerProfileResponse{
+		AccountID:      p.AccountID,
+		OrganizerName:  p.OrganizerName,
+		OrganizerEmail: p.OrganizerEmail,
+		Phone:          p.Phone,
+		CreatedAt:      p.CreatedAt,
+	}
+}
+
 func toSponsorProfileResponse(p *models.SponsorProfile) SponsorProfileResponse {
 	return SponsorProfileResponse{
 		AccountID:          p.AccountID,
@@ -197,6 +226,28 @@ func getAuthAccount(ctx context.Context, uc *usecases.AccountUseCase) (*models.A
 		return nil, huma.Error500InternalServerError("Failed to query account", err)
 	}
 	return acc, nil
+}
+
+// RegisterPublicAccountRoutes registers unauthenticated public account endpoints.
+func RegisterPublicAccountRoutes(api huma.API, accountUseCase *usecases.AccountUseCase) {
+	huma.Register(api, huma.Operation{
+		OperationID: "get-organizer-profile-by-id",
+		Method:      http.MethodGet,
+		Path:        "/organizers/{id}",
+		Summary:     "Get Public Organizer Profile",
+		Description: "Retrieves the public organizer profile for a given account UUID.",
+		Tags:        []string{"Accounts"},
+	}, func(ctx context.Context, input *GetOrganizerByIDInput) (*PublicOrganizerProfileOutput, error) {
+		profile, err := accountUseCase.GetOrganizerProfile(ctx, input.ID)
+		if err != nil {
+			if errors.Is(err, usecases.ErrOrganizerProfileNotFound) {
+				return nil, huma.Error404NotFound("Organizer profile not found", err)
+			}
+			return nil, huma.Error500InternalServerError("Failed to retrieve organizer profile", err)
+		}
+
+		return &PublicOrganizerProfileOutput{Body: toPublicOrganizerProfileResponse(profile)}, nil
+	})
 }
 
 // RegisterAccountRoutes registers all account-related HTTP endpoints under the account group.

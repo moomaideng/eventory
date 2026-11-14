@@ -96,6 +96,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/accounts/organizers/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Public Organizer Profile
+         * @description Retrieves the public organizer profile for a given account UUID.
+         */
+        get: operations["get-organizer-profile-by-id"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/accounts/sponsors": {
         parameters: {
             query?: never;
@@ -1621,6 +1641,27 @@ export interface components {
             /** @enum {string} */
             status: "UNPAID" | "PAID" | "REFUNDED" | "EXPIRED" | "CANCELLED";
         };
+        PublicOrganizerProfileResponse: {
+            /**
+             * Format: uri
+             * @description A URL to the JSON Schema for this object.
+             * @example https://example.com/schemas/PublicOrganizerProfileResponse.json
+             */
+            readonly $schema?: string;
+            /** @description Associated account UUID */
+            accountId: string;
+            /**
+             * Format: date-time
+             * @description Timestamp of profile creation
+             */
+            createdAt: string;
+            /** @description Contact email for organizer */
+            organizerEmail: string;
+            /** @description Organizer organization or brand name */
+            organizerName: string;
+            /** @description Contact phone number for organizer */
+            phone?: string;
+        };
         ReceiptResponse: {
             /**
              * Format: uri
@@ -2060,6 +2101,7 @@ export interface components {
             /** Format: int64 */
             minTeamSize: number;
             name: string;
+            organizerId: string;
             organizerName: string;
             /** Format: int64 */
             registeredCount: number;
@@ -2460,6 +2502,38 @@ export interface operations {
             };
         };
     };
+    "get-organizer-profile-by-id": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Organizer account UUID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicOrganizerProfileResponse"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ErrorModel"];
+                };
+            };
+        };
+    };
     "list-sponsor-directory": {
         parameters: {
             query?: {
@@ -2823,6 +2897,8 @@ export interface operations {
             query?: {
                 /** @description Case-insensitive name, game, or description search */
                 q?: string;
+                /** @description Filter published tournaments owned by an organizer account UUID */
+                organizerId?: string;
                 /** @description Earliest tournament start date (YYYY-MM-DD) */
                 startFrom?: string;
                 /** @description Latest tournament start date (YYYY-MM-DD) */

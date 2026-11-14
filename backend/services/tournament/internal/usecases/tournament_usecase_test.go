@@ -755,3 +755,32 @@ func TestTournamentUseCase_RepositoryErrors(t *testing.T) {
 		})
 	}
 }
+
+func TestSearchTournaments_OrganizerFilter(t *testing.T) {
+	organizerID := uuid.New()
+
+	t.Run("accepts valid organizerId UUID", func(t *testing.T) {
+		repo := &mockTournamentRepository{}
+		_, err := usecases.NewTournamentUseCase(repo, newStubAccountService()).Search(context.Background(), usecases.SearchTournamentsInput{
+			OrganizerID: "  " + organizerID.String() + " ",
+		})
+		if err != nil {
+			t.Fatalf("expected no error, got %v", err)
+		}
+		if repo.filters.OrganizerID == nil || *repo.filters.OrganizerID != organizerID {
+			t.Fatalf("expected organizerID %v, got %v", organizerID, repo.filters.OrganizerID)
+		}
+	})
+
+	for _, invalid := range []string{"not-a-uuid", uuid.Nil.String()} {
+		t.Run("rejects invalid organizerId "+invalid, func(t *testing.T) {
+			repo := &mockTournamentRepository{}
+			_, err := usecases.NewTournamentUseCase(repo, newStubAccountService()).Search(context.Background(), usecases.SearchTournamentsInput{
+				OrganizerID: invalid,
+			})
+			if !errors.Is(err, usecases.ErrInvalidTournamentFilters) {
+				t.Fatalf("expected ErrInvalidTournamentFilters, got %v", err)
+			}
+		})
+	}
+}

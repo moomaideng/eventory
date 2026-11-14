@@ -31,6 +31,8 @@ import { TournamentFundingCard } from "./tournament-funding-card";
 import { TournamentHeaderTags } from "./tournament-header-tags";
 import { TournamentRegisteredTeamsCard } from "./tournament-registered-teams-card";
 
+const NIL_UUID = "00000000-0000-0000-0000-000000000000";
+
 export function TournamentDetails({
   tournamentId,
   sponsorMode = false,
@@ -113,6 +115,22 @@ export function TournamentDetails({
   );
 
   const hasFundingOutcome = funding.goalAmountMinor > 0;
+  const hasOrganizerProfile = Boolean(
+    tournament.organizerId && tournament.organizerId !== NIL_UUID
+  );
+  const hostedByDescription = hasOrganizerProfile ? (
+    <>
+      Hosted by{" "}
+      <Link
+        href={`/organizers/${tournament.organizerId}`}
+        className="text-foreground decoration-border hover:decoration-foreground underline underline-offset-4 transition-colors"
+      >
+        {tournament.organizerName}
+      </Link>
+    </>
+  ) : (
+    `Hosted by ${tournament.organizerName}`
+  );
 
   if (sponsorMode && !isCrowdfunding && !hasFundingOutcome) {
     return (
@@ -132,7 +150,7 @@ export function TournamentDetails({
             />
           }
           title={tournament.name}
-          description={`Hosted by ${tournament.organizerName}`}
+          description={hostedByDescription}
           actions={
             <Button
               render={<Link href={`/tournaments/${tournament.id}`} />}
@@ -267,7 +285,7 @@ export function TournamentDetails({
           />
         }
         title={tournament.name}
-        description={`Hosted by ${tournament.organizerName}`}
+        description={hostedByDescription}
         actions={
           sponsorMode ? (
             <Button
