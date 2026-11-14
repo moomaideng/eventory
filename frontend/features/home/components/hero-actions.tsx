@@ -4,6 +4,7 @@ import React from "react";
 import Link from "next/link";
 import { useAuth } from "@/context/auth-context";
 import { Button } from "@/components/ui/button";
+import { PersonaGrid } from "@/features/hub/components/persona-card";
 import { ArrowRight, Gamepad2 } from "lucide-react";
 
 export function HeroActions({
@@ -11,22 +12,22 @@ export function HeroActions({
 }: {
   serverAuthenticated?: boolean;
 }) {
-  const { user } = useAuth();
-  const isAuthenticated = Boolean(user) || serverAuthenticated;
+  const { user, isLoading } = useAuth();
+  const isAuthenticated = Boolean(user) || (isLoading && serverAuthenticated);
 
-  // Smart routing: unauthenticated goes to /login, authenticated jumps straight into /hub
-  const primaryHref = isAuthenticated ? "/hub" : "/login";
-  const primaryText = isAuthenticated ? "Enter Eventory Hub" : "Get Started";
+  if (isAuthenticated) {
+    return <PersonaGrid handle={user?.handle} />;
+  }
 
   return (
     <div className="flex w-full flex-col items-center justify-center gap-3 pt-2 sm:w-auto sm:flex-row">
       <Button
         size="lg"
-        render={<Link href={primaryHref} />}
+        render={<Link href="/login" />}
         nativeButton={false}
         className="w-full sm:w-auto sm:min-w-48"
       >
-        <span>{primaryText}</span>
+        <span>Get Started</span>
         <ArrowRight data-icon="inline-end" />
       </Button>
 

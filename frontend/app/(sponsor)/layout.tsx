@@ -12,7 +12,7 @@ export default function SponsorLayout({
       <SponsorNavbar />
       <main className="flex flex-1 flex-col">
         {children}
-        <SponsorOnboardingModal redirectToOnCancel="/hub" cancelMessage="Cancel & Return to Hub" />
+        <SponsorOnboardingModal redirectToOnCancel="/" cancelMessage="Cancel & Return to Home" />
       </main>
     </>
   );

@@ -31,23 +31,21 @@ export default async function HomePage() {
   }
 
   return (
-    <div className="flex flex-1 flex-col items-center justify-center px-4 py-24 sm:px-8">
-      <div className="flex w-full max-w-3xl flex-col items-center gap-8 text-center">
-        {/* Clean Hero Title & Description */}
-        <div className="flex flex-col gap-4">
-          <h1 className="text-foreground text-4xl font-extrabold tracking-tight sm:text-6xl">
-            Host, Compete, and Sponsor Tournaments.
-          </h1>
-          <p className="text-muted-foreground mx-auto max-w-xl text-base sm:text-lg">
-            A single identity for competitors, organizers, and sponsors. Manage
-            brackets, crowdfund prize pools, and organize team lobbies
-            effortlessly.
-          </p>
-        </div>
-
-        {/* Clear, balanced primary action buttons */}
-        <HeroActions serverAuthenticated={serverAuthenticated} />
+    <div className="mx-auto flex w-full max-w-7xl flex-1 flex-col items-center justify-center gap-10 px-4 py-16 sm:px-8">
+      {/* Clean Hero Title & Description */}
+      <div className="flex w-full max-w-3xl flex-col items-center gap-4 text-center">
+        <h1 className="text-foreground text-4xl font-extrabold tracking-tight sm:text-6xl">
+          Host, Compete, and Sponsor Tournaments.
+        </h1>
+        <p className="text-muted-foreground mx-auto max-w-xl text-base sm:text-lg">
+          A single identity for competitors, organizers, and sponsors. Manage
+          brackets, crowdfund prize pools, and organize team lobbies
+          effortlessly.
+        </p>
       </div>
+
+      {/* Clear actions when signed out, or workspace cards when signed in */}
+      <HeroActions serverAuthenticated={serverAuthenticated} />
     </div>
   );
 }

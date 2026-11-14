@@ -11,7 +11,7 @@ export interface NavLinkItem {
 }
 
 export interface NavbarLeftProps {
-  /** Target link for the brand logo, defaults to "/" */
+  /** Target link for the workspace title text, defaults to "/" */
   homeHref?: string;
   /** Section subtitle/badge under or next to Eventory, e.g. "Organizer", "Sponsor" */
   badge?: string;
@@ -37,8 +37,9 @@ export function NavbarLeft({
       {/* Brand Logo & Title */}
       <div className="flex items-center gap-2.5">
         <Link
-          href={homeHref}
+          href="/"
           title={logoTitle}
+          aria-label={logoTitle}
           className="bg-primary text-primary-foreground flex size-9 shrink-0 items-center justify-center rounded-lg font-black transition-transform select-none hover:scale-105"
         >
           E
