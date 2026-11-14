@@ -308,10 +308,13 @@ export function startRequirements(
   const items: Requirement[] = [
     {
       id: "deadline-passed",
-      label: "Registration deadline passed",
+      label:
+        deadline !== null && deadline <= now
+          ? "Registration closed"
+          : "Wait for registration to close",
       detail: t.registrationDeadline
         ? `${deadline !== null && deadline <= now ? "Closed" : "Closes"} ${when(t.registrationDeadline, now)}`
-        : "Not set",
+        : "Set a registration deadline before starting",
       state: check(deadline !== null && deadline <= now),
     },
     {
