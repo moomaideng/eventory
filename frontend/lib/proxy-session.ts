@@ -1,5 +1,9 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import {
+  DEV_PROFILES,
+  parseDevSessionCookie,
+} from "@/context/mock-data";
 
 export interface ProxySessionResult {
   response: NextResponse;
@@ -14,13 +18,14 @@ export async function updateSession(
   });
 
   // [DEV-ONLY] Support dev session bypass in development mode
-  if (
-    process.env.NODE_ENV === "development" &&
-    request.cookies.get("eventory_dev_session")?.value === "true"
-  ) {
+  const devProfile =
+    process.env.NODE_ENV === "development"
+      ? parseDevSessionCookie(request.cookies.get("eventory_dev_session")?.value)
+      : null;
+  if (devProfile) {
     return {
       response: supabaseResponse,
-      user: { id: "99999999-0000-4000-8000-000000000001" }, // Alex (Dev) account ID
+      user: { id: DEV_PROFILES[devProfile].user.id },
     };
   }
 

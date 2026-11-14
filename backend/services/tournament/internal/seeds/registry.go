@@ -10,5 +10,6 @@ type Seeds struct {
 func All() []Seeds {
 	return []Seeds{
 		{Name: "Tournaments", Run: SeedTournaments},
+		{Name: "Teams & Brackets", Run: SeedTeamsAndBrackets},
 	}
 }

@@ -150,12 +150,26 @@ func TestAuthMiddleware_CryptographicVerification(t *testing.T) {
 	})
 
 	t.Run("dev-token bypass works in development mode", func(t *testing.T) {
-		resp := api.Get("/test-auth", "Authorization: Bearer dev-token")
-		if resp.Code != http.StatusOK && resp.Code != http.StatusNoContent {
-			t.Fatalf("expected 200/204 for dev-token, got %d", resp.Code)
-		}
-		if capturedEmail != middlewares.DevEmail {
-			t.Errorf("expected dev email, got %q", capturedEmail)
+		for _, tc := range []struct {
+			token string
+			email string
+			sub   string
+		}{
+			{middlewares.DevToken, middlewares.DevEmail, middlewares.DevSub},
+			{middlewares.DevAlexToken, middlewares.DevEmail, middlewares.DevSub},
+			{middlewares.DevBobToken, middlewares.DevOrganizerEmail, middlewares.DevOrganizerSub},
+			{middlewares.DevCarterToken, middlewares.DevSponsorEmail, middlewares.DevSponsorSub},
+		} {
+			resp := api.Get("/test-auth", "Authorization: Bearer "+tc.token)
+			if resp.Code != http.StatusOK && resp.Code != http.StatusNoContent {
+				t.Fatalf("expected 200/204 for %s, got %d", tc.token, resp.Code)
+			}
+			if capturedEmail != tc.email {
+				t.Errorf("token %s: expected email %q, got %q", tc.token, tc.email, capturedEmail)
+			}
+			if capturedSub != tc.sub {
+				t.Errorf("token %s: expected sub %q, got %q", tc.token, tc.sub, capturedSub)
+			}
 		}
 	})
 }

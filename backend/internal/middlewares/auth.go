@@ -26,26 +26,32 @@ const (
 	// AuthTokenContextKey stores the raw bearer token for downstream service calls.
 	AuthTokenContextKey contextKey = "authenticated_bearer_token"
 
-	// DevToken represents the explicit token string used for local development.
+	// DevToken represents the explicit token string used for local development (legacy alias for alex-dev).
 	DevToken string = "dev-token"
-	// DevEmail represents the mock email assigned when using DevToken.
-	DevEmail string = "dev@eventory.gg"
-	// DevSub represents the mock user ID assigned when using DevToken.
+	// DevAlexToken represents the primary dev token for Alex Dev.
+	DevAlexToken string = "alex-dev"
+	// DevEmail represents the mock email assigned when using Alex's dev token.
+	DevEmail string = "alex.dev@eventory.gg"
+	// DevSub represents the mock user ID assigned when using Alex's dev token.
 	DevSub string = "99999999-0000-4000-8000-000000000001"
 
-	// DevOrganizerToken represents the dev token for organizer testing.
+	// DevBobToken represents the dev token for Bob Dev, an organizer-only profile.
+	DevBobToken string = "bob-dev"
+	// DevOrganizerToken is a legacy alias for DevBobToken.
 	DevOrganizerToken string = "dev-token-organizer"
-	// DevOrganizerEmail matches the seeded organizer account.
-	DevOrganizerEmail string = "alice@example.com"
-	// DevOrganizerSub matches the seeded organizer account ID.
-	DevOrganizerSub string = "00000000-0000-4000-8000-000000000001"
+	// DevOrganizerEmail matches the seeded Bob Dev account.
+	DevOrganizerEmail string = "bob.dev@eventory.gg"
+	// DevOrganizerSub matches the seeded Bob Dev account ID.
+	DevOrganizerSub string = "99999999-0000-4000-8000-000000000002"
 
-	// DevSponsorToken represents the dev token for sponsor testing.
+	// DevCarterToken represents the dev token for Carter Dev, a sponsor-only profile.
+	DevCarterToken string = "carter-dev"
+	// DevSponsorToken is a legacy alias for DevCarterToken.
 	DevSponsorToken string = "dev-token-sponsor"
-	// DevSponsorEmail matches the seeded sponsor account.
-	DevSponsorEmail string = "somchai@example.com"
-	// DevSponsorSub matches the seeded sponsor account ID.
-	DevSponsorSub string = "00000000-0000-4000-8000-000000000002"
+	// DevSponsorEmail matches the seeded Carter Dev account.
+	DevSponsorEmail string = "carter.dev@eventory.gg"
+	// DevSponsorSub matches the seeded Carter Dev account ID.
+	DevSponsorSub string = "99999999-0000-4000-8000-000000000003"
 )
 
 var (
@@ -110,11 +116,11 @@ func (m *AuthMiddleware) HumaMiddleware() func(ctx huma.Context, next func(huma.
 		if m.isDevMode() {
 			var devEmail, devSub string
 			switch tokenString {
-			case DevToken, "dev-token-competitor":
+			case DevAlexToken, DevToken, "dev-token-competitor":
 				devEmail, devSub = DevEmail, DevSub
-			case DevOrganizerToken:
+			case DevBobToken, DevOrganizerToken:
 				devEmail, devSub = DevOrganizerEmail, DevOrganizerSub
-			case DevSponsorToken:
+			case DevCarterToken, DevSponsorToken:
 				devEmail, devSub = DevSponsorEmail, DevSponsorSub
 			}
 

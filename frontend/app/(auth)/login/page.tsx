@@ -34,8 +34,9 @@ export default async function LoginPage({
 
   // [DEV-ONLY] Redirect if dev session is already active
   if (process.env.NODE_ENV === "development") {
+    const { parseDevSessionCookie } = await import("@/context/mock-data");
     const cookieStore = await cookies();
-    if (cookieStore.get("eventory_dev_session")?.value === "true") {
+    if (parseDevSessionCookie(cookieStore.get("eventory_dev_session")?.value)) {
       shouldRedirect = true;
     }
   }

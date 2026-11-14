@@ -14,7 +14,7 @@ import type { components } from "@/lib/api/schema";
 import type { Session } from "@supabase/supabase-js";
 import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
-import { MOCK_USER } from "./mock-data";
+import { DEV_PROFILES, type DevProfileId } from "./mock-data";
 import { getSafeRedirectPath } from "@/lib/auth-redirect";
 import { setDevSessionAction, getDevSessionAction } from "@/lib/dev-session";
 
@@ -31,10 +31,11 @@ export interface UserProfile {
 
 export interface AuthContextType {
   user: UserProfile | null;
+  devProfileId: DevProfileId | null;
   isLoading: boolean;
   authorizationHeader: string | undefined;
   loginWithGoogle: (redirectTo?: string) => Promise<void>;
-  loginAsDev: (redirectTo?: string) => void;
+  loginAsDev: (profileId?: DevProfileId, redirectTo?: string) => void;
   logout: () => Promise<void>;
   updateUserProfile: (
     displayName: string,
@@ -69,6 +70,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const queryClient = useQueryClient();
 
+  const [devProfileId, setDevProfileId] = useState<DevProfileId | null>(null);
   const [devUser, setDevUser] = useState<UserProfile | null>(null);
   const [session, setSession] = useState<{
     accessToken: string;
@@ -83,14 +85,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isAuthLoading, setIsAuthLoading] = useState(true);
 
   const authorizationHeader = useMemo(() => {
-    if (devUser) {
-      return "Bearer dev-token";
+    if (devProfileId) {
+      return `Bearer ${DEV_PROFILES[devProfileId].token}`;
     }
     if (session?.accessToken) {
       return `Bearer ${session.accessToken}`;
     }
     return undefined;
-  }, [devUser, session?.accessToken]);
+  }, [devProfileId, session?.accessToken]);
 
   // Temporary console log to inspect auth token
   useEffect(() => {
@@ -98,12 +100,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.log("[AUTH TOKEN]:", session.accessToken);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (window as any).__AUTH_TOKEN__ = session.accessToken;
-    } else if (devUser) {
-      console.log("[AUTH TOKEN (dev)]:", "dev-token");
+    } else if (devProfileId) {
+      const token = DEV_PROFILES[devProfileId].token;
+      console.log("[AUTH TOKEN (dev)]:", token);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (window as any).__AUTH_TOKEN__ = "dev-token";
+      (window as any).__AUTH_TOKEN__ = token;
     }
-  }, [session?.accessToken, devUser]);
+  }, [session?.accessToken, devProfileId]);
 
   // TanStack Query integration via openapi-react-query client ($api)
   // Queries /api/v1/accounts/me with bearer token (both real JWT and dev-token)
@@ -212,9 +215,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Restore dev session from HttpOnly cookies in development mode if no active Supabase session
       if (!session && process.env.NODE_ENV === "development") {
         try {
-          const hasDevSession = await getDevSessionAction();
-          if (!ignore && hasDevSession) {
-            setDevUser(MOCK_USER);
+          const savedProfile = await getDevSessionAction();
+          if (!ignore && savedProfile) {
+            setDevProfileId(savedProfile);
+            setDevUser(DEV_PROFILES[savedProfile].user);
           }
         } catch {
           // Ignore offline check error
@@ -233,6 +237,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (ignore) return;
       if (event === "SIGNED_OUT") {
         setSession(null);
+        setDevProfileId(null);
         setDevUser(null);
         queryClient.removeQueries({
           queryKey: ["get", "/api/v1/accounts/me"],
@@ -249,18 +254,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, [queryClient]);
 
-  // Instant mock sign-in for zero-friction local development with single dev account
+  // Instant mock sign-in for zero-friction local development across dev profiles
   const loginAsDev = useCallback(
-    async (redirectTo?: string) => {
-      setDevUser(MOCK_USER);
-      await setDevSessionAction(true);
+    async (profileId: DevProfileId = "alex-dev", redirectTo?: string) => {
+      queryClient.clear();
+      setDevProfileId(profileId);
+      setDevUser(DEV_PROFILES[profileId].user);
+      await setDevSessionAction(profileId);
 
       if (redirectTo) {
         router.push(getSafeRedirectPath(redirectTo));
       }
       router.refresh();
     },
-    [router]
+    [queryClient, router]
   );
 
   const loginWithGoogle = useCallback(async (redirectTo?: string) => {
@@ -312,11 +319,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Ignore cleanup error
     }
     await setDevSessionAction(false);
+    setDevProfileId(null);
     setDevUser(null);
     setSession(null);
-    queryClient.removeQueries({
-      queryKey: ["get", "/api/v1/accounts/me"],
-    });
+    queryClient.clear();
     router.push("/");
     router.refresh();
   }, [queryClient, router]);
@@ -324,6 +330,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const value = useMemo<AuthContextType>(
     () => ({
       user,
+      devProfileId,
       isLoading,
       authorizationHeader,
       loginWithGoogle,
@@ -334,6 +341,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }),
     [
       user,
+      devProfileId,
       isLoading,
       authorizationHeader,
       loginWithGoogle,

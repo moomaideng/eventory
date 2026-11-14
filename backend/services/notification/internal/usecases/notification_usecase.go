@@ -328,22 +328,22 @@ func resolveRecipientEmail(recipient events.EventRecipient) string {
 	}
 	switch recipient.AccountID.String() {
 	case "99999999-0000-4000-8000-000000000001":
-		return "dev@eventory.gg"
-	case "00000000-0000-4000-8000-000000000001":
-		return "alice@example.com"
-	case "00000000-0000-4000-8000-000000000002":
-		return "somchai@example.com"
+		return "alex.dev@eventory.gg"
+	case "99999999-0000-4000-8000-000000000002":
+		return "bob.dev@eventory.gg"
+	case "99999999-0000-4000-8000-000000000003":
+		return "carter.dev@eventory.gg"
 	case "00000000-0000-4000-8000-000000000003":
 		return "maya@example.com"
-	case "00000000-0000-4000-8000-000000000004":
-		return "player1@example.com"
-	case "00000000-0000-4000-8000-000000000005":
-		return "player2@example.com"
+	case "00000000-0000-4000-8000-000000000010":
+		return "kaito@example.com"
+	case "00000000-0000-4000-8000-000000000011":
+		return "pleng@example.com"
 	default:
 		if recipient.AccountID != uuid.Nil {
 			return fmt.Sprintf("user-%s@eventory.gg", recipient.AccountID.String()[:8])
 		}
-		return "dev@eventory.gg"
+		return "alex.dev@eventory.gg"
 	}
 }
 
