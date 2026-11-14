@@ -83,6 +83,8 @@ type SponsorProfileResponse struct {
 	SponsorName  string    `json:"sponsorName" doc:"Sponsor company or organization name"`
 	SponsorEmail string    `json:"sponsorEmail" doc:"Contact email for sponsorship communications"`
 	Phone        *string   `json:"phone,omitempty" doc:"Contact phone number for sponsor"`
+	WebsiteURL   string    `json:"websiteUrl" doc:"Official sponsor website URL"`
+	LogoURL      string    `json:"logoUrl" doc:"Public sponsor logo image URL"`
 	Tags         []string  `json:"tags" doc:"Sponsor interests and business tags"`
 	CreatedAt    time.Time `json:"createdAt" doc:"Timestamp of profile creation"`
 	UpdatedAt    time.Time `json:"updatedAt" doc:"Timestamp of last profile update"`
@@ -98,6 +100,8 @@ type UpsertSponsorProfileRequest struct {
 	SponsorName  string   `json:"sponsorName" doc:"Sponsor company or organization name" minLength:"1" maxLength:"150"`
 	SponsorEmail *string  `json:"sponsorEmail" doc:"Contact email shown to organizers" minLength:"1" maxLength:"255" format:"email"`
 	Phone        *string  `json:"phone,omitempty" doc:"Contact phone number for sponsor" maxLength:"32"`
+	WebsiteURL   *string  `json:"websiteUrl,omitempty" doc:"Official sponsor website URL" maxLength:"2048"`
+	LogoURL      *string  `json:"logoUrl,omitempty" doc:"Public sponsor logo image URL" maxLength:"2048"`
 	Tags         []string `json:"tags" minItems:"1" maxItems:"10" doc:"Free-form sponsor tags, each up to 40 characters"`
 }
 
@@ -158,6 +162,8 @@ func toSponsorProfileResponse(p *models.SponsorProfile) SponsorProfileResponse {
 		SponsorName:  p.SponsorName,
 		SponsorEmail: p.SponsorEmail,
 		Phone:        p.Phone,
+		WebsiteURL:   p.WebsiteURL,
+		LogoURL:      p.LogoURL,
 		Tags:         p.Tags,
 		CreatedAt:    p.CreatedAt,
 		UpdatedAt:    p.UpdatedAt,
@@ -380,11 +386,16 @@ func RegisterAccountRoutes(api huma.API, accountUseCase *usecases.AccountUseCase
 			SponsorName:  input.Body.SponsorName,
 			SponsorEmail: input.Body.SponsorEmail,
 			Phone:        input.Body.Phone,
+			WebsiteURL:   input.Body.WebsiteURL,
+			LogoURL:      input.Body.LogoURL,
 			Tags:         input.Body.Tags,
 		})
 		if err != nil {
 			if errors.Is(err, usecases.ErrInvalidSponsorName) {
 				return nil, huma.Error400BadRequest("Sponsor name cannot be empty", err)
+			}
+			if errors.Is(err, usecases.ErrInvalidSponsorURL) {
+				return nil, huma.Error400BadRequest("Enter valid HTTP(S) URLs for websiteUrl and logoUrl", err)
 			}
 			if errors.Is(err, usecases.ErrInvalidSponsorDirectory) {
 				return nil, huma.Error400BadRequest("Enter a valid contact email and 1 to 10 tags, up to 40 characters each", err)

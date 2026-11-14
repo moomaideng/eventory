@@ -180,8 +180,30 @@ func (s *discoveryScenario) teams(name string) error {
 }
 
 func (s *discoveryScenario) funding(name string, goal, raised int) error {
-	funding := models.TournamentFunding{ID: uuid.New(), TournamentID: s.tournaments[name].ID, GoalAmountMinor: int64(goal), RaisedAmountMinor: int64(raised), SupporterCount: 4}
-	return s.app.DB.Create(&funding).Error
+	t := s.tournaments[name]
+	if err := s.app.DB.Model(&t).Update("crowdfunding_goal_amount_minor", int64(goal)).Error; err != nil {
+		return err
+	}
+	tier := models.SponsorshipTier{
+		ID: uuid.New(), TournamentID: t.ID, Name: "Backer", PriceMinor: int64(raised), Slots: 4, Perks: []string{"Logo"},
+	}
+	if err := s.app.DB.Create(&tier).Error; err != nil {
+		return err
+	}
+	base := int64(raised) / 4
+	rem := int64(raised) % 4
+	pledges := make([]models.SponsorshipPledge, 4)
+	for i := range pledges {
+		amt := base
+		if i == 0 {
+			amt += rem
+		}
+		pledges[i] = models.SponsorshipPledge{
+			ID: uuid.New(), TournamentID: t.ID, TierID: tier.ID, PayerAccountID: uuid.New(),
+			AmountMinor: amt, Currency: "THB", Status: models.PledgeConfirmed,
+		}
+	}
+	return s.app.DB.Create(&pledges).Error
 }
 
 func (s *discoveryScenario) publicDetails(name string) error {

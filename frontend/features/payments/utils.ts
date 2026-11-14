@@ -1,20 +1,12 @@
 import type { components } from "@/lib/api/schema";
+import { formatMinorMoney } from "@/lib/money";
 
 export type Payment = components["schemas"]["PaymentResponse"];
 
 export function formatAmount(
   payment: { amountMinor: number; currency: string }
 ) {
-  const minor = BigInt(payment.amountMinor);
-  const fraction = (minor % BigInt(100)).toString().padStart(2, "0");
-  // Keep cents exact even at the API's maximum safe integer amount.
-  return new Intl.NumberFormat("en-GB", {
-    style: "currency",
-    currency: payment.currency,
-  })
-    .formatToParts(minor / BigInt(100))
-    .map((part) => (part.type === "fraction" ? fraction : part.value))
-    .join("");
+  return formatMinorMoney(payment.amountMinor, payment.currency);
 }
 
 export function formatPaymentDate(value: string) {

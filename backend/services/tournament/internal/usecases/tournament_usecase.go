@@ -145,15 +145,17 @@ type TournamentFundingStats struct {
 	Percentage           float64
 }
 
-func NewFundingStats(funding *models.TournamentFunding) TournamentFundingStats {
-	stats := TournamentFundingStats{}
-	if funding == nil {
-		return stats
+func NewFundingStats(crowdfunding models.CrowdfundingInfo) TournamentFundingStats {
+	stats := TournamentFundingStats{
+		GoalAmountMinor: crowdfunding.GoalAmountMinor,
+		Deadline:        crowdfunding.Deadline,
 	}
-	stats.GoalAmountMinor = funding.GoalAmountMinor
-	stats.Deadline = funding.Deadline
-	stats.RaisedAmountMinor = funding.RaisedAmountMinor
-	stats.SupporterCount = funding.SupporterCount
+	for _, pledge := range crowdfunding.Pledges {
+		if pledge.Status == models.PledgeConfirmed {
+			stats.RaisedAmountMinor += pledge.AmountMinor
+			stats.SupporterCount++
+		}
+	}
 	stats.RemainingAmountMinor = max(stats.GoalAmountMinor-stats.RaisedAmountMinor, 0)
 	if stats.GoalAmountMinor > 0 {
 		stats.Percentage = float64(stats.RaisedAmountMinor) / float64(stats.GoalAmountMinor) * 100
@@ -356,7 +358,7 @@ func (u *TournamentUseCase) GetDetails(
 	return &TournamentDetailsResult{
 		TournamentView:  NewTournamentView(*tournament, names[tournament.ID]),
 		RegisteredCount: registeredCount,
-		Funding:         NewFundingStats(tournament.Funding),
+		Funding:         NewFundingStats(tournament.Crowdfunding),
 	}, nil
 }
 
@@ -448,13 +450,13 @@ func (u *TournamentUseCase) CreateTournament(
 		}
 	}
 
-	var funding *models.TournamentFunding
+	var crowdfunding models.CrowdfundingInfo
 	if input.FundingGoalMinor != nil || input.FundingDeadline != nil {
 		if input.FundingGoalMinor == nil || input.FundingDeadline == nil ||
 			!validFunding(*input.FundingGoalMinor, *input.FundingDeadline, regDeadline) {
 			return nil, ErrInvalidCrowdfunding
 		}
-		funding = &models.TournamentFunding{GoalAmountMinor: *input.FundingGoalMinor, Deadline: input.FundingDeadline}
+		crowdfunding = models.CrowdfundingInfo{GoalAmountMinor: *input.FundingGoalMinor, Deadline: input.FundingDeadline}
 	}
 
 	tournament := &models.Tournament{
@@ -478,10 +480,11 @@ func (u *TournamentUseCase) CreateTournament(
 		MinTeamSize:          minTeamSize,
 		MaxTeamSize:          maxTeamSize,
 		Capacity:             capacity,
+		Crowdfunding:         crowdfunding,
 		Status:               models.TournamentStatusDraft,
 	}
 
-	if err := u.tournamentRepo.Create(ctx, tournament, funding); err != nil {
+	if err := u.tournamentRepo.Create(ctx, tournament); err != nil {
 		return nil, err
 	}
 	return tournament, nil
@@ -641,13 +644,10 @@ func (u *TournamentUseCase) UpdateTournament(
 		if tournament.Status != models.TournamentStatusDraft {
 			return nil, ErrCrowdfundingClosed
 		}
-		var currentGoal int64
+		currentGoal := tournament.Crowdfunding.GoalAmountMinor
 		var currentDeadline time.Time
-		if tournament.Funding != nil {
-			currentGoal = tournament.Funding.GoalAmountMinor
-			if tournament.Funding.Deadline != nil {
-				currentDeadline = *tournament.Funding.Deadline
-			}
+		if tournament.Crowdfunding.Deadline != nil {
+			currentDeadline = *tournament.Crowdfunding.Deadline
 		}
 		if input.FundingGoalMinor != nil {
 			currentGoal = *input.FundingGoalMinor
@@ -658,14 +658,11 @@ func (u *TournamentUseCase) UpdateTournament(
 		if !validFunding(currentGoal, currentDeadline, newDeadline) {
 			return nil, ErrInvalidCrowdfunding
 		}
-		if tournament.Funding == nil {
-			tournament.Funding = &models.TournamentFunding{}
-		}
-		tournament.Funding.GoalAmountMinor = currentGoal
-		tournament.Funding.Deadline = &currentDeadline
+		tournament.Crowdfunding.GoalAmountMinor = currentGoal
+		tournament.Crowdfunding.Deadline = &currentDeadline
 	} else if (tournament.Status == models.TournamentStatusDraft || tournament.Status == models.TournamentStatusCrowdfunding) &&
-		tournament.Funding != nil && tournament.Funding.Deadline != nil && !newDeadline.IsZero() &&
-		!tournament.Funding.Deadline.Before(newDeadline) {
+		tournament.Crowdfunding.Deadline != nil && !newDeadline.IsZero() &&
+		!tournament.Crowdfunding.Deadline.Before(newDeadline) {
 		return nil, ErrInvalidCrowdfunding
 	}
 
@@ -800,14 +797,14 @@ func summarizeDashboard(tournament models.Tournament, organizerName string) Orga
 	}
 	metrics.ConfirmedParticipants = len(participants)
 	metrics.AvailableSpots = max(tournament.Capacity-metrics.AcceptedEntries, 0)
+	stats := NewFundingStats(tournament.Crowdfunding)
 	tournament.Teams = nil
-	funding := tournament.Funding
-	tournament.Funding = nil
+	tournament.Crowdfunding.Pledges = nil
 	return OrganizerTournamentSummary{
 		Tournament:    tournament,
 		OrganizerName: organizerName,
 		Metrics:       metrics,
-		Funding:       NewFundingStats(funding),
+		Funding:       stats,
 	}
 }
 
@@ -873,7 +870,7 @@ func (u *TournamentUseCase) OverrideWithForce(
 		return nil, ErrInvalidStatusTransition
 	}
 	if current.Status == models.TournamentStatusDraft && to == models.TournamentStatusCrowdfunding {
-		if current.Funding == nil || current.Funding.GoalAmountMinor <= 0 || current.Funding.Deadline == nil || !current.Funding.Deadline.After(time.Now()) {
+		if current.Crowdfunding.GoalAmountMinor <= 0 || current.Crowdfunding.Deadline == nil || !current.Crowdfunding.Deadline.After(time.Now()) {
 			return nil, ErrCrowdfundingSetupIncomplete
 		}
 		tierCount, err := u.tournamentRepo.CountActiveTiers(ctx, tournamentID)
@@ -883,7 +880,7 @@ func (u *TournamentUseCase) OverrideWithForce(
 		if tierCount == 0 {
 			return nil, ErrCrowdfundingSetupIncomplete
 		}
-		if !current.RegistrationDeadline.IsZero() && !current.Funding.Deadline.Before(current.RegistrationDeadline) {
+		if !current.RegistrationDeadline.IsZero() && !current.Crowdfunding.Deadline.Before(current.RegistrationDeadline) {
 			return nil, ErrCrowdfundingSetupIncomplete
 		}
 	}
@@ -896,10 +893,11 @@ func (u *TournamentUseCase) OverrideWithForce(
 		if problem := registrationPlanProblem(current, time.Now()); problem != "" {
 			return nil, fmt.Errorf("%w: %s", ErrRegistrationGateIncomplete, problem)
 		}
-		if current.Funding != nil && current.Funding.Deadline != nil && !current.Funding.Deadline.Before(current.RegistrationDeadline) {
+		if current.Crowdfunding.Deadline != nil && !current.Crowdfunding.Deadline.Before(current.RegistrationDeadline) {
 			return nil, fmt.Errorf("%w: %s", ErrRegistrationGateIncomplete, "set the funding deadline before registration closes")
 		}
-		if !force && current.Funding != nil && current.Funding.RaisedAmountMinor < current.Funding.GoalAmountMinor {
+		stats := NewFundingStats(current.Crowdfunding)
+		if !force && stats.RaisedAmountMinor < stats.GoalAmountMinor {
 			return nil, ErrCrowdfundingGoalNotReached
 		}
 	}

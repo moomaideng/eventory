@@ -21,7 +21,6 @@ type mockTournamentRepository struct {
 	details           *models.Tournament
 	detailsErr        error
 	createdTournament *models.Tournament
-	createdFunding    *models.TournamentFunding
 	createErr         error
 	updatedTournament *models.Tournament
 	updateErr         error
@@ -37,9 +36,8 @@ func (m *mockTournamentRepository) GetByID(_ context.Context, _ uuid.UUID) (*mod
 	return m.details, m.detailsErr
 }
 
-func (m *mockTournamentRepository) Create(_ context.Context, tournament *models.Tournament, funding *models.TournamentFunding) error {
+func (m *mockTournamentRepository) Create(_ context.Context, tournament *models.Tournament) error {
 	m.createdTournament = tournament
-	m.createdFunding = funding
 	return m.createErr
 }
 
@@ -229,8 +227,9 @@ func TestGetTournamentDetails_CalculatesFundingStats(t *testing.T) {
 				Status: models.TournamentTeamStatusForming,
 			},
 		},
-		Funding: &models.TournamentFunding{
-			GoalAmountMinor: 1000000, RaisedAmountMinor: 625000, SupporterCount: 14,
+		Crowdfunding: models.CrowdfundingInfo{
+			GoalAmountMinor: 1000000,
+			Pledges:         []models.SponsorshipPledge{{Status: models.PledgeConfirmed, AmountMinor: 625000}},
 		},
 	}}
 
@@ -275,7 +274,8 @@ func TestCreateTournament_Success(t *testing.T) {
 		}
 		if len(got.Staff) != 1 || got.Staff[0].AccountID != organizerID || got.Staff[0].Role != models.TournamentStaffRoleOwner || got.Currency != "THB" ||
 			got.Status != models.TournamentStatusDraft ||
-			got.MinTeamSize != 1 || got.MaxTeamSize != 1 || repo.createdFunding != nil {
+			got.MinTeamSize != 1 || got.MaxTeamSize != 1 ||
+			got.Crowdfunding.GoalAmountMinor != 0 || got.Crowdfunding.Deadline != nil {
 			t.Fatalf("unexpected tournament state: %+v", got)
 		}
 	})
@@ -290,10 +290,9 @@ func TestCreateTournament_Success(t *testing.T) {
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if got.Status != models.TournamentStatusDraft || repo.createdFunding == nil ||
-			repo.createdFunding.GoalAmountMinor != goal || repo.createdFunding.RaisedAmountMinor != 0 ||
-			repo.createdFunding.SupporterCount != 0 || repo.createdFunding.Deadline == nil || !repo.createdFunding.Deadline.Equal(deadline) {
-			t.Fatalf("unexpected crowdfunding state: tournament=%+v funding=%+v", got, repo.createdFunding)
+		if got.Status != models.TournamentStatusDraft ||
+			got.Crowdfunding.GoalAmountMinor != goal || got.Crowdfunding.Deadline == nil || !got.Crowdfunding.Deadline.Equal(deadline) {
+			t.Fatalf("unexpected crowdfunding state: tournament=%+v", got)
 		}
 	})
 
@@ -641,7 +640,7 @@ func TestUpdateCrowdfundingConfiguration(t *testing.T) {
 		tournament.ID = tournamentID
 		tournament.Status = models.TournamentStatusDraft
 		deadline := now.Add(8 * time.Hour)
-		tournament.Funding = &models.TournamentFunding{GoalAmountMinor: 100000, Deadline: &deadline}
+		tournament.Crowdfunding = models.CrowdfundingInfo{GoalAmountMinor: 100000, Deadline: &deadline}
 		return tournament
 	}
 
@@ -653,7 +652,7 @@ func TestUpdateCrowdfundingConfiguration(t *testing.T) {
 			context.Background(), ownerID, tournamentID,
 			usecases.UpdateTournamentInput{FundingGoalMinor: &goal, FundingDeadline: &deadline},
 		)
-		if err != nil || updated.Funding.GoalAmountMinor != goal || !updated.Funding.Deadline.Equal(deadline) || repo.updatedTournament == nil {
+		if err != nil || updated.Crowdfunding.GoalAmountMinor != goal || !updated.Crowdfunding.Deadline.Equal(deadline) || repo.updatedTournament == nil {
 			t.Fatalf("funding update failed: tournament=%+v err=%v", updated, err)
 		}
 	})

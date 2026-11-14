@@ -19,6 +19,10 @@ func (s sponsorshipPaymentStub) EnsureInvoice(context.Context, ports.Registratio
 	return s.payment, nil
 }
 
+func (s sponsorshipPaymentStub) GetPayment(context.Context, uuid.UUID) (*ports.RegistrationPayment, error) {
+	return s.payment, nil
+}
+
 func TestSponsorshipRepositoryErrorsBecomeDomainErrors(t *testing.T) {
 	unexpected := errors.New("database unavailable")
 	for _, tc := range []struct{ repository, domain error }{
@@ -51,14 +55,13 @@ func TestSponsorshipRejectsMismatchedPayment(t *testing.T) {
 		{"different pledge", func(p *ports.RegistrationPayment) { p.Reference = uuid.NewString() }},
 		{"different price", func(p *ports.RegistrationPayment) { p.AmountMinor++ }},
 		{"different currency", func(p *ports.RegistrationPayment) { p.Currency = "USD" }},
-		{"different deadline", func(p *ports.RegistrationPayment) { p.ExpiresAt = p.ExpiresAt.Add(time.Second) }},
 		{"different invoice", func(p *ports.RegistrationPayment) { p.ID = uuid.New() }},
 		{"unknown status", func(p *ports.RegistrationPayment) { p.Status = "INVALID" }},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			p := &ports.RegistrationPayment{ID: paymentID, PayerAccountID: payer, Source: models.PaymentSourceSponsorship, Reference: pledgeID.String(), AmountMinor: 10000, Currency: "THB", ExpiresAt: expires, Status: "PAID"}
 			tc.change(p)
-			pledge := &models.SponsorshipPledge{ID: pledgeID, PayerAccountID: payer, AmountMinor: 10000, Currency: "THB", ExpiresAt: expires, Status: models.PledgePending, PaymentID: &paymentID}
+			pledge := &models.SponsorshipPledge{ID: pledgeID, PayerAccountID: payer, AmountMinor: 10000, Currency: "THB", Status: models.PledgePending, PaymentID: &paymentID}
 			// Invalid payment data must be rejected before any repository transaction starts.
 			u := NewSponsorshipUseCase(nil, nil, nil, sponsorshipPaymentStub{p})
 			if err := u.Reconcile(context.Background(), pledge); !errors.Is(err, ErrPaymentUnavailable) {
@@ -84,7 +87,7 @@ func TestSponsorshipPaymentOutcomeChecksThePledgeBeforeSettling(t *testing.T) {
 	payer, pledgeID, paymentID := uuid.New(), uuid.New(), uuid.New()
 	expires := time.Now().UTC().Add(time.Minute).Truncate(time.Microsecond)
 	pledge := func(status models.PledgeStatus) *models.SponsorshipPledge {
-		return &models.SponsorshipPledge{ID: pledgeID, PayerAccountID: payer, AmountMinor: 10000, Currency: "THB", ExpiresAt: expires, Status: status}
+		return &models.SponsorshipPledge{ID: pledgeID, PayerAccountID: payer, AmountMinor: 10000, Currency: "THB", Status: status}
 	}
 	for _, tc := range []struct {
 		name    string
@@ -98,7 +101,6 @@ func TestSponsorshipPaymentOutcomeChecksThePledgeBeforeSettling(t *testing.T) {
 		{"different payer", pledge(models.PledgePending), func(o *PaymentOutcome) { o.PayerAccountID = uuid.New() }, ErrPaymentMismatch},
 		{"different price", pledge(models.PledgePending), func(o *PaymentOutcome) { o.AmountMinor++ }, ErrPaymentMismatch},
 		{"different currency", pledge(models.PledgePending), func(o *PaymentOutcome) { o.Currency = "USD" }, ErrPaymentMismatch},
-		{"different deadline", pledge(models.PledgePending), func(o *PaymentOutcome) { o.ExpiresAt = o.ExpiresAt.Add(time.Second) }, ErrPaymentMismatch},
 		{"different invoice", func() *models.SponsorshipPledge {
 			p := pledge(models.PledgePending)
 			other := uuid.New()

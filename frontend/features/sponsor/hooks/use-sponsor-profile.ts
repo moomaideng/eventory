@@ -131,6 +131,9 @@ export function useSponsorProfile(
             body: {
               sponsorName: validation.data.sponsorName,
               sponsorEmail: validation.data.sponsorEmail,
+              phone: validation.data.phone,
+              websiteUrl: validation.data.websiteUrl,
+              logoUrl: validation.data.logoUrl,
               tags: validation.data.tags,
             },
           }

@@ -164,6 +164,8 @@ export function PublicTiersSection({
           currency={currency}
           tier={selected}
           sponsorName={sponsor.profile.sponsorName}
+          websiteUrl={sponsor.profile.websiteUrl}
+          logoUrl={sponsor.profile.logoUrl}
           onClose={() => setSelected(null)}
         />
       )}

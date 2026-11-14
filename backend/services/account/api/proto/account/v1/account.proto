@@ -8,6 +8,8 @@ service AccountService {
   rpc BatchGetAccounts(BatchGetAccountsRequest) returns (BatchGetAccountsResponse);
   rpc BatchGetOrganizerProfiles(BatchGetOrganizerProfilesRequest) returns (BatchGetOrganizerProfilesResponse);
   rpc GetOrganizerProfileByAccountID(GetOrganizerProfileByAccountIDRequest) returns (GetOrganizerProfileByAccountIDResponse);
+  rpc BatchGetSponsorProfiles(BatchGetSponsorProfilesRequest) returns (BatchGetSponsorProfilesResponse);
+  rpc GetSponsorProfileByAccountID(GetSponsorProfileByAccountIDRequest) returns (GetSponsorProfileByAccountIDResponse);
   rpc GetAccountByHandle(GetAccountByHandleRequest) returns (GetAccountByHandleResponse);
 }
 
@@ -16,13 +18,19 @@ message Account {
   string handle = 2;
   string display_name = 3;
   string status = 4;
-  string sponsor_name = 5;
-  string email = 6;
+  string email = 5;
 }
 
 message OrganizerProfile {
   string account_id = 1;
   string organizer_name = 2;
+}
+
+message SponsorProfile {
+  string account_id = 1;
+  string sponsor_name = 2;
+  string website_url = 3;
+  string logo_url = 4;
 }
 
 message BatchGetAccountsRequest {
@@ -49,6 +57,23 @@ message GetOrganizerProfileByAccountIDRequest {
 
 message GetOrganizerProfileByAccountIDResponse {
   OrganizerProfile profile = 1;
+}
+
+message BatchGetSponsorProfilesRequest {
+  repeated string sponsor_profile_ids = 1;
+}
+
+message BatchGetSponsorProfilesResponse {
+  repeated SponsorProfile profiles = 1;
+  repeated string not_found_ids = 2;
+}
+
+message GetSponsorProfileByAccountIDRequest {
+  string account_id = 1;
+}
+
+message GetSponsorProfileByAccountIDResponse {
+  SponsorProfile profile = 1;
 }
 
 message GetAccountByHandleRequest {

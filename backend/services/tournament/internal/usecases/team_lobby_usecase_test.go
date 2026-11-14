@@ -489,6 +489,10 @@ func (p registrationPaymentStub) EnsureInvoice(_ context.Context, r ports.Regist
 	return payment, p.err
 }
 
+func (p registrationPaymentStub) GetPayment(_ context.Context, id uuid.UUID) (*ports.RegistrationPayment, error) {
+	return &ports.RegistrationPayment{ID: id, Status: models.PaymentPaid}, p.err
+}
+
 func TestSubmissionRequiresAuthoritativeMatchingInvoice(t *testing.T) {
 	for _, tc := range []struct {
 		name   string

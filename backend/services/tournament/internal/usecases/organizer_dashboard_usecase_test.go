@@ -40,7 +40,14 @@ func TestOrganizerDashboardCountsConfirmedParticipantsAndEntryStates(t *testing.
 			{Status: models.TournamentTeamStatusAccepted, Members: []models.TournamentTeamMember{{AccountID: participant}}},
 			{Status: models.TournamentTeamStatusAccepted, Members: []models.TournamentTeamMember{{AccountID: participant}, {AccountID: otherParticipant}}},
 		},
-		Funding: &models.TournamentFunding{GoalAmountMinor: 10000, RaisedAmountMinor: 15000, SupporterCount: 3},
+		Crowdfunding: models.CrowdfundingInfo{
+			GoalAmountMinor: 10000,
+			Pledges: []models.SponsorshipPledge{
+				{Status: models.PledgeConfirmed, AmountMinor: 5000},
+				{Status: models.PledgeConfirmed, AmountMinor: 5000},
+				{Status: models.PledgeConfirmed, AmountMinor: 5000},
+			},
+		},
 	}}
 	accountID := uuid.New()
 	result, err := usecases.NewTournamentUseCase(repo, newStubAccountService()).Get(context.Background(), accountID, uuid.New())
@@ -54,8 +61,8 @@ func TestOrganizerDashboardCountsConfirmedParticipantsAndEntryStates(t *testing.
 	if result.Funding.Percentage != 150 || result.Funding.RemainingAmountMinor != 0 || result.Funding.SupporterCount != 3 {
 		t.Fatalf("unexpected funding: %+v", result.Funding)
 	}
-	if len(result.Tournament.Teams) != 0 || result.Tournament.Funding != nil {
-		t.Fatalf("dashboard tournament still carries raw teams or funding: %+v", result.Tournament)
+	if len(result.Tournament.Teams) != 0 || len(result.Tournament.Crowdfunding.Pledges) != 0 {
+		t.Fatalf("dashboard tournament still carries raw teams or pledges: %+v", result.Tournament)
 	}
 	if len(result.Entries) != 4 || len(result.Entries[2].Members) != 1 {
 		t.Fatalf("entries = %+v", result.Entries)
@@ -66,8 +73,8 @@ func TestOrganizerDashboardCountsConfirmedParticipantsAndEntryStates(t *testing.
 }
 
 func TestOrganizerDashboardEmptyAndZeroGoal(t *testing.T) {
-	for _, funding := range []*models.TournamentFunding{nil, {RaisedAmountMinor: 5000}} {
-		repo := &dashboardRepositoryStub{tournament: models.Tournament{Capacity: 16, Funding: funding}}
+	for _, pledges := range [][]models.SponsorshipPledge{nil, {{Status: models.PledgeConfirmed, AmountMinor: 5000}}} {
+		repo := &dashboardRepositoryStub{tournament: models.Tournament{Capacity: 16, Crowdfunding: models.CrowdfundingInfo{Pledges: pledges}}}
 		result, err := usecases.NewTournamentUseCase(repo, newStubAccountService()).Get(context.Background(), uuid.New(), uuid.New())
 		if err != nil {
 			t.Fatal(err)

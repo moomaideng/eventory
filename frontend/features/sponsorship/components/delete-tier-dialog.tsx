@@ -64,17 +64,17 @@ export function DeleteTierDialog({
     <AlertDialog open={open} onOpenChange={handleOpenChange}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Archive {tier.name} tier</AlertDialogTitle>
+          <AlertDialogTitle>Delete {tier.name} tier</AlertDialogTitle>
           <AlertDialogDescription>
-            Sponsors will no longer see or purchase this package. Existing
-            checkout and payment history will be kept.
+            This permanently deletes the sponsorship package. Tiers with any
+            existing sponsorships cannot be deleted.
           </AlertDialogDescription>
         </AlertDialogHeader>
 
         {deleteMutation.isError ? (
           <Alert variant="destructive">
             <AlertCircle />
-            <AlertTitle>Archive failed</AlertTitle>
+            <AlertTitle>Delete failed</AlertTitle>
             <AlertDescription>
               {getErrorMessage(deleteMutation.error)}
             </AlertDescription>
@@ -93,7 +93,7 @@ export function DeleteTierDialog({
             {deleteMutation.isPending ? (
               <Spinner data-icon="inline-start" />
             ) : null}
-            Archive tier
+            Delete tier
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

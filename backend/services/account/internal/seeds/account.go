@@ -116,6 +116,8 @@ func SeedAccounts(db *gorm.DB) error {
 			AccountID:    accounts[0].ID,
 			SponsorName:  "Alex Ventures (Dev)",
 			SponsorEmail: "dev@eventory.gg",
+			WebsiteURL:   "https://alexventures.example.com",
+			LogoURL:      "https://placehold.co/128x128/png?text=AV",
 			Tags:         []string{"gaming"},
 		},
 		// Somchai: Sponsor Profile Only
@@ -123,6 +125,8 @@ func SeedAccounts(db *gorm.DB) error {
 			AccountID:    accounts[2].ID,
 			SponsorName:  "Bright Future Co.",
 			SponsorEmail: "partnerships@example.com",
+			WebsiteURL:   "https://brightfuture.example.com",
+			LogoURL:      "https://placehold.co/128x128/png?text=BF",
 			Tags:         []string{"gaming"},
 		},
 		// Maya: Both Organizer and Sponsor Profiles
@@ -130,6 +134,8 @@ func SeedAccounts(db *gorm.DB) error {
 			AccountID:    accounts[3].ID,
 			SponsorName:  "Maya Works Studio",
 			SponsorEmail: "studio@example.com",
+			WebsiteURL:   "https://mayaworks.example.com",
+			LogoURL:      "https://placehold.co/128x128/png?text=MW",
 			Tags:         []string{"gaming"},
 		},
 	}

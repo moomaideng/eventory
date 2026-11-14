@@ -136,8 +136,8 @@ func draftCrowdfundingReadyTournament(ownerID uuid.UUID) *models.Tournament {
 		Name:   "Community Cup", Game: "Valorant", Location: "Main Hall",
 		RegistrationDeadline: now.Add(48 * time.Hour),
 		StartsAt:             now.Add(72 * time.Hour), EndsAt: now.Add(96 * time.Hour),
-		Funding: &models.TournamentFunding{GoalAmountMinor: 100000, Deadline: &fundingDeadline},
-		Staff:   []models.TournamentStaff{{AccountID: ownerID, Role: models.TournamentStaffRoleOwner}},
+		Crowdfunding: models.CrowdfundingInfo{GoalAmountMinor: 100000, Deadline: &fundingDeadline},
+		Staff:        []models.TournamentStaff{{AccountID: ownerID, Role: models.TournamentStaffRoleOwner}},
 	}
 }
 
@@ -164,8 +164,12 @@ func crowdfundingReadyTournament(ownerID uuid.UUID) *models.Tournament {
 		StartsAt:             now.Add(72 * time.Hour), EndsAt: now.Add(96 * time.Hour),
 		RegistrationMode: models.TournamentRegistrationModeTeam,
 		MinTeamSize:      3, MaxTeamSize: 5, Capacity: 16,
-		Funding: &models.TournamentFunding{GoalAmountMinor: 100000, RaisedAmountMinor: 100000, Deadline: &fundingDeadline},
-		Staff:   []models.TournamentStaff{{AccountID: ownerID, Role: models.TournamentStaffRoleOwner}},
+		Crowdfunding: models.CrowdfundingInfo{
+			GoalAmountMinor: 100000,
+			Deadline:        &fundingDeadline,
+			Pledges:         []models.SponsorshipPledge{{Status: models.PledgeConfirmed, AmountMinor: 100000}},
+		},
+		Staff:        []models.TournamentStaff{{AccountID: ownerID, Role: models.TournamentStaffRoleOwner}},
 	}
 }
 
@@ -180,11 +184,11 @@ func TestCrowdfundingLifecycle(t *testing.T) {
 	}{
 		{name: "open when funded", to: models.TournamentStatusRegistration},
 		{name: "open when overfunded", to: models.TournamentStatusRegistration,
-			modify: func(t *models.Tournament) { t.Funding.RaisedAmountMinor = 120000 }},
+			modify: func(t *models.Tournament) { t.Crowdfunding.Pledges[0].AmountMinor = 120000 }},
 		{name: "underfunded normal launch", to: models.TournamentStatusRegistration,
-			modify: func(t *models.Tournament) { t.Funding.RaisedAmountMinor = 99900 }, want: usecases.ErrCrowdfundingGoalNotReached},
+			modify: func(t *models.Tournament) { t.Crowdfunding.Pledges[0].AmountMinor = 99900 }, want: usecases.ErrCrowdfundingGoalNotReached},
 		{name: "force launch underfunded", to: models.TournamentStatusRegistration, force: true,
-			modify: func(t *models.Tournament) { t.Funding.RaisedAmountMinor = 20000 }},
+			modify: func(t *models.Tournament) { t.Crowdfunding.Pledges[0].AmountMinor = 20000 }},
 		{name: "missing venue", to: models.TournamentStatusRegistration,
 			modify: func(t *models.Tournament) { t.Location = " " }, want: usecases.ErrCrowdfundingPlanIncomplete, problem: "location"},
 		{name: "registration deadline passed", to: models.TournamentStatusRegistration, force: true,
@@ -231,13 +235,13 @@ func TestDraftToCrowdfundingValidation(t *testing.T) {
 		tiersCount int64
 		want       error
 	}{
-		{name: "missing funding", modify: func(t *models.Tournament) { t.Funding = nil }, tiersCount: 1, want: usecases.ErrCrowdfundingSetupIncomplete},
-		{name: "zero goal", modify: func(t *models.Tournament) { t.Funding.GoalAmountMinor = 0 }, tiersCount: 1, want: usecases.ErrCrowdfundingSetupIncomplete},
-		{name: "past deadline", modify: func(t *models.Tournament) { past := now.Add(-time.Hour); t.Funding.Deadline = &past }, tiersCount: 1, want: usecases.ErrCrowdfundingSetupIncomplete},
+		{name: "missing funding", modify: func(t *models.Tournament) { t.Crowdfunding = models.CrowdfundingInfo{} }, tiersCount: 1, want: usecases.ErrCrowdfundingSetupIncomplete},
+		{name: "zero goal", modify: func(t *models.Tournament) { t.Crowdfunding.GoalAmountMinor = 0 }, tiersCount: 1, want: usecases.ErrCrowdfundingSetupIncomplete},
+		{name: "past deadline", modify: func(t *models.Tournament) { past := now.Add(-time.Hour); t.Crowdfunding.Deadline = &past }, tiersCount: 1, want: usecases.ErrCrowdfundingSetupIncomplete},
 		{name: "no active tiers", modify: nil, tiersCount: 0, want: usecases.ErrCrowdfundingSetupIncomplete},
 		{name: "funding deadline after registration deadline", modify: func(t *models.Tournament) {
 			after := t.RegistrationDeadline.Add(time.Hour)
-			t.Funding.Deadline = &after
+			t.Crowdfunding.Deadline = &after
 		}, tiersCount: 1, want: usecases.ErrCrowdfundingSetupIncomplete},
 		{name: "valid transition", modify: nil, tiersCount: 2, want: nil},
 	}
@@ -303,7 +307,7 @@ func TestCrowdfundingLaunchRequiresOwner(t *testing.T) {
 	ownerID, staffID, tournamentID := uuid.New(), uuid.New(), uuid.New()
 	current := crowdfundingReadyTournament(ownerID)
 	current.Staff = append(current.Staff, models.TournamentStaff{AccountID: staffID, Role: models.TournamentStaffRoleAdmin})
-	current.Funding.RaisedAmountMinor = 20000
+	current.Crowdfunding.Pledges[0].AmountMinor = 20000
 	repo := &statusRepositoryStub{current: models.TournamentStatusCrowdfunding, tournament: current, gotAccountID: ownerID}
 	useCase := usecases.NewTournamentUseCase(repo, newStubAccountService())
 

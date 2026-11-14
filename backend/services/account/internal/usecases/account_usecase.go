@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"math/big"
 	"net/mail"
+	"net/url"
 	"strings"
 
 	"github.com/google/uuid"
@@ -25,6 +26,7 @@ var (
 	ErrSponsorProfileNotFound    = errors.New("sponsor profile not found")
 	ErrInvalidOrganizerName      = errors.New("organizer name cannot be empty")
 	ErrInvalidSponsorName        = errors.New("sponsor name cannot be empty")
+	ErrInvalidSponsorURL         = errors.New("websiteUrl and logoUrl must be valid HTTP(S) URLs")
 	ErrInvalidSponsorDirectory   = errors.New("a valid contact email and 1 to 10 tags of at most 40 characters are required")
 	ErrSponsorDirectoryForbidden = errors.New("an active organizer profile is required")
 )
@@ -53,6 +55,8 @@ type UpsertSponsorProfileInput struct {
 	SponsorName  string
 	SponsorEmail *string
 	Phone        *string
+	WebsiteURL   *string
+	LogoURL      *string
 	Tags         []string
 }
 
@@ -290,47 +294,45 @@ func (u *AccountUseCase) GetOrganizerProfile(ctx context.Context, accountID uuid
 const maxBatchIDs = 200
 
 // BatchGetAccounts returns accounts for the given IDs. Missing IDs are listed in notFound.
-func (u *AccountUseCase) BatchGetAccounts(ctx context.Context, ids []uuid.UUID) (found []models.Account, notFound []uuid.UUID, err error) {
-	ids = uniqueUUIDs(ids)
-	if len(ids) > maxBatchIDs {
-		return nil, nil, fmt.Errorf("batch size exceeds %d", maxBatchIDs)
-	}
-	accounts, err := u.accountRepo.FindByIDs(ctx, ids)
-	if err != nil {
-		return nil, nil, err
-	}
-	foundSet := make(map[uuid.UUID]struct{}, len(accounts))
-	for _, account := range accounts {
-		foundSet[account.ID] = struct{}{}
-	}
-	for _, id := range ids {
-		if _, ok := foundSet[id]; !ok {
-			notFound = append(notFound, id)
-		}
-	}
-	return accounts, notFound, nil
+func (u *AccountUseCase) BatchGetAccounts(ctx context.Context, ids []uuid.UUID) ([]models.Account, []uuid.UUID, error) {
+	return batchByID(ids, func(unique []uuid.UUID) ([]models.Account, error) {
+		return u.accountRepo.FindByIDs(ctx, unique)
+	}, func(a models.Account) uuid.UUID { return a.ID })
 }
 
-// BatchGetOrganizerProfiles returns organizer profiles for the given profile IDs.
-func (u *AccountUseCase) BatchGetOrganizerProfiles(ctx context.Context, ids []uuid.UUID) (found []models.OrganizerProfile, notFound []uuid.UUID, err error) {
+// BatchGetOrganizerProfiles returns organizer profiles for the given account IDs.
+func (u *AccountUseCase) BatchGetOrganizerProfiles(ctx context.Context, ids []uuid.UUID) ([]models.OrganizerProfile, []uuid.UUID, error) {
+	return batchByID(ids, func(unique []uuid.UUID) ([]models.OrganizerProfile, error) {
+		return u.accountRepo.FindOrganizerProfilesByIDs(ctx, unique)
+	}, func(p models.OrganizerProfile) uuid.UUID { return p.AccountID })
+}
+
+// BatchGetSponsorProfiles returns sponsor profiles for the given account IDs.
+func (u *AccountUseCase) BatchGetSponsorProfiles(ctx context.Context, ids []uuid.UUID) ([]models.SponsorProfile, []uuid.UUID, error) {
+	return batchByID(ids, func(unique []uuid.UUID) ([]models.SponsorProfile, error) {
+		return u.accountRepo.FindSponsorProfilesByIDs(ctx, unique)
+	}, func(p models.SponsorProfile) uuid.UUID { return p.AccountID })
+}
+
+func batchByID[T any](ids []uuid.UUID, fetch func([]uuid.UUID) ([]T, error), keyOf func(T) uuid.UUID) (found []T, notFound []uuid.UUID, err error) {
 	ids = uniqueUUIDs(ids)
 	if len(ids) > maxBatchIDs {
 		return nil, nil, fmt.Errorf("batch size exceeds %d", maxBatchIDs)
 	}
-	profiles, err := u.accountRepo.FindOrganizerProfilesByIDs(ctx, ids)
+	items, err := fetch(ids)
 	if err != nil {
 		return nil, nil, err
 	}
-	foundSet := make(map[uuid.UUID]struct{}, len(profiles))
-	for _, profile := range profiles {
-		foundSet[profile.AccountID] = struct{}{}
+	foundSet := make(map[uuid.UUID]struct{}, len(items))
+	for _, item := range items {
+		foundSet[keyOf(item)] = struct{}{}
 	}
 	for _, id := range ids {
 		if _, ok := foundSet[id]; !ok {
 			notFound = append(notFound, id)
 		}
 	}
-	return profiles, notFound, nil
+	return items, notFound, nil
 }
 
 func uniqueUUIDs(ids []uuid.UUID) []uuid.UUID {
@@ -443,9 +445,40 @@ func (u *AccountUseCase) UpsertSponsorProfile(ctx context.Context, accountID uui
 	if input.Phone != nil {
 		phone = cleanOptionalString(*input.Phone)
 	}
-	profile := &models.SponsorProfile{AccountID: accountID, SponsorName: name, SponsorEmail: email, Phone: phone, Tags: tags}
+	websiteURL, err := cleanOptionalHTTPURL(input.WebsiteURL)
+	if err != nil {
+		return nil, err
+	}
+	logoURL, err := cleanOptionalHTTPURL(input.LogoURL)
+	if err != nil {
+		return nil, err
+	}
+	profile := &models.SponsorProfile{
+		AccountID:    accountID,
+		SponsorName:  name,
+		SponsorEmail: email,
+		Phone:        phone,
+		WebsiteURL:   websiteURL,
+		LogoURL:      logoURL,
+		Tags:         tags,
+	}
 
 	return u.accountRepo.UpsertSponsorProfile(ctx, profile)
+}
+
+func cleanOptionalHTTPURL(raw *string) (string, error) {
+	if raw == nil {
+		return "", nil
+	}
+	trimmed := strings.TrimSpace(*raw)
+	if trimmed == "" {
+		return "", nil
+	}
+	parsed, err := url.ParseRequestURI(trimmed)
+	if err != nil || len(trimmed) > 2048 || parsed.Hostname() == "" || parsed.User != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") {
+		return "", ErrInvalidSponsorURL
+	}
+	return trimmed, nil
 }
 
 // ListSponsorDirectory is available only to active organizers. Creating a sponsor profile makes it visible to organizers.
