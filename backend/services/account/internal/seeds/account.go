@@ -163,7 +163,7 @@ func SeedAccounts(db *gorm.DB) error {
 		},
 	}
 
-	for number := 1; number <= 32; number++ {
+	for number := 1; number <= 40; number++ {
 		accounts = append(accounts, models.Account{
 			ID:          seedids.PlayerID(number),
 			Email:       fmt.Sprintf("player%02d@example.com", number),
