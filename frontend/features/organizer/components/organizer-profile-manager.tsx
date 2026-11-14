@@ -29,6 +29,7 @@ interface OrganizerProfileData {
   organizerName: string;
   organizerEmail?: string | null;
   phone?: string | null;
+  privacyConsentedAt?: string | null;
 }
 
 export function OrganizerProfileManager() {
@@ -70,6 +71,7 @@ export function OrganizerProfileManager() {
             organizerName: data.organizerName,
             organizerEmail: data.organizerEmail,
             phone: data.phone,
+            privacyConsentAccepted: data.privacyConsentAccepted,
           },
         }
       );
@@ -131,6 +133,7 @@ export function OrganizerProfileManager() {
         initialName={current?.organizerName ?? ""}
         initialEmail={current?.organizerEmail ?? ""}
         initialPhone={current?.phone ?? ""}
+        isCreating={hasNoProfile}
         onCancel={() => setMode("view")}
         onConfirmSave={handleConfirmSave}
         isSaving={isSaving}
@@ -164,6 +167,7 @@ export function OrganizerProfileManager() {
       organizerName={current.organizerName}
       organizerEmail={current.organizerEmail}
       phone={current.phone}
+      privacyConsentedAt={current.privacyConsentedAt}
       onEdit={() => setMode("edit")}
     />
   );

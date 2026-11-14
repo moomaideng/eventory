@@ -33,6 +33,7 @@ interface SponsorProfileData {
   websiteUrl?: string | null;
   logoUrl?: string | null;
   tags?: string[] | null;
+  privacyConsentedAt?: string | null;
 }
 
 export function SponsorProfileManager() {
@@ -88,6 +89,7 @@ export function SponsorProfileManager() {
             websiteUrl: data.websiteUrl,
             logoUrl,
             tags: data.tags,
+            privacyConsentAccepted: data.privacyConsentAccepted,
           },
         },
       );
@@ -154,6 +156,7 @@ export function SponsorProfileManager() {
         initialWebsiteUrl={current?.websiteUrl ?? ""}
         initialLogoUrl={current?.logoUrl ?? ""}
         initialTags={current?.tags ?? []}
+        isCreating={hasNoProfile}
         onCancel={() => setMode("view")}
         onConfirmSave={handleConfirmSave}
         isSaving={isSaving}
@@ -190,6 +193,7 @@ export function SponsorProfileManager() {
       websiteUrl={current.websiteUrl}
       logoUrl={current.logoUrl}
       tags={current.tags ?? []}
+      privacyConsentedAt={current.privacyConsentedAt}
       onEdit={() => setMode("edit")}
     />
   );

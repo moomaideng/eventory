@@ -169,3 +169,16 @@ Feature: Account Management and Profiles
   Scenario: Reject unauthenticated access to account endpoints
     When an unauthenticated request is sent to "GET /me"
     Then the response status code should be 401
+
+  # [INVALID] Privacy consent guard: reject role profile creation without explicit consent (Expect 400 Bad Request)
+  @US1-2 @privacy @invalid
+  Scenario Outline: Reject role profile creation without explicit privacy consent
+    Given the account owner is signed in with an active account
+    When the user attempts to create a <role> profile without privacy consent
+    Then the response status code should be 400
+    And their <role> profile should not exist
+
+    Examples:
+      | role      |
+      | organizer |
+      | sponsor   |

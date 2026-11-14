@@ -31,7 +31,7 @@ const optionalHttpUrlSchema = (label: string) =>
     }, `Enter a valid http:// or https:// ${label.toLowerCase()}.`)
     .transform((value) => (value === "" ? undefined : value));
 
-export const sponsorOnboardingSchema = z.object({
+export const sponsorProfileSchema = z.object({
   sponsorName: z
     .string()
     .trim()
@@ -46,7 +46,16 @@ export const sponsorOnboardingSchema = z.object({
   websiteUrl: optionalHttpUrlSchema("Brand website URL").optional(),
   logoUrl: optionalHttpUrlSchema("Logo image URL").optional(),
   tags: sponsorTagsSchema,
+  privacyConsentAccepted: z.boolean().optional(),
 });
-export const sponsorProfileSchema = sponsorOnboardingSchema;
+
+export const sponsorCreateSchema = sponsorProfileSchema.extend({
+  privacyConsentAccepted: z.literal(true, {
+    message:
+      "Please confirm consent to store and display your sponsor profile.",
+  }),
+});
+
+export const sponsorOnboardingSchema = sponsorCreateSchema;
 export type SponsorOnboardingValues = z.infer<typeof sponsorOnboardingSchema>;
 export type SponsorProfileInput = z.infer<typeof sponsorProfileSchema>;

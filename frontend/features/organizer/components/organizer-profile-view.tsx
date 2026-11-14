@@ -15,6 +15,7 @@ interface OrganizerProfileViewProps {
   organizerName: string;
   organizerEmail?: string | null;
   phone?: string | null;
+  privacyConsentedAt?: string | null;
   onEdit: () => void;
 }
 
@@ -22,6 +23,7 @@ export function OrganizerProfileView({
   organizerName,
   organizerEmail,
   phone,
+  privacyConsentedAt,
   onEdit,
 }: OrganizerProfileViewProps) {
   return (
@@ -54,6 +56,12 @@ export function OrganizerProfileView({
             )}
           </p>
         </div>
+        {privacyConsentedAt ? (
+          <p className="text-muted-foreground border-border border-t pt-3 text-xs">
+            Data privacy consent granted on{" "}
+            {new Date(privacyConsentedAt).toLocaleDateString()}
+          </p>
+        ) : null}
       </CardContent>
       <CardFooter className="justify-end">
         <Button onClick={onEdit}>

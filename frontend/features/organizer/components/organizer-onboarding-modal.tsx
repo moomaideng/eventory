@@ -30,6 +30,7 @@ import {
   organizerOnboardingSchema,
   type OrganizerOnboardingValues,
 } from "../schemas";
+import { PrivacyConsentField } from "@/components/privacy-consent-field";
 
 type FieldErrors = Partial<Record<keyof OrganizerOnboardingValues, string>>;
 
@@ -56,6 +57,7 @@ function OrganizerOnboardingForm({
 
   const [organizerName, setOrganizerName] = useState(user.displayName || "");
   const [organizerEmail, setOrganizerEmail] = useState(user.email || "");
+  const [privacyConsentAccepted, setPrivacyConsentAccepted] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [apiError, setApiError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -67,6 +69,7 @@ function OrganizerOnboardingForm({
     const validation = organizerOnboardingSchema.safeParse({
       organizerName,
       organizerEmail,
+      privacyConsentAccepted,
     });
 
     if (!validation.success) {
@@ -88,6 +91,7 @@ function OrganizerOnboardingForm({
       const { data, error } = await upsertProfile({
         organizerName: validation.data.organizerName,
         organizerEmail: validation.data.organizerEmail,
+        privacyConsentAccepted: validation.data.privacyConsentAccepted,
       });
 
       if (error || !data) {
@@ -109,8 +113,6 @@ function OrganizerOnboardingForm({
       setIsSubmitting(false);
     }
   }
-
-  const isNameValid = organizerName.trim().length > 0;
 
   return (
     <>
@@ -158,7 +160,7 @@ function OrganizerOnboardingForm({
         </Button>
       </div>
 
-      <form onSubmit={handleSubmit} className="mt-2 flex flex-col gap-4">
+      <form onSubmit={handleSubmit} noValidate className="mt-2 flex flex-col gap-4">
         <FieldGroup>
           {/* Organizer / Organization Name Field */}
           <Field data-invalid={Boolean(fieldErrors.organizerName)}>
@@ -221,6 +223,24 @@ function OrganizerOnboardingForm({
               <FieldError>{fieldErrors.organizerEmail}</FieldError>
             )}
           </Field>
+
+          <PrivacyConsentField
+            id="onboarding-organizer-privacy-consent"
+            checked={privacyConsentAccepted}
+            onCheckedChange={(checked) => {
+              setPrivacyConsentAccepted(checked);
+              if (checked && fieldErrors.privacyConsentAccepted) {
+                setFieldErrors((prev) => ({
+                  ...prev,
+                  privacyConsentAccepted: undefined,
+                }));
+              }
+              if (apiError) setApiError("");
+            }}
+            description="Your organizer name and contact details will be saved to our database and displayed to participants and sponsors on tournaments you host."
+            error={fieldErrors.privacyConsentAccepted}
+            disabled={isSubmitting}
+          />
         </FieldGroup>
 
         {/* API Error Message */}
@@ -237,7 +257,7 @@ function OrganizerOnboardingForm({
         <div className="mt-2 flex flex-col gap-2">
           <Button
             type="submit"
-            disabled={isSubmitting || !isNameValid}
+            disabled={isSubmitting}
             className="w-full font-semibold"
           >
             {isSubmitting ? (

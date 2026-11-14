@@ -36,8 +36,13 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { SponsorTagsField } from "./sponsor-tags-field";
-import { sponsorProfileSchema, type SponsorProfileInput } from "../schemas";
+import {
+  sponsorCreateSchema,
+  sponsorProfileSchema,
+  type SponsorProfileInput,
+} from "../schemas";
 import { validateSponsorLogo } from "../logo-upload";
+import { PrivacyConsentField } from "@/components/privacy-consent-field";
 
 type FieldErrors = Partial<
   Record<
@@ -46,7 +51,8 @@ type FieldErrors = Partial<
     | "phone"
     | "websiteUrl"
     | "logoUrl"
-    | "tags",
+    | "tags"
+    | "privacyConsentAccepted",
     string
   >
 >;
@@ -58,6 +64,7 @@ interface SponsorProfileFormProps {
   initialWebsiteUrl: string;
   initialLogoUrl: string;
   initialTags: string[];
+  isCreating?: boolean;
   onCancel: () => void;
   onConfirmSave: (
     data: SponsorProfileInput,
@@ -74,6 +81,7 @@ export function SponsorProfileForm({
   initialWebsiteUrl,
   initialLogoUrl,
   initialTags,
+  isCreating = false,
   onCancel,
   onConfirmSave,
   isSaving,
@@ -87,6 +95,7 @@ export function SponsorProfileForm({
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [tags, setTags] = useState(initialTags);
   const [tagDraft, setTagDraft] = useState("");
+  const [privacyConsentAccepted, setPrivacyConsentAccepted] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [dialogOpen, setDialogOpen] = useState(false);
   const [pendingData, setPendingData] = useState<SponsorProfileInput | null>(
@@ -96,13 +105,15 @@ export function SponsorProfileForm({
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    const result = sponsorProfileSchema.safeParse({
+    const schema = isCreating ? sponsorCreateSchema : sponsorProfileSchema;
+    const result = schema.safeParse({
       sponsorName,
       sponsorEmail,
       phone,
       websiteUrl,
       logoUrl,
       tags: [...tags, ...parseSponsorTagDraft(tagDraft)],
+      privacyConsentAccepted: isCreating ? privacyConsentAccepted : undefined,
     });
 
     if (!result.success) {
@@ -114,6 +125,7 @@ export function SponsorProfileForm({
         websiteUrl: flat.websiteUrl?.[0],
         logoUrl: flat.logoUrl?.[0],
         tags: flat.tags?.[0],
+        privacyConsentAccepted: flat.privacyConsentAccepted?.[0],
       });
       return;
     }
@@ -288,6 +300,24 @@ export function SponsorProfileForm({
               onDraftChange={setTagDraft}
               error={fieldErrors.tags}
             />
+
+            {isCreating ? (
+              <PrivacyConsentField
+                id="settings-sponsor-privacy-consent"
+                checked={privacyConsentAccepted}
+                onCheckedChange={(checked) => {
+                  setPrivacyConsentAccepted(checked);
+                  if (checked && fieldErrors.privacyConsentAccepted) {
+                    setFieldErrors((prev) => ({
+                      ...prev,
+                      privacyConsentAccepted: undefined,
+                    }));
+                  }
+                }}
+                description="Your sponsor name, contact email, website, logo, and tags will be saved to our database and shown to organizers in the Sponsor Directory."
+                error={fieldErrors.privacyConsentAccepted}
+              />
+            ) : null}
           </FieldGroup>
         </CardContent>
         <CardFooter className="justify-end gap-3">

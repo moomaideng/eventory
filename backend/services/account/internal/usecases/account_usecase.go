@@ -9,6 +9,7 @@ import (
 	"net/mail"
 	"net/url"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/moomaideng/eventory/services/account/internal/repositories"
@@ -29,6 +30,7 @@ var (
 	ErrInvalidSponsorURL         = errors.New("websiteUrl and logoUrl must be valid HTTP(S) URLs")
 	ErrInvalidSponsorDirectory   = errors.New("a valid contact email and 1 to 10 tags of at most 40 characters are required")
 	ErrSponsorDirectoryForbidden = errors.New("an active organizer profile is required")
+	ErrPrivacyConsentRequired    = errors.New("explicit privacy consent is required before creating a profile")
 )
 
 // CreateAccountInput specifies input parameters for creating or ensuring an account.
@@ -45,19 +47,21 @@ type UpdateAccountInput struct {
 
 // UpsertOrganizerProfileInput specifies input parameters for creating or updating an organizer profile.
 type UpsertOrganizerProfileInput struct {
-	OrganizerName  string
-	OrganizerEmail *string
-	Phone          *string
+	OrganizerName          string
+	OrganizerEmail         *string
+	Phone                  *string
+	PrivacyConsentAccepted bool
 }
 
 // UpsertSponsorProfileInput specifies input parameters for creating or updating a sponsor profile.
 type UpsertSponsorProfileInput struct {
-	SponsorName  string
-	SponsorEmail *string
-	Phone        *string
-	WebsiteURL   *string
-	LogoURL      *string
-	Tags         []string
+	SponsorName            string
+	SponsorEmail           *string
+	Phone                  *string
+	WebsiteURL             *string
+	LogoURL                *string
+	Tags                   []string
+	PrivacyConsentAccepted bool
 }
 
 type SponsorDirectoryPage struct {
@@ -354,6 +358,17 @@ func uniqueUUIDs(ids []uuid.UUID) []uuid.UUID {
 	return out
 }
 
+func resolvePrivacyConsent(existingConsentedAt *time.Time, isNewProfile bool, accepted bool) (*time.Time, error) {
+	if isNewProfile || existingConsentedAt == nil {
+		if !accepted {
+			return nil, ErrPrivacyConsentRequired
+		}
+		now := time.Now().UTC()
+		return &now, nil
+	}
+	return existingConsentedAt, nil
+}
+
 // UpsertOrganizerProfile creates or updates the organizer profile linked to an account UUID.
 func (u *AccountUseCase) UpsertOrganizerProfile(ctx context.Context, accountID uuid.UUID, input UpsertOrganizerProfileInput) (*models.OrganizerProfile, error) {
 	account, err := u.accountRepo.FindByID(ctx, accountID)
@@ -385,11 +400,25 @@ func (u *AccountUseCase) UpsertOrganizerProfile(ctx context.Context, accountID u
 		phone = cleanOptionalString(*input.Phone)
 	}
 
+	existing, err := u.accountRepo.FindOrganizerProfileByAccountID(ctx, accountID)
+	if err != nil {
+		return nil, err
+	}
+	var existingConsentedAt *time.Time
+	if existing != nil {
+		existingConsentedAt = existing.PrivacyConsentedAt
+	}
+	consentedAt, err := resolvePrivacyConsent(existingConsentedAt, existing == nil, input.PrivacyConsentAccepted)
+	if err != nil {
+		return nil, err
+	}
+
 	profile := &models.OrganizerProfile{
-		AccountID:      accountID,
-		OrganizerName:  name,
-		OrganizerEmail: email,
-		Phone:          phone,
+		AccountID:          accountID,
+		OrganizerName:      name,
+		OrganizerEmail:     email,
+		Phone:              phone,
+		PrivacyConsentedAt: consentedAt,
 	}
 
 	return u.accountRepo.UpsertOrganizerProfile(ctx, profile)
@@ -453,14 +482,29 @@ func (u *AccountUseCase) UpsertSponsorProfile(ctx context.Context, accountID uui
 	if err != nil {
 		return nil, err
 	}
+
+	existing, err := u.accountRepo.FindSponsorProfileByAccountID(ctx, accountID)
+	if err != nil {
+		return nil, err
+	}
+	var existingConsentedAt *time.Time
+	if existing != nil {
+		existingConsentedAt = existing.PrivacyConsentedAt
+	}
+	consentedAt, err := resolvePrivacyConsent(existingConsentedAt, existing == nil, input.PrivacyConsentAccepted)
+	if err != nil {
+		return nil, err
+	}
+
 	profile := &models.SponsorProfile{
-		AccountID:    accountID,
-		SponsorName:  name,
-		SponsorEmail: email,
-		Phone:        phone,
-		WebsiteURL:   websiteURL,
-		LogoURL:      logoURL,
-		Tags:         tags,
+		AccountID:          accountID,
+		SponsorName:        name,
+		SponsorEmail:       email,
+		Phone:              phone,
+		WebsiteURL:         websiteURL,
+		LogoURL:            logoURL,
+		Tags:               tags,
+		PrivacyConsentedAt: consentedAt,
 	}
 
 	return u.accountRepo.UpsertSponsorProfile(ctx, profile)

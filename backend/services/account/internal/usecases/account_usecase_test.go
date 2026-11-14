@@ -96,6 +96,8 @@ func (m *mockAccountRepository) UpsertOrganizerProfile(ctx context.Context, prof
 	if existing, exists := m.organizerProfiles[profile.AccountID]; exists {
 		existing.OrganizerName = profile.OrganizerName
 		existing.OrganizerEmail = profile.OrganizerEmail
+		existing.Phone = profile.Phone
+		existing.PrivacyConsentedAt = profile.PrivacyConsentedAt
 		return existing, nil
 	}
 	m.organizerProfiles[profile.AccountID] = profile
@@ -127,6 +129,7 @@ func (m *mockAccountRepository) UpsertSponsorProfile(ctx context.Context, profil
 		existing.WebsiteURL = profile.WebsiteURL
 		existing.LogoURL = profile.LogoURL
 		existing.Tags = profile.Tags
+		existing.PrivacyConsentedAt = profile.PrivacyConsentedAt
 		return existing, nil
 	}
 	m.sponsorProfiles[profile.AccountID] = profile
@@ -199,7 +202,11 @@ func TestSponsorDirectoryListsProfilesAndRequiresOrganizer(t *testing.T) {
 	}
 	repo.organizerProfiles[organizerID] = &models.OrganizerProfile{AccountID: organizerID, OrganizerName: "Organizer"}
 	for _, id := range []uuid.UUID{sponsorID, suspendedID} {
-		_, err := uc.UpsertSponsorProfile(ctx, id, usecases.UpsertSponsorProfileInput{SponsorName: "Test Brand", Tags: []string{" Valorant ", "CHESS", "valorant"}})
+		_, err := uc.UpsertSponsorProfile(ctx, id, usecases.UpsertSponsorProfileInput{
+			SponsorName:            "Test Brand",
+			Tags:                   []string{" Valorant ", "CHESS", "valorant"},
+			PrivacyConsentAccepted: true,
+		})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -575,5 +582,90 @@ func TestBatchGetSponsorProfiles(t *testing.T) {
 	}
 	if len(missing) != 1 || missing[0] != missingID {
 		t.Fatalf("unexpected missing IDs: %+v", missing)
+	}
+}
+
+func TestUpsertOrganizerProfile_PrivacyConsentRequiredOnCreate(t *testing.T) {
+	ctx := context.Background()
+	repo := newMockAccountRepository()
+	uc := usecases.NewAccountUseCase(repo)
+	id := uuid.New()
+	repo.accounts[id] = &models.Account{ID: id, Email: "org@example.com", Status: models.AccountStatusActive}
+
+	if _, err := uc.UpsertOrganizerProfile(ctx, id, usecases.UpsertOrganizerProfileInput{
+		OrganizerName:          "Org Name",
+		PrivacyConsentAccepted: false,
+	}); err != usecases.ErrPrivacyConsentRequired {
+		t.Fatalf("expected ErrPrivacyConsentRequired, got %v", err)
+	}
+	if len(repo.organizerProfiles) != 0 {
+		t.Fatal("organizer profile must not be persisted without consent")
+	}
+
+	created, err := uc.UpsertOrganizerProfile(ctx, id, usecases.UpsertOrganizerProfileInput{
+		OrganizerName:          "Org Name",
+		PrivacyConsentAccepted: true,
+	})
+	if err != nil {
+		t.Fatalf("expected creation to succeed with consent, got %v", err)
+	}
+	if created.PrivacyConsentedAt == nil {
+		t.Fatal("expected PrivacyConsentedAt to be recorded")
+	}
+	consentedAt := *created.PrivacyConsentedAt
+
+	updated, err := uc.UpsertOrganizerProfile(ctx, id, usecases.UpsertOrganizerProfileInput{
+		OrganizerName:          "Org Name Updated",
+		PrivacyConsentAccepted: false,
+	})
+	if err != nil {
+		t.Fatalf("expected subsequent update to succeed, got %v", err)
+	}
+	if updated.PrivacyConsentedAt == nil || !updated.PrivacyConsentedAt.Equal(consentedAt) {
+		t.Fatalf("expected original PrivacyConsentedAt %v to be preserved, got %v", consentedAt, updated.PrivacyConsentedAt)
+	}
+}
+
+func TestUpsertSponsorProfile_PrivacyConsentRequiredOnCreate(t *testing.T) {
+	ctx := context.Background()
+	repo := newMockAccountRepository()
+	uc := usecases.NewAccountUseCase(repo)
+	id := uuid.New()
+	repo.accounts[id] = &models.Account{ID: id, Email: "sponsor@example.com", Status: models.AccountStatusActive}
+
+	if _, err := uc.UpsertSponsorProfile(ctx, id, usecases.UpsertSponsorProfileInput{
+		SponsorName:            "Brand Co",
+		Tags:                   []string{"gaming"},
+		PrivacyConsentAccepted: false,
+	}); err != usecases.ErrPrivacyConsentRequired {
+		t.Fatalf("expected ErrPrivacyConsentRequired, got %v", err)
+	}
+	if len(repo.sponsorProfiles) != 0 {
+		t.Fatal("sponsor profile must not be persisted without consent")
+	}
+
+	created, err := uc.UpsertSponsorProfile(ctx, id, usecases.UpsertSponsorProfileInput{
+		SponsorName:            "Brand Co",
+		Tags:                   []string{"gaming"},
+		PrivacyConsentAccepted: true,
+	})
+	if err != nil {
+		t.Fatalf("expected creation to succeed with consent, got %v", err)
+	}
+	if created.PrivacyConsentedAt == nil {
+		t.Fatal("expected PrivacyConsentedAt to be recorded")
+	}
+	consentedAt := *created.PrivacyConsentedAt
+
+	updated, err := uc.UpsertSponsorProfile(ctx, id, usecases.UpsertSponsorProfileInput{
+		SponsorName:            "Brand Co Updated",
+		Tags:                   []string{"gaming", "esports"},
+		PrivacyConsentAccepted: false,
+	})
+	if err != nil {
+		t.Fatalf("expected subsequent update to succeed, got %v", err)
+	}
+	if updated.PrivacyConsentedAt == nil || !updated.PrivacyConsentedAt.Equal(consentedAt) {
+		t.Fatalf("expected original PrivacyConsentedAt %v to be preserved, got %v", consentedAt, updated.PrivacyConsentedAt)
 	}
 }

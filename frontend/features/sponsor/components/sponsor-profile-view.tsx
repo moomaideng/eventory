@@ -20,6 +20,7 @@ interface SponsorProfileViewProps {
   websiteUrl?: string | null;
   logoUrl?: string | null;
   tags: string[];
+  privacyConsentedAt?: string | null;
   onEdit: () => void;
 }
 
@@ -30,6 +31,7 @@ export function SponsorProfileView({
   websiteUrl,
   logoUrl,
   tags,
+  privacyConsentedAt,
   onEdit,
 }: SponsorProfileViewProps) {
   return (
@@ -104,6 +106,12 @@ export function SponsorProfileView({
               </Badge>
             ))}
           </div>
+          {privacyConsentedAt ? (
+            <p className="text-muted-foreground pt-1 text-xs">
+              Data privacy consent granted on{" "}
+              {new Date(privacyConsentedAt).toLocaleDateString()}
+            </p>
+          ) : null}
         </div>
       </CardContent>
       <CardFooter className="justify-end">

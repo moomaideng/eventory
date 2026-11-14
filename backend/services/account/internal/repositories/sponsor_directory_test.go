@@ -27,7 +27,7 @@ func TestSponsorDirectoryFiltersPostgres(t *testing.T) {
 	t.Cleanup(func() { tx.Rollback() })
 	for _, statement := range []string{
 		"CREATE TEMP TABLE accounts (id uuid PRIMARY KEY, status text) ON COMMIT DROP",
-		"CREATE TEMP TABLE sponsor_profiles (account_id uuid PRIMARY KEY, sponsor_name text, sponsor_email text, tags jsonb, created_at timestamptz, updated_at timestamptz) ON COMMIT DROP",
+		"CREATE TEMP TABLE sponsor_profiles (account_id uuid PRIMARY KEY, sponsor_name text, sponsor_email text, tags jsonb, privacy_consented_at timestamptz, created_at timestamptz, updated_at timestamptz) ON COMMIT DROP",
 		"INSERT INTO accounts VALUES ('00000000-0000-0000-0000-000000000001','ACTIVE'), ('00000000-0000-0000-0000-000000000002','ACTIVE'), ('00000000-0000-0000-0000-000000000003','SUSPENDED')",
 		`INSERT INTO sponsor_profiles (account_id, sponsor_name, sponsor_email, tags) VALUES ('00000000-0000-0000-0000-000000000001','Alpha','a@example.com','["gaming","valorant"]'), ('00000000-0000-0000-0000-000000000002','GameHub','b@example.com','["gaming","chess"]'), ('00000000-0000-0000-0000-000000000003','Hidden','c@example.com','["secret"]')`,
 	} {

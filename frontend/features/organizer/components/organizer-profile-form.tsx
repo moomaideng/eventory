@@ -34,16 +34,25 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
-import { organizerProfileSchema, type OrganizerProfileInput } from "../schemas";
+import {
+  organizerCreateSchema,
+  organizerProfileSchema,
+  type OrganizerProfileInput,
+} from "../schemas";
+import { PrivacyConsentField } from "@/components/privacy-consent-field";
 
 type FieldErrors = Partial<
-  Record<"organizerName" | "organizerEmail" | "phone", string>
+  Record<
+    "organizerName" | "organizerEmail" | "phone" | "privacyConsentAccepted",
+    string
+  >
 >;
 
 interface OrganizerProfileFormProps {
   initialName: string;
   initialEmail: string;
   initialPhone: string;
+  isCreating?: boolean;
   onCancel: () => void;
   onConfirmSave: (data: OrganizerProfileInput) => Promise<boolean>;
   isSaving: boolean;
@@ -54,6 +63,7 @@ export function OrganizerProfileForm({
   initialName,
   initialEmail,
   initialPhone,
+  isCreating = false,
   onCancel,
   onConfirmSave,
   isSaving,
@@ -62,6 +72,7 @@ export function OrganizerProfileForm({
   const [organizerName, setOrganizerName] = useState(initialName);
   const [organizerEmail, setOrganizerEmail] = useState(initialEmail);
   const [phone, setPhone] = useState(initialPhone);
+  const [privacyConsentAccepted, setPrivacyConsentAccepted] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [dialogOpen, setDialogOpen] = useState(false);
   const [pendingData, setPendingData] = useState<OrganizerProfileInput | null>(
@@ -71,10 +82,12 @@ export function OrganizerProfileForm({
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    const result = organizerProfileSchema.safeParse({
+    const schema = isCreating ? organizerCreateSchema : organizerProfileSchema;
+    const result = schema.safeParse({
       organizerName,
       organizerEmail,
       phone,
+      privacyConsentAccepted: isCreating ? privacyConsentAccepted : undefined,
     });
 
     if (!result.success) {
@@ -83,6 +96,7 @@ export function OrganizerProfileForm({
         organizerName: flat.organizerName?.[0],
         organizerEmail: flat.organizerEmail?.[0],
         phone: flat.phone?.[0],
+        privacyConsentAccepted: flat.privacyConsentAccepted?.[0],
       });
       return;
     }
@@ -179,6 +193,24 @@ export function OrganizerProfileForm({
                 <FieldError>{fieldErrors.phone}</FieldError>
               ) : null}
             </Field>
+
+            {isCreating ? (
+              <PrivacyConsentField
+                id="settings-organizer-privacy-consent"
+                checked={privacyConsentAccepted}
+                onCheckedChange={(checked) => {
+                  setPrivacyConsentAccepted(checked);
+                  if (checked && fieldErrors.privacyConsentAccepted) {
+                    setFieldErrors((prev) => ({
+                      ...prev,
+                      privacyConsentAccepted: undefined,
+                    }));
+                  }
+                }}
+                description="Your organizer name and contact details will be saved to our database and displayed to participants and sponsors on tournaments you host."
+                error={fieldErrors.privacyConsentAccepted}
+              />
+            ) : null}
           </FieldGroup>
         </CardContent>
         <CardFooter className="justify-end gap-3">

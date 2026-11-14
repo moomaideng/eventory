@@ -34,6 +34,7 @@ import {
 import { uploadSponsorLogo, validateSponsorLogo } from "../logo-upload";
 
 import { SponsorTagsField } from "./sponsor-tags-field";
+import { PrivacyConsentField } from "@/components/privacy-consent-field";
 
 type FieldErrors = Partial<Record<keyof SponsorOnboardingValues, string>>;
 
@@ -65,6 +66,7 @@ function SponsorOnboardingForm({
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [tags, setTags] = useState<string[]>([]);
   const [tagDraft, setTagDraft] = useState("");
+  const [privacyConsentAccepted, setPrivacyConsentAccepted] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [apiError, setApiError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -79,6 +81,7 @@ function SponsorOnboardingForm({
       websiteUrl,
       logoUrl,
       tags: [...tags, ...parseSponsorTagDraft(tagDraft)],
+      privacyConsentAccepted,
     });
 
     if (!validation.success) {
@@ -106,6 +109,7 @@ function SponsorOnboardingForm({
         websiteUrl: validation.data.websiteUrl,
         logoUrl: uploadedLogoUrl,
         tags: validation.data.tags,
+        privacyConsentAccepted: validation.data.privacyConsentAccepted,
       });
 
       if (error || !data) {
@@ -127,8 +131,6 @@ function SponsorOnboardingForm({
       setIsSubmitting(false);
     }
   }
-
-  const isNameValid = sponsorName.trim().length > 0;
 
   return (
     <>
@@ -177,7 +179,7 @@ function SponsorOnboardingForm({
         </Button>
       </div>
 
-      <form onSubmit={handleSubmit} className="mt-2 flex flex-col gap-4">
+      <form onSubmit={handleSubmit} noValidate className="mt-2 flex flex-col gap-4">
         <FieldGroup>
           {/* Sponsor / Company Name Field */}
           <Field data-invalid={Boolean(fieldErrors.sponsorName)}>
@@ -306,6 +308,23 @@ function SponsorOnboardingForm({
             error={fieldErrors.tags}
             disabled={isSubmitting}
           />
+          <PrivacyConsentField
+            id="onboarding-sponsor-privacy-consent"
+            checked={privacyConsentAccepted}
+            onCheckedChange={(checked) => {
+              setPrivacyConsentAccepted(checked);
+              if (checked && fieldErrors.privacyConsentAccepted) {
+                setFieldErrors((prev) => ({
+                  ...prev,
+                  privacyConsentAccepted: undefined,
+                }));
+              }
+              if (apiError) setApiError("");
+            }}
+            description="Your sponsor name, contact email, website, logo, and tags will be saved to our database and shown to organizers in the Sponsor Directory."
+            error={fieldErrors.privacyConsentAccepted}
+            disabled={isSubmitting}
+          />
         </FieldGroup>
 
         {/* API Error Message */}
@@ -322,7 +341,7 @@ function SponsorOnboardingForm({
         <div className="mt-2 flex flex-col gap-2">
           <Button
             type="submit"
-            disabled={isSubmitting || !isNameValid}
+            disabled={isSubmitting}
             className="w-full font-semibold"
           >
             {isSubmitting ? (

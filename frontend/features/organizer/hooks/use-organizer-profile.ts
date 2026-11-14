@@ -135,6 +135,8 @@ export function useOrganizerProfile(
             body: {
               organizerName: validation.data.organizerName,
               organizerEmail: validation.data.organizerEmail,
+              phone: validation.data.phone,
+              privacyConsentAccepted: validation.data.privacyConsentAccepted,
             },
           }
         );
