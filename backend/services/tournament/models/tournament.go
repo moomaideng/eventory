@@ -95,16 +95,30 @@ func (t *Tournament) OwnerID() uuid.UUID {
 	return uuid.Nil
 }
 
+// ValidateTeamID reports whether id is an 8-character alphanumeric team identifier.
+func ValidateTeamID(id string) bool {
+	if len(id) != 8 {
+		return false
+	}
+	for i := 0; i < len(id); i++ {
+		c := id[i]
+		if !((c >= '0' && c <= '9') || (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z')) {
+			return false
+		}
+	}
+	return true
+}
+
 // TournamentTeam is the single persisted record for a team throughout
 // formation, locking, organizer review, and confirmed registration.
 type TournamentTeam struct {
-	ID                 uuid.UUID              `gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
-	TournamentID       uuid.UUID              `gorm:"type:uuid;not null;index;uniqueIndex:idx_tournament_team_active_name,where:status <> 'REJECTED';index:idx_tournament_teams_status,priority:1"`
+	TournamentID       uuid.UUID              `gorm:"type:uuid;primaryKey;not null;uniqueIndex:idx_tournament_team_active_name,where:status <> 'REJECTED';index:idx_tournament_teams_status,priority:1"`
+	ID                 string                 `gorm:"type:varchar(8);primaryKey;not null"`
 	Tournament         Tournament             `gorm:"foreignKey:TournamentID;constraint:OnDelete:CASCADE;"`
 	Name               string                 `gorm:"type:varchar(120);not null;uniqueIndex:idx_tournament_team_active_name,where:status <> 'REJECTED'"`
 	InviteCode         *string                `gorm:"type:varchar(6);uniqueIndex"`
 	Status             TournamentTeamStatus   `gorm:"type:varchar(16);not null;default:'FORMING';index:idx_tournament_teams_status,priority:2"`
-	Members            []TournamentTeamMember `gorm:"foreignKey:TournamentTeamID;constraint:OnDelete:CASCADE;"`
+	Members            []TournamentTeamMember `gorm:"foreignKey:TournamentID,TournamentTeamID;references:TournamentID,ID;constraint:OnDelete:CASCADE;"`
 	CreatedAt          time.Time
 	LockedAt           *time.Time
 	PaymentAttemptID   *uuid.UUID `gorm:"type:uuid"`
@@ -117,7 +131,8 @@ type TournamentTeam struct {
 
 type TournamentTeamMember struct {
 	ID               uuid.UUID                `gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
-	TournamentTeamID uuid.UUID                `gorm:"type:uuid;not null;index;uniqueIndex:idx_tournament_team_member"`
+	TournamentID     uuid.UUID                `gorm:"type:uuid;not null;index;uniqueIndex:idx_tournament_team_member"`
+	TournamentTeamID string                   `gorm:"type:varchar(8);not null;index;uniqueIndex:idx_tournament_team_member"`
 	AccountID        uuid.UUID                `gorm:"type:uuid;not null;index;uniqueIndex:idx_tournament_team_member"`
 	Role             TournamentTeamMemberRole `gorm:"type:varchar(16);not null"`
 	JoinedAt         time.Time                `gorm:"not null;autoCreateTime"`

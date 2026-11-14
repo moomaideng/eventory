@@ -122,11 +122,11 @@ func NewTeamLobbyUseCase(
 	}
 }
 
-func (u *TeamLobbyUseCase) RefreshSubmission(ctx context.Context, teamID, accountID uuid.UUID) (*TeamLobbyView, error) {
+func (u *TeamLobbyUseCase) RefreshSubmission(ctx context.Context, tournamentID uuid.UUID, teamID string, accountID uuid.UUID) (*TeamLobbyView, error) {
 	if err := u.ensureActiveAccount(ctx, accountID); err != nil {
 		return nil, err
 	}
-	team, err := u.captainTeam(ctx, teamID, accountID)
+	team, err := u.captainTeam(ctx, tournamentID, teamID, accountID)
 	if err != nil {
 		return nil, err
 	}
@@ -135,11 +135,16 @@ func (u *TeamLobbyUseCase) RefreshSubmission(ctx context.Context, teamID, accoun
 			return nil, err
 		}
 	}
-	team, err = u.repo.FindByID(ctx, teamID)
+	team, err = u.repo.FindByID(ctx, tournamentID, teamID)
 	if err != nil {
 		return nil, translateLobbyError(err)
 	}
 	return u.toView(ctx, team)
+}
+
+type InviteResolution struct {
+	TournamentID uuid.UUID
+	TeamID       string
 }
 
 type TeamLobbyView struct {
@@ -180,7 +185,11 @@ func (u *TeamLobbyUseCase) Create(ctx context.Context, tournamentID, captainAcco
 		return nil, ErrRegistrationNotOpen
 	}
 	answers := firstAnswers(submitted)
-	teamID, membershipID := uuid.New(), uuid.New()
+	teamID, err := generateTeamID()
+	if err != nil {
+		return nil, err
+	}
+	membershipID := uuid.New()
 	if err := u.saveNewRegistrationAnswers(ctx, tournamentID, captainAccountID, answers); err != nil {
 		return nil, translateLobbyError(err)
 	}
@@ -228,7 +237,11 @@ func (u *TeamLobbyUseCase) RegisterSolo(
 		return nil, ErrRegistrationNotOpen
 	}
 
-	teamID, membershipID := uuid.New(), uuid.New()
+	teamID, err := generateTeamID()
+	if err != nil {
+		return nil, err
+	}
+	membershipID := uuid.New()
 	if err := u.saveNewRegistrationAnswers(ctx, tournamentID, accountID, answers); err != nil {
 		return nil, err
 	}
@@ -264,7 +277,7 @@ func (u *TeamLobbyUseCase) RegisterSolo(
 		return nil, translateLobbyError(err)
 	}
 
-	locked, err := u.repo.Lock(ctx, created.ID)
+	locked, err := u.repo.Lock(ctx, created.TournamentID, created.ID)
 	if err != nil {
 		return nil, translateLobbyError(err)
 	}
@@ -273,7 +286,7 @@ func (u *TeamLobbyUseCase) RegisterSolo(
 		if err := u.Reconcile(ctx, locked); err != nil {
 			return nil, err
 		}
-		locked, err = u.repo.FindByID(ctx, created.ID)
+		locked, err = u.repo.FindByID(ctx, created.TournamentID, created.ID)
 		if err != nil {
 			return nil, translateLobbyError(err)
 		}
@@ -284,7 +297,21 @@ func (u *TeamLobbyUseCase) RegisterSolo(
 	return u.toView(ctx, locked)
 }
 
-func (u *TeamLobbyUseCase) GetByInviteCode(ctx context.Context, inviteCode string, viewerAccountID uuid.UUID) (*TeamLobbyView, error) {
+func (u *TeamLobbyUseCase) GetByID(ctx context.Context, tournamentID uuid.UUID, teamID string, viewerAccountID uuid.UUID) (*TeamLobbyView, error) {
+	if err := u.ensureActiveAccount(ctx, viewerAccountID); err != nil {
+		return nil, err
+	}
+	if !models.ValidateTeamID(teamID) {
+		return nil, ErrTeamLobbyNotFound
+	}
+	team, err := u.repo.FindByID(ctx, tournamentID, teamID)
+	if err != nil {
+		return nil, translateLobbyError(err)
+	}
+	return u.toView(ctx, team)
+}
+
+func (u *TeamLobbyUseCase) ResolveByInviteCode(ctx context.Context, inviteCode string, viewerAccountID uuid.UUID) (*InviteResolution, error) {
 	if err := u.ensureActiveAccount(ctx, viewerAccountID); err != nil {
 		return nil, err
 	}
@@ -296,7 +323,10 @@ func (u *TeamLobbyUseCase) GetByInviteCode(ctx context.Context, inviteCode strin
 	if err != nil {
 		return nil, translateLobbyError(err)
 	}
-	return u.toView(ctx, team)
+	return &InviteResolution{
+		TournamentID: team.TournamentID,
+		TeamID:       team.ID,
+	}, nil
 }
 
 func (u *TeamLobbyUseCase) GetActiveForTournament(ctx context.Context, tournamentID, accountID uuid.UUID) (*TeamLobbyView, error) {
@@ -310,17 +340,23 @@ func (u *TeamLobbyUseCase) GetActiveForTournament(ctx context.Context, tournamen
 	return u.toView(ctx, team)
 }
 
-func (u *TeamLobbyUseCase) Join(ctx context.Context, inviteCode string, memberAccountID uuid.UUID, submitted ...[]models.FieldAnswer) (*TeamLobbyView, error) {
+func (u *TeamLobbyUseCase) Join(ctx context.Context, tournamentID uuid.UUID, teamID string, inviteCode string, memberAccountID uuid.UUID, submitted ...[]models.FieldAnswer) (*TeamLobbyView, error) {
 	if err := u.ensureActiveAccount(ctx, memberAccountID); err != nil {
 		return nil, err
+	}
+	if !models.ValidateTeamID(teamID) {
+		return nil, ErrTeamLobbyNotFound
 	}
 	normalized := normalizeInviteCode(inviteCode)
 	if !ValidateInviteCode(normalized) {
 		return nil, ErrInvalidInviteCode
 	}
-	team, err := u.repo.FindByInviteCode(ctx, normalized)
+	team, err := u.repo.FindByID(ctx, tournamentID, teamID)
 	if err != nil {
 		return nil, translateLobbyError(err)
+	}
+	if team.InviteCode == nil || *team.InviteCode != normalized {
+		return nil, ErrInvalidInviteCode
 	}
 	if team.Status != models.TournamentTeamStatusForming {
 		return nil, ErrTeamLobbyNotForming
@@ -336,36 +372,36 @@ func (u *TeamLobbyUseCase) Join(ctx context.Context, inviteCode string, memberAc
 	if err := u.saveNewRegistrationAnswers(ctx, team.TournamentID, memberAccountID, answers); err != nil {
 		return nil, translateLobbyError(err)
 	}
-	joined, err := u.repo.Join(ctx, team.ID, memberAccountID, membershipID)
+	joined, err := u.repo.Join(ctx, team.TournamentID, team.ID, memberAccountID, membershipID)
 	if err != nil {
 		return nil, translateLobbyError(err)
 	}
 	return u.toView(ctx, joined)
 }
 
-func (u *TeamLobbyUseCase) RegenerateInvite(ctx context.Context, teamID, accountID uuid.UUID) (*TeamLobbyView, error) {
+func (u *TeamLobbyUseCase) RegenerateInvite(ctx context.Context, tournamentID uuid.UUID, teamID string, accountID uuid.UUID) (*TeamLobbyView, error) {
 	if err := u.ensureActiveAccount(ctx, accountID); err != nil {
 		return nil, err
 	}
-	if _, err := u.captainTeam(ctx, teamID, accountID); err != nil {
+	if _, err := u.captainTeam(ctx, tournamentID, teamID, accountID); err != nil {
 		return nil, err
 	}
 	inviteCode, err := generateInviteCode()
 	if err != nil {
 		return nil, err
 	}
-	team, err := u.repo.RegenerateInvite(ctx, teamID, inviteCode)
+	team, err := u.repo.RegenerateInvite(ctx, tournamentID, teamID, inviteCode)
 	if err != nil {
 		return nil, translateLobbyError(err)
 	}
 	return u.toView(ctx, team)
 }
 
-func (u *TeamLobbyUseCase) Lock(ctx context.Context, teamID, accountID uuid.UUID) (*TeamLobbyView, error) {
+func (u *TeamLobbyUseCase) Lock(ctx context.Context, tournamentID uuid.UUID, teamID string, accountID uuid.UUID) (*TeamLobbyView, error) {
 	if err := u.ensureActiveAccount(ctx, accountID); err != nil {
 		return nil, err
 	}
-	team, err := u.captainTeam(ctx, teamID, accountID)
+	team, err := u.captainTeam(ctx, tournamentID, teamID, accountID)
 	if err != nil {
 		return nil, err
 	}
@@ -374,7 +410,7 @@ func (u *TeamLobbyUseCase) Lock(ctx context.Context, teamID, accountID uuid.UUID
 		if err := u.Reconcile(ctx, team); err != nil {
 			return nil, err
 		}
-		team, err = u.repo.FindByID(ctx, teamID)
+		team, err = u.repo.FindByID(ctx, tournamentID, teamID)
 		if err != nil {
 			return nil, translateLobbyError(err)
 		}
@@ -391,38 +427,38 @@ func (u *TeamLobbyUseCase) Lock(ctx context.Context, teamID, accountID uuid.UUID
 			}
 		}
 	}
-	lockedTeam, err := u.repo.Lock(ctx, teamID, team.Members)
+	lockedTeam, err := u.repo.Lock(ctx, tournamentID, teamID, team.Members)
 	if err != nil {
 		return nil, translateLobbyError(err)
 	}
 	if wasForming && lockedTeam.Status == models.TournamentTeamStatusLocked {
 		u.publishRegistrationSubmitted(ctx, lockedTeam)
 	}
-	return u.RefreshSubmission(ctx, teamID, accountID)
+	return u.RefreshSubmission(ctx, tournamentID, teamID, accountID)
 }
 
-func (u *TeamLobbyUseCase) RemoveMember(ctx context.Context, teamID, memberID, accountID uuid.UUID) (*TeamLobbyView, error) {
+func (u *TeamLobbyUseCase) RemoveMember(ctx context.Context, tournamentID uuid.UUID, teamID string, memberID, accountID uuid.UUID) (*TeamLobbyView, error) {
 	if err := u.ensureActiveAccount(ctx, accountID); err != nil {
 		return nil, err
 	}
-	if _, err := u.captainTeam(ctx, teamID, accountID); err != nil {
+	if _, err := u.captainTeam(ctx, tournamentID, teamID, accountID); err != nil {
 		return nil, err
 	}
-	team, err := u.repo.RemoveMember(ctx, teamID, memberID)
+	team, err := u.repo.RemoveMember(ctx, tournamentID, teamID, memberID)
 	if err != nil {
 		return nil, translateLobbyError(err)
 	}
 	return u.toView(ctx, team)
 }
 
-func (u *TeamLobbyUseCase) Disband(ctx context.Context, teamID, accountID uuid.UUID) error {
+func (u *TeamLobbyUseCase) Disband(ctx context.Context, tournamentID uuid.UUID, teamID string, accountID uuid.UUID) error {
 	if err := u.ensureActiveAccount(ctx, accountID); err != nil {
 		return err
 	}
-	if _, err := u.captainTeam(ctx, teamID, accountID); err != nil {
+	if _, err := u.captainTeam(ctx, tournamentID, teamID, accountID); err != nil {
 		return err
 	}
-	return translateLobbyError(u.repo.Disband(ctx, teamID))
+	return translateLobbyError(u.repo.Disband(ctx, tournamentID, teamID))
 }
 
 func (u *TeamLobbyUseCase) toView(ctx context.Context, team *models.TournamentTeam) (*TeamLobbyView, error) {
@@ -445,8 +481,11 @@ func (u *TeamLobbyUseCase) toView(ctx context.Context, team *models.TournamentTe
 	return &view, nil
 }
 
-func (u *TeamLobbyUseCase) captainTeam(ctx context.Context, teamID, accountID uuid.UUID) (*models.TournamentTeam, error) {
-	team, err := u.repo.FindByID(ctx, teamID)
+func (u *TeamLobbyUseCase) captainTeam(ctx context.Context, tournamentID uuid.UUID, teamID string, accountID uuid.UUID) (*models.TournamentTeam, error) {
+	if !models.ValidateTeamID(teamID) {
+		return nil, ErrTeamLobbyNotFound
+	}
+	team, err := u.repo.FindByID(ctx, tournamentID, teamID)
 	if err != nil {
 		return nil, translateLobbyError(err)
 	}
@@ -460,6 +499,19 @@ func (u *TeamLobbyUseCase) captainTeam(ctx context.Context, teamID, accountID uu
 
 func normalizeInviteCode(value string) string {
 	return strings.ToUpper(strings.TrimSpace(value))
+}
+
+func generateTeamID() (string, error) {
+	const alphabet = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
+	id := make([]byte, 8)
+	for index := range id {
+		randomIndex, err := cryptorand.Int(cryptorand.Reader, big.NewInt(int64(len(alphabet))))
+		if err != nil {
+			return "", err
+		}
+		id[index] = alphabet[randomIndex.Int64()]
+	}
+	return string(id), nil
 }
 
 func generateInviteCode() (string, error) {
@@ -495,7 +547,7 @@ func (u *TeamLobbyUseCase) Reconcile(ctx context.Context, team *models.Tournamen
 	}
 	request := ports.RegistrationPaymentRequest{
 		PayerAccountID: *team.PaymentPayerID, Source: models.PaymentSourceTeamRegistration,
-		Reference: team.ID.String() + ":" + team.PaymentAttemptID.String(), IdempotencyKey: team.PaymentAttemptID.String(),
+		Reference: team.TournamentID.String() + ":" + team.ID + ":" + team.PaymentAttemptID.String(), IdempotencyKey: team.PaymentAttemptID.String(),
 		Description: desc, AmountMinor: team.PaymentAmountMinor, Currency: money.CurrencyOrDefault(team.Tournament.Currency), ExpiresAt: *team.PaymentExpiresAt,
 	}
 	payment, err := u.payments.EnsureInvoice(ctx, request)
@@ -516,18 +568,22 @@ func (u *TeamLobbyUseCase) Reconcile(ctx context.Context, team *models.Tournamen
 }
 
 // ApplyPaymentOutcome records the result of a payment event on the
-// registration it refers to ("<team id>:<attempt id>"). A team that is gone,
-// no longer pending, or on a newer attempt is left alone, so redelivered and
-// late events are harmless. An event whose terms differ from the attempt
-// returns ErrPaymentMismatch.
+// registration it refers to ("<tournament id>:<team id>:<attempt id>"). A team
+// that is gone, no longer pending, or on a newer attempt is left alone, so
+// redelivered and late events are harmless. An event whose terms differ from the
+// attempt returns ErrPaymentMismatch.
 func (u *TeamLobbyUseCase) ApplyPaymentOutcome(ctx context.Context, outcome PaymentOutcome) error {
-	teamPart, attemptPart, _ := strings.Cut(outcome.Reference, ":")
-	teamID, teamErr := uuid.Parse(teamPart)
-	attemptID, attemptErr := uuid.Parse(attemptPart)
-	if teamErr != nil || attemptErr != nil {
+	parts := strings.Split(outcome.Reference, ":")
+	if len(parts) != 3 {
 		return fmt.Errorf("%w: registration reference %q", ErrPaymentMismatch, outcome.Reference)
 	}
-	team, err := u.repo.FindByID(ctx, teamID)
+	tournamentID, tournamentErr := uuid.Parse(parts[0])
+	teamID := parts[1]
+	attemptID, attemptErr := uuid.Parse(parts[2])
+	if tournamentErr != nil || !models.ValidateTeamID(teamID) || attemptErr != nil {
+		return fmt.Errorf("%w: registration reference %q", ErrPaymentMismatch, outcome.Reference)
+	}
+	team, err := u.repo.FindByID(ctx, tournamentID, teamID)
 	if errors.Is(err, repositories.ErrTeamLobbyNotFound) {
 		return nil
 	}
@@ -568,7 +624,7 @@ func (u *TeamLobbyUseCase) publishRegistrationSubmitted(ctx context.Context, tea
 
 	members := team.Members
 	if len(members) == 0 {
-		t, err := u.repo.FindByID(ctx, team.ID)
+		t, err := u.repo.FindByID(ctx, team.TournamentID, team.ID)
 		if err == nil && t != nil {
 			members = t.Members
 			if tourn.ID == uuid.Nil {
@@ -582,7 +638,7 @@ func (u *TeamLobbyUseCase) publishRegistrationSubmitted(ctx context.Context, tea
 	var recipientID uuid.UUID
 	var recipientRole events.RecipientRole
 	var regMode events.RegistrationMode
-	var teamID *uuid.UUID
+	var teamID *string
 	var teamName *string
 
 	if isSolo {

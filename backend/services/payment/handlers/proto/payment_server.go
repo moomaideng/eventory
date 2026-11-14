@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/subtle"
 	"errors"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -22,7 +23,7 @@ import (
 type PaymentUseCase interface {
 	Create(context.Context, usecases.CreatePayment) (*models.Invoice, error)
 	GetForService(context.Context, uuid.UUID) (*models.Invoice, error)
-	RefundRegistration(context.Context, uuid.UUID, uuid.UUID) (*models.Invoice, error)
+	RefundRegistration(context.Context, uuid.UUID, string) (*models.Invoice, error)
 }
 
 type PaymentServer struct {
@@ -79,9 +80,9 @@ func (s *PaymentServer) RefundRegistration(ctx context.Context, req *paymentv1.R
 	if err != nil {
 		return nil, err
 	}
-	entry, err := parseID(req.GetEntryId())
-	if err != nil {
-		return nil, err
+	entry := strings.TrimSpace(req.GetEntryId())
+	if entry == "" {
+		return nil, status.Error(codes.InvalidArgument, "Invalid entry ID")
 	}
 	invoice, err := s.uc.RefundRegistration(ctx, id, entry)
 	if err != nil {

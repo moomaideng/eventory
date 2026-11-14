@@ -36,7 +36,7 @@ func (tx *mockReviewTx) LockTournament(tournamentID uuid.UUID) (*models.Tourname
 	return tx.repo.tournament, nil
 }
 
-func (tx *mockReviewTx) LockTeamAndAcceptedCount(tournamentID, teamID uuid.UUID) (*models.TournamentTeam, int, error) {
+func (tx *mockReviewTx) LockTeamAndAcceptedCount(tournamentID uuid.UUID, teamID string) (*models.TournamentTeam, int, error) {
 	if tx.repo.team == nil {
 		return nil, 0, repositories.ErrTeamEntryNotFound
 	}
@@ -54,13 +54,13 @@ func (m *mockReviewRepo) PendingRefunds(ctx context.Context) ([]models.Tournamen
 	return nil, nil
 }
 
-func (m *mockReviewRepo) MarkRefunded(ctx context.Context, teamID, paymentID uuid.UUID) error {
+func (m *mockReviewRepo) MarkRefunded(ctx context.Context, tournamentID uuid.UUID, teamID string, paymentID uuid.UUID) error {
 	return nil
 }
 
 type mockRefundService struct{}
 
-func (m *mockRefundService) RefundRegistration(ctx context.Context, entryID, paymentID uuid.UUID) (*ports.RegistrationPayment, error) {
+func (m *mockRefundService) RefundRegistration(ctx context.Context, paymentID uuid.UUID, entryID string) (*ports.RegistrationPayment, error) {
 	return nil, nil
 }
 
@@ -86,7 +86,7 @@ func TestTeamReviewUseCase_Review(t *testing.T) {
 	reviewerID := uuid.New()
 	captainID := uuid.New()
 	tournamentID := uuid.New()
-	teamID := uuid.New()
+	teamID := "Ab12Cd34"
 
 	accSvc := newStubAccountService().
 		withAccount(reviewerID, "organizer", "Admin Host").

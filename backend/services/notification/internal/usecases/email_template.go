@@ -65,7 +65,7 @@ func RenderRegistrationEmail(event events.RegistrationSubmitted, publicWebURL st
 	}
 	data := templateData{
 		DisplayName: event.Data.Recipient.DisplayName, TournamentName: event.Data.TournamentName,
-		RegistrationID: event.Data.RegistrationID.String(), RegistrationMode: string(event.Data.RegistrationMode),
+		RegistrationID: event.Data.RegistrationID, RegistrationMode: string(event.Data.RegistrationMode),
 		TeamLine:      teamLine,
 		TournamentURL: strings.TrimRight(publicWebURL, "/") + "/tournaments/" + event.Data.TournamentID.String(),
 	}

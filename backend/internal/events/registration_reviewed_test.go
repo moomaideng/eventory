@@ -18,7 +18,7 @@ func validReviewedEvent() RegistrationReviewed {
 		Data: RegistrationReviewedData{
 			TournamentID:   uuid.New(),
 			TournamentName: "Cyber Championship",
-			TeamID:         uuid.New(),
+			TeamID:         "Ab12Cd34",
 			TeamName:       "Phoenix Squad",
 			Recipient: EventRecipient{
 				AccountID:   uuid.New(),

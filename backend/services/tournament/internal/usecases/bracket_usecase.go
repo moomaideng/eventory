@@ -67,17 +67,17 @@ type DefineBracketMatchInput struct {
 
 type Stage1SeedAssignment struct {
 	MatchID uuid.UUID
-	TeamIDs []uuid.UUID
+	TeamIDs []string
 }
 
 // SwapSlot identifies one team inside one match.
 type SwapSlot struct {
 	MatchID uuid.UUID
-	TeamID  uuid.UUID
+	TeamID  string
 }
 
 type TeamPlacementInput struct {
-	TeamID    uuid.UUID
+	TeamID    string
 	FinalRank int
 	Score     *string
 }
@@ -85,7 +85,7 @@ type TeamPlacementInput struct {
 type RecordMatchResultsResult struct {
 	MatchID        uuid.UUID
 	IsCompleted    bool
-	AdvancingTeams []uuid.UUID
+	AdvancingTeams []string
 	TargetMatchID  *uuid.UUID
 }
 
@@ -421,14 +421,14 @@ func (u *BracketUseCase) SeedStage1(
 		return nil, ErrBracketStage1CapacityMismatch
 	}
 
-	acceptedTeamMap := make(map[uuid.UUID]bool, len(acceptedTeams))
+	acceptedTeamMap := make(map[string]bool, len(acceptedTeams))
 	for _, t := range acceptedTeams {
 		acceptedTeamMap[t.ID] = true
 	}
 
 	entries := make([]models.MatchEntry, 0)
 	if len(assignments) > 0 {
-		assignedTeams := make(map[uuid.UUID]bool)
+		assignedTeams := make(map[string]bool)
 		for _, a := range assignments {
 			if !stage1MatchMap[a.MatchID] {
 				return nil, ErrBracketInvalidSeedMatch
@@ -445,9 +445,10 @@ func (u *BracketUseCase) SeedStage1(
 				}
 				assignedTeams[teamID] = true
 				entries = append(entries, models.MatchEntry{
-					MatchID:  a.MatchID,
-					TeamID:   teamID,
-					Advances: false,
+					MatchID:      a.MatchID,
+					TournamentID: tournamentID,
+					TeamID:       teamID,
+					Advances:     false,
 				})
 			}
 		}
@@ -456,9 +457,10 @@ func (u *BracketUseCase) SeedStage1(
 		for i, team := range acceptedTeams {
 			targetMatch := stage1Matches[i%len(stage1Matches)]
 			entries = append(entries, models.MatchEntry{
-				MatchID:  targetMatch.ID,
-				TeamID:   team.ID,
-				Advances: false,
+				MatchID:      targetMatch.ID,
+				TournamentID: tournamentID,
+				TeamID:       team.ID,
+				Advances:     false,
 			})
 		}
 	}
@@ -500,7 +502,7 @@ func (u *BracketUseCase) RecordMatchResults(
 		return nil, ErrBracketNoParticipants
 	}
 
-	participantSet := make(map[uuid.UUID]bool, len(match.Entries))
+	participantSet := make(map[string]bool, len(match.Entries))
 	for _, entry := range match.Entries {
 		participantSet[entry.TeamID] = true
 	}
@@ -509,8 +511,8 @@ func (u *BracketUseCase) RecordMatchResults(
 		return nil, ErrBracketMissingTeamPlacement
 	}
 
-	rankUpdates := make(map[uuid.UUID]int, len(placements))
-	scoreUpdates := make(map[uuid.UUID]*string, len(placements))
+	rankUpdates := make(map[string]int, len(placements))
+	scoreUpdates := make(map[string]*string, len(placements))
 	for _, p := range placements {
 		if !participantSet[p.TeamID] {
 			return nil, ErrBracketUnknownTeamPlacement
@@ -525,8 +527,8 @@ func (u *BracketUseCase) RecordMatchResults(
 		scoreUpdates[p.TeamID] = p.Score
 	}
 
-	advanceFlags := make(map[uuid.UUID]bool, len(match.Entries))
-	advancingTeamIDs := make([]uuid.UUID, 0)
+	advanceFlags := make(map[string]bool, len(match.Entries))
+	advancingTeamIDs := make([]string, 0)
 	for teamID, rank := range rankUpdates {
 		advances := rank <= match.AdvancingCount
 		advanceFlags[teamID] = advances

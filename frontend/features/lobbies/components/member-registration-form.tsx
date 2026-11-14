@@ -22,9 +22,11 @@ import { isRegistrationOpen } from "@/features/tournaments/utils";
 
 export function MemberRegistrationForm({
   lobby,
+  inviteCode,
   onSaved,
 }: {
   lobby: Lobby;
+  inviteCode?: string;
   onSaved: () => Promise<unknown>;
 }) {
   const { authorizationHeader } = useAuth();
@@ -53,16 +55,29 @@ export function MemberRegistrationForm({
     setError("");
     try {
       const result = joining
-        ? await apiClient.POST("/api/v1/lobbies/{inviteCode}/join", {
-            params: { path: { inviteCode: lobby.inviteCode! } },
+        ? await apiClient.POST("/api/v1/tournaments/{tournamentId}/teams/{teamId}/join", {
+            params: {
+              path: {
+                tournamentId: lobby.tournament.id,
+                teamId: lobby.id,
+              },
+            },
             headers: { Authorization: authorizationHeader },
-            body: { answers },
+            body: { inviteCode: inviteCode ?? "", answers },
           })
-        : await apiClient.PUT("/api/v1/lobbies/{id}/registration", {
-            params: { path: { id: lobby.id } },
-            headers: { Authorization: authorizationHeader },
-            body: { answers },
-          });
+        : await apiClient.PUT(
+            "/api/v1/tournaments/{tournamentId}/teams/{teamId}/registration",
+            {
+              params: {
+                path: {
+                  tournamentId: lobby.tournament.id,
+                  teamId: lobby.id,
+                },
+              },
+              headers: { Authorization: authorizationHeader },
+              body: { answers },
+            }
+          );
       if (result.error) {
         setError(
           problemMessage(result.error, "Your registration could not be saved.")

@@ -37,7 +37,7 @@ func (tx *refundReviewTx) LockTournament(tournamentID uuid.UUID) (*models.Tourna
 	}, nil
 }
 
-func (tx *refundReviewTx) LockTeamAndAcceptedCount(_, _ uuid.UUID) (*models.TournamentTeam, int, error) {
+func (tx *refundReviewTx) LockTeamAndAcceptedCount(_ uuid.UUID, _ string) (*models.TournamentTeam, int, error) {
 	return &tx.repo.team, 0, nil
 }
 
@@ -54,8 +54,8 @@ func (r *refundReviewRepo) PendingRefunds(context.Context) ([]models.TournamentT
 	return nil, nil
 }
 
-func (r *refundReviewRepo) MarkRefunded(_ context.Context, teamID, paymentID uuid.UUID) error {
-	if teamID != r.team.ID || paymentID != *r.team.PaymentID {
+func (r *refundReviewRepo) MarkRefunded(_ context.Context, tournamentID uuid.UUID, teamID string, paymentID uuid.UUID) error {
+	if tournamentID != r.team.TournamentID || teamID != r.team.ID || paymentID != *r.team.PaymentID {
 		return errors.New("wrong refund target")
 	}
 	r.marked = true
@@ -67,17 +67,18 @@ type refundPaymentStub struct {
 	calls int
 }
 
-func (p *refundPaymentStub) RefundRegistration(_ context.Context, paymentID, entryID uuid.UUID) (*ports.RegistrationPayment, error) {
+func (p *refundPaymentStub) RefundRegistration(_ context.Context, paymentID uuid.UUID, entryID string) (*ports.RegistrationPayment, error) {
 	p.calls++
 	if p.fail {
 		return nil, errors.New("payment service unavailable")
 	}
-	return &ports.RegistrationPayment{ID: paymentID, Reference: entryID.String() + ":attempt", Status: "REFUNDED"}, nil
+	return &ports.RegistrationPayment{ID: paymentID, Reference: entryID + ":attempt", Status: "REFUNDED"}, nil
 }
 
 func TestRejectedRegistrationRefundRetries(t *testing.T) {
-	entryID, paymentID, tournamentID, reviewerID := uuid.New(), uuid.New(), uuid.New(), uuid.New()
-	repo := &refundReviewRepo{ownerID: reviewerID, team: models.TournamentTeam{ID: entryID, Status: models.TournamentTeamStatusLocked, PaymentID: &paymentID}}
+	entryID := "Ab12Cd34"
+	paymentID, tournamentID, reviewerID := uuid.New(), uuid.New(), uuid.New()
+	repo := &refundReviewRepo{ownerID: reviewerID, team: models.TournamentTeam{ID: entryID, TournamentID: tournamentID, Status: models.TournamentTeamStatusLocked, PaymentID: &paymentID}}
 	payments := &refundPaymentStub{fail: true}
 	uc := usecases.NewTeamReviewUseCase(repo, newStubAccountService(), payments)
 	result, err := uc.Review(context.Background(), reviewerID, tournamentID, entryID, "REJECT", "Not eligible")
@@ -99,7 +100,8 @@ func TestRejectedRegistrationRefundRetries(t *testing.T) {
 }
 
 func TestAcceptedRegistrationDoesNotRefund(t *testing.T) {
-	entryID, paymentID, reviewerID := uuid.New(), uuid.New(), uuid.New()
+	entryID := "Ef56Gh78"
+	paymentID, reviewerID := uuid.New(), uuid.New()
 	repo := &refundReviewRepo{ownerID: reviewerID, team: models.TournamentTeam{ID: entryID, Status: models.TournamentTeamStatusLocked, PaymentID: &paymentID}}
 	payments := &refundPaymentStub{}
 	uc := usecases.NewTeamReviewUseCase(repo, newStubAccountService(), payments)

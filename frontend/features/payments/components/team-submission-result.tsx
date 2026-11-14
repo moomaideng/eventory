@@ -13,17 +13,20 @@ import type { Payment } from "@/features/payments/utils";
 export function TeamSubmissionResult({ payment }: { payment: Payment }) {
   const { authorizationHeader } = useAuth();
   const reference = teamPaymentReferenceSchema.safeParse(payment.reference);
-  const teamId = reference.success ? reference.data.split(":")[0] : "";
-  const isTeamPayment = payment.source === "TEAM_REGISTRATION" && !!teamId;
+  const [tournamentId = "", teamId = ""] = reference.success
+    ? reference.data.split(":")
+    : [];
+  const isTeamPayment =
+    payment.source === "TEAM_REGISTRATION" && !!tournamentId && !!teamId;
   const submission = useQuery({
     queryKey: ["team-submission", payment.id, payment.status],
     enabled:
       isTeamPayment && payment.status !== "UNPAID" && payment.status !== "REFUNDED" && !!authorizationHeader,
     queryFn: async () => {
       const result = await apiClient.POST(
-        "/api/v1/lobbies/{id}/submission/refresh",
+        "/api/v1/tournaments/{tournamentId}/teams/{teamId}/submission/refresh",
         {
-          params: { path: { id: teamId } },
+          params: { path: { tournamentId, teamId } },
           headers: { Authorization: authorizationHeader },
         }
       );
@@ -77,7 +80,9 @@ export function TeamSubmissionResult({ payment }: { payment: Payment }) {
               : "Payment was unsuccessful or expired. Your team was not submitted. Return to the lobby to edit your roster or try again."
             : "Your payment result is saved. We are checking the team application; do not create another payment."}
         {team && ["CANCELLED", "EXPIRED"].includes(payment.status) && ["FORMING", "PAYMENT_PENDING"].includes(team.status) && (
-          <RegistrationPaymentButton teamId={team.id}>Try payment again</RegistrationPaymentButton>
+          <RegistrationPaymentButton tournamentId={team.tournament.id} teamId={team.id}>
+            Try payment again
+          </RegistrationPaymentButton>
         )}
         {submission.isError && (
           <Button
@@ -89,7 +94,10 @@ export function TeamSubmissionResult({ payment }: { payment: Payment }) {
           </Button>
         )}
         {team?.inviteCode ? (
-          <Link className="mt-2 block underline" href={`/lobbies/${team.inviteCode}`}>
+          <Link
+            className="mt-2 block underline"
+            href={`/tournaments/${team.tournament.id}/teams/${team.id}`}
+          >
             Return to team lobby
           </Link>
         ) : team ? (

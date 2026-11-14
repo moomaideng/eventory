@@ -13,7 +13,7 @@ import (
 
 type TeamReviewInput struct {
 	TournamentID uuid.UUID `path:"id" doc:"Tournament ID"`
-	EntryID      uuid.UUID `path:"entryId" doc:"Application ID: the team's ID (a solo player registers as a one-person team)"`
+	EntryID      string    `path:"entryId" pattern:"^[A-Za-z0-9]{8}$" doc:"Application ID: the team's 8-character ID (a solo player registers as a one-person team)"`
 	Body         struct {
 		Decision string `json:"decision" enum:"ACCEPT,REJECT" doc:"Accept or reject the application"`
 		Reason   string `json:"reason,omitempty" maxLength:"500" doc:"Optional justification, mainly for rejections; recorded in the audit trail"`
@@ -33,7 +33,7 @@ type TeamReviewResponse struct {
 type TeamReviewOutput struct {
 	Body struct {
 		TournamentID uuid.UUID          `json:"tournamentId"`
-		EntryID      uuid.UUID          `json:"entryId"`
+		EntryID      string             `json:"entryId"`
 		Status       string             `json:"status" enum:"ACCEPTED,REJECTED"`
 		Review       TeamReviewResponse `json:"review"`
 	}

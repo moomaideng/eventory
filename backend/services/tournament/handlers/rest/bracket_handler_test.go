@@ -88,18 +88,18 @@ func (m *mockBracketRepoForHandler) UpdateMatchSchedule(_ context.Context, _, ma
 	return nil
 }
 
-func (m *mockBracketRepoForHandler) SwapMatchEntries(_ context.Context, _, _, _, _ uuid.UUID) error {
+func (m *mockBracketRepoForHandler) SwapMatchEntries(_ context.Context, _ uuid.UUID, _ string, _ uuid.UUID, _ string) error {
 	return nil
 }
 
 func (m *mockBracketRepoForHandler) RecordMatchResults(
 	_ context.Context,
 	_, matchID uuid.UUID,
-	rankUpdates map[uuid.UUID]int,
-	scoreUpdates map[uuid.UUID]*string,
-	advanceFlags map[uuid.UUID]bool,
+	rankUpdates map[string]int,
+	scoreUpdates map[string]*string,
+	advanceFlags map[string]bool,
 	targetMatchID *uuid.UUID,
-	advancingTeamIDs []uuid.UUID,
+	advancingTeamIDs []string,
 ) error {
 	if match, ok := m.matchMap[matchID]; ok {
 		match.IsCompleted = true
@@ -204,8 +204,8 @@ func TestBracketRoutes(t *testing.T) {
 
 	t.Run("POST /tournaments/{id}/seed auto-distributes teams", func(t *testing.T) {
 		stage1MatchID := uuid.New()
-		team1ID := uuid.New()
-		team2ID := uuid.New()
+		team1ID := "TM000001"
+		team2ID := "TM000002"
 
 		repo.stage1Matches = []models.Match{
 			{ID: stage1MatchID, TournamentID: tournamentID, Name: "Heat 1", StageLevel: 1, TeamCount: 2},
@@ -224,8 +224,8 @@ func TestBracketRoutes(t *testing.T) {
 		tourney.Status = models.TournamentStatusOngoing
 		defer func() { tourney.Status = models.TournamentStatusRegistration }()
 		matchID := uuid.New()
-		team1ID := uuid.New()
-		team2ID := uuid.New()
+		team1ID := "TM000001"
+		team2ID := "TM000002"
 
 		targetMatchID := uuid.New()
 		repo.matchMap[targetMatchID] = &models.Match{
@@ -245,15 +245,15 @@ func TestBracketRoutes(t *testing.T) {
 			TargetMatchID:  &targetMatchID,
 			IsCompleted:    false,
 			Entries: []models.MatchEntry{
-				{MatchID: matchID, TeamID: team1ID},
-				{MatchID: matchID, TeamID: team2ID},
+				{MatchID: matchID, TournamentID: tournamentID, TeamID: team1ID},
+				{MatchID: matchID, TournamentID: tournamentID, TeamID: team2ID},
 			},
 		}
 
 		body := map[string]any{
 			"placements": []map[string]any{
-				{"teamId": team1ID.String(), "finalRank": 1, "score": "2"},
-				{"teamId": team2ID.String(), "finalRank": 2, "score": "1"},
+				{"teamId": team1ID, "finalRank": 1, "score": "2"},
+				{"teamId": team2ID, "finalRank": 2, "score": "1"},
 			},
 		}
 

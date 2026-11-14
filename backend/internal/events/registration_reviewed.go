@@ -30,7 +30,7 @@ type RegistrationReviewed struct {
 type RegistrationReviewedData struct {
 	TournamentID   uuid.UUID      `json:"tournament_id"`
 	TournamentName string         `json:"tournament_name"`
-	TeamID         uuid.UUID      `json:"team_id"`
+	TeamID         string         `json:"team_id"`
 	TeamName       string         `json:"team_name"`
 	Recipient      EventRecipient `json:"recipient"`
 	Reason         string         `json:"reason,omitempty"`
@@ -39,6 +39,7 @@ type RegistrationReviewedData struct {
 func (event *RegistrationReviewed) Normalize() {
 	event.Source = strings.TrimSpace(event.Source)
 	event.Data.TournamentName = strings.TrimSpace(event.Data.TournamentName)
+	event.Data.TeamID = strings.TrimSpace(event.Data.TeamID)
 	event.Data.TeamName = strings.TrimSpace(event.Data.TeamName)
 	event.Data.Recipient.Email = strings.ToLower(strings.TrimSpace(event.Data.Recipient.Email))
 	event.Data.Recipient.DisplayName = strings.TrimSpace(event.Data.Recipient.DisplayName)
@@ -58,7 +59,7 @@ func (event RegistrationReviewed) Validate() error {
 	if event.Source == "" || event.OccurredAt.IsZero() {
 		return errors.New("source and occurred_at are required")
 	}
-	if event.Data.TournamentID == uuid.Nil || event.Data.TeamID == uuid.Nil {
+	if event.Data.TournamentID == uuid.Nil || event.Data.TeamID == "" {
 		return errors.New("tournament_id and team_id are required")
 	}
 	if event.Data.TournamentName == "" || event.Data.TeamName == "" {

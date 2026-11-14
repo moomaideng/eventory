@@ -31,7 +31,7 @@ func TestPaymentResultSettlesRegistrationWithoutRefresh(t *testing.T) {
 		if err := app.DB.Model(s.tournament).Updates(map[string]any{"entry_fee_minor": 25000, "min_team_size": 1}).Error; err != nil {
 			t.Fatal(err)
 		}
-		resp, err := s.client.Do(http.MethodPost, "/lobbies/"+s.lobby.ID.String()+"/lock", nil, s.captain.AuthHeaders())
+		resp, err := s.client.Do(http.MethodPost, "/tournaments/"+s.tournament.ID.String()+"/teams/"+s.lobby.ID+"/lock", nil, s.captain.AuthHeaders())
 		if err != nil || resp.StatusCode != 200 {
 			t.Fatalf("lock: %v %v", err, resp)
 		}
@@ -53,7 +53,7 @@ func TestPaymentResultSettlesRegistrationWithoutRefresh(t *testing.T) {
 		var team models.TournamentTeam
 		for deadline := time.Now().Add(20 * time.Second); time.Now().Before(deadline); time.Sleep(200 * time.Millisecond) {
 			team = models.TournamentTeam{}
-			if err := app.DB.First(&team, "id = ?", s.lobby.ID).Error; err != nil {
+			if err := app.DB.First(&team, "tournament_id = ? AND id = ?", s.tournament.ID, s.lobby.ID).Error; err != nil {
 				t.Fatal(err)
 			}
 			if team.Status == want && (want != models.TournamentTeamStatusPaymentPending || team.PaymentAttemptID == nil) {
@@ -72,7 +72,7 @@ func TestPaymentResultSettlesRegistrationWithoutRefresh(t *testing.T) {
 		s, paymentID := pendingLobby(t)
 		pay(t, s, paymentID, "FAILED")
 		waitForStatus(t, s, models.TournamentTeamStatusPaymentPending)
-		resp, err := s.client.Do(http.MethodPost, "/lobbies/"+s.lobby.ID.String()+"/lock", nil, s.captain.AuthHeaders())
+		resp, err := s.client.Do(http.MethodPost, "/tournaments/"+s.tournament.ID.String()+"/teams/"+s.lobby.ID+"/lock", nil, s.captain.AuthHeaders())
 		if err != nil || resp.StatusCode != 200 {
 			t.Fatalf("retry: %v %v", err, resp)
 		}

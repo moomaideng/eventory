@@ -79,3 +79,13 @@ Feature: Tournament team lobby creation and joining
     When the competitor tries to join with an invalid invite code
     Then joining the team lobby should fail
     And the competitor should not be attached to a tournament team
+
+  @US4-2 @roster-visibility
+  Scenario: Anyone can view a team roster while joining still requires the invite code
+    Given a captain has created a forming team lobby with a valid invite code
+    And another competitor has signed in and completed onboarding
+    When the other competitor views the team roster
+    Then the roster should be visible without the invite code
+    When the other competitor tries to join the team with a wrong invite code
+    Then joining the team with a mismatched invite code should fail
+    And the other competitor should not be attached to a tournament team

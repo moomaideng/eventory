@@ -101,12 +101,12 @@ func (u *TeamLobbyUseCase) memberReadiness(ctx context.Context, team *models.Tou
 	return ready, nil
 }
 
-func (u *TeamLobbyUseCase) SaveRegistrationAnswers(ctx context.Context, teamID, accountID uuid.UUID, answers []models.FieldAnswer) (*TeamLobbyView, error) {
+func (u *TeamLobbyUseCase) SaveRegistrationAnswers(ctx context.Context, tournamentID uuid.UUID, teamID string, accountID uuid.UUID, answers []models.FieldAnswer) (*TeamLobbyView, error) {
 	answers = firstAnswers([][]models.FieldAnswer{answers})
 	if err := u.ensureActiveAccount(ctx, accountID); err != nil {
 		return nil, err
 	}
-	registration, err := u.repo.LockRegistration(ctx, teamID)
+	registration, err := u.repo.LockRegistration(ctx, tournamentID, teamID)
 	if err != nil {
 		return nil, translateLobbyError(err)
 	}

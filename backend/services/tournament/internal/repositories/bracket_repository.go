@@ -30,15 +30,15 @@ type BracketRepository interface {
 	SeedStage1(ctx context.Context, tournamentID uuid.UUID, stage1MatchIDs []uuid.UUID, entries []models.MatchEntry) error
 	GetMatch(ctx context.Context, tournamentID, matchID uuid.UUID) (*models.Match, error)
 	UpdateMatchSchedule(ctx context.Context, tournamentID, matchID uuid.UUID, scheduledAt time.Time, venue string) error
-	SwapMatchEntries(ctx context.Context, matchA, teamA, matchB, teamB uuid.UUID) error
+	SwapMatchEntries(ctx context.Context, matchA uuid.UUID, teamA string, matchB uuid.UUID, teamB string) error
 	RecordMatchResults(
 		ctx context.Context,
 		tournamentID, matchID uuid.UUID,
-		rankUpdates map[uuid.UUID]int,
-		scoreUpdates map[uuid.UUID]*string,
-		advanceFlags map[uuid.UUID]bool,
+		rankUpdates map[string]int,
+		scoreUpdates map[string]*string,
+		advanceFlags map[string]bool,
 		targetMatchID *uuid.UUID,
-		advancingTeamIDs []uuid.UUID,
+		advancingTeamIDs []string,
 	) error
 }
 
@@ -227,7 +227,7 @@ func (r *bracketRepository) UpdateMatchSchedule(ctx context.Context, tournamentI
 }
 
 // SwapMatchEntries moves teamA into matchB and teamB into matchA in one transaction.
-func (r *bracketRepository) SwapMatchEntries(ctx context.Context, matchA, teamA, matchB, teamB uuid.UUID) error {
+func (r *bracketRepository) SwapMatchEntries(ctx context.Context, matchA uuid.UUID, teamA string, matchB uuid.UUID, teamB string) error {
 	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		if err := tx.Model(&models.MatchEntry{}).
 			Where("match_id = ? AND team_id = ?", matchA, teamA).
@@ -243,11 +243,11 @@ func (r *bracketRepository) SwapMatchEntries(ctx context.Context, matchA, teamA,
 func (r *bracketRepository) RecordMatchResults(
 	ctx context.Context,
 	tournamentID, matchID uuid.UUID,
-	rankUpdates map[uuid.UUID]int,
-	scoreUpdates map[uuid.UUID]*string,
-	advanceFlags map[uuid.UUID]bool,
+	rankUpdates map[string]int,
+	scoreUpdates map[string]*string,
+	advanceFlags map[string]bool,
 	targetMatchID *uuid.UUID,
-	advancingTeamIDs []uuid.UUID,
+	advancingTeamIDs []string,
 ) error {
 	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		// Update final_rank, score, and advances on current match entries
@@ -272,10 +272,11 @@ func (r *bracketRepository) RecordMatchResults(
 			targetEntries := make([]models.MatchEntry, 0, len(advancingTeamIDs))
 			for _, teamID := range advancingTeamIDs {
 				targetEntries = append(targetEntries, models.MatchEntry{
-					MatchID:   *targetMatchID,
-					TeamID:    teamID,
-					FinalRank: nil,
-					Advances:  false,
+					MatchID:      *targetMatchID,
+					TournamentID: tournamentID,
+					TeamID:       teamID,
+					FinalRank:    nil,
+					Advances:     false,
 				})
 			}
 			if err := tx.Clauses(clause.OnConflict{DoNothing: true}).Create(&targetEntries).Error; err != nil {

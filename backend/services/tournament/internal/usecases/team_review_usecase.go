@@ -46,7 +46,7 @@ var reviewableStages = []models.TournamentStatus{
 type ReviewResult struct {
 	ID                  uuid.UUID
 	TournamentID        uuid.UUID
-	EntryID             uuid.UUID
+	EntryID             string
 	FromStatus          string
 	ToStatus            string
 	Reason              string
@@ -89,7 +89,8 @@ func NewTeamReviewUseCase(
 // is final and cannot be switched.
 func (u *TeamReviewUseCase) Review(
 	ctx context.Context,
-	accountID, tournamentID, entryID uuid.UUID,
+	accountID, tournamentID uuid.UUID,
+	entryID string,
 	rawDecision, rawReason string,
 ) (*ReviewResult, error) {
 	var to models.TournamentTeamStatus
@@ -117,8 +118,8 @@ func (u *TeamReviewUseCase) Review(
 		return nil, translateReviewError(err)
 	}
 	if to == models.TournamentTeamStatusRejected && paymentID != nil {
-		if err := u.refund(ctx, entryID, *paymentID); err != nil {
-			slog.WarnContext(ctx, "refund rejected registration will retry", "entry_id", entryID, "error", err)
+		if err := u.refund(ctx, tournamentID, entryID, *paymentID); err != nil {
+			slog.WarnContext(ctx, "refund rejected registration will retry", "tournament_id", tournamentID, "entry_id", entryID, "error", err)
 		}
 	}
 
@@ -195,7 +196,8 @@ func (u *TeamReviewUseCase) applyReview(
 	ctx context.Context,
 	accountID uuid.UUID,
 	reviewerDisplayName string,
-	tournamentID, entryID uuid.UUID,
+	tournamentID uuid.UUID,
+	entryID string,
 	to models.TournamentTeamStatus,
 	reason string,
 ) (*models.TournamentTeamReview, *uuid.UUID, error) {
@@ -243,15 +245,15 @@ func (u *TeamReviewUseCase) applyReview(
 	return review, paymentID, nil
 }
 
-func (u *TeamReviewUseCase) refund(ctx context.Context, entryID, paymentID uuid.UUID) error {
-	payment, err := u.payments.RefundRegistration(ctx, paymentID, entryID)
+func (u *TeamReviewUseCase) refund(ctx context.Context, tournamentID uuid.UUID, entryID string, paymentID uuid.UUID) error {
+	payment, err := u.payments.RefundRegistration(ctx, paymentID, tournamentID.String()+":"+entryID)
 	if err != nil {
 		return err
 	}
 	if payment == nil || payment.ID != paymentID || payment.Status != models.PaymentRefunded {
 		return ErrPaymentUnavailable
 	}
-	return u.repo.MarkRefunded(ctx, entryID, paymentID)
+	return u.repo.MarkRefunded(ctx, tournamentID, entryID, paymentID)
 }
 
 func (u *TeamReviewUseCase) PendingRefunds(ctx context.Context) ([]models.TournamentTeam, error) {
@@ -262,7 +264,7 @@ func (u *TeamReviewUseCase) RetryRefund(ctx context.Context, team *models.Tourna
 	if team.PaymentID == nil {
 		return ErrPaymentUnavailable
 	}
-	return u.refund(ctx, team.ID, *team.PaymentID)
+	return u.refund(ctx, team.TournamentID, team.ID, *team.PaymentID)
 }
 
 // checkReview holds the decision rules. It runs inside the repository's

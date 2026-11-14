@@ -33,13 +33,13 @@ func TestPaidRegistrationRefundedAfterRejection(t *testing.T) {
 			}
 			s.team = team
 			var member models.TournamentTeamMember
-			if err := app.DB.Where("tournament_team_id = ?", team.ID).First(&member).Error; err != nil {
+			if err := app.DB.Where("tournament_id = ? AND tournament_team_id = ?", team.TournamentID, team.ID).First(&member).Error; err != nil {
 				t.Fatal(err)
 			}
 			paidAt := time.Now().UTC()
 			invoice := paymentmodels.Invoice{
 				ID: uuid.New(), PayerAccountID: member.AccountID, Source: "TEAM_REGISTRATION",
-				Reference: team.ID.String() + ":" + uuid.NewString(), IdempotencyKey: uuid.NewString(),
+				Reference: team.TournamentID.String() + ":" + team.ID + ":" + uuid.NewString(), IdempotencyKey: uuid.NewString(),
 				Description: "Registration fee", AmountMinor: 15000, Currency: "THB", Provider: "MOCK",
 				ExpiresAt: paidAt.Add(time.Hour), PaidAt: &paidAt,
 			}
@@ -56,7 +56,7 @@ func TestPaidRegistrationRefundedAfterRejection(t *testing.T) {
 				t.Fatalf("payment was not refunded: status=%s err=%v", invoice.Status(time.Now()), err)
 			}
 			var stored models.TournamentTeam
-			if err := app.DB.First(&stored, "id = ?", team.ID).Error; err != nil || stored.RefundedAt == nil {
+			if err := app.DB.First(&stored, "tournament_id = ? AND id = ?", team.TournamentID, team.ID).Error; err != nil || stored.RefundedAt == nil {
 				t.Fatalf("rejected entry was not marked refunded: %+v err=%v", stored, err)
 			}
 		})

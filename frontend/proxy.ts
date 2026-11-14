@@ -18,8 +18,8 @@ function isPathProtected(pathname: string): boolean {
   ) {
     return true;
   }
-  // Protect tournament team creation route: /tournaments/:tournamentId/team
-  if (/^\/tournaments\/[^/]+\/team(\/.*)?$/.test(pathname)) {
+  // Protect tournament team routes: /tournaments/:tournamentId/teams/...
+  if (/^\/tournaments\/[^/]+\/teams(\/.*)?$/.test(pathname)) {
     return true;
   }
   return false;

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { TeamLobbyWorkspace } from "@/features/lobbies/components/team-lobby-workspace";
+import { LobbyInviteRedirect } from "@/features/lobbies/components/lobby-invite-redirect";
 import { lobbyInviteParamSchema } from "@/features/lobbies/schemas";
 
 export async function generateMetadata({
@@ -12,12 +12,12 @@ export async function generateMetadata({
   const parsed = lobbyInviteParamSchema.safeParse(inviteCode);
   const normalized = parsed.success ? parsed.data : inviteCode.trim().toUpperCase();
   return {
-    title: `Team Lobby ${normalized} - Eventory`,
-    description: `View and manage team roster for lobby ${normalized}.`,
+    title: `Team Invite ${normalized} - Eventory`,
+    description: `Resolve invite code ${normalized} to open the team lobby.`,
   };
 }
 
-export default async function TeamLobbyPage({
+export default async function LobbyInvitePage({
   params,
 }: {
   params: Promise<{ inviteCode: string }>;
@@ -28,5 +28,5 @@ export default async function TeamLobbyPage({
     notFound();
   }
 
-  return <TeamLobbyWorkspace inviteCode={parsed.data} />;
+  return <LobbyInviteRedirect inviteCode={parsed.data} />;
 }

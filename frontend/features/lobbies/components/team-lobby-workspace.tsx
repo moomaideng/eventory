@@ -4,10 +4,18 @@ import React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Check, ShieldAlert } from "lucide-react";
-import { $api } from "@/lib/api/client";
+import { $api, apiClient } from "@/lib/api/client";
 import { useAuth } from "@/context/auth-context";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   Empty,
   EmptyDescription,
@@ -15,20 +23,43 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty";
+import {
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+} from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+import { Spinner } from "@/components/ui/spinner";
 import { useLobbyActions } from "@/features/lobbies/hooks/use-lobby-actions";
 import { LobbyWorkspaceSkeleton } from "@/features/lobbies/components/lobby-skeleton";
 import { LobbyRosterCard } from "@/features/lobbies/components/lobby-roster-card";
 import { LobbyInviteCard } from "@/features/lobbies/components/lobby-invite-card";
 import { LobbyDetailsCard } from "@/features/lobbies/components/lobby-details-card";
 import { MemberRegistrationForm } from "@/features/lobbies/components/member-registration-form";
+import { lobbyCodeSchema } from "@/features/lobbies/schemas";
+import { problemMessage } from "@/features/lobbies/utils";
 
-export function TeamLobbyWorkspace({ inviteCode }: { inviteCode: string }) {
+export function TeamLobbyWorkspace({
+  tournamentId,
+  teamId,
+  inviteCode,
+}: {
+  tournamentId: string;
+  teamId: string;
+  inviteCode?: string;
+}) {
   const router = useRouter();
   const { user, isLoading: isAuthLoading, authorizationHeader } = useAuth();
   const [copied, setCopied] = React.useState(false);
   const [copyError, setCopyError] = React.useState("");
   const [confirmDisband, setConfirmDisband] = React.useState(false);
-  const normalizedInviteCode = inviteCode.trim().toUpperCase();
+  const [inviteDialogOpen, setInviteDialogOpen] = React.useState(false);
+  const [enteredInviteCode, setEnteredInviteCode] = React.useState("");
+  const [inviteDialogError, setInviteDialogError] = React.useState("");
+  const [isCheckingInvite, setIsCheckingInvite] = React.useState(false);
+  const normalizedInviteCode = inviteCode?.trim().toUpperCase();
 
   const {
     data: lobby,
@@ -37,9 +68,9 @@ export function TeamLobbyWorkspace({ inviteCode }: { inviteCode: string }) {
     refetch,
   } = $api.useQuery(
     "get",
-    "/api/v1/lobbies/{inviteCode}",
+    "/api/v1/tournaments/{tournamentId}/teams/{teamId}",
     {
-      params: { path: { inviteCode: normalizedInviteCode } },
+      params: { path: { tournamentId, teamId } },
       headers: authorizationHeader
         ? { Authorization: authorizationHeader }
         : {},
@@ -71,8 +102,9 @@ export function TeamLobbyWorkspace({ inviteCode }: { inviteCode: string }) {
   });
 
   async function copyInvite() {
+    if (!lobby?.inviteCode) return;
     setCopyError("");
-    const inviteUrl = `${window.location.origin}/lobbies/${normalizedInviteCode}`;
+    const inviteUrl = `${window.location.origin}/lobbies/${lobby.inviteCode}`;
     try {
       await navigator.clipboard.writeText(inviteUrl);
       setCopied(true);
@@ -81,6 +113,67 @@ export function TeamLobbyWorkspace({ inviteCode }: { inviteCode: string }) {
       setCopyError(
         "Could not copy the invite link. Share the code shown here instead."
       );
+    }
+  }
+
+  function handleJoinLobby() {
+    if (normalizedInviteCode) {
+      router.push(
+        `/tournaments/${tournamentId}/teams/${teamId}/join?invite=${normalizedInviteCode}`
+      );
+      return;
+    }
+    setEnteredInviteCode("");
+    setInviteDialogError("");
+    setInviteDialogOpen(true);
+  }
+
+  async function submitInviteCode(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const parsed = lobbyCodeSchema.safeParse(enteredInviteCode);
+    if (!parsed.success) {
+      setInviteDialogError(
+        parsed.error.issues[0]?.message ?? "Invalid invite code."
+      );
+      return;
+    }
+    if (!authorizationHeader) {
+      setInviteDialogError("Sign in to join this team.");
+      return;
+    }
+    setInviteDialogError("");
+    setIsCheckingInvite(true);
+    try {
+      const { data, error: resolveError } = await apiClient.GET(
+        "/api/v1/lobbies/{inviteCode}",
+        {
+          params: { path: { inviteCode: parsed.data } },
+          headers: { Authorization: authorizationHeader },
+        }
+      );
+      if (resolveError || !data) {
+        setInviteDialogError(
+          problemMessage(
+            resolveError,
+            "Invalid invite code. Check with your team captain."
+          )
+        );
+        return;
+      }
+      if (data.tournamentId !== tournamentId || data.teamId !== teamId) {
+        setInviteDialogError("This invite code belongs to a different team.");
+        return;
+      }
+      setInviteDialogOpen(false);
+      router.push(
+        `/tournaments/${tournamentId}/teams/${teamId}/join?invite=${parsed.data}`
+      );
+    } catch {
+      setInviteDialogError(
+        "Connection error. Please check your network and try again."
+      );
+    } finally {
+      setIsCheckingInvite(false);
     }
   }
 
@@ -98,8 +191,7 @@ export function TeamLobbyWorkspace({ inviteCode }: { inviteCode: string }) {
             </EmptyMedia>
             <EmptyTitle>Lobby unavailable</EmptyTitle>
             <EmptyDescription>
-              This invite may be invalid, revoked, or linked to a disbanded
-              lobby.
+              This team lobby may not exist or may have been disbanded.
             </EmptyDescription>
           </EmptyHeader>
         </Empty>
@@ -186,9 +278,7 @@ export function TeamLobbyWorkspace({ inviteCode }: { inviteCode: string }) {
           <LobbyRosterCard
             lobby={lobby}
             pendingAction={pendingAction}
-            onJoinLobby={() =>
-              router.push(`/lobbies/${normalizedInviteCode}/join`)
-            }
+            onJoinLobby={handleJoinLobby}
             onRemoveMember={removeMember}
           />
           {lobby.viewerRole !== "INVITEE" && (
@@ -222,6 +312,64 @@ export function TeamLobbyWorkspace({ inviteCode }: { inviteCode: string }) {
           />
         </div>
       </div>
+
+      <Dialog open={inviteDialogOpen} onOpenChange={setInviteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Enter invite code</DialogTitle>
+            <DialogDescription>
+              Ask your team captain for the six-character invite code to join{" "}
+              {lobby.name}.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={submitInviteCode} className="flex flex-col gap-6">
+            <FieldGroup>
+              <Field data-invalid={Boolean(inviteDialogError)}>
+                <FieldLabel htmlFor="team-invite-code">Invite code</FieldLabel>
+                <Input
+                  id="team-invite-code"
+                  autoFocus
+                  value={enteredInviteCode}
+                  onChange={(event) => {
+                    setEnteredInviteCode(event.target.value.toUpperCase());
+                    setInviteDialogError("");
+                  }}
+                  placeholder="ABC123"
+                  autoComplete="off"
+                  autoCorrect="off"
+                  autoCapitalize="characters"
+                  spellCheck={false}
+                  maxLength={6}
+                  aria-invalid={Boolean(inviteDialogError)}
+                  className="font-mono tracking-[0.3em] uppercase"
+                />
+                <FieldDescription>
+                  Codes are six characters and are not case-sensitive.
+                </FieldDescription>
+                {inviteDialogError ? (
+                  <FieldError>{inviteDialogError}</FieldError>
+                ) : null}
+              </Field>
+            </FieldGroup>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setInviteDialogOpen(false)}
+                disabled={isCheckingInvite}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" disabled={isCheckingInvite}>
+                {isCheckingInvite ? (
+                  <Spinner data-icon="inline-start" />
+                ) : null}
+                Continue
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

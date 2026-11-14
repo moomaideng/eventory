@@ -38,9 +38,15 @@ export function getRedirectDestinationLabel(path: string): string | null {
     return "Join Team Lobby";
   }
 
-  // Match tournament team create e.g. /tournaments/123/team
-  if (safePath.includes("/team")) {
+  // Match tournament team routes e.g. /tournaments/123/teams/new, /tournaments/123/teams/AB12CD34
+  if (/^\/tournaments\/[^/]+\/teams\/new/.test(safePath)) {
     return "Team Registration";
+  }
+  if (/^\/tournaments\/[^/]+\/teams\/[^/]+\/join/.test(safePath)) {
+    return "Join Team";
+  }
+  if (/^\/tournaments\/[^/]+\/teams\/[^/]+/.test(safePath)) {
+    return "Team Lobby";
   }
 
   // Workspaces & Hubs

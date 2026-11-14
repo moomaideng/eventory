@@ -280,7 +280,10 @@ export function RegistrationFormView({
                   : "You are already registered for this tournament."}
             </p>
             {isPending && (
-              <RegistrationPaymentButton teamId={myTeamQuery.data.id} />
+              <RegistrationPaymentButton
+                tournamentId={tournamentId}
+                teamId={myTeamQuery.data.id}
+              />
             )}
             <Button onClick={() => router.push(`/tournaments/${tournamentId}`)}>
               View Tournament Details

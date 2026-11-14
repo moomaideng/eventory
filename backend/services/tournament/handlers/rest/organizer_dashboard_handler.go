@@ -48,7 +48,7 @@ type OrganizerDashboardInput struct {
 }
 
 type OrganizerDashboardEntry struct {
-	ID        uuid.UUID                 `json:"id"`
+	ID        string                    `json:"id"`
 	Name      string                    `json:"name"`
 	Status    string                    `json:"status"`
 	CreatedAt time.Time                 `json:"createdAt"`

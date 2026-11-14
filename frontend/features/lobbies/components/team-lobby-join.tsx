@@ -13,11 +13,20 @@ import { LobbyWorkspaceSkeleton } from "@/features/lobbies/components/lobby-skel
 import { MemberRegistrationForm } from "@/features/lobbies/components/member-registration-form";
 import { isRegistrationOpen } from "@/features/tournaments/utils";
 
-export function TeamLobbyJoin({ inviteCode }: { inviteCode: string }) {
+export function TeamLobbyJoin({
+  tournamentId,
+  teamId,
+  inviteCode,
+}: {
+  tournamentId: string;
+  teamId: string;
+  inviteCode: string;
+}) {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { authorizationHeader, isLoading: authLoading } = useAuth();
-  const lobbyPath = `/lobbies/${inviteCode}`;
+  const lobbyPath = `/tournaments/${tournamentId}/teams/${teamId}`;
+  const normalizedInviteCode = inviteCode.trim().toUpperCase();
   const {
     data: lobby,
     isPending,
@@ -25,9 +34,9 @@ export function TeamLobbyJoin({ inviteCode }: { inviteCode: string }) {
     isFetching,
   } = $api.useQuery(
     "get",
-    "/api/v1/lobbies/{inviteCode}",
+    "/api/v1/tournaments/{tournamentId}/teams/{teamId}",
     {
-      params: { path: { inviteCode } },
+      params: { path: { tournamentId, teamId } },
       headers: { Authorization: authorizationHeader ?? "" },
     },
     {
@@ -38,21 +47,34 @@ export function TeamLobbyJoin({ inviteCode }: { inviteCode: string }) {
     }
   );
   const alreadyJoined = Boolean(lobby && lobby.viewerRole !== "INVITEE");
+  const inviteQuery = $api.useQuery(
+    "get",
+    "/api/v1/lobbies/{inviteCode}",
+    {
+      params: { path: { inviteCode: normalizedInviteCode } },
+      headers: { Authorization: authorizationHeader ?? "" },
+    },
+    {
+      enabled: Boolean(authorizationHeader && lobby && !alreadyJoined),
+      retry: false,
+      staleTime: 0,
+    }
+  );
   const myTeamQuery = useQuery({
     queryKey: [
       "get",
       "/api/v1/tournaments/{tournamentId}/my-team",
-      lobby?.tournament.id,
+      tournamentId,
       authorizationHeader,
     ],
-    enabled: Boolean(authorizationHeader && lobby?.tournament.id && !alreadyJoined),
+    enabled: Boolean(authorizationHeader && lobby && !alreadyJoined),
     retry: false,
     staleTime: 0,
     queryFn: async () => {
       const result = await apiClient.GET(
         "/api/v1/tournaments/{tournamentId}/my-team",
         {
-          params: { path: { tournamentId: lobby!.tournament.id } },
+          params: { path: { tournamentId } },
           headers: { Authorization: authorizationHeader ?? "" },
         }
       );
@@ -69,17 +91,31 @@ export function TeamLobbyJoin({ inviteCode }: { inviteCode: string }) {
 
   async function returnToLobby() {
     await queryClient.invalidateQueries({
-      queryKey: ["get", "/api/v1/lobbies/{inviteCode}"],
+      queryKey: ["get", "/api/v1/tournaments/{tournamentId}/teams/{teamId}"],
     });
     router.replace(lobbyPath);
   }
 
-  if (authLoading || isPending || (alreadyJoined && !error)) {
+  if (
+    authLoading ||
+    isPending ||
+    (!alreadyJoined && Boolean(lobby) && inviteQuery.isPending) ||
+    (alreadyJoined && !error)
+  ) {
     return <LobbyWorkspaceSkeleton />;
   }
 
+  const inviteMismatch =
+    !alreadyJoined &&
+    Boolean(lobby) &&
+    (Boolean(inviteQuery.error) ||
+      !inviteQuery.data ||
+      inviteQuery.data.tournamentId !== tournamentId ||
+      inviteQuery.data.teamId !== teamId);
+
   const unavailable =
     !lobby ||
+    inviteMismatch ||
     lobby.status !== "FORMING" ||
     !isRegistrationOpen(lobby.tournament) ||
     (lobby.members?.length ?? 0) >= lobby.tournament.maxTeamSize;
@@ -110,7 +146,9 @@ export function TeamLobbyJoin({ inviteCode }: { inviteCode: string }) {
           <AlertDescription>
             {error
               ? "The lobby could not be loaded. Return to the lobby and try again."
-              : "This team is full or is no longer accepting new members."}
+              : inviteMismatch
+                ? "This invite code is invalid or does not match this team."
+                : "This team is full or is no longer accepting new members."}
           </AlertDescription>
         </Alert>
       ) : (
@@ -124,7 +162,11 @@ export function TeamLobbyJoin({ inviteCode }: { inviteCode: string }) {
               return to the lobby after submitting.
             </p>
           </div>
-          <MemberRegistrationForm lobby={lobby} onSaved={returnToLobby} />
+          <MemberRegistrationForm
+            lobby={lobby}
+            inviteCode={normalizedInviteCode}
+            onSaved={returnToLobby}
+          />
         </>
       )}
     </div>

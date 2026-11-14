@@ -1,7 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { formatMinorMoney } from "../../lib/money.ts";
-import { historyDatesSchema, paymentIdSchema, sponsorPaymentRouteSchema } from "./schemas.ts";
+import {
+  historyDatesSchema,
+  paymentIdSchema,
+  sponsorPaymentRouteSchema,
+  teamPaymentReferenceSchema,
+} from "./schemas.ts";
 
 function formatPaymentDate(value) {
   return new Intl.DateTimeFormat("en-GB", {
@@ -56,4 +61,21 @@ test("date filters reject impossible or reversed dates", () => {
     false
   );
   assert.equal(paymentIdSchema.safeParse("not-a-payment-id").success, false);
+});
+
+test("team payment reference requires tournamentId:teamId8:attemptId format", () => {
+  const tourId = "11111111-1111-4111-8111-111111111111";
+  const attemptId = "22222222-2222-4222-8222-222222222222";
+  assert.equal(
+    teamPaymentReferenceSchema.safeParse(`${tourId}:Ab12Cd34:${attemptId}`).success,
+    true
+  );
+  assert.equal(
+    teamPaymentReferenceSchema.safeParse(`${tourId}:${attemptId}`).success,
+    false
+  );
+  assert.equal(
+    teamPaymentReferenceSchema.safeParse(`${tourId}:SHORT:${attemptId}`).success,
+    false
+  );
 });

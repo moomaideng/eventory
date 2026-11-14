@@ -29,16 +29,16 @@ var (
 // “Lobby” is only the workflow name used while a team is still forming.
 type TeamLobbyRepository interface {
 	FindTournamentByID(ctx context.Context, id uuid.UUID) (*models.Tournament, error)
-	FindByID(ctx context.Context, id uuid.UUID) (*models.TournamentTeam, error)
+	FindByID(ctx context.Context, tournamentID uuid.UUID, teamID string) (*models.TournamentTeam, error)
 	FindByInviteCode(ctx context.Context, inviteCode string) (*models.TournamentTeam, error)
 	FindActiveByTournamentAndAccount(ctx context.Context, tournamentID, accountID uuid.UUID) (*models.TournamentTeam, error)
 	Create(ctx context.Context, team *models.TournamentTeam, captain *models.TournamentTeamMember) (*models.TournamentTeam, error)
-	Join(ctx context.Context, teamID, accountID uuid.UUID, membershipID ...uuid.UUID) (*models.TournamentTeam, error)
-	LockRegistration(ctx context.Context, teamID uuid.UUID) (TeamRegistrationLock, error)
-	RegenerateInvite(ctx context.Context, teamID uuid.UUID, inviteCode string) (*models.TournamentTeam, error)
-	Lock(ctx context.Context, teamID uuid.UUID, expected ...[]models.TournamentTeamMember) (*models.TournamentTeam, error)
-	RemoveMember(ctx context.Context, teamID, memberID uuid.UUID) (*models.TournamentTeam, error)
-	Disband(ctx context.Context, teamID uuid.UUID) error
+	Join(ctx context.Context, tournamentID uuid.UUID, teamID string, accountID uuid.UUID, membershipID ...uuid.UUID) (*models.TournamentTeam, error)
+	LockRegistration(ctx context.Context, tournamentID uuid.UUID, teamID string) (TeamRegistrationLock, error)
+	RegenerateInvite(ctx context.Context, tournamentID uuid.UUID, teamID string, inviteCode string) (*models.TournamentTeam, error)
+	Lock(ctx context.Context, tournamentID uuid.UUID, teamID string, expected ...[]models.TournamentTeamMember) (*models.TournamentTeam, error)
+	RemoveMember(ctx context.Context, tournamentID uuid.UUID, teamID string, memberID uuid.UUID) (*models.TournamentTeam, error)
+	Disband(ctx context.Context, tournamentID uuid.UUID, teamID string) error
 	ApplyPayment(ctx context.Context, team *models.TournamentTeam, paymentID uuid.UUID, status models.PaymentStatus) error
 }
 
@@ -64,8 +64,8 @@ func (r *teamLobbyRepository) FindTournamentByID(ctx context.Context, id uuid.UU
 	return &tournament, nil
 }
 
-func (r *teamLobbyRepository) FindByID(ctx context.Context, id uuid.UUID) (*models.TournamentTeam, error) {
-	return r.find(ctx, r.db.WithContext(ctx).Where("id = ?", id))
+func (r *teamLobbyRepository) FindByID(ctx context.Context, tournamentID uuid.UUID, teamID string) (*models.TournamentTeam, error) {
+	return r.find(ctx, r.db.WithContext(ctx).Where("tournament_id = ? AND id = ?", tournamentID, teamID))
 }
 
 func (r *teamLobbyRepository) FindByInviteCode(ctx context.Context, inviteCode string) (*models.TournamentTeam, error) {
@@ -78,7 +78,7 @@ func (r *teamLobbyRepository) FindByInviteCode(ctx context.Context, inviteCode s
 func (r *teamLobbyRepository) FindActiveByTournamentAndAccount(ctx context.Context, tournamentID, accountID uuid.UUID) (*models.TournamentTeam, error) {
 	return r.find(ctx, r.db.WithContext(ctx).
 		Model(&models.TournamentTeam{}).
-		Joins("JOIN tournament_team_members ON tournament_team_members.tournament_team_id = tournament_teams.id").
+		Joins("JOIN tournament_team_members ON tournament_team_members.tournament_id = tournament_teams.tournament_id AND tournament_team_members.tournament_team_id = tournament_teams.id").
 		Where("tournament_teams.tournament_id = ? AND tournament_team_members.account_id = ?", tournamentID, accountID).
 		Where("tournament_teams.status IN ?", []models.TournamentTeamStatus{
 			models.TournamentTeamStatusForming,
@@ -113,18 +113,19 @@ func (r *teamLobbyRepository) Create(ctx context.Context, team *models.Tournamen
 		if err := tx.Create(team).Error; err != nil {
 			return err
 		}
+		captain.TournamentID = team.TournamentID
 		captain.TournamentTeamID = team.ID
 		return tx.Create(captain).Error
 	})
 	if err != nil {
 		return nil, err
 	}
-	return r.FindByID(ctx, team.ID)
+	return r.FindByID(ctx, team.TournamentID, team.ID)
 }
 
-func (r *teamLobbyRepository) Join(ctx context.Context, teamID, accountID uuid.UUID, membershipID ...uuid.UUID) (*models.TournamentTeam, error) {
+func (r *teamLobbyRepository) Join(ctx context.Context, tournamentID uuid.UUID, teamID string, accountID uuid.UUID, membershipID ...uuid.UUID) (*models.TournamentTeam, error) {
 	err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		team, err := r.lockTeam(tx, teamID)
+		team, err := r.lockTeam(tx, tournamentID, teamID)
 		if err != nil {
 			return err
 		}
@@ -142,6 +143,7 @@ func (r *teamLobbyRepository) Join(ctx context.Context, teamID, accountID uuid.U
 		}
 		member := &models.TournamentTeamMember{
 			ID:               uuid.New(),
+			TournamentID:     team.TournamentID,
 			TournamentTeamID: team.ID,
 			AccountID:        accountID,
 			Role:             models.TournamentTeamMemberRoleMember,
@@ -155,12 +157,12 @@ func (r *teamLobbyRepository) Join(ctx context.Context, teamID, accountID uuid.U
 	if err != nil {
 		return nil, err
 	}
-	return r.FindByID(ctx, teamID)
+	return r.FindByID(ctx, tournamentID, teamID)
 }
 
-func (r *teamLobbyRepository) RegenerateInvite(ctx context.Context, teamID uuid.UUID, inviteCode string) (*models.TournamentTeam, error) {
+func (r *teamLobbyRepository) RegenerateInvite(ctx context.Context, tournamentID uuid.UUID, teamID string, inviteCode string) (*models.TournamentTeam, error) {
 	err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		team, err := r.lockTeam(tx, teamID)
+		team, err := r.lockTeam(tx, tournamentID, teamID)
 		if err != nil {
 			return err
 		}
@@ -168,26 +170,25 @@ func (r *teamLobbyRepository) RegenerateInvite(ctx context.Context, teamID uuid.
 			return ErrTeamLobbyNotForming
 		}
 		return tx.Model(&models.TournamentTeam{}).
-			Where("id = ?", team.ID).
+			Where("tournament_id = ? AND id = ?", team.TournamentID, team.ID).
 			Update("invite_code", inviteCode).Error
 	})
 	if err != nil {
 		return nil, err
 	}
-	return r.FindByID(ctx, teamID)
+	return r.FindByID(ctx, tournamentID, teamID)
 }
 
-func (r *teamLobbyRepository) Lock(ctx context.Context, teamID uuid.UUID, expected ...[]models.TournamentTeamMember) (*models.TournamentTeam, error) {
+func (r *teamLobbyRepository) Lock(ctx context.Context, tournamentID uuid.UUID, teamID string, expected ...[]models.TournamentTeamMember) (*models.TournamentTeam, error) {
 	err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		var initial models.TournamentTeam
-		if err := tx.First(&initial, "id = ?", teamID).Error; err != nil {
-			return err
-		}
 		var tournament models.Tournament
-		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&tournament, "id = ?", initial.TournamentID).Error; err != nil {
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&tournament, "id = ?", tournamentID).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return ErrTeamLobbyNotFound
+			}
 			return err
 		}
-		team, err := r.lockTeam(tx, teamID)
+		team, err := r.lockTeam(tx, tournamentID, teamID)
 		if err != nil {
 			return err
 		}
@@ -240,13 +241,13 @@ func (r *teamLobbyRepository) Lock(ctx context.Context, teamID uuid.UUID, expect
 			if tournament.RegistrationDeadline.Before(expires) {
 				expires = tournament.RegistrationDeadline
 			}
-			return tx.Model(&models.TournamentTeam{}).Where("id = ?", team.ID).Updates(map[string]any{
+			return tx.Model(&models.TournamentTeam{}).Where("tournament_id = ? AND id = ?", team.TournamentID, team.ID).Updates(map[string]any{
 				"status": models.TournamentTeamStatusPaymentPending, "locked_at": nil,
 				"payment_attempt_id": uuid.New(), "payment_id": nil, "payment_payer_id": payer,
 				"payment_amount_minor": fee.AmountMinor, "payment_expires_at": expires,
 			}).Error
 		}
-		return tx.Model(&models.TournamentTeam{}).Where("id = ?", team.ID).Updates(map[string]any{
+		return tx.Model(&models.TournamentTeam{}).Where("tournament_id = ? AND id = ?", team.TournamentID, team.ID).Updates(map[string]any{
 			"status":    models.TournamentTeamStatusLocked,
 			"locked_at": now,
 		}).Error
@@ -254,12 +255,12 @@ func (r *teamLobbyRepository) Lock(ctx context.Context, teamID uuid.UUID, expect
 	if err != nil {
 		return nil, err
 	}
-	return r.FindByID(ctx, teamID)
+	return r.FindByID(ctx, tournamentID, teamID)
 }
 
-func (r *teamLobbyRepository) RemoveMember(ctx context.Context, teamID, memberID uuid.UUID) (*models.TournamentTeam, error) {
+func (r *teamLobbyRepository) RemoveMember(ctx context.Context, tournamentID uuid.UUID, teamID string, memberID uuid.UUID) (*models.TournamentTeam, error) {
 	err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		team, err := r.lockTeam(tx, teamID)
+		team, err := r.lockTeam(tx, tournamentID, teamID)
 		if err != nil {
 			return err
 		}
@@ -267,7 +268,7 @@ func (r *teamLobbyRepository) RemoveMember(ctx context.Context, teamID, memberID
 			return ErrTeamLobbyNotForming
 		}
 		var member models.TournamentTeamMember
-		if err := tx.First(&member, "id = ? AND tournament_team_id = ?", memberID, teamID).Error; err != nil {
+		if err := tx.First(&member, "id = ? AND tournament_id = ? AND tournament_team_id = ?", memberID, tournamentID, teamID).Error; err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
 				return ErrTeamLobbyNotFound
 			}
@@ -281,31 +282,31 @@ func (r *teamLobbyRepository) RemoveMember(ctx context.Context, teamID, memberID
 	if err != nil {
 		return nil, err
 	}
-	return r.FindByID(ctx, teamID)
+	return r.FindByID(ctx, tournamentID, teamID)
 }
 
-func (r *teamLobbyRepository) Disband(ctx context.Context, teamID uuid.UUID) error {
+func (r *teamLobbyRepository) Disband(ctx context.Context, tournamentID uuid.UUID, teamID string) error {
 	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		team, err := r.lockTeam(tx, teamID)
+		team, err := r.lockTeam(tx, tournamentID, teamID)
 		if err != nil {
 			return err
 		}
 		if team.Status != models.TournamentTeamStatusForming {
 			return ErrCannotDisbandLobby
 		}
-		if err := tx.Where("tournament_team_id = ?", team.ID).Delete(&models.TournamentTeamMember{}).Error; err != nil {
+		if err := tx.Where("tournament_id = ? AND tournament_team_id = ?", team.TournamentID, team.ID).Delete(&models.TournamentTeamMember{}).Error; err != nil {
 			return err
 		}
-		return tx.Delete(&models.TournamentTeam{}, "id = ?", team.ID).Error
+		return tx.Delete(&models.TournamentTeam{}, "tournament_id = ? AND id = ?", team.TournamentID, team.ID).Error
 	})
 }
 
-func (r *teamLobbyRepository) lockTeam(tx *gorm.DB, teamID uuid.UUID) (*models.TournamentTeam, error) {
+func (r *teamLobbyRepository) lockTeam(tx *gorm.DB, tournamentID uuid.UUID, teamID string) (*models.TournamentTeam, error) {
 	var team models.TournamentTeam
 	err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
 		Preload("Tournament").
 		Preload("Members").
-		First(&team, "id = ?", teamID).Error
+		First(&team, "tournament_id = ? AND id = ?", tournamentID, teamID).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, ErrTeamLobbyNotFound
 	}
@@ -318,7 +319,7 @@ func (r *teamLobbyRepository) lockTeam(tx *gorm.DB, teamID uuid.UUID) (*models.T
 func accountHasActiveTournamentTeam(tx *gorm.DB, tournamentID, accountID uuid.UUID) error {
 	var count int64
 	err := tx.Model(&models.TournamentTeamMember{}).
-		Joins("JOIN tournament_teams ON tournament_teams.id = tournament_team_members.tournament_team_id").
+		Joins("JOIN tournament_teams ON tournament_teams.tournament_id = tournament_team_members.tournament_id AND tournament_teams.id = tournament_team_members.tournament_team_id").
 		Where("tournament_teams.tournament_id = ? AND tournament_team_members.account_id = ?", tournamentID, accountID).
 		Where("tournament_teams.status IN ?", []models.TournamentTeamStatus{
 			models.TournamentTeamStatusForming,
@@ -353,6 +354,6 @@ func (r *teamLobbyRepository) ApplyPayment(ctx context.Context, team *models.Tou
 		updates["payment_amount_minor"] = 0
 	}
 	return r.db.WithContext(ctx).Model(&models.TournamentTeam{}).
-		Where("id = ? AND status = ? AND payment_attempt_id = ?", team.ID, models.TournamentTeamStatusPaymentPending, team.PaymentAttemptID).
+		Where("tournament_id = ? AND id = ? AND status = ? AND payment_attempt_id = ?", team.TournamentID, team.ID, models.TournamentTeamStatusPaymentPending, team.PaymentAttemptID).
 		Updates(updates).Error
 }

@@ -11,9 +11,11 @@ import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 
 export function RegistrationPaymentButton({
+  tournamentId,
   teamId,
   children = "Continue to payment",
 }: {
+  tournamentId: string;
   teamId: string;
   children?: React.ReactNode;
 }) {
@@ -29,10 +31,13 @@ export function RegistrationPaymentButton({
     setError("");
     try {
       // Resolve the active attempt on Tournament before opening checkout.
-      const result = await apiClient.POST("/api/v1/lobbies/{id}/lock", {
-        params: { path: { id: teamId } },
-        headers: { Authorization: authorizationHeader },
-      });
+      const result = await apiClient.POST(
+        "/api/v1/tournaments/{tournamentId}/teams/{teamId}/lock",
+        {
+          params: { path: { tournamentId, teamId } },
+          headers: { Authorization: authorizationHeader },
+        }
+      );
       if (result.error || !result.data) {
         setError(extractProblemMessage(result.error, "Unable to continue registration. Please retry."));
         return;
@@ -40,13 +45,19 @@ export function RegistrationPaymentButton({
       const team = result.data;
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["get", "/api/v1/tournaments/{tournamentId}/my-team"] }),
-        queryClient.invalidateQueries({ queryKey: ["get", "/api/v1/lobbies/{inviteCode}"] }),
+        queryClient.invalidateQueries({
+          queryKey: ["get", "/api/v1/tournaments/{tournamentId}/teams/{teamId}"],
+        }),
         queryClient.invalidateQueries({ queryKey: ["team-submission"] }),
       ]);
       if (team.status === "PAYMENT_PENDING" && team.paymentId) {
         router.push(`/payments/${team.paymentId}/checkout`);
       } else if (["LOCKED", "ACCEPTED", "REJECTED"].includes(team.status)) {
-        router.push(team.inviteCode ? `/lobbies/${team.inviteCode}` : `/tournaments/${team.tournament.id}`);
+        router.push(
+          team.inviteCode
+            ? `/tournaments/${team.tournament.id}/teams/${team.id}`
+            : `/tournaments/${team.tournament.id}`
+        );
       } else {
         setError("Payment could not be started. Please retry.");
       }

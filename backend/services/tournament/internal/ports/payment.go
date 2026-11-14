@@ -36,5 +36,5 @@ type PaymentService interface {
 }
 
 type RegistrationRefundService interface {
-	RefundRegistration(context.Context, uuid.UUID, uuid.UUID) (*RegistrationPayment, error)
+	RefundRegistration(context.Context, uuid.UUID, string) (*RegistrationPayment, error)
 }

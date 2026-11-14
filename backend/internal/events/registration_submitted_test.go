@@ -8,13 +8,13 @@ import (
 )
 
 func validRegistrationEvent() RegistrationSubmitted {
-	teamID := uuid.New()
+	teamID := "Ab12Cd34"
 	teamName := "Phoenix"
 	return RegistrationSubmitted{
 		SpecVersion: EventSpecVersion, ID: uuid.New(), Type: RegistrationSubmittedType,
 		Source: "tournament-service", OccurredAt: time.Now().UTC(), CorrelationID: uuid.New(),
 		Data: RegistrationSubmittedData{
-			RegistrationID: uuid.New(), TournamentID: uuid.New(), TournamentName: "Eventory Cup",
+			RegistrationID: teamID, TournamentID: uuid.New(), TournamentName: "Eventory Cup",
 			RegistrationMode: RegistrationModeTeam, TeamID: &teamID, TeamName: &teamName,
 			Recipient: EventRecipient{AccountID: uuid.New(), Email: "captain@example.com", DisplayName: "Captain", Role: RecipientRoleCaptain},
 		},

@@ -108,7 +108,7 @@ export function TeamLobbyCreate({ tournamentId }: { tournamentId: string }) {
     setIsSubmitting(true);
     try {
       const { data, error: createError } = await apiClient.POST(
-        "/api/v1/tournaments/{tournamentId}/lobbies",
+        "/api/v1/tournaments/{tournamentId}/teams",
         {
           params: { path: { tournamentId } },
           headers: { Authorization: authorizationHeader },
@@ -129,7 +129,7 @@ export function TeamLobbyCreate({ tournamentId }: { tournamentId: string }) {
           authorizationHeader,
         ],
       });
-      router.push(`/lobbies/${data.inviteCode}`);
+      router.push(`/tournaments/${tournamentId}/teams/${data.id}`);
     } catch {
       setFormError(
         "Connection error. Please check your network and try again."

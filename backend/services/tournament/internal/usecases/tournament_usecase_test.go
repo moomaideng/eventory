@@ -208,7 +208,7 @@ func TestGetTournamentDetails_CalculatesFundingStats(t *testing.T) {
 		ID: tournamentID,
 		Teams: []models.TournamentTeam{
 			{
-				ID: uuid.New(), TournamentID: tournamentID, Name: "Alpha",
+				ID: "TM000001", TournamentID: tournamentID, Name: "Alpha",
 				Status: models.TournamentTeamStatusAccepted,
 				Members: []models.TournamentTeamMember{
 					{ID: uuid.New(), Role: models.TournamentTeamMemberRoleCaptain},
@@ -216,14 +216,14 @@ func TestGetTournamentDetails_CalculatesFundingStats(t *testing.T) {
 				},
 			},
 			{
-				ID: uuid.New(), TournamentID: tournamentID, Name: "Bravo",
+				ID: "TM000002", TournamentID: tournamentID, Name: "Bravo",
 				Status: models.TournamentTeamStatusAccepted,
 				Members: []models.TournamentTeamMember{
 					{ID: uuid.New(), Role: models.TournamentTeamMemberRoleCaptain},
 				},
 			},
 			{
-				ID: uuid.New(), TournamentID: tournamentID, Name: "Still Forming",
+				ID: "TM000003", TournamentID: tournamentID, Name: "Still Forming",
 				Status: models.TournamentTeamStatusForming,
 			},
 		},

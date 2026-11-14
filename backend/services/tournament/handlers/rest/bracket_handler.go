@@ -36,7 +36,7 @@ type DefineBracketInput struct {
 type MatchEntryResponse struct {
 	ID        uuid.UUID `json:"id"`
 	MatchID   uuid.UUID `json:"matchId"`
-	TeamID    uuid.UUID `json:"teamId"`
+	TeamID    string    `json:"teamId"`
 	TeamName  string    `json:"teamName,omitempty"`
 	FinalRank *int      `json:"finalRank,omitempty"`
 	Score     *string   `json:"score,omitempty"`
@@ -74,8 +74,8 @@ type CreateBracketOutput struct {
 }
 
 type MatchSeedAssignmentItem struct {
-	MatchID uuid.UUID   `json:"matchId" doc:"Stage 1 match ID"`
-	TeamIDs []uuid.UUID `json:"teamIds" doc:"Accepted tournament team IDs assigned to this match"`
+	MatchID uuid.UUID `json:"matchId" doc:"Stage 1 match ID"`
+	TeamIDs []string  `json:"teamIds" doc:"Accepted tournament team IDs assigned to this match"`
 }
 
 type SeedTournamentRequest struct {
@@ -92,9 +92,9 @@ type SeedTournamentOutput struct {
 }
 
 type TeamPlacementItem struct {
-	TeamID    uuid.UUID `json:"teamId" doc:"Participating team ID"`
-	FinalRank int       `json:"finalRank" minimum:"1" doc:"Match placement (1st, 2nd, 3rd, etc.)"`
-	Score     *string   `json:"score,omitempty" maxLength:"32" doc:"Match score or result string (e.g. '2', '16-14', '1:23.4')"`
+	TeamID    string  `json:"teamId" doc:"Participating team ID"`
+	FinalRank int     `json:"finalRank" minimum:"1" doc:"Match placement (1st, 2nd, 3rd, etc.)"`
+	Score     *string `json:"score,omitempty" maxLength:"32" doc:"Match score or result string (e.g. '2', '16-14', '1:23.4')"`
 }
 
 type RecordMatchResultsRequest struct {
@@ -108,10 +108,10 @@ type RecordMatchResultsInput struct {
 }
 
 type RecordMatchResultsResponse struct {
-	MatchID        uuid.UUID   `json:"matchId"`
-	IsCompleted    bool        `json:"isCompleted"`
-	AdvancingTeams []uuid.UUID `json:"advancingTeams"`
-	TargetMatchID  *uuid.UUID  `json:"targetMatchId,omitempty"`
+	MatchID        uuid.UUID  `json:"matchId"`
+	IsCompleted    bool       `json:"isCompleted"`
+	AdvancingTeams []string   `json:"advancingTeams"`
+	TargetMatchID  *uuid.UUID `json:"targetMatchId,omitempty"`
 }
 
 type RecordMatchResultsOutput struct {
@@ -135,7 +135,7 @@ type MatchOutput struct {
 
 type SwapSlotItem struct {
 	MatchID uuid.UUID `json:"matchId" doc:"Match the team is currently in"`
-	TeamID  uuid.UUID `json:"teamId" doc:"Team to move"`
+	TeamID  string    `json:"teamId" doc:"Team to move"`
 }
 
 type SwapTeamsInput struct {

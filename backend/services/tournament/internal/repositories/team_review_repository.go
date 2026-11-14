@@ -21,14 +21,14 @@ var ErrTeamEntryNotFound = errors.New("team entry not found")
 type TeamReviewRepository interface {
 	InTransaction(ctx context.Context, fn func(tx TeamReviewTransaction) error) error
 	PendingRefunds(ctx context.Context) ([]models.TournamentTeam, error)
-	MarkRefunded(ctx context.Context, teamID, paymentID uuid.UUID) error
+	MarkRefunded(ctx context.Context, tournamentID uuid.UUID, teamID string, paymentID uuid.UUID) error
 }
 
 // TeamReviewTransaction locks the tournament and team rows while the use case
 // evaluates review permissions and capacity rules.
 type TeamReviewTransaction interface {
 	LockTournament(tournamentID uuid.UUID) (*models.Tournament, error)
-	LockTeamAndAcceptedCount(tournamentID, teamID uuid.UUID) (*models.TournamentTeam, int, error)
+	LockTeamAndAcceptedCount(tournamentID uuid.UUID, teamID string) (*models.TournamentTeam, int, error)
 	SaveReview(team *models.TournamentTeam, toStatus models.TournamentTeamStatus, review *models.TournamentTeamReview) error
 }
 
@@ -69,14 +69,15 @@ func (tx *teamReviewTransaction) LockTournament(tournamentID uuid.UUID) (*models
 }
 
 func (tx *teamReviewTransaction) LockTeamAndAcceptedCount(
-	tournamentID, teamID uuid.UUID,
+	tournamentID uuid.UUID,
+	teamID string,
 ) (*models.TournamentTeam, int, error) {
 	// Lock the team too: payment confirmation changes its status without
 	// taking the tournament lock.
 	var team models.TournamentTeam
 	err := tx.db.Clauses(clause.Locking{Strength: "UPDATE"}).
 		Preload("Members").
-		Where("id = ? AND tournament_id = ?", teamID, tournamentID).
+		Where("tournament_id = ? AND id = ?", tournamentID, teamID).
 		First(&team).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, 0, ErrTeamEntryNotFound
@@ -112,8 +113,8 @@ func (r *teamReviewRepository) PendingRefunds(ctx context.Context) ([]models.Tou
 	return teams, err
 }
 
-func (r *teamReviewRepository) MarkRefunded(ctx context.Context, teamID, paymentID uuid.UUID) error {
+func (r *teamReviewRepository) MarkRefunded(ctx context.Context, tournamentID uuid.UUID, teamID string, paymentID uuid.UUID) error {
 	return r.db.WithContext(ctx).Model(&models.TournamentTeam{}).
-		Where("id = ? AND status = ? AND payment_id = ? AND refunded_at IS NULL", teamID, models.TournamentTeamStatusRejected, paymentID).
+		Where("tournament_id = ? AND id = ? AND status = ? AND payment_id = ? AND refunded_at IS NULL", tournamentID, teamID, models.TournamentTeamStatusRejected, paymentID).
 		Update("refunded_at", time.Now().UTC()).Error
 }

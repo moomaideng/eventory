@@ -202,7 +202,7 @@ export function TournamentDetails({
               </Button>
             ) : (
               <Button
-                render={<Link href={`/tournaments/${tournament.id}/team`} />}
+                render={<Link href={`/tournaments/${tournament.id}/teams/new`} />}
                 nativeButton={false}
                 className="self-start"
               >
@@ -221,7 +221,10 @@ export function TournamentDetails({
           ) : myTeam ? (
             myTeam.status === "PAYMENT_PENDING" ? (
               isSolo ? (
-                <RegistrationPaymentButton teamId={myTeam.id} />
+                <RegistrationPaymentButton
+                  tournamentId={tournament.id}
+                  teamId={myTeam.id}
+                />
               ) : (
                 <Button disabled className="self-start">
                   Payment pending
@@ -229,7 +232,10 @@ export function TournamentDetails({
               )
             ) : myTeam.status === "FORMING" ? (
               isSolo ? (
-                <RegistrationPaymentButton teamId={myTeam.id}>
+                <RegistrationPaymentButton
+                  tournamentId={tournament.id}
+                  teamId={myTeam.id}
+                >
                   {tournament.entryFeeMinor > 0
                     ? "Continue to payment"
                     : "Submit registration"}
@@ -258,7 +264,7 @@ export function TournamentDetails({
             </Button>
           ) : (
             <Button
-              render={<Link href={`/tournaments/${tournament.id}/team`} />}
+              render={<Link href={`/tournaments/${tournament.id}/teams/new`} />}
               nativeButton={false}
               className="self-start"
             >
@@ -286,7 +292,11 @@ export function TournamentDetails({
             registrationType={registrationType}
           />
           {!isCrowdfunding ? (
-            <TournamentRegisteredTeamsCard teams={teams} isSolo={isSolo} />
+            <TournamentRegisteredTeamsCard
+              tournamentId={tournament.id}
+              teams={teams}
+              isSolo={isSolo}
+            />
           ) : null}
         </div>
 
@@ -317,10 +327,14 @@ export function TournamentDetails({
                   </p>
                 )}
               </CardContent>
-              {!isSolo && myTeam.inviteCode ? (
+              {!isSolo ? (
                 <CardFooter>
                   <Button
-                    render={<Link href={`/lobbies/${myTeam.inviteCode}`} />}
+                    render={
+                      <Link
+                        href={`/tournaments/${tournament.id}/teams/${myTeam.id}`}
+                      />
+                    }
                     nativeButton={false}
                     className="w-full"
                   >

@@ -13,7 +13,7 @@ export const bracketMatchNodeSchema = z.object({
 export type BracketMatchNode = z.infer<typeof bracketMatchNodeSchema>;
 
 export const teamPlacementSchema = z.object({
-  teamId: z.string().uuid("Invalid team ID"),
+  teamId: z.string().regex(/^[A-Za-z0-9]{8}$/, "Invalid team ID"),
   finalRank: z.coerce.number().int().min(1, "Rank must be at least 1"),
   score: z.string().trim().max(32, "Score must be under 32 characters").optional(),
 });
@@ -28,7 +28,7 @@ export type RecordMatchResultsInput = z.infer<typeof recordMatchResultsSchema>;
 
 export const stage1SeedAssignmentSchema = z.object({
   matchId: z.string().uuid("Invalid match ID"),
-  teamIds: z.array(z.string().uuid("Invalid team ID")),
+  teamIds: z.array(z.string().regex(/^[A-Za-z0-9]{8}$/, "Invalid team ID")),
 });
 
 export type Stage1SeedAssignment = z.infer<typeof stage1SeedAssignmentSchema>;

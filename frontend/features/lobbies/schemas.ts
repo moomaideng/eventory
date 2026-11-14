@@ -18,3 +18,10 @@ export const lobbyInviteParamSchema = z
   .regex(/^[A-Z0-9]{6}$/, "Invalid lobby invite code.");
 
 export type LobbyInviteParam = z.infer<typeof lobbyInviteParamSchema>;
+
+export const teamIdParamSchema = z
+  .string()
+  .trim()
+  .regex(/^[A-Za-z0-9]{8}$/, "Invalid team ID.");
+
+export type TeamIdParam = z.infer<typeof teamIdParamSchema>;
