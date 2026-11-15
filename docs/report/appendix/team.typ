@@ -18,7 +18,7 @@
   (id: "6xxxxxxx21", name: "Kittichet Arayasujin", role: "Product Owner"), // Ham
   (id: "6xxxxxxx21", name: "", role: "Tech Lead"), // Tawan
   (id: "6xxxxxxx21", name: "", role: "Senior Backend"), // Not
-  (id: "6xxxxxxx21", name: "", role: ""), // Film
+  (id: "6732007621", name: "Jirapat Chaiya", role: "Developer"), // Film
   (id: "6xxxxxxx21", name: "", role: "Scrum Master"), // Eff
   (id: "6732037421", name: "Wachiraphut Intarachart", role: "Dev dogshit"), // Pun
   (id: "6xxxxxxx21", name: "", role: ""), // Mavin
