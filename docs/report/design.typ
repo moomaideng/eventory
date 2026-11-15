@@ -9,10 +9,10 @@
   title: "Design Document",
   date: datetime(year: 2026, month: 11, day: 16),
   contrib: (
-    (pct: none, work: [UML API diagram]),     // Ham
-    (pct: none, work: [UML API diagram]),     // Tawan
-    (pct: none, work: [UML API diagram]),     // Not
-    (pct: none, work: [Sequence diagram, design quality]), // Film
+    (pct: none, work: [UML API diagram]),     // Hoof
+    (pct: none, work: [UML API diagram]),     // Tawoof
+    (pct: none, work: [UML API diagram]),     // Noof
+    (pct: none, work: [Sequence diagram, design quality]), // Filmfall
   ),
 )
 
