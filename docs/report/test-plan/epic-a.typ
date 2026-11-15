@@ -405,9 +405,238 @@ without maintaining separate logins._
 
 
 // ---------- Story 3 (Mavin) ----------
-== US #todo[x-y]: #todo[title]
-#todo[copy the Story 1 block]
+== US 1-3: Organizer & Sponsor Profile Viewing & Updates
+_As an account owner, I want to view and update my role-specific profile(s), so that my contact and public information stays accurate._
+
+=== Input Equivalence Classes
+#todo[US 1-3: add the ec-table (organization name, contact email, phone)]
+
+=== Pre-condition
+#todo[US 1-3: add the pre-condition]
+
+=== Test Cases
+#todo[US 1-3: add the test cases]
 
 // ---------- Story 4 (Mavin) ----------
-== US #todo[x-y]: #todo[title]
-#todo[copy the Story 1 block]
+== US 1-4: Primary Account Profile Viewing & Updates
+_As an account owner, I want to view and update my primary account profile, so that my information stays accurate._
+
+=== Input Equivalence Classes
+#ec-table(
+  ("EC1", "Display Name",
+    [1–64 characters after trimming, e.g. `Imtaez`, `Dec48` or `!@#$`.], true),
+  ("EC2", "Display Name",
+    [Valid text with leading or trailing spaces, e.g. `  Dec48  `
+    (the spaces are removed when saved).], true),
+  ("EC3", "Display Name",
+    [Empty, e.g. `""`.], false),
+  ("EC4", "Display Name",
+    [Only spaces, e.g. `"   "`.], false),
+  ("EC5", "Display Name",
+    [More than 64 characters, e.g. `a` repeated 65 times.], false),
+  ("EC6", "Handle",
+    [3–24 characters using only lowercase letters, numbers and
+    underscores, and not used by another account, e.g. `imtaez_01` or `dec_48`.
+    Uppercase letters are converted to lowercase.], true),
+  ("EC7", "Handle",
+    [Contains a character that is not allowed, e.g. `john-doe`
+     or `john doe`.], false),
+  ("EC8", "Handle",
+    [Fewer than 3 characters, e.g. `aa`.], false),
+  ("EC9", "Handle",
+    [More than 32 characters, e.g. `a` repeated 33 times.], false),
+  ("EC10", "Handle",
+    [Already used by another account, e.g. `player_one`.], false),
+  ("EC11", "Handle",
+    [25–32 characters using only allowed characters, e.g.
+    `aaaaaaaaaabbbbbbbbbbcccccccccc` (30 characters).
+    The page states that 3–32 characters are allowed,
+    but the system keeps only the first 24.], true),
+)
+
+=== Pre-condition
+- The tester is signed in as an account owner with an active account.
+- The Profile settings page is open and the card with the Display name and Handle fields is shown.
+- Another account with the handle `player_one` already exists.
+- Each test case starts from the saved profile shown on the page.
+
+=== Test Cases
+#test-cases(
+  story: "US 1-4",
+  (
+    id: "TC12",
+    action: [Enter the display name and handle, then save the profile.],
+    inputs: ("Display Name": [`Imtaez`], Handle: [`imtaez_01`]),
+    expected: [
+      The system saves the profile and shows `Imtaez` and `imtaez_01` on the page.
+
+      #image("../img/tc12.png", width: 100%)
+    ],
+    actual: [
+      After saving, the page showed "Profile updated". The Account card showed
+      `Imtaez` and `imtaez_01`, and the navigation bar showed "Imtaez".
+    ],
+    ecs: "EC1, EC6",
+    status: "P",
+  ),
+  (
+    id: "TC13",
+    action: [Enter the display name and handle, then save the profile.],
+    inputs: ("Display Name": [`  Dec48  `], Handle: [`Dec_48`]),
+    expected: [
+      The system saves the profile and shows `Dec48` (spaces removed)
+      and `dec_48` (converted to lowercase).
+
+      #image("../img/tc13-1.png", width: 100%)
+      #image("../img/tc13-2.png", width: 100%)
+    ],
+    actual: [
+      The handle field converted `D` to lowercase while typing.
+      After saving, the page showed "Profile updated", the display name was
+      `Dec48` (spaces removed) and the handle was `dec_48`.
+      The navigation bar showed "Dec48".
+    ],
+    ecs: "EC2, EC6",
+    status: "P",
+  ),
+  (
+    id: "TC14",
+    action: [Clear the display name, then save the profile.],
+    inputs: ("Display Name": [`""` (empty)], Handle: [`dec_48`]),
+    expected: [
+      The system shows an error under Display Name and does not save the profile.
+
+      #image("../img/tc14.png", width: 100%)
+    ],
+    actual: [
+      After pressing Save, the message "Display name cannot be empty" appeared
+      under the field. The navigation bar still showed "Dec48".
+    ],
+    ecs: "EC3",
+    status: "P",
+  ),
+  (
+    id: "TC15",
+    action: [Enter spaces only as the display name, then save the profile.],
+    inputs: ("Display Name": [`"   "` (spaces only)], Handle: [`dec_48`]),
+    expected: [
+      The system shows an error under Display Name and does not save the profile.
+
+      #image("../img/tc15-1.png", width: 100%)
+      #image("../img/tc15-2.png", width: 100%)
+    ],
+    actual: [
+      After pressing Save, the field was emptied and the message
+      "Display name cannot be empty" appeared. The navigation bar
+      still showed "Dec48".
+    ],
+    ecs: "EC4",
+    status: "P",
+  ),
+  (
+    id: "TC16",
+    action: [Try to type a 65-character display name.],
+    inputs: ("Display Name": [`a` repeated 65 times], Handle: [`dec_48`]),
+    expected: [
+      The system does not accept more than 64 characters:
+      the extra character cannot be entered, or an error is shown.
+
+      #image("../img/tc16-1.png", width: 100%)
+      #image("../img/tc16-2.png", width: 100%)
+    ],
+    actual: [
+      The field stopped accepting characters after the 64th.
+      The 65th `a` could not be typed.
+      The browser console showed `maxLength = 64` for the display name input.
+    ],
+    ecs: "EC5",
+    status: "P",
+  ),
+  (
+    id: "TC17",
+    action: [Try to type a handle that contains a hyphen.],
+    inputs: ("Display Name": [`Imtaez`], Handle: [`imtaez-01`]),
+    expected: [
+      The system does not accept the hyphen:
+      the character cannot be entered, or an error is shown.
+
+      #image("../img/tc17.png", width: 100%)
+    ],
+    actual: [
+      The hyphen could not be typed. The field showed `imtaez01`.
+    ],
+    ecs: "EC7",
+    status: "P",
+  ),
+  (
+    id: "TC18",
+    action: [Enter a 2-character handle, then save the profile.],
+    inputs: ("Display Name": [`Dec48`], Handle: [`de`]),
+    expected: [
+      The system shows an error under Handle and does not save the profile.
+
+      #image("../img/tc18.png", width: 100%)
+    ],
+    actual: [
+      After pressing Save, the message "Handle must be at least 3 characters"
+      appeared under the field. The navigation bar still showed "Dec48".
+    ],
+    ecs: "EC8",
+    status: "P",
+  ),
+  (
+    id: "TC19",
+    action: [Try to type a 33-character handle.],
+    inputs: ("Display Name": [`Imtaez`], Handle: [`a` repeated 33 times]),
+    expected: [
+      The system does not accept more than 32 characters:
+      the extra character cannot be entered, or an error is shown.
+
+      #image("../img/tc19-1.png", width: 100%)
+      #image("../img/tc19-2.png", width: 100%)
+    ],
+    actual: [
+      The field stopped accepting characters after the 32nd.
+      The 33rd `a` could not be typed.
+      The browser console showed `maxLength = 32` for the handle input.
+    ],
+    ecs: "EC9",
+    status: "P",
+  ),
+  (
+    id: "TC20",
+    action: [Enter a handle that another account already uses, then save the profile.],
+    inputs: ("Display Name": [`Dec48`], Handle: [`player_one`]),
+    expected: [
+      The system shows an error that the handle is already taken
+      and does not save the profile.
+
+      #image("../img/tc20.png", width: 100%)
+    ],
+    actual: [
+      After pressing Save, the message "Handle is already taken. Please choose
+      another one." appeared under the field. The navigation bar still showed "Dec48".
+    ],
+    ecs: "EC10",
+    status: "P",
+  ),
+  (
+    id: "TC21",
+    action: [Enter a 30-character handle, then save the profile.],
+    inputs: ("Display Name": [`Dec48`], Handle: [`aaaaaaaaaabbbbbbbbbbcccccccccc`]),
+    expected: [
+      The system saves the handle as entered (30 characters), because the page
+      states that 3–32 characters are allowed.
+
+      #image("../img/tc21-1.png", width: 100%)
+      #image("../img/tc21-2.png", width: 100%)
+    ],
+    actual: [
+      The page showed "Profile updated" without any warning, but the handle
+      was shortened to `aaaaaaaaaabbbbbbbbbbcccc` (24 characters).
+      The last 6 characters were removed.
+    ],
+    ecs: "EC11",
+    status: "F",
+  ),
+)
