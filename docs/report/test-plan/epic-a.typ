@@ -409,13 +409,208 @@ without maintaining separate logins._
 _As an account owner, I want to view and update my role-specific profile(s), so that my contact and public information stays accurate._
 
 === Input Equivalence Classes
-#todo[US 1-3: add the ec-table (organization name, contact email, phone)]
+#ec-table(
+  ("EC1", "Name", 
+    [Name is 1-150 characters for an Organizer, or 1-120 for a Sponsor, 
+    and may contain Thai or special characters (e.g. `Mavin`, `Dec 48`, `อิมเต้`, `!@#$`)], true),
+  ("EC2", "Name",
+    [Name with leading or trailing spaces (e.g. `  Imtaez  `); the spaces are trimmed on save], true),
+  ("EC3", "Name",
+    [Empty name], false),
+  ("EC4", "Name",
+    [Name that contains only spaces (e.g. `"   "`)], false),
+  ("EC5", "Contact Email",
+    [A valid email address (e.g. `mavin@example.com`, `imtaez@example.com`)], true),
+  ("EC6", "Contact Email",
+    [A text that is not a valid email address (e.g. `dec48.com`)], false),
+  ("EC7", "Contact Email",
+    [Empty email on an Organizer profile (optional field; the account email is used instead)], true),
+  ("EC8", "Contact Email",
+    [Empty email on a Sponsor profile (required field)], false),
+  ("EC9", "Phone",
+    [A valid phone number, optionally starting with `+` (e.g. `+66 89 999 9999`)], true),
+  ("EC10", "Phone",
+    [Empty phone (optional field)], true),
+  ("EC11", "Phone",
+    [Phone shorter than 6 characters (e.g. `999`)], false),
+  ("EC12", "Phone",
+    [Phone that contains letters (e.g. `abc999`)], false),
+)
 
 === Pre-condition
-#todo[US 1-3: add the pre-condition]
+- The tester is signed in as an active account owner and has opened the Profile settings page.
+- The account already has an Organizer profile and a Sponsor profile.
 
 === Test Cases
-#todo[US 1-3: add the test cases]
+#test-cases(
+  story: "US 1-3",
+  (
+    id: "TC22",
+    action: [Enter the Organizer details, save the profile, then reload the page.],
+    inputs: (Name: [`Mavin`], "Contact Email": [`mavin@example.com`], Phone: [`+66 89 999 9999`]),
+    expected: [
+      The system saves the profile and shows the same details after the reload.
+
+      #image("../img/tc22.png", width: 100%)
+    ],
+    actual: [
+      After saving and reloading, the Organizer profile showed `Mavin`,
+      `mavin@example.com` and `+66 89 999 9999`.
+    ],
+    ecs: "EC1, EC5, EC9",
+    status: "P",
+  ),
+  (
+    id: "TC23",
+    action: [Enter the Sponsor details with a different phone, save the profile, then reload the page.],
+    inputs: (Name: [`อิมเต้`], "Contact Email": [`imtaez@example.com`], Phone: [`+66 81 111 1111`]),
+    expected: [
+      The system saves the Sponsor profile and shows it after the reload.
+      The Organizer phone stays `+66 89 999 9999`.
+
+      #image("../img/tc23-1.png", width: 100%)
+      #image("../img/tc23-2.png", width: 100%)
+    ],
+    actual: [
+      After saving and reloading, the Sponsor profile showed `อิมเต้` and
+      `imtaez@example.com`, but the phone showed "Not set". The phone was not
+      saved. The Organizer phone stayed `+66 89 999 9999`.
+    ],
+    ecs: "EC1, EC5, EC9",
+    status: "F",
+  ),
+  (
+    id: "TC24",
+    action: [Enter the Organizer name with spaces, clear the email and phone, then save the profile.],
+    inputs: (Name: [`  Imtaez  `], "Contact Email": [empty], Phone: [empty]),
+    expected: [
+      The system saves the profile and shows `Imtaez` (spaces removed) and the account email as the contact email, with no phone.
+
+      #image("../img/tc24-1.png", width: 100%)
+      #image("../img/tc24-2.png", width: 100%)
+    ],
+    actual: [
+      After saving, the Organizer profile showed `Imtaez` (spaces removed),
+      the account email `dev@eventory.gg` as the contact email, and the phone
+      as "Not set".
+    ],
+    ecs: "EC2, EC7, EC10",
+    status: "P",
+  ),
+  (
+    id: "TC25",
+    action: [Clear the Organizer name, then save the profile.],
+    inputs: (Name: [empty], "Contact Email": [`mavin@example.com`], Phone: [empty]),
+    expected: [
+      The system shows an error under Name and does not save the profile.
+
+      #image("../img/tc25.png", width: 100%)
+    ],
+    actual: [
+      After pressing Save profile, the message "Enter an organizer name."
+      appeared under the field and the form stayed open.
+    ],
+    ecs: "EC3",
+    status: "P",
+  ),
+  (
+    id: "TC26",
+    action: [Replace the Sponsor name with spaces, then save the profile.],
+    inputs: (Name: [`"   "`], "Contact Email": [`imtaez@example.com`], Phone: [empty]),
+    expected: [
+      The system shows an error under Name and does not save the profile.
+
+      #image("../img/tc26.png", width: 100%)
+    ],
+    actual: [
+      After pressing Save profile, the message "Enter a sponsor name."
+      appeared under the field and the form stayed open.
+    ],
+    ecs: "EC4",
+    status: "P",
+  ),
+  (
+    id: "TC27",
+    action: [Enter an invalid email in the Organizer profile, then save the profile.],
+    inputs: (Name: [`Dec 48`], "Contact Email": [`dec48.com`], Phone: [empty]),
+    expected: [
+      The system shows an error under Contact Email and does not save the profile.
+
+      #image("../img/tc27.png", width: 100%)
+    ],
+    actual: [
+      After pressing Save profile, the message "Enter a valid email address."
+      appeared under the field and the form stayed open.
+    ],
+    ecs: "EC6",
+    status: "P",
+  ),
+  (
+    id: "TC28",
+    action: [Clear the email in the Sponsor profile, then save the profile.],
+    inputs: (Name: [`Dec 48`], "Contact Email": [empty], Phone: [empty]),
+    expected: [
+      The system shows an error under Contact Email and does not save the profile.
+
+      #image("../img/tc28.png", width: 100%)
+    ],
+    actual: [
+      After pressing Save profile, the message "Enter a valid contact email."
+      appeared under the field and the form stayed open.
+    ],
+    ecs: "EC8",
+    status: "P",
+  ),
+  (
+    id: "TC29",
+    action: [Enter a short phone in the Organizer profile, then save the profile.],
+    inputs: (Name: [`Mavin`], "Contact Email": [`mavin@example.com`], Phone: [`999`]),
+    expected: [
+      The system shows an error under Phone and does not save the profile.
+
+      #image("../img/tc29.png", width: 100%)
+    ],
+    actual: [
+      After pressing Save profile, the message "Enter a valid phone number,
+      e.g. +66 81 234 5678." appeared under the field and the form stayed open.
+    ],
+    ecs: "EC11",
+    status: "P",
+  ),
+  (
+    id: "TC30",
+    action: [Enter a phone with letters in the Sponsor profile, then save the profile.],
+    inputs: (Name: [`Imtaez`], "Contact Email": [`imtaez@example.com`], Phone: [`abc999`]),
+    expected: [
+      The system shows an error under Phone and does not save the profile.
+
+      #image("../img/tc30-1.png", width: 100%)
+      #image("../img/tc30-2.png", width: 100%)
+    ],
+    actual: [
+      No error was shown. After saving, the Sponsor profile showed `Imtaez`
+      and `imtaez@example.com`, and the phone showed "Not set".
+    ],
+    ecs: "EC12",
+    status: "F",
+  ),
+  (
+    id: "TC31",
+    action: [Enter special characters as the Sponsor name, clear the phone, then save the profile.],
+    inputs: (Name: [`!@#$`], "Contact Email": [`imtaez@example.com`], Phone: [empty]),
+    expected: [
+      The system saves the profile and shows `!@#$` as the name.
+
+      #image("../img/tc31.png", width: 100%)
+    ],
+    actual: [
+      After saving, the Sponsor profile showed `!@#$` as the name, with
+      `imtaez@example.com` and the phone as "Not set".
+    ],
+    ecs: "EC1, EC5, EC10",
+    status: "P",
+  ),
+)
 
 // ---------- Story 4 (Mavin) ----------
 == US 1-4: Primary Account Profile Viewing & Updates
