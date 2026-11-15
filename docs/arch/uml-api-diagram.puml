@@ -34,7 +34,8 @@ class "EventoryAPI" as EventoryAPI <<Application>> {
 
 note bottom of EventoryAPI
   Each microservice also exposes
-  GET /health outside { basePath = "/api/v1" }.
+  GET /health outside { basePath = "/api/v1" }
+  (Notification Service also exposes GET /ready).
   Protected operations require
   Authorization: Bearer <JWT>.
 end note
@@ -89,6 +90,8 @@ package "Account Service" {
     - organizerEmail : string
     - phone : string
     - privacyConsentedAt : string
+    - createdAt : string
+    - updatedAt : string
   }
 
   class "SponsorProfile" as Rep_SponsorProfile <<Representation>> {
@@ -99,6 +102,9 @@ package "Account Service" {
     - websiteUrl : string
     - logoUrl : string
     - tags : string[]
+    - privacyConsentedAt : string
+    - createdAt : string
+    - updatedAt : string
   }
 }
 
@@ -152,7 +158,6 @@ Notifications .[#B45309].> NotificationsReadAll : <<Path>> /read-all
 Notifications .[#B45309].> NotificationRead : <<Path>> /{id}/read
 
 Notifications .[#BE185D].> Rep_Notification : <<use>>
-NotificationsReadAll .[#BE185D].> Rep_Notification : <<use>>
 NotificationRead .[#BE185D].> Rep_Notification : <<use>>
 
 ' ============================================================================
@@ -185,11 +190,16 @@ package "Payment Service" {
     - source : string
     - provider : string
     - reference : string
+    - description : string
     - amountMinor : integer
     - currency : string
     - status : string
+    - createdAt : string
     - expiresAt : string
     - paidAt : string
+    - refundedAt : string
+    - invoicePath : string
+    - checkoutPath : string
   }
 
   class "Receipt" as Rep_Receipt <<Representation>> {
@@ -197,7 +207,9 @@ package "Payment Service" {
     - invoiceId : string
     - payerAccountId : string
     - source : string
+    - provider : string
     - reference : string
+    - description : string
     - amountMinor : integer
     - currency : string
     - paidAt : string
@@ -371,19 +383,29 @@ package "Tournament Service" {
   }
 
   ' --- Domain Representations ---
+  class "InviteResolution" as Rep_InviteResolution <<Representation>> {
+    - tournamentId : string
+    - teamId : string
+  }
+
   class "Tournament" as Rep_Tournament <<Representation>> {
     - id : string
     - organizerId : string
+    - organizerName : string
     - name : string
+    - description : string
+    - detail : string
     - game : string
     - location : string
     - registrationMode : string
     - status : string
     - capacity : integer
+    - registeredCount : integer
     - minTeamSize : integer
     - maxTeamSize : integer
     - entryFeeMinor : integer
-    - fundingGoalMinor : integer
+    - currency : string
+    - registrationDeadline : string
     - startAt : string
     - endAt : string
   }
@@ -412,6 +434,8 @@ package "Tournament Service" {
     - title : string
     - description : string
     - fields : FormField[]
+    - createdAt : string
+    - updatedAt : string
   }
 
   class "FormResponse" as Rep_FormResponse <<Representation>> {
@@ -423,13 +447,16 @@ package "Tournament Service" {
 
   class "TeamLobby" as Rep_TeamLobby <<Representation>> {
     - id : string
-    - tournamentId : string
+    - tournament : Tournament
     - captainId : string
+    - captainName : string
     - name : string
     - inviteCode : string
     - status : string
+    - viewerRole : string
     - members : TeamLobbyMember[]
     - paymentId : string
+    - paymentExpiresAt : string
     - createdAt : string
   }
 
@@ -437,10 +464,13 @@ package "Tournament Service" {
     - id : string
     - tournamentId : string
     - entryId : string
-    - decision : string
-    - reason : string
+    - fromStatus : string
+    - toStatus : string
     - status : string
+    - reason : string
     - reviewerId : string
+    - reviewerName : string
+    - createdAt : string
   }
 
   class "BracketMatch" as Rep_BracketMatch <<Representation>> {
@@ -455,6 +485,8 @@ package "Tournament Service" {
     - venue : string
     - isCompleted : boolean
     - entries : MatchEntry[]
+    - createdAt : string
+    - updatedAt : string
   }
 
   class "SponsorshipTier" as Rep_SponsorshipTier <<Representation>> {
@@ -471,8 +503,11 @@ package "Tournament Service" {
   class "Sponsorship" as Rep_Sponsorship <<Representation>> {
     - id : string
     - tournamentId : string
+    - tournamentName : string
     - sponsorName : string
     - tierName : string
+    - websiteUrl : string
+    - logoUrl : string
     - amountMinor : integer
     - currency : string
     - status : string
@@ -524,7 +559,7 @@ SponsorshipTiers .[#B45309].> SponsorshipTier : <<Path>> /{tierId}
 SponsorshipTier .[#B45309].> SponsorshipCheckout : <<Path>> /checkout
 
 ' --- Tournament Representation Usages ---
-LobbyInvite .[#BE185D].> Rep_TeamLobby : <<use>>
+LobbyInvite .[#BE185D].> Rep_InviteResolution : <<use>>
 Tournaments .[#BE185D].> Rep_Tournament : <<use>>
 MyTournaments .[#BE185D].> Rep_Tournament : <<use>>
 Tournament .[#BE185D].> Rep_Tournament : <<use>>
