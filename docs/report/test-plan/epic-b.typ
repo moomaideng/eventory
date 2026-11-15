@@ -3,8 +3,8 @@
 // Task:   Black-box test plan for 4 user stories of ONE EPIC
 //
 // Pick the EPIC with Eff/Pun (epic-a.typ uses a different one).
-// Stories + acceptance criteria: docs/backlog/backlog.md,
-//                                docs/backlog/acceptance-criteria.md
+// Stories + acceptance criteria: Backlog Master (Google Sheet)
+//   https://docs.google.com/spreadsheets/d/1KqyqqsrhDQ_XMk7KXhWC7pmIDYf_PSL3XvMez0JwPXg/edit?gid=1930282482#gid=1930282482
 //
 // Per story:
 //   1. ec-table: split each input into equivalence classes
