@@ -13,15 +13,14 @@
 // Order matters: the `contrib` list in design.typ / test-plan.typ
 // follows this order, row by row.
 // 
-// CHANGE BY YOURSELF
 #let team = (
-  (id: "6xxxxxxx21", name: "Kittichet Arayasujin", role: "Product Owner"), // Ham
-  (id: "6xxxxxxx21", name: "", role: "Tech Lead"), // Tawan
-  (id: "6xxxxxxx21", name: "", role: "Senior Backend"), // Not
-  (id: "6732007621", name: "Jirapat Chaiya", role: "Developer"), // Film
-  (id: "6xxxxxxx21", name: "", role: "Scrum Master"), // Eff
-  (id: "6732037421", name: "Wachiraphut Intarachart", role: "Dev dogshit"), // Pun
-  (id: "6xxxxxxx21", name: "", role: ""), // Mavin
-  (id: "6xxxxxxx21", name: "", role: ""), // Imtaez
-  (id: "6xxxxxxx21", name: "", role: ""), // Boof
+  (id: "6732005321", name: "Kittichet Arayasujin", role: "Product Owner"), // Hoof
+  (id: "6732023621", name: "Pitiwat Kittiwimonchai", role: "Tech Lead"), // Tawoof
+  (id: "6731305421", name: "Kittichon Chaonawig", role: "Senior Backend"), // Noof
+  (id: "6732007621", name: "Jirapat Chaiya", role: "Developer"), // Filmfall
+  (id: "6732029421", name: "Passakorn Yangmak", role: "Scrum Master"), // Eff
+  (id: "6732037421", name: "Wachiraphut Intarachart", role: "Developer"), // Wachii
+  (id: "6730434521", name: "Metavin Karnjanarat", role: "Developer"), // Mavin
+  (id: "6732022021", name: "Nirawit Jongprasartsuk", role: "Developer"), // Imtaez
+  (id: "6732025921", name: "Pasin Thanyakasikol", role: "Developer"), // Boof
 )
