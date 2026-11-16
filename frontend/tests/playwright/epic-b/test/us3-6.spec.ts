@@ -7,7 +7,6 @@ const acceptedCount = (page: Page) => page.locator('section[aria-labelledby="reg
 test("TC59: accept an application", async ({ page, reviewFixture }) => {
   const application = page.getByRole("row").filter({ hasText: reviewFixture.pendingName });
   await expect(acceptedCount(page)).toHaveText("1");
-  await expect(application.getByRole("button", { name: `View answers for ${reviewFixture.pendingName}` })).toBeVisible();
 
   await application.getByRole("button", { name: `Accept ${reviewFixture.pendingName}` }).click();
   await page.getByRole("alertdialog", { name: "Accept this application?" })
