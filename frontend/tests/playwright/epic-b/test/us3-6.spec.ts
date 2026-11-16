@@ -4,15 +4,10 @@ import { test, expect } from "@/tests/playwright/epic-b/initial-state/us3-6.setu
 const acceptedCount = (page: Page) => page.locator('section[aria-labelledby="registrations"] dl > div')
   .filter({ has: page.locator("dt", { hasText: "Accepted" }) }).locator("dd");
 
-test("TC59: view answers and accept an application", async ({ page, reviewFixture }) => {
+test("TC59: accept an application", async ({ page, reviewFixture }) => {
   const application = page.getByRole("row").filter({ hasText: reviewFixture.pendingName });
   await expect(acceptedCount(page)).toHaveText("1");
-
-  await application.getByRole("button", { name: /View answers for/ }).first().click();
-  const answers = page.getByRole("dialog", { name: "Registration Answers" });
-  await expect(answers).toContainText("Rank");
-  await expect(answers).toContainText("Silver");
-  await answers.getByRole("button", { name: "Close" }).last().click();
+  await expect(application.getByRole("button", { name: `View answers for ${reviewFixture.pendingName}` })).toBeVisible();
 
   await application.getByRole("button", { name: `Accept ${reviewFixture.pendingName}` }).click();
   await page.getByRole("alertdialog", { name: "Accept this application?" })

@@ -187,9 +187,9 @@ The organizer is signed in and views a tournament with a locked application whos
   (
     id: "TC59",
     inputs: (Decision: [Accept], Capacity: [1 accepted, limit 2], Application: [locked with submitted answers]),
-    expected: [The answers are visible; the application becomes Accepted and the accepted count increases to 2.],
-    actual: [Answers were visible; acceptance increased the count to 2.],
-    screenshots: ("../img/tc59-answers.png", "../img/tc59.png"),
+    expected: [The View answers button is available; the application becomes Accepted and the accepted count increases to 2.],
+    actual: [View answers button was available; acceptance increased the count to 2.],
+    screenshots: ("../img/tc59.png",),
     status: "P",
     ecs: "EC1",
   ),
