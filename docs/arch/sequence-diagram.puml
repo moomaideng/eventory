@@ -1,0 +1,59 @@
+@startuml
+title UC-03 Submit Registration (team captain locks roster and pays entry fee)
+
+autonumber
+
+actor "Team Captain" as captain
+participant "Web Client" as client
+participant "API Gateway\n(Traefik)" as gw
+participant "Tournament\nService" as tournament
+participant "Account\nService" as account
+participant "Payment\nService" as payment
+queue "Message Broker\n(RabbitMQ)" as mq
+participant "Notification\nService" as notif
+
+== Lock roster ==
+
+captain -> client : lock roster
+client -> gw : POST lock roster
+gw -> tournament : lock roster
+tournament -> account : GetAccount (gRPC)
+account --> tournament : captain is active
+tournament -> tournament : check team size and deadline,\nstatus = PAYMENT_PENDING
+
+== Create invoice ==
+
+tournament -> payment : create invoice (entry fee)
+payment --> tournament : invoice UNPAID
+tournament --> client : payment required
+client --> captain : show checkout
+
+== Pay ==
+
+captain -> client : pay
+client -> gw : POST pay
+gw -> payment : pay invoice
+
+alt payment succeeds
+  payment -> payment : invoice = PAID
+  payment ->> mq : publish payment.succeeded
+  payment --> client : paid
+  mq ->> tournament : payment.succeeded
+  tournament -> tournament : team = LOCKED,\nsubmit registration to organizer
+  tournament ->> mq : publish registration.submitted
+  mq ->> notif : payment.succeeded,\nregistration.submitted
+  notif -> notif : send confirmation email
+else payment fails
+  payment --> client : payment failed
+  client --> captain : failed, retry allowed
+  note over tournament
+    registration not submitted,
+    roster stays unlocked (FR20)
+  end note
+end
+
+note over mq
+  Solid arrows: wait for the reply.
+  Open arrows (->>): fire and forget via the broker.
+end note
+@enduml

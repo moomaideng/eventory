@@ -13,12 +13,15 @@
 
 == Sequence Diagram <sequence>
 
-*Use case:* #todo[name, e.g. "Captain registers team and pays fee"]
+*Use case:* UC-03 Submit Registration (team captain locks roster and pays entry fee)
 
-#placeholder(height: 9cm)[Sequence diagram]
-// #figure(image("../img/sequence.svg", width: 100%), caption: [Sequence diagram: ...])
+#figure(
+  image("../img/sequence-diagram.png", width: 100%),
+  caption: [Sequence diagram: UC-03 Submit Registration (team captain locks roster and pays entry fee)],
+)
 
 === Walkthrough
-+ #todo[step 1: who calls what]
-+ #todo[step 2]
-+ #todo[error flow: what happens if ...]
++ *Lock roster:* Team Captain initiates `lock roster` from Web Client, which sends `POST lock roster` through API Gateway (Traefik) to Tournament Service. Tournament Service calls `GetAccount (gRPC)` on Account Service to confirm the captain is active, validates team size and deadline, and sets `status = PAYMENT_PENDING`.
++ *Create invoice:* Tournament Service requests `create invoice (entry fee)` from Payment Service, receives `invoice UNPAID`, and responds with `payment required` so Web Client shows the checkout view to the Team Captain.
++ *Pay (success flow):* Team Captain submits `pay` (`POST pay` via API Gateway to `pay invoice` on Payment Service). Payment Service sets `invoice = PAID`, publishes `payment.succeeded` to Message Broker (RabbitMQ) via fire-and-forget (`->>`), and replies `paid` to Web Client. Tournament Service consumes `payment.succeeded`, sets `team = LOCKED`, submits registration to the organizer, and publishes `registration.submitted` to RabbitMQ. Notification Service consumes `payment.succeeded` and `registration.submitted` to send the confirmation email.
++ *Error flow (`payment fails`):* Payment Service returns `payment failed` to Web Client, which informs the Team Captain (`failed, retry allowed`). Registration is not submitted and the roster remains unlocked (FR20).
