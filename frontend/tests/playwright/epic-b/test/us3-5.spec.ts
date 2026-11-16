@@ -4,9 +4,6 @@ const apiURL = process.env.PLAYWRIGHT_API_URL ?? "http://localhost:8080";
 const auth = { Authorization: "Bearer alex-dev" };
 
 test("TC56: valid Number question saves and appears for registrants", async ({ page }) => {
-  await page.getByRole("button", { name: "Add Question" }).first().click();
-  await page.getByRole("combobox").click();
-  await page.getByRole("option", { name: "Number" }).click();
   await page.getByRole("button", { name: "Edit question label" }).click();
   await page.getByPlaceholder("Enter question title...").fill("Budget amount");
   await page.getByRole("button", { name: "Confirm label" }).click();
@@ -50,9 +47,6 @@ test("TC56: valid Number question saves and appears for registrants", async ({ p
 });
 
 test("TC57: empty question label blocks saving", async ({ page }) => {
-  await page.getByRole("button", { name: "Add Question" }).first().click();
-  await page.getByRole("combobox").click();
-  await page.getByRole("option", { name: "Number" }).click();
   await page.getByLabel("Min Value").fill("0");
   await page.getByLabel("Max Value").fill("1000");
 
@@ -65,9 +59,6 @@ test("TC57: empty question label blocks saving", async ({ page }) => {
 });
 
 test("TC58: reversed Number range fails to save", async ({ page }) => {
-  await page.getByRole("button", { name: "Add Question" }).first().click();
-  await page.getByRole("combobox").click();
-  await page.getByRole("option", { name: "Number" }).click();
   await page.getByRole("button", { name: "Edit question label" }).click();
   await page.getByPlaceholder("Enter question title...").fill("Budget amount");
   await page.getByRole("button", { name: "Confirm label" }).click();

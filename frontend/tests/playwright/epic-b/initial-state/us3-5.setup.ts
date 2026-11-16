@@ -14,4 +14,7 @@ test.beforeEach(async ({ page }) => {
   await expect(page).toHaveURL(/\/organizer\/tournaments\/[0-9a-f-]+$/);
   await page.getByRole("tab", { name: "Registration questions" }).click();
   await expect(page.getByRole("heading", { name: "Registration Questions" })).toBeVisible();
+  await page.getByRole("button", { name: "Add Question" }).first().click();
+  await page.getByRole("combobox").click();
+  await page.getByRole("option", { name: "Number" }).click();
 });
