@@ -50,4 +50,3 @@
 // Built automatically from every test-cases(...) above. Do not edit.
 #coverage-matrix()
 
-#include "appendix/iso29110.typ"
