@@ -24,8 +24,9 @@
 )
 
 // ---------- Cover page ----------
-// `contrib` = one entry per member, same order as `team`:
-//   ((pct: 20, work: [UML API diagram]), ...)
+// `contrib` = one contribution per member, same order as `team`:
+//   ([UML API diagram], [Test plan], ...)
+// Missing entries show a red TODO. The first member in `team` is the leader.
 #let cover(title: "", date: datetime.today(), contrib: ()) = page(numbering: none)[
   #set align(center)
   #v(3cm)
@@ -47,28 +48,25 @@
   // Role column only appears when someone has a role.
   #let show-role = team.any(m => roles(m) != "")
   #table(
-    columns: if show-role { (auto, 1fr, auto, auto, 1.5fr) } else { (auto, 1fr, auto, 2fr) },
-    align: if show-role { (left, left, left, center, left) } else { (left, left, center, left) },
+    columns: if show-role { (auto, auto, auto, 1fr) } else { (auto, auto, 1fr) },
     table.header(
       [*Student ID*], [*Name*],
       ..if show-role { ([*Role*],) },
-      [*%*], [*Contribution*],
+      [*Contribution*],
     ),
-    ..team.enumerate().map(((i, m)) => {
-      let c = contrib.at(i, default: (pct: none, work: todo[fill]))
-      (
-        m.id,
-        m.name,
-        ..if show-role { (roles(m),) },
-        if c.pct == none [--] else [#c.pct],
-        c.work,
-      )
-    }).flatten(),
+    ..team.enumerate().map(((i, m)) => (
+      m.id,
+      if i == 0 [#m.name (Leader)] else { m.name },
+      ..if show-role { (roles(m),) },
+      contrib.at(i, default: todo[fill]),
+    )).flatten(),
   )
 
   #v(1fr)
   #set align(center)
-  #date.display("[month repr:long] [day], [year]")
+  #date.display("[month repr:long] [day], [year]") \
+  Department of Computer Engineering, Faculty of Engineering \
+  Chulalongkorn University
 ]
 
 // ---------- Test plan helpers ----------
