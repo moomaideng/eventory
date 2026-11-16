@@ -23,5 +23,3 @@
 #include "design/uml-api.typ"
 #include "design/sequence.typ"
 #include "design/quality.typ"
-
-#include "appendix/iso29110.typ"
