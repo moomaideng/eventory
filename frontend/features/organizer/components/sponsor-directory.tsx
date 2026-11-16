@@ -173,7 +173,7 @@ export function SponsorDirectory() {
                         onClick={() => chooseTag(tag)}
                         aria-label={`Filter by ${tag}`}
                       >
-                        #{tag}
+                        {tag}
                       </Button>
                     ))}
                   </div>

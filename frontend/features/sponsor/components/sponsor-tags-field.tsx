@@ -54,14 +54,14 @@ export function SponsorTagsField({
       <Field data-invalid={Boolean(addError || error)} data-disabled={disabled}>
         <FieldLabel htmlFor={id}>Tags</FieldLabel>
         <FieldDescription id={id + "-help"}>
-          Add hashtags that describe your interests, like #gaming #valorant. Use
+          Add tags that describe your interests, like gaming or valorant. Use
           up to 10 tags, with up to 40 characters each.
         </FieldDescription>
         <Input
           id={id}
           value={draft}
           disabled={disabled}
-          placeholder="Type a hashtag, e.g. #gaming"
+          placeholder="Type a tag, e.g. gaming"
           aria-invalid={Boolean(addError || error)}
           aria-describedby={id + "-help " + id + "-instructions " + id + "-error"}
           onChange={(event) => {
@@ -83,7 +83,7 @@ export function SponsorTagsField({
         />
         <FieldDescription id={id + "-instructions"}>
           Type a tag, then press Space or Enter to add it below. You can paste
-          several hashtags at once. Any tags still in this box are included when
+          several tags at once. Any tags still in this box are included when
           you save your profile.
         </FieldDescription>
         <FieldError id={id + "-error"}>{addError || error}</FieldError>
@@ -99,7 +99,7 @@ export function SponsorTagsField({
               variant="secondary"
               className="max-w-full gap-1 break-words whitespace-normal"
             >
-              #{tag}
+              {tag}
               <Button
                 type="button"
                 variant="ghost"

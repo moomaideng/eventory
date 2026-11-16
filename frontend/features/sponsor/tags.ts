@@ -8,7 +8,7 @@ export function normalizeSponsorTags(tags: string[]) {
   ];
 }
 
-// Preserve spaces in saved legacy tags; tokenize only newly typed hashtags.
+// Preserve spaces in saved legacy tags; tokenize only newly typed tags.
 export function parseSponsorTagDraft(draft: string) {
   return normalizeSponsorTags(draft.split(/[\s#,]+/u));
 }

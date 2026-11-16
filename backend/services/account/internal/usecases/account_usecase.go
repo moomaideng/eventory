@@ -28,7 +28,7 @@ var (
 	ErrInvalidOrganizerName      = errors.New("organizer name cannot be empty")
 	ErrInvalidSponsorName        = errors.New("sponsor name cannot be empty")
 	ErrInvalidSponsorURL         = errors.New("websiteUrl and logoUrl must be valid HTTP(S) URLs")
-	ErrInvalidSponsorDirectory   = errors.New("a valid contact email and 1 to 10 tags of at most 40 characters are required")
+	ErrInvalidSponsorDirectory   = errors.New("a valid contact email and up to 10 tags of at most 40 characters are required")
 	ErrSponsorDirectoryForbidden = errors.New("an active organizer profile is required")
 	ErrPrivacyConsentRequired    = errors.New("explicit privacy consent is required before creating a profile")
 )

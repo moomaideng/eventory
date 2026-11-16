@@ -124,7 +124,7 @@ type UpsertSponsorProfileRequest struct {
 	Phone                  *string  `json:"phone,omitempty" doc:"Contact phone number for sponsor" maxLength:"32"`
 	WebsiteURL             *string  `json:"websiteUrl,omitempty" doc:"Official sponsor website URL" maxLength:"2048"`
 	LogoURL                *string  `json:"logoUrl,omitempty" doc:"Public sponsor logo image URL" maxLength:"2048"`
-	Tags                   []string `json:"tags" minItems:"1" maxItems:"10" doc:"Free-form sponsor tags, each up to 40 characters"`
+	Tags                   []string `json:"tags" maxItems:"10" doc:"Free-form sponsor tags, each up to 40 characters"`
 	PrivacyConsentAccepted bool     `json:"privacyConsentAccepted,omitempty" doc:"Explicit consent to save and publish sponsor profile data (required when creating a profile)"`
 }
 
@@ -460,7 +460,7 @@ func RegisterAccountRoutes(api huma.API, accountUseCase *usecases.AccountUseCase
 				return nil, huma.Error400BadRequest("Enter valid HTTP(S) URLs for websiteUrl and logoUrl", err)
 			}
 			if errors.Is(err, usecases.ErrInvalidSponsorDirectory) {
-				return nil, huma.Error400BadRequest("Enter a valid contact email and 1 to 10 tags, up to 40 characters each", err)
+				return nil, huma.Error400BadRequest("Enter a valid contact email and up to 10 tags, up to 40 characters each", err)
 			}
 			if errors.Is(err, usecases.ErrPrivacyConsentRequired) {
 				return nil, huma.Error400BadRequest("Explicit data privacy consent is required before creating a sponsor profile", err)

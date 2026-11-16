@@ -251,13 +251,39 @@ func TestSponsorDirectoryListsProfilesAndRequiresOrganizer(t *testing.T) {
 	}
 }
 
+func TestSponsorProfileAllowsEmptyTags(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		tags []string
+	}{
+		{"nil tags", nil},
+		{"empty tags", []string{}},
+		{"blank tags", []string{"  "}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			repo := newMockAccountRepository()
+			id := uuid.New()
+			repo.accounts[id] = &models.Account{ID: id, Email: "brand@example.com"}
+			profile, err := usecases.NewAccountUseCase(repo).UpsertSponsorProfile(context.Background(), id, usecases.UpsertSponsorProfileInput{
+				SponsorName:            "Brand",
+				Tags:                   tc.tags,
+				PrivacyConsentAccepted: true,
+			})
+			if err != nil {
+				t.Fatalf("expected empty tags to be allowed, got %v", err)
+			}
+			if len(profile.Tags) != 0 {
+				t.Fatalf("expected normalized empty slice, got %v", profile.Tags)
+			}
+		})
+	}
+}
+
 func TestSponsorProfileRequiresValidEmailAndTags(t *testing.T) {
 	for _, tc := range []struct {
 		name, email string
 		tags        []string
 	}{
-		{"empty tags", "brand@example.com", nil},
-		{"blank tags", "brand@example.com", []string{"  "}},
 		{"long tag", "brand@example.com", []string{strings.Repeat("a", 41)}},
 		{"many tags", "brand@example.com", []string{"1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11"}},
 		{"bad email", "invalid", []string{"chess"}},

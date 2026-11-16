@@ -8,7 +8,6 @@ export const sponsorTagsSchema = z
   .pipe(
     z
       .array(z.string().max(40, "Each tag must be 40 characters or fewer."))
-      .min(1, "Enter at least one tag.")
       .max(10, "Use up to 10 tags.")
   );
 

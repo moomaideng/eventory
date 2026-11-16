@@ -1,6 +1,6 @@
 "use client";
 
-import { Hash, Plus, X } from "lucide-react";
+import { Plus, Tag, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -48,13 +48,13 @@ export function SponsorDirectoryFilters({
       <FieldGroup>
         <Field>
           <FieldLabel htmlFor="sponsor-search">
-            Search sponsors or hashtags
+            Search sponsors or tags
           </FieldLabel>
           <Input
             id="sponsor-search"
             value={search}
             maxLength={100}
-            placeholder="Try a sponsor name or #gaming"
+            placeholder="Try a sponsor name or gaming"
             onChange={(event) => onSearch(event.target.value)}
             aria-describedby="sponsor-search-help"
           />
@@ -74,7 +74,7 @@ export function SponsorDirectoryFilters({
           <CardContent className="flex-row flex-wrap gap-2">
             {selected.map((tag) => (
               <Badge key={tag}>
-                #{tag}
+                {tag}
                 <Button
                   variant="ghost"
                   size="icon-xs"
@@ -96,7 +96,7 @@ export function SponsorDirectoryFilters({
             <Card size="sm">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Hash className="size-5" aria-hidden="true" />
+                  <Tag className="size-5" aria-hidden="true" />
                   Suggested tags
                 </CardTitle>
                 <CardDescription>
@@ -112,7 +112,7 @@ export function SponsorDirectoryFilters({
                     disabled={selected.length >= 10}
                     onClick={() => onAdd(tag)}
                   >
-                    <Plus data-icon="inline-start" />#{tag}
+                    <Plus data-icon="inline-start" />{tag}
                   </Button>
                 ))}
                 {!matches.length && (

@@ -23,8 +23,8 @@ func NormalizeSponsorTags(values []string) ([]string, error) {
 			seen[tag] = true
 		}
 	}
-	if len(tags) == 0 || len(tags) > 10 {
-		return nil, errors.New("between 1 and 10 tags are required")
+	if len(tags) > 10 {
+		return nil, errors.New("at most 10 tags are allowed")
 	}
 	return tags, nil
 }
