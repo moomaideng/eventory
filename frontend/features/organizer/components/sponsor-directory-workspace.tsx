@@ -1,11 +1,16 @@
 "use client";
 
+import { useState } from "react";
+import { Building2 } from "lucide-react";
+import { useAuth } from "@/context/auth-context";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/page-header";
 import {
   Empty,
+  EmptyContent,
   EmptyDescription,
   EmptyHeader,
+  EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -14,8 +19,10 @@ import { OrganizerOnboardingModal } from "@/features/organizer/components/organi
 import { SponsorDirectory } from "@/features/organizer/components/sponsor-directory";
 
 export function SponsorDirectoryWorkspace() {
+  const { user, authorizationHeader, isLoading: isAuthLoading } = useAuth();
   const { hasProfile, isLoading, needsOnboarding, error, refetch } =
     useOrganizerProfile();
+  const [dismissed, setDismissed] = useState(false);
 
   // Only a confirmed missing profile should trigger setup, not an API outage.
   const profileNotFound =
@@ -24,6 +31,10 @@ export function SponsorDirectoryWorkspace() {
     "status" in error &&
     error.status === 404;
   const showOnboarding = needsOnboarding && profileNotFound;
+
+  if (!isAuthLoading && !authorizationHeader) {
+    return <SponsorDirectory />;
+  }
 
   // Mount the directory only once profile setup has populated the shared cache.
   if (hasProfile) return <SponsorDirectory />;
@@ -37,15 +48,49 @@ export function SponsorDirectoryWorkspace() {
         description="Find sponsor profiles and contact them about your tournament."
       />
 
-      {isLoading ? (
+      {isLoading || isAuthLoading ? (
         <Skeleton className="h-40 w-full rounded-xl" />
+      ) : user?.status === "ONBOARDING" ? (
+        <Empty className="border">
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <Building2 />
+            </EmptyMedia>
+            <EmptyTitle>Complete your account setup first</EmptyTitle>
+            <EmptyDescription>
+              Finish choosing your handle, then set up your organizer profile to
+              browse sponsors.
+            </EmptyDescription>
+          </EmptyHeader>
+        </Empty>
       ) : showOnboarding ? (
         <>
-          <p className="text-muted-foreground text-sm">
-            Set up your organizer profile to browse sponsors.
-          </p>
+          <Empty className="border">
+            <EmptyHeader>
+              <EmptyMedia variant="icon">
+                <Building2 />
+              </EmptyMedia>
+              <EmptyTitle>Set up your organizer profile</EmptyTitle>
+              <EmptyDescription>
+                Only organizers can view sponsor contact details. Create your
+                organizer profile to unlock the sponsor directory.
+              </EmptyDescription>
+            </EmptyHeader>
+            <EmptyContent>
+              <Button onClick={() => setDismissed(false)}>
+                Set up organizer profile
+              </Button>
+            </EmptyContent>
+          </Empty>
           <OrganizerOnboardingModal
-            open
+            open={!dismissed}
+            onOpenChange={(nextOpen) => {
+              if (!nextOpen) setDismissed(true);
+            }}
+            onSuccess={() => {
+              setDismissed(false);
+              void refetch();
+            }}
             redirectToOnCancel="/organizer"
             cancelMessage="Cancel & Return to Tournaments"
           />

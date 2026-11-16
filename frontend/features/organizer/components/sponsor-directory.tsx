@@ -10,11 +10,13 @@ import { PageHeader } from "@/components/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Empty,
+  EmptyContent,
   EmptyDescription,
   EmptyHeader,
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty";
+import { OrganizerOnboardingModal } from "@/features/organizer/components/organizer-onboarding-modal";
 
 import { SponsorDirectoryFilters } from "@/features/organizer/components/sponsor-directory-filters";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -25,6 +27,7 @@ export function SponsorDirectory() {
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [tags, setTags] = useState<string[]>([]);
   const [page, setPage] = useState(1);
+  const [setupOpen, setSetupOpen] = useState(false);
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(search.trim()), 250);
     return () => clearTimeout(timer);
@@ -60,6 +63,11 @@ export function SponsorDirectory() {
     }
   );
   const updating = isFetching || search.trim() !== debouncedSearch;
+  const organizerRequired =
+    typeof error === "object" &&
+    error !== null &&
+    "status" in error &&
+    error.status === 403;
 
   return (
     <div className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-8 px-4 py-10 sm:px-8">
@@ -112,6 +120,31 @@ export function SponsorDirectory() {
             Sign in
           </Button>
         </Empty>
+      ) : organizerRequired ? (
+        <>
+          <Empty className="border">
+            <EmptyHeader>
+              <EmptyMedia variant="icon">
+                <Users />
+              </EmptyMedia>
+              <EmptyTitle>Set up your organizer profile</EmptyTitle>
+              <EmptyDescription>
+                Only organizers can view sponsor contact details. Create your
+                organizer profile to browse sponsors.
+              </EmptyDescription>
+            </EmptyHeader>
+            <EmptyContent>
+              <Button onClick={() => setSetupOpen(true)}>
+                Set up organizer profile
+              </Button>
+            </EmptyContent>
+          </Empty>
+          <OrganizerOnboardingModal
+            open={setupOpen}
+            onOpenChange={setSetupOpen}
+            onSuccess={() => void refetch()}
+          />
+        </>
       ) : error ? (
         <Empty className="border">
           <EmptyHeader>
