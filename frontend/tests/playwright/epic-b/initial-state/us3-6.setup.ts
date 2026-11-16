@@ -17,7 +17,6 @@ export const test = organizerTest.extend<{
   reviewFixture: async ({ request }, provide, testInfo) => {
     const now = Date.now();
     const name = `Playwright Review ${now}`;
-    const capacity = testInfo.title.includes("TC61") ? 1 : 2;
     const created = await result(await request.post(`${apiURL}/api/v1/tournaments`, {
       headers,
       data: {
@@ -26,7 +25,7 @@ export const test = organizerTest.extend<{
         location: "Online",
         description: "Review application test",
         registrationMode: "SOLO",
-        capacity,
+        capacity: 2,
         registrationDeadline: new Date(now + 7 * 86400000).toISOString(),
         startAt: new Date(now + 10 * 86400000).toISOString(),
         endAt: new Date(now + 11 * 86400000).toISOString(),
@@ -49,11 +48,20 @@ export const test = organizerTest.extend<{
       { headers: { Authorization: `Bearer ${token}` }, data: { answers: [{ fieldId: "rank", value: rank }] } }
     ));
     const accepted = await register("bob-dev", "Gold");
+    const secondAccepted = testInfo.title.includes("TC61")
+      ? await register("alex-dev", "Bronze")
+      : null;
     const pending = await register("carter-dev", "Silver");
     await result(await request.post(`${apiURL}/api/v1/tournaments/${id}/entries/${accepted.id}/review`, {
       headers,
       data: { decision: "ACCEPT" },
     }));
+    if (secondAccepted) {
+      await result(await request.post(`${apiURL}/api/v1/tournaments/${id}/entries/${secondAccepted.id}/review`, {
+        headers,
+        data: { decision: "ACCEPT" },
+      }));
+    }
     await provide({ name, pendingName: pending.name });
   },
 });
