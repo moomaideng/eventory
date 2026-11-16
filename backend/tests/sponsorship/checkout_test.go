@@ -285,7 +285,7 @@ func createSponsor(t *testing.T, app *apptest.App, name string, profile bool) *a
 func createSponsorWithBrand(t *testing.T, app *apptest.App, name, websiteURL, logoURL string, skipProfile ...bool) *apptest.TestUser {
 	t.Helper()
 	u := apptest.NewTestUser()
-	account := accountmodels.Account{ID: u.ID, Email: u.Email, Handle: u.Handle, DisplayName: u.DisplayName, Status: accountmodels.AccountStatusActive}
+	account := accountmodels.Account{ID: u.ID, Email: u.Email, Handle: accountmodels.StringPtr(u.Handle), DisplayName: u.DisplayName, Status: accountmodels.AccountStatusActive}
 	if err := app.DB.Create(&account).Error; err != nil {
 		t.Fatal(err)
 	}

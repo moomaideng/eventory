@@ -55,7 +55,7 @@ func (m *mockAccountRepository) FindByEmail(ctx context.Context, email string) (
 
 func (m *mockAccountRepository) FindByHandle(ctx context.Context, handle string) (*models.Account, error) {
 	for _, acc := range m.accounts {
-		if acc.Handle == handle {
+		if acc.Handle != nil && *acc.Handle == handle {
 			return acc, nil
 		}
 	}
@@ -313,7 +313,7 @@ func TestGetAccountByEmail_Found(t *testing.T) {
 	mockRepo.accounts[userID] = &models.Account{
 		ID:          userID,
 		Email:       email,
-		Handle:      "player_one",
+		Handle:      models.StringPtr("player_one"),
 		DisplayName: "Player One",
 		Status:      "ACTIVE",
 	}
@@ -326,7 +326,7 @@ func TestGetAccountByEmail_Found(t *testing.T) {
 	if account.DisplayName != "Player One" {
 		t.Errorf("expected displayName 'Player One', got %v", account.DisplayName)
 	}
-	if account.Handle != "player_one" {
+	if account.Handle == nil || *account.Handle != "player_one" {
 		t.Errorf("expected handle 'player_one', got %v", account.Handle)
 	}
 }
@@ -349,7 +349,7 @@ func TestGetAccountByHandle_Success(t *testing.T) {
 	mockRepo.accounts[userID] = &models.Account{
 		ID:          userID,
 		Email:       "player1@eventory.gg",
-		Handle:      "player_one",
+		Handle:      models.StringPtr("player_one"),
 		DisplayName: "Player One",
 		Status:      models.AccountStatusActive,
 	}
@@ -362,7 +362,7 @@ func TestGetAccountByHandle_Success(t *testing.T) {
 	if account.ID != userID {
 		t.Errorf("expected id %v, got %v", userID, account.ID)
 	}
-	if account.Handle != "player_one" {
+	if account.Handle == nil || *account.Handle != "player_one" {
 		t.Errorf("expected handle 'player_one', got %v", account.Handle)
 	}
 }
@@ -377,7 +377,7 @@ func TestGetAccountByHandle_NotFound(t *testing.T) {
 	}
 }
 
-func TestGetAccountByHandle_InvalidHandle(t *testing.T) {
+func TestGetAccountByHandle_EmptyHandle(t *testing.T) {
 	mockRepo := newMockAccountRepository()
 	useCase := usecases.NewAccountUseCase(mockRepo)
 
@@ -411,8 +411,8 @@ func TestCreateAccount_Success(t *testing.T) {
 	if account.DisplayName != "newuser" {
 		t.Errorf("expected DisplayName 'newuser', got %v", account.DisplayName)
 	}
-	if account.Handle == "" {
-		t.Errorf("expected non-empty handle, got %v", account.Handle)
+	if account.Handle != nil {
+		t.Errorf("expected no handle before onboarding, got %q", *account.Handle)
 	}
 	if account.Status != models.AccountStatusOnboarding {
 		t.Errorf("expected Status %v, got %v", models.AccountStatusOnboarding, account.Status)
@@ -451,37 +451,6 @@ func TestCreateAccount_Idempotent(t *testing.T) {
 	}
 }
 
-func TestCreateAccount_HandleCollisionFallback(t *testing.T) {
-	mockRepo := newMockAccountRepository()
-	useCase := usecases.NewAccountUseCase(mockRepo)
-
-	existingID := uuid.New()
-	mockRepo.accounts[existingID] = &models.Account{
-		ID:          existingID,
-		Email:       "alex@eventory.gg",
-		Handle:      "alex",
-		DisplayName: "alex",
-		Status:      "ACTIVE",
-	}
-
-	newID := uuid.New()
-	account, err := useCase.CreateAccount(context.Background(), usecases.CreateAccountInput{
-		ID:    newID,
-		Email: "alex@different.gg",
-	})
-	if err != nil {
-		t.Fatalf("expected no error, got: %v", err)
-	}
-
-	// Should not fail! Should auto-generate a fallback handle like alex_XXXX
-	if account.Handle == "alex" {
-		t.Error("expected different handle due to collision with 'alex'")
-	}
-	if account.DisplayName != "alex" {
-		t.Errorf("expected DisplayName 'alex', got %v", account.DisplayName)
-	}
-}
-
 func TestUpdateAccount_Success(t *testing.T) {
 	mockRepo := newMockAccountRepository()
 	useCase := usecases.NewAccountUseCase(mockRepo)
@@ -490,7 +459,7 @@ func TestUpdateAccount_Success(t *testing.T) {
 	mockRepo.accounts[userID] = &models.Account{
 		ID:          userID,
 		Email:       "ninja@eventory.gg",
-		Handle:      "old_handle",
+		Handle:      models.StringPtr("old_handle"),
 		DisplayName: "Old Name",
 		Status:      "ACTIVE",
 	}
@@ -509,8 +478,39 @@ func TestUpdateAccount_Success(t *testing.T) {
 	if updated.DisplayName != "New Shadow Ninja" {
 		t.Errorf("expected updated DisplayName 'New Shadow Ninja', got %v", updated.DisplayName)
 	}
-	if updated.Handle != "shadow_ninja" {
+	if updated.Handle == nil || *updated.Handle != "shadow_ninja" {
 		t.Errorf("expected updated Handle 'shadow_ninja', got %v", updated.Handle)
+	}
+}
+
+func TestUpdateAccount_HandleValidationMatchesFrontend(t *testing.T) {
+	for _, test := range []struct {
+		name   string
+		handle string
+		want   string
+		valid  bool
+	}{
+		{name: "allows 32 characters", handle: "abcdefghijklmnopqrstuvwxyz123456", want: "abcdefghijklmnopqrstuvwxyz123456", valid: true},
+		{name: "normalizes uppercase", handle: "PLAYER_ONE", want: "player_one", valid: true},
+		{name: "rejects 33 characters", handle: "abcdefghijklmnopqrstuvwxyz1234567"},
+		{name: "rejects invalid character", handle: "player-name"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			repo := newMockAccountRepository()
+			id := uuid.New()
+			repo.accounts[id] = &models.Account{ID: id, Email: "player@example.com", Handle: models.StringPtr("old_handle"), DisplayName: "Player", Status: models.AccountStatusActive}
+
+			updated, err := usecases.NewAccountUseCase(repo).UpdateAccount(context.Background(), id, usecases.UpdateAccountInput{Handle: &test.handle})
+			if !test.valid {
+				if err != usecases.ErrInvalidHandle {
+					t.Fatalf("expected ErrInvalidHandle, got %v", err)
+				}
+				return
+			}
+			if err != nil || updated.Handle == nil || *updated.Handle != test.want {
+				t.Fatalf("expected handle %q without error, got handle %v and error %v", test.want, updated.Handle, err)
+			}
+		})
 	}
 }
 
@@ -522,7 +522,7 @@ func TestUpdateAccount_OnboardingToActive(t *testing.T) {
 	mockRepo.accounts[userID] = &models.Account{
 		ID:          userID,
 		Email:       "newplayer@eventory.gg",
-		Handle:      "user_1024",
+		Handle:      models.StringPtr("user_1024"),
 		DisplayName: "New Player",
 		Status:      models.AccountStatusOnboarding,
 	}
@@ -538,7 +538,7 @@ func TestUpdateAccount_OnboardingToActive(t *testing.T) {
 	if updated.Status != models.AccountStatusActive {
 		t.Errorf("expected status %v, got %v", models.AccountStatusActive, updated.Status)
 	}
-	if updated.Handle != "pro_player" {
+	if updated.Handle == nil || *updated.Handle != "pro_player" {
 		t.Errorf("expected handle 'pro_player', got %v", updated.Handle)
 	}
 }
@@ -553,14 +553,14 @@ func TestUpdateAccount_HandleAlreadyExists(t *testing.T) {
 	mockRepo.accounts[user1ID] = &models.Account{
 		ID:          user1ID,
 		Email:       "player1@eventory.gg",
-		Handle:      "player_one",
+		Handle:      models.StringPtr("player_one"),
 		DisplayName: "Player One",
 		Status:      "ACTIVE",
 	}
 	mockRepo.accounts[user2ID] = &models.Account{
 		ID:          user2ID,
 		Email:       "player2@eventory.gg",
-		Handle:      "player_two",
+		Handle:      models.StringPtr("player_two"),
 		DisplayName: "Player Two",
 		Status:      "ACTIVE",
 	}

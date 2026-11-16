@@ -61,6 +61,7 @@ function SponsorOnboardingForm({
 
   const [sponsorName, setSponsorName] = useState(user.displayName || "");
   const [sponsorEmail, setSponsorEmail] = useState(user.email || "");
+  const [phone, setPhone] = useState("");
   const [websiteUrl, setWebsiteUrl] = useState("");
   const logoUrl = "";
   const [logoFile, setLogoFile] = useState<File | null>(null);
@@ -78,6 +79,7 @@ function SponsorOnboardingForm({
     const validation = sponsorOnboardingSchema.safeParse({
       sponsorName,
       sponsorEmail,
+      phone,
       websiteUrl,
       logoUrl,
       tags: [...tags, ...parseSponsorTagDraft(tagDraft)],
@@ -106,6 +108,7 @@ function SponsorOnboardingForm({
       const { data, error } = await upsertProfile({
         sponsorName: validation.data.sponsorName,
         sponsorEmail: validation.data.sponsorEmail,
+        phone: validation.data.phone,
         websiteUrl: validation.data.websiteUrl,
         logoUrl: uploadedLogoUrl,
         tags: validation.data.tags,
@@ -241,6 +244,29 @@ function SponsorOnboardingForm({
             {fieldErrors.sponsorEmail && (
               <FieldError>{fieldErrors.sponsorEmail}</FieldError>
             )}
+          </Field>
+
+          <Field data-invalid={Boolean(fieldErrors.phone)}>
+            <FieldLabel htmlFor="onboarding-sponsor-phone">
+              Phone (Optional)
+            </FieldLabel>
+            <Input
+              id="onboarding-sponsor-phone"
+              type="tel"
+              value={phone}
+              onChange={(e) => {
+                setPhone(e.target.value);
+                if (fieldErrors.phone) {
+                  setFieldErrors((prev) => ({ ...prev, phone: undefined }));
+                }
+                if (apiError) setApiError("");
+              }}
+              placeholder="+66 81 234 5678"
+              maxLength={20}
+              disabled={isSubmitting}
+              aria-invalid={Boolean(fieldErrors.phone)}
+            />
+            {fieldErrors.phone && <FieldError>{fieldErrors.phone}</FieldError>}
           </Field>
 
           <Field data-invalid={Boolean(fieldErrors.websiteUrl)}>

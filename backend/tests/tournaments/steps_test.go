@@ -31,12 +31,12 @@ type discoveryScenario struct {
 
 func (s *discoveryScenario) account() (accountmodels.Account, error) {
 	id := uuid.New()
-	a := accountmodels.Account{ID: id, Email: id.String() + "@test.eventory.gg", Handle: "bdd_" + apptest.UniqueSuffix(), DisplayName: "Private Player", Status: accountmodels.AccountStatusActive}
+	a := accountmodels.Account{ID: id, Email: id.String() + "@test.eventory.gg", Handle: accountmodels.StringPtr("bdd_" + apptest.UniqueSuffix()), DisplayName: "Private Player", Status: accountmodels.AccountStatusActive}
 	if err := s.app.DB.Create(&a).Error; err != nil {
 		return a, err
 	}
 	s.accountIDs = append(s.accountIDs, id)
-	s.privateValues = append(s.privateValues, a.Email, a.Handle)
+	s.privateValues = append(s.privateValues, a.Email, *a.Handle)
 	return a, nil
 }
 

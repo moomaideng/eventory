@@ -57,7 +57,7 @@ func (s *announcementScenarioContext) persistActiveAccount(user *apptest.TestUse
 	account := accountmodels.Account{
 		ID:          user.ID,
 		Email:       user.Email,
-		Handle:      user.Handle,
+		Handle:      accountmodels.StringPtr(user.Handle),
 		DisplayName: user.DisplayName,
 		Status:      accountmodels.AccountStatusActive,
 	}

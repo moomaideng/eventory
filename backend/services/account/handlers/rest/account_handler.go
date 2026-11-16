@@ -17,7 +17,7 @@ import (
 type AccountResponse struct {
 	ID          uuid.UUID            `json:"id" doc:"Unique account UUID matching Supabase Auth UID"`
 	Email       string               `json:"email" doc:"User email address verified by Auth Provider"`
-	Handle      string               `json:"handle" doc:"Unique public handle (e.g. @moomai_01)"`
+	Handle      *string              `json:"handle,omitempty" doc:"Unique public handle (e.g. @moomai_01)"`
 	DisplayName string               `json:"displayName" doc:"User display name"`
 	Status      models.AccountStatus `json:"status" doc:"Account status (ONBOARDING, ACTIVE, SUSPENDED)" enum:"ONBOARDING,ACTIVE,SUSPENDED"`
 	CreatedAt   time.Time            `json:"createdAt" doc:"Timestamp of account creation"`

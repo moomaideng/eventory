@@ -30,7 +30,7 @@ type tierItem struct {
 
 func (s *tierScenario) organizer(name string) (*apptest.TestUser, error) {
 	u := apptest.NewTestUser()
-	account := accountmodels.Account{ID: u.ID, Email: u.Email, Handle: u.Handle, DisplayName: u.DisplayName, Status: accountmodels.AccountStatusActive}
+	account := accountmodels.Account{ID: u.ID, Email: u.Email, Handle: accountmodels.StringPtr(u.Handle), DisplayName: u.DisplayName, Status: accountmodels.AccountStatusActive}
 	if err := s.app.DB.Create(&account).Error; err != nil {
 		return nil, err
 	}
