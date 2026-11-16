@@ -18,7 +18,9 @@ test("TC63: empty name is rejected", async ({ page }) => {
   await page.getByLabel("Short Description").fill("A local tournament.");
 
   await page.getByRole("button", { name: "Create Tournament" }).click();
-  await expect(page.getByLabel("Tournament Name")).toHaveAttribute("aria-invalid", "true");
+  await expect(
+    page.getByText("Tournament name is required.", { exact: true })
+  ).toBeVisible();
   await expect(page).toHaveURL(/\/organizer\/tournaments\/new$/);
 });
 
@@ -29,7 +31,9 @@ test("TC64: empty game is rejected", async ({ page }) => {
   await page.getByLabel("Short Description").fill("A local tournament.");
 
   await page.getByRole("button", { name: "Create Tournament" }).click();
-  await expect(page.getByLabel("Game Title")).toHaveAttribute("aria-invalid", "true");
+  await expect(
+    page.getByText("Game title is required.", { exact: true })
+  ).toBeVisible();
   await expect(page).toHaveURL(/\/organizer\/tournaments\/new$/);
 });
 
@@ -40,7 +44,11 @@ test("TC65: empty location is rejected", async ({ page }) => {
   await page.getByLabel("Short Description").fill("A local tournament.");
 
   await page.getByRole("button", { name: "Create Tournament" }).click();
-  await expect(page.getByLabel("Location")).toHaveAttribute("aria-invalid", "true");
+  await expect(
+    page.getByText("Location is required (e.g. 'Online' or venue address).", {
+      exact: true,
+    })
+  ).toBeVisible();
   await expect(page).toHaveURL(/\/organizer\/tournaments\/new$/);
 });
 
@@ -51,7 +59,9 @@ test("TC66: empty description is rejected", async ({ page }) => {
   await page.getByLabel("Short Description").fill("");
 
   await page.getByRole("button", { name: "Create Tournament" }).click();
-  await expect(page.getByLabel("Short Description")).toHaveAttribute("aria-invalid", "true");
+  await expect(
+    page.getByText("Short description is required.", { exact: true })
+  ).toBeVisible();
   await expect(page).toHaveURL(/\/organizer\/tournaments\/new$/);
 });
 
