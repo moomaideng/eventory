@@ -10,13 +10,11 @@ import { PageHeader } from "@/components/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Empty,
-  EmptyContent,
   EmptyDescription,
   EmptyHeader,
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty";
-import { OrganizerOnboardingModal } from "@/features/organizer/components/organizer-onboarding-modal";
 import { useOrganizerProfile } from "@/features/organizer/hooks/use-organizer-profile";
 
 import { SponsorDirectoryFilters } from "@/features/organizer/components/sponsor-directory-filters";
@@ -29,21 +27,24 @@ export function SponsorDirectory() {
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [tags, setTags] = useState<string[]>([]);
   const [page, setPage] = useState(1);
-  const [setupOpen, setSetupOpen] = useState(false);
+
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(search.trim()), 250);
     return () => clearTimeout(timer);
   }, [search]);
+
   function clearFilters() {
     setSearch("");
     setTags([]);
     setPage(1);
   }
+
   function chooseTag(tag: string) {
     if (!tags.includes(tag) && tags.length < 10) setTags([...tags, tag]);
     setSearch("");
     setPage(1);
   }
+
   const { data, error, isLoading, isFetching, refetch } = $api.useQuery(
     "get",
     "/api/v1/accounts/sponsors",
@@ -64,12 +65,24 @@ export function SponsorDirectory() {
       placeholderData: (previousData) => previousData,
     }
   );
+
+  if (profileLoading) {
+    return (
+      <div className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-8 px-4 py-10 sm:px-8">
+        <div className="flex flex-col gap-3">
+          <Skeleton className="h-3 w-48" />
+          <Skeleton className="h-9 w-64" />
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {[0, 1, 2].map((item) => (
+            <Skeleton key={item} className="h-40 rounded-xl" />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   const updating = isFetching || search.trim() !== debouncedSearch;
-  const organizerRequired =
-    typeof error === "object" &&
-    error !== null &&
-    "status" in error &&
-    error.status === 403;
 
   return (
     <div className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-8 px-4 py-10 sm:px-8">
@@ -95,16 +108,12 @@ export function SponsorDirectory() {
         onClear={clearFilters}
         tags={data?.tags ?? undefined}
         loading={
-          authLoading ||
-          (Boolean(authorizationHeader) &&
-            (profileLoading || (hasProfile && isLoading && !data)))
+          authLoading || (Boolean(authorizationHeader && hasProfile) && isLoading && !data)
         }
         error={Boolean(error)}
       />
 
-      {authLoading ||
-      (Boolean(authorizationHeader) &&
-        (profileLoading || (hasProfile && isLoading))) ? (
+      {authLoading || (Boolean(authorizationHeader && hasProfile) && isLoading) ? (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {[0, 1, 2].map((item) => (
             <Skeleton key={item} className="h-40 rounded-xl" />
@@ -128,31 +137,18 @@ export function SponsorDirectory() {
             Sign in
           </Button>
         </Empty>
-      ) : !hasProfile || organizerRequired ? (
-        <>
-          <Empty className="border">
-            <EmptyHeader>
-              <EmptyMedia variant="icon">
-                <Users />
-              </EmptyMedia>
-              <EmptyTitle>Set up your organizer profile</EmptyTitle>
-              <EmptyDescription>
-                Only organizers can view sponsor contact details. Create your
-                organizer profile to browse sponsors.
-              </EmptyDescription>
-            </EmptyHeader>
-            <EmptyContent>
-              <Button onClick={() => setSetupOpen(true)}>
-                Set up organizer profile
-              </Button>
-            </EmptyContent>
-          </Empty>
-          <OrganizerOnboardingModal
-            open={setupOpen}
-            onOpenChange={setSetupOpen}
-            onSuccess={() => void refetch()}
-          />
-        </>
+      ) : !hasProfile ? (
+        <Empty className="border">
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <Users />
+            </EmptyMedia>
+            <EmptyTitle>Organizer profile required</EmptyTitle>
+            <EmptyDescription>
+              Only organizers can view sponsor contact details.
+            </EmptyDescription>
+          </EmptyHeader>
+        </Empty>
       ) : error ? (
         <Empty className="border">
           <EmptyHeader>
