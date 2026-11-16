@@ -252,6 +252,8 @@ services:
     environment:
       ENVIRONMENT: development
       DB_DSN: postgresql://${POSTGRES_USER:-admin}:${POSTGRES_PASSWORD:-password123}@postgres:5432/tournament_db?sslmode=disable
+      MONGO_URI: mongodb://${MONGO_USER:-admin}:${MONGO_PASSWORD:-password123}@mongodb:27017/tournament_db?authSource=admin
+      MONGO_DB_NAME: tournament_db
     depends_on:
       postgres:
         condition: service_healthy

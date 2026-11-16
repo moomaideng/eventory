@@ -247,6 +247,8 @@ services:
       ACCOUNT_GRPC_ADDR: account:9091
       PAYMENT_GRPC_ADDR: payment:9093
       PAYMENT_SERVICE_KEY: ${PAYMENT_SERVICE_KEY:?PAYMENT_SERVICE_KEY is required}
+      MONGO_URI: mongodb://admin:${MONGO_PASSWORD:?MONGO_PASSWORD is required}@mongodb:27017/tournament_db?authSource=admin
+      MONGO_DB_NAME: tournament_db
       BROKER_URL: amqp://eventory:${RABBITMQ_PASSWORD:?RABBITMQ_PASSWORD is required}@rabbitmq:5672/
 
   tournament:

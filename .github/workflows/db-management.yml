@@ -84,9 +84,11 @@ jobs:
             fi
 
             if [ '$SEED_DATA' = 'true' ]; then
-              echo '==> Seeding mock data (account and tournament)...'
+              echo '==> Seeding mock data (account, tournament, payment and notification)...'
               sudo docker compose --env-file .env -f docker-compose.yml run --rm account-migrate ./seed
               sudo docker compose --env-file .env -f docker-compose.yml run --rm tournament-migrate ./seed
+              sudo docker compose --env-file .env -f docker-compose.yml run --rm payment-migrate ./seed -allow-prod
+              sudo docker compose --env-file .env -f docker-compose.yml run --rm notification-migrate ./seed
             fi
 
             echo '==> Starting backend services...'
