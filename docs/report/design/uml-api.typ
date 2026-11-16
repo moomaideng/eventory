@@ -16,8 +16,8 @@
 
 == UML API Diagram <uml-api>
 
-#placeholder[UML API diagram]
-// #figure(image("../img/uml-api.svg", width: 100%), caption: [UML API diagram])
+// #placeholder[UML API diagram]
+#figure(image("../img/uml-api-diagram.png", width: 85%), caption: [UML API diagram])
 
 === Overview
 #todo[2--3 sentences: what the diagram shows and how to read it]
