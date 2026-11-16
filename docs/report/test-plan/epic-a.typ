@@ -84,6 +84,7 @@ to interact across the platform._
       with "Imtaez Test" shown in the navigation bar.
     ],
     ecs: "EC1, EC5",
+    status: "P",
   ),
     (
     id: "TC02",
@@ -109,6 +110,7 @@ to interact across the platform._
       preventing the user from completing onboarding.
     ],
     ecs: "EC2, EC5",
+    status: "P",
   ),
     (
     id: "TC03",
@@ -133,6 +135,7 @@ to interact across the platform._
       preventing onboarding completion.
     ],
     ecs: "EC3, EC5",
+    status: "P",
   ),
     (
     id: "TC04",
@@ -155,6 +158,7 @@ to interact across the platform._
       of the supplied handle. The 33rd character could not be entered.
     ],
     ecs: "EC4, EC5",
+    status: "P",
   ),
     (
     id: "TC05",
@@ -180,6 +184,7 @@ to interact across the platform._
       preventing onboarding completion.
     ],
     ecs: "EC1, EC6",
+    status: "P",
   ),
 )
 
@@ -212,6 +217,12 @@ without maintaining separate logins._
 
   ("EC7", "Contact Email",
     [Valid email format.], true),
+
+  ("EC8", "Profile Consent",
+    [Privacy consent checkbox is checked.], true),
+
+  ("EC9", "Profile Consent",
+    [Privacy consent checkbox is not checked.], false),
 )
 
 === Test Cases
@@ -245,7 +256,8 @@ without maintaining separate logins._
       The Organizer profile setup form closed after submission.
       The "Host a Tournament" page became accessible.
     ],
-    ecs: "EC1, EC3, EC5, EC7",
+    ecs: "EC1, EC3, EC5, EC7, EC8",
+    status: "P",
   ),
     (
     id: "TC07",
@@ -276,6 +288,7 @@ without maintaining separate logins._
       The Sponsor dashboard was displayed.
     ],
     ecs: "EC1, EC4, EC5, EC7",
+    status: "P",
   ),
     (
     id: "TC08",
@@ -309,6 +322,7 @@ without maintaining separate logins._
       GET returned 404: "Organizer profile not found".
     ],
     ecs: "EC2, EC3, EC5, EC7",
+    status: "P",
   ),
     (
     id: "TC09",
@@ -343,6 +357,7 @@ without maintaining separate logins._
       GET returned 404: "Sponsor profile not found".
     ],
     ecs: "EC2, EC4, EC5, EC7",
+    status: "P",
   ),
     (
     id: "TC10",
@@ -372,6 +387,7 @@ without maintaining separate logins._
       The form displayed "Enter an organizer name." below the empty Organizer Name field.
     ],
     ecs: "EC1, EC3, EC6, EC7",
+    status: "P",
   ),
     (
     id: "TC11",
@@ -400,7 +416,40 @@ without maintaining separate logins._
       The form displayed "Enter a sponsor name." below the empty Sponsor Name field.
     ],
     ecs: "EC1, EC4, EC6, EC7",
+    status: "P",
   ),
+  (
+    id: "TC32",
+    pre: [
+      The user is authenticated with an ACTIVE account
+      and does not have an Organizer profile.
+      The Organizer profile creation form is displayed.
+    ],
+    action: [
+      Enter a valid organizer name and contact email.
+      Leave the privacy consent checkbox unchecked
+      and submit the form.
+    ],
+    inputs: (
+      "Profile Type": [Organizer],
+      "Organization Name": [`Imtaez Events`],
+      "Contact Email": [`organizer@example.com`],
+      "Profile Consent": [Unchecked],
+    ),
+    expected: [
+      A privacy consent error is shown.
+      The form remains open and no Organizer profile is created.
+
+      #image("../img/tc32.png", width: 100%)
+    ],
+    actual: [
+      The form displayed "Please confirm consent to store and display your organizer profile."
+      and remained open without creating the profile.
+    ],
+    ecs: "EC1, EC3, EC5, EC7, EC9",
+    status: "P",
+  ),
+
 )
 
 
