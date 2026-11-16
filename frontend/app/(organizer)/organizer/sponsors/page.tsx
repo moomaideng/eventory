@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import { SponsorDirectoryWorkspace } from "@/features/organizer/components/sponsor-directory-workspace";
+import { SponsorDirectory } from "@/features/organizer/components/sponsor-directory";
+import { OrganizerOnboardingModal } from "@/features/organizer/components/organizer-onboarding-modal";
 
 export const metadata: Metadata = {
   title: "Sponsor directory - Eventory",
@@ -8,5 +9,13 @@ export const metadata: Metadata = {
 };
 
 export default function SponsorDirectoryPage() {
-  return <SponsorDirectoryWorkspace />;
+  return (
+    <>
+      <SponsorDirectory />
+      <OrganizerOnboardingModal
+        redirectToOnCancel="/organizer"
+        cancelMessage="Cancel & Return to Tournaments"
+      />
+    </>
+  );
 }

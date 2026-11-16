@@ -17,12 +17,14 @@ import {
   EmptyTitle,
 } from "@/components/ui/empty";
 import { OrganizerOnboardingModal } from "@/features/organizer/components/organizer-onboarding-modal";
+import { useOrganizerProfile } from "@/features/organizer/hooks/use-organizer-profile";
 
 import { SponsorDirectoryFilters } from "@/features/organizer/components/sponsor-directory-filters";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export function SponsorDirectory() {
   const { authorizationHeader, isLoading: authLoading } = useAuth();
+  const { hasProfile, isLoading: profileLoading } = useOrganizerProfile();
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [tags, setTags] = useState<string[]>([]);
@@ -57,7 +59,7 @@ export function SponsorDirectory() {
       headers: { Authorization: authorizationHeader ?? "" },
     },
     {
-      enabled: Boolean(authorizationHeader),
+      enabled: Boolean(authorizationHeader && hasProfile),
       retry: false,
       placeholderData: (previousData) => previousData,
     }
@@ -92,11 +94,17 @@ export function SponsorDirectory() {
         }}
         onClear={clearFilters}
         tags={data?.tags ?? undefined}
-        loading={authLoading || (isLoading && !data)}
+        loading={
+          authLoading ||
+          (Boolean(authorizationHeader) &&
+            (profileLoading || (hasProfile && isLoading && !data)))
+        }
         error={Boolean(error)}
       />
 
-      {authLoading || (authorizationHeader && isLoading) ? (
+      {authLoading ||
+      (Boolean(authorizationHeader) &&
+        (profileLoading || (hasProfile && isLoading))) ? (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {[0, 1, 2].map((item) => (
             <Skeleton key={item} className="h-40 rounded-xl" />
@@ -120,7 +128,7 @@ export function SponsorDirectory() {
             Sign in
           </Button>
         </Empty>
-      ) : organizerRequired ? (
+      ) : !hasProfile || organizerRequired ? (
         <>
           <Empty className="border">
             <EmptyHeader>
