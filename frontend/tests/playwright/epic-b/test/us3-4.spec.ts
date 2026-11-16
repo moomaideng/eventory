@@ -1,20 +1,15 @@
 import { test, expect } from "@/tests/playwright/epic-b/initial-state/us3-4.setup";
-import type { Page } from "@playwright/test";
-
-const title = "#announcement-title";
-const message = "#announcement-body";
-
-const announcementCount = (page: Page) =>
-  page.locator('li[id^="announcement-"]').count();
 
 test("TC51: valid announcement appears publicly", async ({ page }) => {
   const uniqueTitle = `Venue update ${Date.now()}`;
-  await page.locator(title).fill(uniqueTitle);
-  await page.locator(message).fill("The venue is Room 301.");
+  await page.getByLabel("Title").fill(uniqueTitle);
+  await page.getByLabel("Message").fill("The venue is Room 301.");
+
   await page.getByRole("button", { name: "Post announcement" }).click();
   await expect(page.getByText("Announcement posted")).toBeVisible();
-  await expect(page.locator(title)).toBeEmpty();
-  await expect(page.locator(message)).toBeEmpty();
+  await expect(page.getByLabel("Title")).toBeEmpty();
+  await expect(page.getByLabel("Message")).toBeEmpty();
+
   await page.getByText("Public page", { exact: true }).click();
   await page.locator('[aria-label="Tournament announcements"]')
     .getByText("View more", { exact: true }).click();
@@ -24,27 +19,37 @@ test("TC51: valid announcement appears publicly", async ({ page }) => {
 });
 
 test("TC52: empty title is rejected", async ({ page }) => {
-  const before = await announcementCount(page);
-  await page.locator(message).fill("The venue is Room 301.");
+  await expect(page.locator('li[id^="announcement-"]').first()).toBeVisible();
+  const before = await page.locator('li[id^="announcement-"]').count();
+  await page.getByLabel("Title").fill("");
+  await page.getByLabel("Message").fill("The venue is Room 301.");
+
   await page.getByRole("button", { name: "Post announcement" }).click();
-  await expect(page.locator(title)).toHaveAttribute("aria-invalid", "true");
-  expect(await announcementCount(page)).toBe(before);
+  await expect(page.getByText("Enter a title.", { exact: true })).toBeVisible();
+  await expect(page.locator('li[id^="announcement-"]')).toHaveCount(before);
 });
 
 test("TC53: title stops at 150 characters", async ({ page }) => {
-  await page.locator(title).fill("A".repeat(151));
-  await expect(page.locator(title)).toHaveValue("A".repeat(150));
+  await page.getByLabel("Title").fill("A".repeat(151));
+  await page.getByLabel("Message").fill("The venue is Room 301.");
+
+  await expect(page.getByLabel("Title")).toHaveValue("A".repeat(150));
 });
 
 test("TC54: empty message is rejected", async ({ page }) => {
-  const before = await announcementCount(page);
-  await page.locator(title).fill("Venue update");
+  await expect(page.locator('li[id^="announcement-"]').first()).toBeVisible();
+  const before = await page.locator('li[id^="announcement-"]').count();
+  await page.getByLabel("Title").fill("Venue update");
+  await page.getByLabel("Message").fill("");
+
   await page.getByRole("button", { name: "Post announcement" }).click();
-  await expect(page.locator(message)).toHaveAttribute("aria-invalid", "true");
-  expect(await announcementCount(page)).toBe(before);
+  await expect(page.getByText("Enter a message.", { exact: true })).toBeVisible();
+  await expect(page.locator('li[id^="announcement-"]')).toHaveCount(before);
 });
 
 test("TC55: message stops at 2,000 characters", async ({ page }) => {
-  await page.locator(message).fill("A".repeat(2001));
-  await expect(page.locator(message)).toHaveValue("A".repeat(2000));
+  await page.getByLabel("Title").fill("Venue update");
+  await page.getByLabel("Message").fill("A".repeat(2001));
+
+  await expect(page.getByLabel("Message")).toHaveValue("A".repeat(2000));
 });
