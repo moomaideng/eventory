@@ -83,7 +83,7 @@
   columns: (auto, auto, 1fr, auto),
   table.header[*EC*][*Input*][*Condition*][*Valid?*],
   ..rows.pos().map(((id, input, cond, ok)) =>
-    (id, input, cond, if ok [✓ Valid] else [✗ Invalid])
+    (id, input, cond, if ok [Valid] else [Invalid])
   ).flatten(),
 )
 
