@@ -11,17 +11,26 @@
 // ============================================================
 #import "../appendix/preambles.typ": *
 
+#pagebreak(weak: true)
 == Sequence Diagram <sequence>
 
-*Use case:* UC-03 Submit Registration (team captain locks roster and pays entry fee)
+*Use case:* UC-03 Submit Registration: team captain locks roster and pays entry fee
 
 #figure(
   image("../img/sequence-diagram.png", width: 100%),
-  caption: [Sequence diagram: UC-03 Submit Registration (team captain locks roster and pays entry fee)],
+  caption: [Sequence diagram: UC-03 Submit Registration],
 )
 
 === Walkthrough
-+ *Lock roster:* Team Captain initiates `lock roster` from Web Client, which sends `POST lock roster` through API Gateway (Traefik) to Tournament Service. Tournament Service calls `GetAccount (gRPC)` on Account Service to confirm the captain is active, validates team size and deadline, and sets `status = PAYMENT_PENDING`.
-+ *Create invoice:* Tournament Service requests `create invoice (entry fee)` from Payment Service, receives `invoice UNPAID`, and responds with `payment required` so Web Client shows the checkout view to the Team Captain.
-+ *Pay (success flow):* Team Captain submits `pay` (`POST pay` via API Gateway to `pay invoice` on Payment Service). Payment Service sets `invoice = PAID`, publishes `payment.succeeded` to Message Broker (RabbitMQ) via fire-and-forget (`->>`), and replies `paid` to Web Client. Tournament Service consumes `payment.succeeded`, sets `team = LOCKED`, submits registration to the organizer, and publishes `registration.submitted` to RabbitMQ. Notification Service consumes `payment.succeeded` and `registration.submitted` to send the confirmation email.
-+ *Error flow (`payment fails`):* Payment Service returns `payment failed` to Web Client, which informs the Team Captain (`failed, retry allowed`). Registration is not submitted and the roster remains unlocked (FR20).
+#table(
+  columns: (auto, 1fr),
+  table.header[*Phase*][*Flow*],
+  [Lock roster],
+  [`Team Captain -> Web Client -> API Gateway -> Tournament`: checks captain status via `Account` gRPC, validates team size and deadline, and sets `status = PAYMENT_PENDING`.],
+  [Create invoice],
+  [`Tournament -> Payment`: creates an `UNPAID` entry-fee invoice and returns `payment required` so Web Client shows checkout.],
+  [Pay success],
+  [`Team Captain -> Web Client -> API Gateway -> Payment`: sets `invoice = PAID`, replies `paid` to Web Client, and publishes `payment.succeeded` via `->>`. `Tournament` sets `team = LOCKED`, submits registration, and publishes `registration.submitted` so `Notification` sends the confirmation email.],
+  [Pay fails],
+  [`Payment -> Web Client -> Team Captain`: returns `payment failed` and `failed, retry allowed`. Registration is not submitted and the roster stays locked.],
+)

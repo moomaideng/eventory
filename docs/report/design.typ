@@ -19,6 +19,7 @@
 #outline()
 
 = Architecture
+#include "design/arch.typ"
 #include "design/uml-api.typ"
 #include "design/sequence.typ"
 #include "design/quality.typ"
