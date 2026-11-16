@@ -45,34 +45,34 @@ end note
 ' ============================================================================
 package "Account Service" {
   class "Accounts" as Accounts <<Resource>> {
-    + POST()
+    + POST
   }
 
   class "Account" as AccountById <<Resource>> {
-    + GET()
+    + GET
   }
 
   class "MyAccount" as MyAccount <<Resource>> {
-    + GET()
-    + PATCH()
+    + GET
+    + PATCH
   }
 
   class "MyOrganizerProfile" as MyOrganizerProfile <<Resource>> {
-    + GET()
-    + PUT()
+    + GET
+    + PUT
   }
 
   class "MySponsorProfile" as MySponsorProfile <<Resource>> {
-    + GET()
-    + PUT()
+    + GET
+    + PUT
   }
 
   class "PublicOrganizerProfile" as PublicOrganizerProfile <<Resource>> {
-    + GET()
+    + GET
   }
 
   class "SponsorDirectory" as SponsorDirectory <<Resource>> {
-    + GET()
+    + GET
   }
 
   class "Account" as Rep_Account <<Representation>> {
@@ -129,15 +129,15 @@ SponsorDirectory .[#BE185D].> Rep_SponsorProfile : <<use>>
 ' ============================================================================
 package "Notification Service" {
   class "Notifications" as Notifications <<Resource>> {
-    + GET()
+    + GET
   }
 
   class "NotificationsReadAll" as NotificationsReadAll <<Resource>> {
-    + PATCH()
+    + PATCH
   }
 
   class "NotificationRead" as NotificationRead <<Resource>> {
-    + PATCH()
+    + PATCH
   }
 
   class "Notification" as Rep_Notification <<Representation>> {
@@ -165,23 +165,23 @@ NotificationRead .[#BE185D].> Rep_Notification : <<use>>
 ' ============================================================================
 package "Payment Service" {
   class "Payments" as Payments <<Resource>> {
-    + GET()
+    + GET
   }
 
   class "Payment" as Payment <<Resource>> {
-    + GET()
+    + GET
   }
 
   class "PaymentMockResult" as PaymentMockResult <<Resource>> {
-    + POST()
+    + POST
   }
 
   class "PaymentReceipt" as PaymentReceipt <<Resource>> {
-    + GET()
+    + GET
   }
 
   class "PaymentReceiptPDF" as PaymentReceiptPDF <<Resource>> {
-    + GET()
+    + GET
   }
 
   class "Payment" as Rep_Payment <<Representation>> {
@@ -233,153 +233,153 @@ PaymentReceiptPDF .[#BE185D].> Rep_Receipt : <<use>>
 ' ============================================================================
 package "Tournament Service" {
   class "LobbyInvite" as LobbyInvite <<Resource>> {
-    + GET()
+    + GET
   }
 
   class "Tournaments" as Tournaments <<Resource>> {
-    + GET()
-    + POST()
+    + GET
+    + POST
   }
 
   class "MyTournaments" as MyTournaments <<Resource>> {
-    + GET()
+    + GET
   }
 
   class "MySponsorships" as MySponsorships <<Resource>> {
-    + GET()
+    + GET
   }
 
   class "SponsorshipRefresh" as SponsorshipRefresh <<Resource>> {
-    + POST()
+    + POST
   }
 
   class "Tournament" as Tournament <<Resource>> {
-    + GET()
-    + PATCH()
+    + GET
+    + PATCH
   }
 
   class "TournamentStatus" as TournamentStatus <<Resource>> {
-    + PATCH()
+    + PATCH
   }
 
   class "OrganizerDashboard" as OrganizerDashboard <<Resource>> {
-    + GET()
+    + GET
   }
 
   class "Announcements" as Announcements <<Resource>> {
-    + GET()
-    + POST()
+    + GET
+    + POST
   }
 
   class "TournamentStaff" as TournamentStaff <<Resource>> {
-    + GET()
-    + POST()
+    + GET
+    + POST
   }
 
   class "TournamentStaffMember" as TournamentStaffMember <<Resource>> {
-    + PATCH()
-    + DELETE()
+    + PATCH
+    + DELETE
   }
 
   class "RegistrationForm" as RegistrationForm <<Resource>> {
-    + GET()
-    + PUT()
+    + GET
+    + PUT
   }
 
   class "FormResponses" as FormResponses <<Resource>> {
-    + GET()
+    + GET
   }
 
   class "MyFormResponse" as MyFormResponse <<Resource>> {
-    + GET()
+    + GET
   }
 
   class "MyTournamentTeam" as MyTournamentTeam <<Resource>> {
-    + GET()
+    + GET
   }
 
   class "SoloRegister" as SoloRegister <<Resource>> {
-    + POST()
+    + POST
   }
 
   class "TournamentTeams" as TournamentTeams <<Resource>> {
-    + POST()
+    + POST
   }
 
   class "TeamLobby" as TeamLobby <<Resource>> {
-    + GET()
-    + DELETE()
+    + GET
+    + DELETE
   }
 
   class "TeamLobbyJoin" as TeamLobbyJoin <<Resource>> {
-    + POST()
+    + POST
   }
 
   class "TeamLobbyRegistration" as TeamLobbyRegistration <<Resource>> {
-    + PUT()
+    + PUT
   }
 
   class "TeamInviteRegenerate" as TeamInviteRegenerate <<Resource>> {
-    + POST()
+    + POST
   }
 
   class "TeamLobbyLock" as TeamLobbyLock <<Resource>> {
-    + POST()
+    + POST
   }
 
   class "TeamSubmissionRefresh" as TeamSubmissionRefresh <<Resource>> {
-    + POST()
+    + POST
   }
 
   class "TeamLobbyMember" as TeamLobbyMember <<Resource>> {
-    + DELETE()
+    + DELETE
   }
 
   class "EntryReview" as EntryReview <<Resource>> {
-    + POST()
+    + POST
   }
 
   class "Bracket" as Bracket <<Resource>> {
-    + GET()
-    + POST()
+    + GET
+    + POST
   }
 
   class "BracketSwap" as BracketSwap <<Resource>> {
-    + POST()
+    + POST
   }
 
   class "TournamentSeed" as TournamentSeed <<Resource>> {
-    + POST()
+    + POST
   }
 
   class "MatchResults" as MatchResults <<Resource>> {
-    + POST()
+    + POST
   }
 
   class "MatchSchedule" as MatchSchedule <<Resource>> {
-    + PUT()
+    + PUT
   }
 
   class "TournamentSponsors" as TournamentSponsors <<Resource>> {
-    + GET()
+    + GET
   }
 
   class "SponsorshipTiers" as SponsorshipTiers <<Resource>> {
-    + GET()
-    + POST()
+    + GET
+    + POST
   }
 
   class "ManageSponsorshipTiers" as ManageSponsorshipTiers <<Resource>> {
-    + GET()
+    + GET
   }
 
   class "SponsorshipTier" as SponsorshipTier <<Resource>> {
-    + PUT()
-    + DELETE()
+    + PUT
+    + DELETE
   }
 
   class "SponsorshipCheckout" as SponsorshipCheckout <<Resource>> {
-    + POST()
+    + POST
   }
 
   ' --- Domain Representations ---

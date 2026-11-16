@@ -17,19 +17,33 @@
 == UML API Diagram <uml-api>
 
 // #placeholder[UML API diagram]
-#figure(image("../img/uml-api-diagram.png", width: 85%), caption: [UML API diagram])
+#figure(image("../img/uml-api-diagram.png", width: 90%), caption: [UML API diagram])
 
 === Overview
-#todo[2--3 sentences: what the diagram shows and how to read it]
+- *Base path:* All REST endpoints sit under `EventoryAPI` with `basePath = "/api/v1"`.
+- *Boxes:* Teal `<<Resource>>` boxes list HTTP methods per endpoint; pink `<<Representation>>` boxes show the JSON payloads.
+- *Health & Auth:* Each service exposes `GET /health` outside `/api/v1`, while Notification Service also exposes `GET /ready`. Protected operations require `Authorization: Bearer <JWT>`.
 
 === Services and Endpoints
 #table(
-  columns: (auto, 1fr, 1fr),
-  table.header[*Service / Class*][*Responsibility*][*Key operations*],
-  [Account], todo[one line], todo[e.g. `register()`, `login()`],
-  [Tournament], todo[one line], todo[...],
-  [Payment], todo[one line], todo[...],
+  columns: (auto, 1fr, 1.4fr),
+  table.header[*Service*][*Responsibility*][*Key endpoints*],
+  [Account],
+  [User accounts, organizer profiles, and sponsor directory],
+  [`/accounts` \ `/accounts/me` \ `/accounts/me/organizer-profile` \ `/accounts/me/sponsor-profile` \ `/accounts/sponsors`],
+  [Tournament],
+  [Tournaments, registration forms, team lobbies, brackets, and sponsorships],
+  [`/tournaments` \ `/tournaments/{tournamentId}/teams` \ `/tournaments/{tournamentId}/bracket` \ `/tournaments/{tournamentId}/sponsorship-tiers` \ `/lobbies/{inviteCode}`],
+  [Payment],
+  [Checkout invoices, mock payment results, and receipts],
+  [`/payments` \ `/payments/{id}` \ `/payments/{id}/mock-result` \ `/payments/{id}/receipt` \ `/payments/{id}/receipt.pdf`],
+  [Notification],
+  [User notification feed and read-status updates],
+  [`/notifications` \ `/notifications/read-all` \ `/notifications/{id}/read`],
 )
 
 === Relationships
-#todo[explain the important associations / dependencies in the diagram]
+- *URL nesting via `<<Path>>`:* Orange arrows build routes from `EventoryAPI` down to each resource.
+- *Payload links via `<<use>>`:* Pink arrows connect resources to the representations they accept or return.
+- *Shared models:* `TeamLobbyJoin`, `TeamLobbyLock`, `TeamInviteRegenerate`, and `TeamSubmissionRefresh` reuse the same `TeamLobby` representation.
+- *Out of scope:* Cross-service gRPC calls and broker events are shown in @arch and @sequence.
