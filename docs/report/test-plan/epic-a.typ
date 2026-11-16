@@ -702,8 +702,7 @@ _As an account owner, I want to view and update my primary account profile, so t
   ("EC11", "Handle",
     [25–32 characters using only allowed characters, e.g.
     `aaaaaaaaaabbbbbbbbbbcccccccccc` (30 characters).
-    The page states that 3–32 characters are allowed,
-    but the system keeps only the first 24.], true),
+    The page states that 3–32 characters are allowed.], true),
 )
 
 === Test Cases
@@ -874,15 +873,13 @@ _As an account owner, I want to view and update my primary account profile, so t
       The system saves the handle as entered (30 characters), because the page
       states that 3–32 characters are allowed.
 
-      #image("../img/tc21-1.png", width: 100%)
-      #image("../img/tc21-2.png", width: 100%)
+      #image("../img/tc21.png", width: 100%)
     ],
     actual: [
-      The page showed "Profile updated" without any warning, but the handle
-      was shortened to `aaaaaaaaaabbbbbbbbbbcccc` (24 characters).
-      The last 6 characters were removed.
+      After pressing Save changes, the page showed "Profile updated" and
+      the handle stayed as entered (30 characters).
     ],
     ecs: "EC11",
-    status: "F",
+    status: "P",
   ),
 )
