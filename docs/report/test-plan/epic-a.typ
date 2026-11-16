@@ -521,16 +521,15 @@ _As an account owner, I want to view and update my role-specific profile(s), so 
       The system saves the Sponsor profile and shows it after the reload.
       The Organizer phone stays `+66 89 999 9999`.
 
-      #image("../img/tc23-1.png", width: 100%)
-      #image("../img/tc23-2.png", width: 100%)
+      #image("../img/tc23.png", width: 100%)
     ],
     actual: [
-      After saving and reloading, the Sponsor profile showed `อิมเต้` and
-      `imtaez@example.com`, but the phone showed "Not set". The phone was not
-      saved. The Organizer phone stayed `+66 89 999 9999`.
+      After saving and reloading, the Sponsor profile showed `อิมเต้`,
+      `imtaez@example.com` and `+66 81 111 1111`. The Organizer phone stayed
+      `+66 89 999 9999`.
     ],
     ecs: "EC1, EC5, EC9",
-    status: "F",
+    status: "P",
   ),
   (
     id: "TC24",
@@ -637,15 +636,14 @@ _As an account owner, I want to view and update my role-specific profile(s), so 
     expected: [
       The system shows an error under Phone and does not save the profile.
 
-      #image("../img/tc30-1.png", width: 100%)
-      #image("../img/tc30-2.png", width: 100%)
+      #image("../img/tc30.png", width: 100%)
     ],
     actual: [
-      No error was shown. After saving, the Sponsor profile showed `Imtaez`
-      and `imtaez@example.com`, and the phone showed "Not set".
+      After pressing Save profile, the message "Enter a valid phone number,
+      e.g. +66 81 234 5678." appeared under the field and the form stayed open.
     ],
     ecs: "EC12",
-    status: "F",
+    status: "P",
   ),
   (
     id: "TC31",
