@@ -35,14 +35,18 @@
   for c in cases {
     let pairs = c.inputs.pairs()
     let input-rows = (table.cell(rowspan: pairs.len(), [*Inputs*]),) + pairs.flatten()
-    block(below: 1.2em, breakable: c.screenshots.len() > 1, table(
+    block(below: 1.2em, breakable: true, table(
       columns: (3.4cm, 3.2cm, 1fr),
       [*Test Case ID*], table.cell(colspan: 2, c.id),
       ..input-rows,
-      [*Expected Output*], table.cell(colspan: 2, c.expected),
+      [*Expected Output*], table.cell(colspan: 2, [
+        #c.expected
+
+        #for path in c.screenshots { image(path, width: 100%) }
+      ]),
       [*Actual Output*], table.cell(colspan: 2, c.actual),
       [*Classes Covered*], table.cell(colspan: 2, c.ecs),
-      ..c.screenshots.map(path => (table.cell(colspan: 3, image(path, width: 100%)),)).flatten(),
+      [*Status*], table.cell(colspan: 2, c.status),
     ))
   }
 }
@@ -50,7 +54,7 @@
 = EPIC 3: Tournament Hosting and Lifecycle
 
 // ---------- Story 1 (Mavin) ----------
-== US3-4: Post tournament announcements
+== US 3-4: Post tournament announcements
 _As an organizer, I want to announce further tournament details (for example, a venue change) to related parties so that they receive updates._
 
 === Pre-condition
@@ -68,7 +72,7 @@ The organizer is signed in and opens the Announcements tab of a published tourna
 
 === Test Cases
 #epic-test-cases(
-  story: "US3-4",
+  story: "US 3-4",
   (
     id: "TC51",
     inputs: (Title: [`Venue update`], Message: [`The venue is Room 301.`]),
@@ -117,7 +121,7 @@ The organizer is signed in and opens the Announcements tab of a published tourna
 )
 
 // ---------- Story 2 (Mavin) ----------
-== US3-5: Configure a custom registration form
+== US 3-5: Configure a custom registration form
 _As an organizer, I want to configure a registration form with short-text, long-text, number, single-choice, and multiple-choice questions, and mark questions as required when needed, so that I can collect tournament-specific information to review applicants._
 
 === Pre-condition
@@ -133,7 +137,7 @@ The organizer is signed in, owns a draft tournament, and opens its registration-
 
 === Test Cases
 #epic-test-cases(
-  story: "US3-5",
+  story: "US 3-5",
   (
     id: "TC56",
     inputs: (Label: [`Budget amount`], Minimum: [`0`], Maximum: [`1000`]),
@@ -164,7 +168,7 @@ The organizer is signed in, owns a draft tournament, and opens its registration-
 )
 
 // ---------- Story 3 (Imtaez) ----------
-== US3-6: Review participant applications
+== US 3-6: Review participant applications
 _As an organizer, I want to approve or reject submitted participant applications so that I control who competes in my tournament._
 
 === Pre-condition
@@ -179,7 +183,7 @@ The organizer is signed in and views a tournament with a locked application whos
 
 === Test Cases
 #epic-test-cases(
-  story: "US3-6",
+  story: "US 3-6",
   (
     id: "TC59",
     inputs: (Decision: [Accept], Capacity: [1 accepted, limit 2], Application: [locked with submitted answers]),
@@ -210,7 +214,7 @@ The organizer is signed in and views a tournament with a locked application whos
 )
 
 // ---------- Story 4 (Imtaez) ----------
-== US3-1: Create a tournament
+== US 3-1: Create a tournament
 _As an organizer, I want to create a tournament so that I can define the event, funding needs, rules, solo/team size restrictions, tournament format, and rewards._
 
 === Pre-condition
@@ -236,7 +240,7 @@ The organizer is signed in and opens *Host a Tournament*. These cases cover the 
 
 === Test Cases
 #epic-test-cases(
-  story: "US3-1",
+  story: "US 3-1",
   (
     id: "TC62",
     inputs: (Name: [`Test Cup`], Game: [`Valorant`], Location: [`Online`], Description: [`A local tournament.`]),

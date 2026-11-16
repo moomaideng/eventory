@@ -29,6 +29,13 @@ _As a new user, I want to create a single primary account,
 so that I have a central identity with a public handle
 to interact across the platform._
 
+=== Pre-condition
+- The user has authenticated for the first time
+  and has not completed onboarding.
+- The onboarding form is displayed.
+- Each test case starts independently with a fresh user
+  who has not completed onboarding.
+
 === Input Equivalence Classes
 #ec-table(
   ("EC1", "Handle",
@@ -49,13 +56,6 @@ to interact across the platform._
   ("EC6", "Display Name",
     [Empty string], false),
 )
-
-=== Pre-condition
-- The user has authenticated for the first time
-  and has not completed onboarding.
-- The onboarding form is displayed.
-- Each test case starts independently with a fresh user
-  who has not completed onboarding.
 
 === Test Cases
 #test-cases(
@@ -194,6 +194,10 @@ _As a user, I want to create and switch between Organizer
 and Sponsor profiles linked to my account,
 so that I can manage events or corporate funds
 without maintaining separate logins._
+
+=== Pre-condition
+The user is authenticated. Each test case specifies the required account status,
+whether the relevant role profile already exists, and any additional setup.
 
 === Input Equivalence Classes
 #ec-table(
@@ -457,6 +461,10 @@ without maintaining separate logins._
 == US 1-3: Organizer & Sponsor Profile Viewing & Updates
 _As an account owner, I want to view and update my role-specific profile(s), so that my contact and public information stays accurate._
 
+=== Pre-condition
+- The tester is signed in as an active account owner and has opened the Profile settings page.
+- The account already has an Organizer profile and a Sponsor profile.
+
 === Input Equivalence Classes
 #ec-table(
   ("EC1", "Name", 
@@ -485,10 +493,6 @@ _As an account owner, I want to view and update my role-specific profile(s), so 
   ("EC12", "Phone",
     [Phone that contains letters (e.g. `abc999`)], false),
 )
-
-=== Pre-condition
-- The tester is signed in as an active account owner and has opened the Profile settings page.
-- The account already has an Organizer profile and a Sponsor profile.
 
 === Test Cases
 #test-cases(
@@ -665,6 +669,12 @@ _As an account owner, I want to view and update my role-specific profile(s), so 
 == US 1-4: Primary Account Profile Viewing & Updates
 _As an account owner, I want to view and update my primary account profile, so that my information stays accurate._
 
+=== Pre-condition
+- The tester is signed in as an account owner with an active account.
+- The Profile settings page is open and the card with the Display name and Handle fields is shown.
+- Another account with the handle `player_one` already exists.
+- Each test case starts from the saved profile shown on the page.
+
 === Input Equivalence Classes
 #ec-table(
   ("EC1", "Display Name",
@@ -697,12 +707,6 @@ _As an account owner, I want to view and update my primary account profile, so t
     The page states that 3–32 characters are allowed,
     but the system keeps only the first 24.], true),
 )
-
-=== Pre-condition
-- The tester is signed in as an account owner with an active account.
-- The Profile settings page is open and the card with the Display name and Handle fields is shown.
-- Another account with the handle `player_one` already exists.
-- Each test case starts from the saved profile shown on the page.
 
 === Test Cases
 #test-cases(
