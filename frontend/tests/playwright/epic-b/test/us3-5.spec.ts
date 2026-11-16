@@ -50,7 +50,8 @@ test("TC56: valid Number question saves and appears for registrants", async ({ p
     data: { status: "REGISTRATION" },
   });
   expect(open.ok(), await open.text()).toBe(true);
-  await page.goto(`/tournaments/${id}`);
+  await page.getByRole("button", { name: "Refresh dashboard" }).click();
+  await page.getByText("Public page", { exact: true }).click();
   await page.getByText("Register as an individual").click();
   await expect(page.getByText("Budget amount")).toBeVisible();
   await expect(page.getByRole("spinbutton")).toHaveAttribute("min", "0");

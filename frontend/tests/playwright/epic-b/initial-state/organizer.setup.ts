@@ -1,6 +1,13 @@
 import { test as base, expect, type BrowserContext } from "@playwright/test";
+import type { Page } from "@playwright/test";
 
 export { expect } from "@playwright/test";
+
+export async function openOrganizer(page: Page) {
+  await page.goto("/");
+  await page.getByText("Organizer workspace", { exact: true }).click();
+  await expect(page.getByRole("heading", { name: "My tournaments" })).toBeVisible();
+}
 
 export const test = base.extend<
   object,
@@ -22,7 +29,7 @@ export const test = base.extend<
           )?.value
         )
         .toBe("alex-dev");
-      await page.goto("http://localhost:3000/organizer");
+      await page.getByText("Organizer workspace", { exact: true }).click();
       await expect(page.getByRole("heading", { name: "My tournaments" })).toBeVisible();
       await provide(await page.context().storageState());
       await page.close();

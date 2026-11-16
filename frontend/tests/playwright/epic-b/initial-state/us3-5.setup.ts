@@ -1,10 +1,11 @@
-import { test as organizerTest, expect } from "./organizer.setup";
+import { test as organizerTest, expect, openOrganizer } from "./organizer.setup";
 
 export { expect };
 export const test = organizerTest;
 
 test.beforeEach(async ({ page }) => {
-  await page.goto("/organizer/tournaments/new");
+  await openOrganizer(page);
+  await page.getByText("Host tournament", { exact: true }).click();
   await page.waitForLoadState("networkidle");
   await page.getByLabel("Tournament Name").fill(`Playwright Number Form ${Date.now()}`);
   await page.getByLabel("Game Title").fill("Chess");

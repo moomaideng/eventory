@@ -23,7 +23,9 @@ for example `PLAYWRIGHT_API_URL=http://localhost:18080 npm run test:e2e`.
 Run one case with `npm run test:e2e -- -g TC56`; use `npm run test:e2e:ui` to inspect
 steps and `npx playwright show-report` for the HTML report.
 
-Tests use fresh browser contexts. TC56 creates a Draft and opens Registration
+Each browser test starts at the home page and navigates by clicking visible
+controls; TC56 and TC57 refresh the page to verify saved state. Tests use fresh
+browser contexts. TC56 creates a Draft and opens Registration
 to check the player form. TC59–61 create fresh free-entry tournaments and
 applications through the API, then review them in the browser. TC62 creates a
 Draft, and TC51 posts an announcement to the seeded tournament. These records

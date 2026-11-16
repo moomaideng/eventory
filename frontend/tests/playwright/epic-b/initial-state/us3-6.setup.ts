@@ -1,4 +1,4 @@
-import { test as organizerTest, expect } from "./organizer.setup";
+import { test as organizerTest, expect, openOrganizer } from "./organizer.setup";
 import type { APIResponse } from "@playwright/test";
 
 export { expect };
@@ -12,15 +12,16 @@ async function result(response: APIResponse) {
 }
 
 export const test = organizerTest.extend<{
-  reviewFixture: { id: string; pendingName: string };
+  reviewFixture: { name: string; pendingName: string };
 }>({
   reviewFixture: async ({ request }, provide, testInfo) => {
     const now = Date.now();
+    const name = `Playwright Review ${now}`;
     const capacity = testInfo.title.includes("TC61") ? 1 : 2;
     const created = await result(await request.post(`${apiURL}/api/v1/tournaments`, {
       headers,
       data: {
-        name: `Playwright Review ${now}`,
+        name,
         game: "Chess",
         location: "Online",
         description: "Review application test",
@@ -53,12 +54,14 @@ export const test = organizerTest.extend<{
       headers,
       data: { decision: "ACCEPT" },
     }));
-    await provide({ id, pendingName: pending.name });
+    await provide({ name, pendingName: pending.name });
   },
 });
 
 test.beforeEach(async ({ page, reviewFixture }) => {
-  await page.goto(`/organizer/tournaments/${reviewFixture.id}`);
+  await openOrganizer(page);
+  await page.getByRole("button", { name: `Manage ${reviewFixture.name}` }).click();
+  await page.waitForLoadState("networkidle");
   await page.getByRole("tab", { name: "Registration", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Registrations" })).toBeVisible();
 });

@@ -8,7 +8,6 @@ const announcementCount = (page: Page) =>
   page.locator('li[id^="announcement-"]').count();
 
 test("TC51: valid announcement appears publicly", async ({ page }) => {
-  const tournamentId = new URL(page.url()).pathname.split("/").at(-1);
   const uniqueTitle = `Venue update ${Date.now()}`;
   await page.locator(title).fill(uniqueTitle);
   await page.locator(message).fill("The venue is Room 301.");
@@ -16,7 +15,9 @@ test("TC51: valid announcement appears publicly", async ({ page }) => {
   await expect(page.getByText("Announcement posted")).toBeVisible();
   await expect(page.locator(title)).toBeEmpty();
   await expect(page.locator(message)).toBeEmpty();
-  await page.goto(`/tournaments/${tournamentId}/announcements`);
+  await page.getByText("Public page", { exact: true }).click();
+  await page.locator('[aria-label="Tournament announcements"]')
+    .getByText("View more", { exact: true }).click();
   const item = page.locator('li[id^="announcement-"]').filter({ hasText: uniqueTitle });
   await expect(item).toContainText("The venue is Room 301.");
   await expect(item).toContainText(/ · \d{1,2} /);
