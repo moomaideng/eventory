@@ -15,7 +15,9 @@ test("TC51: valid announcement appears publicly", async ({ page }) => {
     .getByText("View more", { exact: true }).click();
   const item = page.locator('li[id^="announcement-"]').filter({ hasText: uniqueTitle });
   await expect(item).toContainText("The venue is Room 301.");
-  await expect(item).toContainText(/ · \d{1,2} /);
+  const byline = await item.locator('[data-slot="card-description"]').innerText();
+  const dateText = byline.split(" · ")[1] ?? "";
+  expect(Date.parse(dateText)).not.toBeNaN();
 });
 
 test("TC52: empty title is rejected", async ({ page }) => {
