@@ -13,8 +13,10 @@ test("TC56: valid Number question saves and appears for registrants", async ({ p
   await page.getByLabel("Min Value").fill("0");
   await page.getByLabel("Max Value").fill("1000");
 
+  const unsavedChanges = page.getByText("Unsaved changes", { exact: true });
+  await expect(unsavedChanges).toBeVisible();
   await page.getByRole("button", { name: "Save Form" }).first().click();
-  await expect(page.getByText("Unsaved changes", { exact: true })).toHaveCount(0);
+  await expect(unsavedChanges).toBeHidden();
   await page.reload();
   await page.getByRole("tab", { name: "Registration questions" }).click();
   await expect(page.getByText("Budget amount").first()).toBeVisible();
