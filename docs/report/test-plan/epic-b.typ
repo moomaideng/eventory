@@ -76,8 +76,8 @@ The organizer is signed in and opens the Announcements tab of a published tourna
   (
     id: "TC51",
     inputs: (Title: [`Venue update`], Message: [`The venue is Room 301.`]),
-    expected: [The announcement appears in the public list with a timestamp; success is shown and both fields clear.],
-    actual: [Posted publicly with a timestamp; fields cleared.],
+    expected: [The announcement appears in the public list; success is shown and both fields clear.],
+    actual: [Posted publicly; fields cleared.],
     screenshots: ("../img/tc51.png", "../img/tc51-public.png"),
     status: "P",
     ecs: "EC1, EC4",
