@@ -145,9 +145,11 @@ export function NavbarRight({
                       <p className="text-foreground truncate text-sm leading-tight font-semibold">
                         {user.displayName}
                       </p>
-                      <p className="text-muted-foreground truncate text-xs">
-                        @{user.handle}
-                      </p>
+                      {user.handle ? (
+                        <p className="text-muted-foreground truncate text-xs">
+                          @{user.handle}
+                        </p>
+                      ) : null}
                     </div>
                   </div>
 

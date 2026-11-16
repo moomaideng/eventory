@@ -128,9 +128,13 @@ func (s *AccountServer) GetAccountByHandle(ctx context.Context, req *accountv1.G
 }
 
 func toProtoAccount(account *models.Account) *accountv1.Account {
+	handle := ""
+	if account.Handle != nil {
+		handle = *account.Handle
+	}
 	return &accountv1.Account{
 		Id:          account.ID.String(),
-		Handle:      account.Handle,
+		Handle:      handle,
 		DisplayName: account.DisplayName,
 		Status:      string(account.Status),
 		Email:       account.Email,

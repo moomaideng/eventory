@@ -24,7 +24,7 @@ export interface UserProfile {
   id: string;
   email: string;
   displayName: string;
-  handle: string;
+  handle?: string;
   avatarUrl?: string;
   status: AccountStatus;
 }
@@ -140,11 +140,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           session?.user?.displayName ||
           devUser?.displayName ||
           "User",
-        handle:
-          account.handle ||
-          session?.user?.email?.split("@")[0] ||
-          devUser?.handle ||
-          "user",
+        handle: account.handle,
         avatarUrl: session?.user?.avatarUrl || devUser?.avatarUrl,
         status: (account.status as AccountStatus) || "ACTIVE",
       };
@@ -160,7 +156,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       id: session.user.id,
       email: session.user.email,
       displayName: session.user.displayName,
-      handle: session.user.email.split("@")[0],
       avatarUrl: session.user.avatarUrl,
       status: "ACTIVE",
     };

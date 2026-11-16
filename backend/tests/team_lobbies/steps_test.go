@@ -107,7 +107,7 @@ func (s *teamLobbyScenarioContext) persistActiveAccount(user *apptest.TestUser) 
 	account := accountmodels.Account{
 		ID:          user.ID,
 		Email:       user.Email,
-		Handle:      user.Handle,
+		Handle:      accountmodels.StringPtr(user.Handle),
 		DisplayName: user.DisplayName,
 		Status:      accountmodels.AccountStatusActive,
 	}

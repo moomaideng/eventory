@@ -510,11 +510,11 @@ func ptrValue(p *string) string {
 }
 
 func samePrimaryProfile(want, got handlers.AccountResponse) error {
-	if got.DisplayName != want.DisplayName || got.Handle != want.Handle {
+	if got.DisplayName != want.DisplayName || ptrValue(got.Handle) != ptrValue(want.Handle) {
 		return fmt.Errorf(
 			"expected profile %q/%q, got %q/%q",
-			want.DisplayName, want.Handle,
-			got.DisplayName, got.Handle,
+		want.DisplayName, ptrValue(want.Handle),
+		got.DisplayName, ptrValue(got.Handle),
 		)
 	}
 	return nil
@@ -547,7 +547,7 @@ func (s *accountScenarioContext) theyUpdateAllPrimaryProfileFieldsWithValidInfor
 	s.resp = resp
 	s.primaryExpected = handlers.AccountResponse{
 		DisplayName: name,
-		Handle:      handle,
+		Handle:      &handle,
 	}
 	return nil
 }
@@ -642,8 +642,8 @@ func (s *accountScenarioContext) theCreatedAccountShouldHaveANonEmptyHandle() er
 	if err := s.resp.JSON(&out); err != nil {
 		return fmt.Errorf("failed to parse account response: %w", err)
 	}
-	if strings.TrimSpace(out.Handle) == "" {
-		return fmt.Errorf("expected non-empty handle, got empty string")
+	if out.Handle != nil {
+		return fmt.Errorf("expected no handle before onboarding, got %q", *out.Handle)
 	}
 	return nil
 }
@@ -653,8 +653,8 @@ func (s *accountScenarioContext) theAccountHandleShouldBeValid() error {
 	if err := s.resp.JSON(&out); err != nil {
 		return fmt.Errorf("failed to parse account response: %w", err)
 	}
-	if len(out.Handle) < 3 {
-		return fmt.Errorf("expected valid handle >= 3 chars, got %q", out.Handle)
+	if out.Handle == nil || len(*out.Handle) < 3 {
+		return fmt.Errorf("expected valid handle >= 3 chars, got %v", out.Handle)
 	}
 	return nil
 }
@@ -705,8 +705,8 @@ func (s *accountScenarioContext) theCreatedAccountShouldHaveAValidDefaultHandle(
 	if err := s.resp.JSON(&out); err != nil {
 		return fmt.Errorf("failed to parse account response: %w", err)
 	}
-	if len(out.Handle) < 3 {
-		return fmt.Errorf("expected valid handle >= 3 chars, got %q", out.Handle)
+	if out.Handle != nil {
+		return fmt.Errorf("expected no default handle, got %q", *out.Handle)
 	}
 	return nil
 }
@@ -727,8 +727,8 @@ func (s *accountScenarioContext) theUpdatedAccountHandleShouldBe(expectedHandle 
 	if err := s.resp.JSON(&out); err != nil {
 		return fmt.Errorf("failed to parse account response: %w", err)
 	}
-	if out.Handle != expectedHandle {
-		return fmt.Errorf("expected handle %q, got %q", expectedHandle, out.Handle)
+	if out.Handle == nil || *out.Handle != expectedHandle {
+		return fmt.Errorf("expected handle %q, got %v", expectedHandle, out.Handle)
 	}
 	return nil
 }

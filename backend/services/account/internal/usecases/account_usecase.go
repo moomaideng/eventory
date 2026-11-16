@@ -2,12 +2,11 @@ package usecases
 
 import (
 	"context"
-	"crypto/rand"
 	"errors"
 	"fmt"
-	"math/big"
 	"net/mail"
 	"net/url"
+	"regexp"
 	"strings"
 	"time"
 
@@ -32,6 +31,8 @@ var (
 	ErrSponsorDirectoryForbidden = errors.New("an active organizer profile is required")
 	ErrPrivacyConsentRequired    = errors.New("explicit privacy consent is required before creating a profile")
 )
+
+var validHandle = regexp.MustCompile(`^[a-z0-9_]{3,32}$`)
 
 // CreateAccountInput specifies input parameters for creating or ensuring an account.
 type CreateAccountInput struct {
@@ -82,27 +83,6 @@ func NewAccountUseCase(accountRepo repositories.AccountRepository) *AccountUseCa
 	return &AccountUseCase{
 		accountRepo: accountRepo,
 	}
-}
-
-// SanitizeHandle cleans an input string into a lowercase alphanumeric handle with underscores.
-func SanitizeHandle(input string) string {
-	input = strings.ToLower(strings.TrimSpace(input))
-	var sb strings.Builder
-	for _, r := range input {
-		if (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') || r == '_' {
-			sb.WriteRune(r)
-		} else if r == ' ' || r == '-' || r == '.' || r == '@' {
-			sb.WriteRune('_')
-		}
-	}
-	res := strings.Trim(sb.String(), "_")
-	if len(res) > 24 {
-		res = res[:24]
-	}
-	if len(res) < 3 {
-		res = "player"
-	}
-	return res
 }
 
 // GetAccountByEmail retrieves an account by its unique email address.
@@ -184,14 +164,10 @@ func (u *AccountUseCase) CreateAccount(ctx context.Context, input CreateAccountI
 		displayName = "User"
 	}
 
-	// 3. Resolve handle (generate unique based on displayName)
-	handle := u.resolveUniqueHandle(ctx, "", displayName)
-
 	account := &models.Account{
 		ID:          input.ID,
 		Email:       email,
 		DisplayName: displayName,
-		Handle:      handle,
 		Status:      models.AccountStatusOnboarding,
 	}
 
@@ -200,30 +176,6 @@ func (u *AccountUseCase) CreateAccount(ctx context.Context, input CreateAccountI
 	}
 
 	return account, nil
-}
-
-// resolveUniqueHandle ensures a non-colliding handle using requested or fallback base name.
-func (u *AccountUseCase) resolveUniqueHandle(ctx context.Context, requested string, fallbackBase string) string {
-	if requested != "" {
-		candidate := SanitizeHandle(requested)
-		if existing, _ := u.accountRepo.FindByHandle(ctx, candidate); existing == nil {
-			return candidate
-		}
-	}
-
-	base := SanitizeHandle(fallbackBase)
-	candidate := base
-	for i := 0; i < 5; i++ {
-		if existing, _ := u.accountRepo.FindByHandle(ctx, candidate); existing == nil {
-			return candidate
-		}
-		n, _ := rand.Int(rand.Reader, big.NewInt(9000))
-		candidate = fmt.Sprintf("%s_%04d", base, n.Int64()+1000)
-		if len(candidate) > 32 {
-			candidate = candidate[:32]
-		}
-	}
-	return fmt.Sprintf("user_%s", uuid.New().String()[:8])
 }
 
 // UpdateAccount updates the profile fields of an existing account.
@@ -248,11 +200,11 @@ func (u *AccountUseCase) UpdateAccount(ctx context.Context, id uuid.UUID, input 
 	}
 
 	if input.Handle != nil {
-		h := SanitizeHandle(*input.Handle)
-		if len(h) < 3 || len(h) > 32 {
+		h := strings.ToLower(strings.TrimSpace(*input.Handle))
+		if !validHandle.MatchString(h) {
 			return nil, ErrInvalidHandle
 		}
-		if h != account.Handle {
+		if account.Handle == nil || h != *account.Handle {
 			existing, err := u.accountRepo.FindByHandle(ctx, h)
 			if err != nil {
 				return nil, err
@@ -260,7 +212,7 @@ func (u *AccountUseCase) UpdateAccount(ctx context.Context, id uuid.UUID, input 
 			if existing != nil && existing.ID != id {
 				return nil, ErrHandleAlreadyExists
 			}
-			account.Handle = h
+			account.Handle = &h
 		}
 	}
 

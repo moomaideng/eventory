@@ -28,43 +28,12 @@ import { onboardingFormSchema, type OnboardingFormValues } from "../schemas";
 
 type FieldErrors = Partial<Record<keyof OnboardingFormValues, string>>;
 
-/**
- * Derives the smartest initial handle:
- * 1. Uses backend handle if it's not a generic fallback (like user_xxx or player_xxx).
- * 2. Otherwise sanitizes email username prefix (e.g. somchai.pro -> somchai_pro).
- * 3. Falls back to backend handle.
- */
-function getSmartInitialHandle(user: UserProfile): string {
-  if (
-    user.handle &&
-    !user.handle.startsWith("user_") &&
-    !user.handle.startsWith("player_")
-  ) {
-    return user.handle;
-  }
-
-  if (user.email) {
-    const emailPrefix = user.email
-      .split("@")[0]
-      .toLowerCase()
-      .replace(/[^a-z0-9_]/g, "_")
-      .replace(/^_+|_+$/g, "")
-      .slice(0, 32);
-
-    if (emailPrefix.length >= 3) {
-      return emailPrefix;
-    }
-  }
-
-  return user.handle || "";
-}
-
 function OnboardingForm({ user }: { user: UserProfile }) {
   const { authorizationHeader, updateUserProfile, logout } = useAuth();
   const queryClient = useQueryClient();
 
   const [displayName, setDisplayName] = useState(user.displayName || "");
-  const [handle, setHandle] = useState(() => getSmartInitialHandle(user));
+  const [handle, setHandle] = useState("");
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [apiError, setApiError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);

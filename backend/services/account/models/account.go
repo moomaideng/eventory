@@ -19,7 +19,7 @@ const (
 type Account struct {
 	ID          uuid.UUID     `gorm:"type:uuid;primaryKey"`
 	Email       string        `gorm:"type:varchar(255);not null;uniqueIndex"`
-	Handle      string        `gorm:"type:varchar(32);not null;uniqueIndex"`
+	Handle      *string       `gorm:"type:varchar(32);uniqueIndex"`
 	DisplayName string        `gorm:"type:varchar(64);not null"`
 	Status      AccountStatus `gorm:"type:varchar(16);not null;default:'ONBOARDING'"`
 	CreatedAt   time.Time
@@ -30,9 +30,16 @@ type Account struct {
 	SponsorProfile   *SponsorProfile   `gorm:"foreignKey:AccountID;constraint:OnDelete:CASCADE;"`
 }
 
+func StringPtr(value string) *string {
+	return &value
+}
+
 func (account *Account) BeforeSave(_ *gorm.DB) error {
 	account.Email = strings.ToLower(strings.TrimSpace(account.Email))
-	account.Handle = strings.ToLower(strings.TrimSpace(account.Handle))
+	if account.Handle != nil {
+		handle := strings.ToLower(strings.TrimSpace(*account.Handle))
+		account.Handle = &handle
+	}
 	account.DisplayName = strings.TrimSpace(account.DisplayName)
 	return nil
 }

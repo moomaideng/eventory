@@ -29,7 +29,7 @@ const ACCOUNT_QUERY_KEY = ["get", "/api/v1/accounts/me"] as const;
 function toFormValues(account: Account): AccountSettingsInput {
   return {
     displayName: account.displayName,
-    handle: account.handle,
+    handle: account.handle ?? "",
   };
 }
 
