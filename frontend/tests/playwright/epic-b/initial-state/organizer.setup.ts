@@ -5,7 +5,9 @@ export { expect } from "@playwright/test";
 
 export async function openOrganizer(page: Page) {
   await page.goto("/");
-  await page.getByText("Organizer workspace", { exact: true }).click();
+  await page.waitForLoadState("networkidle");
+  await page.getByRole("link", { name: /Organizer workspace/ }).click();
+  await expect(page).toHaveURL(/\/organizer$/, { timeout: 15_000 });
   await expect(page.getByRole("heading", { name: "My tournaments" })).toBeVisible();
 }
 

@@ -69,7 +69,8 @@ export const test = organizerTest.extend<{
 test.beforeEach(async ({ page, reviewFixture }) => {
   await openOrganizer(page);
   await page.getByRole("button", { name: `Manage ${reviewFixture.name}` }).click();
-  await page.waitForLoadState("networkidle");
+  await expect(page).toHaveURL(/\/organizer\/tournaments\/[0-9a-f-]+$/);
+  await expect(page.getByRole("alert", { name: "Loading tournament" })).toBeHidden();
   await page.getByRole("tab", { name: "Registration", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Registrations" })).toBeVisible();
 });
