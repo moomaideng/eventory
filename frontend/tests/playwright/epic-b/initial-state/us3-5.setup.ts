@@ -1,0 +1,20 @@
+import { test as organizerTest, expect, openOrganizer } from "./organizer.setup";
+
+export { expect };
+export const test = organizerTest;
+
+test.beforeEach(async ({ page }) => {
+  await openOrganizer(page);
+  await page.getByText("Host tournament", { exact: true }).click();
+  await page.waitForLoadState("networkidle");
+  await page.getByLabel("Tournament Name").fill(`Playwright Number Form ${Date.now()}`);
+  await page.getByLabel("Game Title").fill("Chess");
+  await page.getByLabel("Short Description").fill("Test form builder");
+  await page.getByRole("button", { name: "Create Tournament" }).click();
+  await expect(page).toHaveURL(/\/organizer\/tournaments\/[0-9a-f-]+$/);
+  await page.getByRole("tab", { name: "Registration questions" }).click();
+  await expect(page.getByRole("heading", { name: "Registration Questions" })).toBeVisible();
+  await page.getByRole("button", { name: "Add Question" }).first().click();
+  await page.getByRole("combobox").click();
+  await page.getByRole("option", { name: "Number" }).click();
+});

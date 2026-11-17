@@ -76,8 +76,8 @@ The organizer is signed in and opens the Announcements tab of a published tourna
   (
     id: "TC51",
     inputs: (Title: [`Venue update`], Message: [`The venue is Room 301.`]),
-    expected: [The announcement appears in the public list with a timestamp; success is shown and both fields clear.],
-    actual: [Posted publicly with a timestamp; fields cleared.],
+    expected: [The announcement appears in the public list; success is shown and both fields clear.],
+    actual: [Posted publicly; fields cleared.],
     screenshots: ("../img/tc51.png", "../img/tc51-public.png"),
     status: "P",
     ecs: "EC1, EC4",
@@ -172,7 +172,7 @@ The organizer is signed in, owns a draft tournament, and opens its registration-
 _As an organizer, I want to approve or reject submitted participant applications so that I control who competes in my tournament._
 
 === Pre-condition
-The organizer is signed in and views a tournament with a locked application whose submitted answers can be opened. Each case starts with an undecided application.
+The organizer is signed in and has already reviewed an undecided locked application in a tournament they own.
 
 === Input Equivalence Classes
 #epic-ec-table(
@@ -186,10 +186,10 @@ The organizer is signed in and views a tournament with a locked application whos
   story: "US 3-6",
   (
     id: "TC59",
-    inputs: (Decision: [Accept], Capacity: [1 accepted, limit 2], Application: [locked with submitted answers]),
-    expected: [The answers are visible; the application becomes Accepted and the accepted count increases to 2.],
-    actual: [Answers were visible; acceptance increased the count to 2.],
-    screenshots: ("../img/tc59-answers.png", "../img/tc59.png"),
+    inputs: (Decision: [Accept], Capacity: [1 accepted, limit 2], Application: [locked]),
+    expected: [The application becomes Accepted and the accepted count increases to 2.],
+    actual: [Application accepted; the accepted count increased to 2.],
+    screenshots: ("../img/tc59.png",),
     status: "P",
     ecs: "EC1",
   ),
