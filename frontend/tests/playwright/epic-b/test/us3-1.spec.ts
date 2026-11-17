@@ -11,59 +11,40 @@ test("TC62: valid inputs create a Draft", async ({ page }) => {
   await expect(page.getByText("Draft", { exact: true }).first()).toBeVisible();
 });
 
-test("TC63: empty name is rejected", async ({ page }) => {
-  await page.getByLabel("Tournament Name").fill("");
-  await page.getByLabel("Game Title").fill("Valorant");
-  await page.getByLabel("Location").fill("Online");
-  await page.getByLabel("Short Description").fill("A local tournament.");
+for (const { name, field, error } of [
+  {
+    name: "TC63: empty name is rejected",
+    field: "Tournament Name",
+    error: "Tournament name is required.",
+  },
+  {
+    name: "TC64: empty game is rejected",
+    field: "Game Title",
+    error: "Game title is required.",
+  },
+  {
+    name: "TC65: empty location is rejected",
+    field: "Location",
+    error: "Location is required (e.g. 'Online' or venue address).",
+  },
+  {
+    name: "TC66: empty description is rejected",
+    field: "Short Description",
+    error: "Short description is required.",
+  },
+]) {
+  test(name, async ({ page }) => {
+    await page.getByLabel("Tournament Name").fill("Test Cup");
+    await page.getByLabel("Game Title").fill("Valorant");
+    await page.getByLabel("Location").fill("Online");
+    await page.getByLabel("Short Description").fill("A local tournament.");
+    await page.getByLabel(field).fill("");
 
-  await page.getByRole("button", { name: "Create Tournament" }).click();
-  await expect(
-    page.getByText("Tournament name is required.", { exact: true })
-  ).toBeVisible();
-  await expect(page).toHaveURL(/\/organizer\/tournaments\/new$/);
-});
-
-test("TC64: empty game is rejected", async ({ page }) => {
-  await page.getByLabel("Tournament Name").fill("Test Cup");
-  await page.getByLabel("Game Title").fill("");
-  await page.getByLabel("Location").fill("Online");
-  await page.getByLabel("Short Description").fill("A local tournament.");
-
-  await page.getByRole("button", { name: "Create Tournament" }).click();
-  await expect(
-    page.getByText("Game title is required.", { exact: true })
-  ).toBeVisible();
-  await expect(page).toHaveURL(/\/organizer\/tournaments\/new$/);
-});
-
-test("TC65: empty location is rejected", async ({ page }) => {
-  await page.getByLabel("Tournament Name").fill("Test Cup");
-  await page.getByLabel("Game Title").fill("Valorant");
-  await page.getByLabel("Location").fill("");
-  await page.getByLabel("Short Description").fill("A local tournament.");
-
-  await page.getByRole("button", { name: "Create Tournament" }).click();
-  await expect(
-    page.getByText("Location is required (e.g. 'Online' or venue address).", {
-      exact: true,
-    })
-  ).toBeVisible();
-  await expect(page).toHaveURL(/\/organizer\/tournaments\/new$/);
-});
-
-test("TC66: empty description is rejected", async ({ page }) => {
-  await page.getByLabel("Tournament Name").fill("Test Cup");
-  await page.getByLabel("Game Title").fill("Valorant");
-  await page.getByLabel("Location").fill("Online");
-  await page.getByLabel("Short Description").fill("");
-
-  await page.getByRole("button", { name: "Create Tournament" }).click();
-  await expect(
-    page.getByText("Short description is required.", { exact: true })
-  ).toBeVisible();
-  await expect(page).toHaveURL(/\/organizer\/tournaments\/new$/);
-});
+    await page.getByRole("button", { name: "Create Tournament" }).click();
+    await expect(page.getByText(error, { exact: true })).toBeVisible();
+    await expect(page).toHaveURL(/\/organizer\/tournaments\/new$/);
+  });
+}
 
 test("TC67: name stops at 160 characters", async ({ page }) => {
   await page.getByLabel("Tournament Name").fill("A".repeat(161));
