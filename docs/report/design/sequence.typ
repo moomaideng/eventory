@@ -14,7 +14,7 @@
 #pagebreak(weak: true)
 == Sequence Diagram <sequence>
 
-*Use case:* UC-03 Submit Registration: team captain locks roster and pays entry fee
+*Use case:* UC-03 Submit Registration: team captain locks roster and pays entry fee (paid tournament)
 
 #figure(
   image("../img/sequence-diagram.png", width: 100%),
@@ -26,11 +26,11 @@
   columns: (auto, 1fr),
   table.header[*Phase*][*Flow*],
   [Lock roster],
-  [`Team Captain -> Web Client -> API Gateway -> Tournament`: checks captain status via `Account` gRPC, validates team size and deadline, and sets `status = PAYMENT_PENDING`.],
+  [`aCaptain -> WebClient -> APIGateway -> TournamentService`: checks the captain's account via `AccountService` (gRPC), validates answers, deadline, and team size, then sets the team to `PAYMENT_PENDING` (roster frozen).],
   [Create invoice],
-  [`Tournament -> Payment`: creates an `UNPAID` entry-fee invoice and returns `payment required` so Web Client shows checkout.],
-  [Pay success],
-  [`Team Captain -> Web Client -> API Gateway -> Payment`: sets `invoice = PAID`, replies `paid` to Web Client, and publishes `payment.succeeded` via `->>`. `Tournament` sets `team = LOCKED`, submits registration, and publishes `registration.submitted` so `Notification` sends the confirmation email.],
+  [`TournamentService -> PaymentService` (gRPC): creates an `UNPAID` entry-fee invoice. The `paymentId` returns to `WebClient`, which opens the checkout page.],
+  [Pay succeeds],
+  [`PaymentService` marks the invoice `PAID`, replies to `WebClient`, then publishes `payment.confirmed`. `TournamentService` sets the team to `LOCKED` and publishes `registration.submitted`. `NotificationService` emails the captain for each event.],
   [Pay fails],
-  [`Payment -> Web Client -> Team Captain`: returns `payment failed` and `failed, retry allowed`. Registration is not submitted and the roster stays locked.],
+  [`PaymentService` cancels the invoice, replies to `WebClient`, then publishes `payment.cancelled`. `TournamentService` clears the payment attempt: registration stays unsubmitted, the team stays `PAYMENT_PENDING` (roster frozen), and a retry starts a new attempt.],
 )
