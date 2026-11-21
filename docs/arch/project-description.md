@@ -165,7 +165,7 @@ FR14 is for Solo, FR15-18 for Team, and FR19-20 are shared.
 - FR17: When a team captain submits a roster that meets tournament size rules, the system shall lock the team roster for registration submission.
 - FR18: When a team captain locks the team roster, the system shall process any team entry fee through Payment Service.
 - FR19: On successful payment when required (or immediately when free), the system shall submit the registration to the organizer for review with confirmation to the competitor.
-- FR20: When payment fails or a team roster fails required size checks, the system shall keep the registration unsubmitted with the team roster unlocked.
+- FR20: When a team roster fails required size checks, the system shall keep the registration unsubmitted with the team roster unlocked. When payment fails or expires, the system shall keep the registration unsubmitted with the roster frozen and allow the competitor or team captain to retry payment.
 
 ### Match Results
 
